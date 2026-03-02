@@ -669,7 +669,28 @@ async function getCoordAsync(x){
   const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
   // 1. 캐시에 있으면 즉시 반환
   if(GEO_CACHE[aptKey]) return GEO_CACHE[aptKey];
-  // 2. V-World search API JSONP 호출 (항상 1순위)
+  // 2. 지번주소 API (동+번지 → 정확한 좌표)
+  if(x.j && x.d){
+    const jibunQ=(x.d||'')+' '+x.j;
+    const jUrl='https://apis.vworld.kr/jibun2coord.do?q='+encodeURIComponent(jibunQ)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
+    const jData=await vworldJsonp(jUrl);
+    if(jData&&jData.EPSG_4326_Y&&jData.EPSG_4326_X){
+      const coord=[parseFloat(jData.EPSG_4326_Y),parseFloat(jData.EPSG_4326_X)];
+      GEO_CACHE[aptKey]=coord;
+      return coord;
+    }
+  }
+  // 3. 도로명주소 API
+  if(x.rd){
+    const rUrl='https://apis.vworld.kr/new2coord.do?q='+encodeURIComponent(x.rd)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
+    const rData=await vworldJsonp(rUrl);
+    if(rData&&rData.EPSG_4326_Y&&rData.EPSG_4326_X){
+      const coord=[parseFloat(rData.EPSG_4326_Y),parseFloat(rData.EPSG_4326_X)];
+      GEO_CACHE[aptKey]=coord;
+      return coord;
+    }
+  }
+  // 4. place 검색 (아파트 명칭)
   const region=x.r?'서울':'경기';
   const queries=[
     `${region} ${x.g} ${x.d||''} ${x.n}`,
@@ -685,7 +706,7 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  // 3. API 실패 시 폴백: geo.json → 구 좌표
+  // 5. 최종 폴백: geo.json → 구 좌표
   const dongKey=x.g+'|'+(x.d||'');
   return (GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
 }
