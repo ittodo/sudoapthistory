@@ -120,14 +120,18 @@ async function init(){
   const t0=performance.now();
   document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
 
-  // Phase 1: Load index only (1.8MB) - table becomes usable immediately
+  // Phase 1: Load compressed index (860KB)
   const r=await fetch('data/index.json');
   const j=await r.json();
 
-  D=j.d.map(x=>({
-    i:x.i, n:x.n, r:x.r, g:x.g, d:x.d, a:x.a, b:x.b,
-    c:x.c, m:x.m, s:x.s, v:x.v, q:x.q, k:x.k, t:x.t,
-    p25:x.p25, p:null
+  // Expand compressed format: array rows + lookup tables
+  const GUS=j.g, DONGS=j.o;
+  D=j.d.map((x,idx)=>({
+    i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
+    a:x[4], b:x[5],
+    c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
+    v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
+    t:x[12], p25:x[13]||null
   }));
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
