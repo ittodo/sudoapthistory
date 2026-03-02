@@ -12,10 +12,10 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
   .fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; }
   .fi:focus { outline: none; border-color: var(--accent); }
-  .tc { max-height: calc(100vh - 260px); overflow-y: auto; }
+  .tc { max-height: calc(100vh - 290px); overflow-y: auto; }
   .main-layout { display: flex; gap: 12px; }
   .left-col { flex: 1; min-width: 0; }
-  .right-col { width: 340px; flex-shrink: 0; display: none; position: sticky; top: 12px; align-self: flex-start; max-height: calc(100vh - 80px); overflow-y: auto; }
+  .right-col { width: 380px; flex-shrink: 0; display: none; position: sticky; top: 12px; align-self: flex-start; max-height: calc(100vh - 80px); overflow-y: auto; }
   .right-col.open { display: block; }
   .right-col::-webkit-scrollbar { width: 5px; }
   .right-col::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
@@ -45,6 +45,33 @@
   .sa.on { opacity: 1; color: var(--accent); }
   .pg-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; }
   .pg-btn:hover { border-color: var(--muted); color: #fff; }
+  /* 평형 탭 */
+  .area-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+  .area-tab { padding: 3px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 500; transition: all .15s; }
+  .area-tab:hover { border-color: var(--muted); color: #fff; }
+  .area-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  /* 연도 행 (클릭 가능) */
+  .yr-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 4px; border-bottom: 1px solid #1e293b; cursor: pointer; border-radius: 3px; transition: background .1s; }
+  .yr-row:hover { background: rgba(59,130,246,.1); }
+  /* 모달 */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+  .modal-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 680px; max-width: 95vw; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+  .modal-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: start; justify-content: space-between; }
+  .modal-body { padding: 16px; overflow-y: auto; flex: 1; }
+  .modal-body::-webkit-scrollbar { width: 5px; }
+  .modal-body::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  .month-tabs { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 12px; }
+  .month-tab { padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; transition: all .15s; }
+  .month-tab:hover { border-color: var(--muted); color: #fff; }
+  .month-tab.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+  .tx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tx-table th { padding: 6px 8px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; border-bottom: 1px solid var(--border); }
+  .tx-table td { padding: 5px 8px; border-bottom: 1px solid #1e293b; }
+  .tx-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .tx-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; }
+  .tx-stat .label { font-size: 10px; color: var(--muted); }
+  .tx-stat .value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+  .footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -99,95 +126,118 @@
       <div class="flex items-center justify-between mt-2" style="font-size:11px;color:#64748b">
         <div>페이지당 <select id="ps" class="fi" style="width:60px;display:inline" onchange="cps()"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select></div>
         <div class="flex items-center gap-2">
-          <button onclick="pp()" class="pg-btn">‹ 이전</button>
+          <button onclick="pp()" class="pg-btn">&#8249; 이전</button>
           <span id="pi">1/1</span>
-          <button onclick="np()" class="pg-btn">다음 ›</button>
+          <button onclick="np()" class="pg-btn">다음 &#8250;</button>
         </div>
       </div>
     </div>
 
     <div class="right-col" id="dp">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
-        <div class="flex items-start justify-between mb-3">
+        <div class="flex items-start justify-between mb-2">
           <div><h2 id="dn" class="text-sm font-bold text-white"></h2><p id="dl" class="text-xs" style="color:#64748b;margin-top:2px"></p></div>
-          <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">✕</button>
+          <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">&#10005;</button>
         </div>
+        <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
         <div style="height:200px;margin-bottom:12px"><canvas id="chart"></canvas></div>
-        <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 & 거래 횟수</h3><div id="yp" style="font-size:11px"></div></div>
+        <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
       </div>
+    </div>
+  </div>
+
+  <div class="footer-disclaimer">본 서비스에서 제공하는 정보는 법적인 효력이 없으므로 참고용으로만 활용하시기 바랍니다.</div>
+</div>
+
+<!-- 거래 드릴다운 모달 -->
+<div id="txModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeTxModal()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 id="txTitle" class="text-sm font-bold text-white"></h3>
+        <p id="txSubtitle" class="text-xs" style="color:#64748b;margin-top:2px"></p>
+      </div>
+      <button onclick="closeTxModal()" style="color:#64748b;font-size:18px;cursor:pointer;background:none;border:none">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="txSummary" class="tx-summary"></div>
+      <div id="txMonthTabs" class="month-tabs"></div>
+      <div id="txTableWrap"></div>
     </div>
   </div>
 </div>
 
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
-let PRICES=null,VOLUMES=null; // lazy loaded
+let PRICES=null,VOLUMES=null,DETAILS=null;
+let TX_CACHE={};
+let DI=null; // D index map: i → entry (for fast lookup by data index)
+let curDetailIdx=null; // current detail data index (for area tab switching)
 const Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
 
 async function init(){
   const t0=performance.now();
   document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
 
-  // Phase 1: Load index
   const r=await fetch('data/index.json');
   const j=await r.json();
 
-  // Auto-detect format: compressed (array rows) vs legacy (object rows)
   if(j.g && j.o && Array.isArray(j.d[0])){
-    // Compressed format: lookup tables + array rows
     const GUS=j.g, DONGS=j.o;
     D=j.d.map((x,idx)=>({
       i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
       a:x[4], b:x[5],
       c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
       v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
-      t:x[12], p25:x[13]||null
+      t:x[12], p25:x[13]||null, si:x[14]||null
     }));
   } else {
-    // Legacy format: object rows with short keys
     D=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
   }
+
+  // Build index map: data index → entry object
+  DI={};
+  D.forEach(x=>{ DI[x.i]=x; });
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   buildLoc();
   af();
 
-  // Show app immediately
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
-  const ms=Math.round(performance.now()-t0);
-  console.log(`Index loaded: ${D.length} complexes in ${ms}ms`);
+  console.log(`Index loaded: ${D.length} complexes in ${Math.round(performance.now()-t0)}ms`);
 
-  // Phase 2: Load prices + volumes in background
   loadPrices();
   loadVolumes();
+  loadDetails();
 }
 
 async function loadPrices(){
-  try{
-    const r=await fetch('data/prices.json');
-    PRICES=await r.json();
-    console.log('Prices loaded in background');
-  }catch(e){console.warn('Price load failed',e);}
+  try{ const r=await fetch('data/prices.json'); PRICES=await r.json(); console.log('Prices loaded'); }
+  catch(e){ console.warn('Price load failed',e); }
 }
-
 async function loadVolumes(){
+  try{ const r=await fetch('data/volumes.json'); VOLUMES=await r.json(); console.log('Volumes loaded'); }
+  catch(e){ console.warn('Volumes load failed',e); }
+}
+async function loadDetails(){
+  try{ const r=await fetch('data/details.json'); DETAILS=await r.json(); console.log('Details loaded'); }
+  catch(e){ console.warn('Details load failed',e); }
+}
+
+function getPrices(idx){ return PRICES?PRICES[String(idx)]:null; }
+function getVolumes(idx){ return VOLUMES?VOLUMES[String(idx)]:null; }
+function getDetails(idx){ return DETAILS?DETAILS[String(idx)]:null; }
+
+async function loadTx(gu){
+  if(TX_CACHE[gu]) return TX_CACHE[gu];
   try{
-    const r=await fetch('data/volumes.json');
-    VOLUMES=await r.json();
-    console.log('Volumes loaded in background');
-  }catch(e){console.warn('Volumes load failed',e);}
-}
-
-function getPrices(idx){
-  if(!PRICES)return null;
-  return PRICES[String(idx)];
-}
-
-function getVolumes(idx){
-  if(!VOLUMES)return null;
-  return VOLUMES[String(idx)];
+    const r=await fetch('data/tx/'+encodeURIComponent(gu)+'.json');
+    const j=await r.json();
+    TX_CACHE[gu]=j.entries||{};
+    return TX_CACHE[gu];
+  }catch(e){ console.warn('TX load failed for',gu,e); return {}; }
 }
 
 let LT={};
@@ -259,7 +309,7 @@ function af(){
 
 function ds(){
   F.sort((a,b)=>{
-    let va=sc==='p25'?a.p25:a[sc], vb=sc==='p25'?b.p25:b[sc];
+    let va=a[sc], vb=b[sc];
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
     if(vb===null||vb===undefined)vb=sa?Infinity:-Infinity;
     if(typeof va==='string')return sa?va.localeCompare(vb):vb.localeCompare(va);
@@ -269,9 +319,9 @@ function ds(){
 
 function sb(col){
   if(sc===col)sa=!sa;else{sc=col;sa=false;}
-  document.querySelectorAll('.sa').forEach(e=>{e.classList.remove('on');e.textContent='▼'});
+  document.querySelectorAll('.sa').forEach(e=>{e.classList.remove('on');e.textContent='\u25BC'});
   const a=document.querySelector(`[data-c="${col}"]`);
-  if(a){a.classList.add('on');a.textContent=sa?'▲':'▼';}
+  if(a){a.classList.add('on');a.textContent=sa?'\u25B2':'\u25BC';}
   ds();rt();
 }
 
@@ -279,15 +329,15 @@ function rt(){
   const tb=document.getElementById('tb');
   const s=(cp-1)*ps, e=Math.min(s+ps,F.length);
   const tp=Math.max(1,Math.ceil(F.length/ps));
-  document.getElementById('fc').textContent=F.length.toLocaleString()+'건';
+  document.getElementById('fc').textContent=F.length.toLocaleString()+'\uAC74';
   document.getElementById('pi').textContent=`${cp}/${tp}`;
 
   const frags=[];
   for(let i=s;i<e;i++){
     const x=F[i];
     const bg=x.r?'b-s':'b-g';
-    const rl=x.r?'서울':'경기';
-    const p25=x.p25&&x.p25>0?x.p25+'억':'-';
+    const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
+    const p25=x.p25&&x.p25>0?x.p25+'\uC5B5':'-';
     const cv=x.c!==null?x.c+'%':'-';
     const cc=x.c>0?'up':x.c<0?'dn':'';
     const qv=x.q!==null?(x.q>0?'+':'')+x.q+'%':'-';
@@ -301,7 +351,7 @@ function rt(){
       <td class="text-left"><span class="badge ${bg}">${rl}</span>${x.n}</td>
       <td class="text-left" style="color:#94a3b8">${x.g}</td>
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
-      <td style="text-align:center;color:#94a3b8">${x.a}㎡</td>
+      <td style="text-align:center;color:#94a3b8">${x.a}\u33A1</td>
       <td style="text-align:center;font-weight:600">${p25}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${x.m}%</td>
@@ -314,47 +364,76 @@ function rt(){
   tb.innerHTML=frags.join('');
 }
 
+// --- 상세 패널 ---
 function sd(i){
   si=i;
   const x=F[i];
+  showDetail(x);
+  rt();
+}
+
+function showDetail(x){
+  curDetailIdx=x.i;
   const dp=document.getElementById('dp');
   dp.classList.add('open');
 
   document.getElementById('dn').textContent=x.n;
-  document.getElementById('dl').textContent=`${x.r?'서울':'경기'} ${x.g} ${x.d||''} | ${x.a}㎡ | ${x.b?x.b+'년 준공':''} | 총 ${x.t.toLocaleString()}건`;
+  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
 
+  // 평형 탭
+  const tabsEl=document.getElementById('areaTabs');
+  if(x.si && x.si.length>1){
+    let tabs='';
+    x.si.forEach(sibIdx=>{
+      const sib=DI[sibIdx];
+      if(!sib)return;
+      const isActive=sibIdx===x.i?'active':'';
+      tabs+=`<button class="area-tab ${isActive}" onclick="switchArea(${sibIdx})">${sib.a}\u33A1</button>`;
+    });
+    tabsEl.innerHTML=tabs;
+    tabsEl.style.display='flex';
+  } else {
+    tabsEl.innerHTML='';
+    tabsEl.style.display='none';
+  }
+
+  // 메트릭 카드
   const fm=(v,s='%')=>v!==null&&v!==undefined?(v>0?'+':'')+v+s:'-';
-  const mh=document.getElementById('metrics');
-  mh.innerHTML=[
+  document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
-    ['샤프비율',x.s!==null?''+x.s:'-',''],
-    ['25년 평균가',x.p25&&x.p25>0?x.p25+'억':'-',''],
-    ['21→25 수익',fm(x.q),x.q>0?'up':'dn'],
-    ['26년 모멘텀',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
+    ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
+    ['25\uB144 \uD3C9\uADE0\uAC00',x.p25&&x.p25>0?x.p25+'\uC5B5':'-',''],
+    ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
+    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
-  // Get prices (lazy loaded)
-  const prices = getPrices(x.i);
+  const prices=getPrices(x.i);
   if(!prices){
-    document.getElementById('yp').innerHTML='<div style="color:#64748b">가격 데이터 로딩 중...</div>';
+    document.getElementById('yp').innerHTML='<div style="color:#64748b">\uAC00\uACA9 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
     if(ch)ch.destroy();
-    rt();
-    // Retry when prices loaded
     const retry=setInterval(()=>{
-      if(PRICES){clearInterval(retry);if(si===i)renderDetail(x);}
+      if(PRICES){clearInterval(retry);if(curDetailIdx===x.i)renderDetail(x);}
     },200);
     return;
   }
   renderDetail(x);
 }
 
+function switchArea(dataIdx){
+  const x=DI[dataIdx];
+  if(!x)return;
+  curDetailIdx=dataIdx;
+  showDetail(x);
+}
+
 function renderDetail(x){
   const prices=getPrices(x.i);
   if(!prices)return;
   const volumes=getVolumes(x.i);
+  const details=getDetails(x.i);
 
-  // Yearly prices + volumes list
+  // 연도별 가격 리스트 (min/max 포함, 클릭 가능)
   let yh='';
   prices.forEach((p,j)=>{
     if(p>0){
@@ -365,13 +444,30 @@ function renderDetail(x){
         const pct=((p-prices[j-1])/prices[j-1]*100).toFixed(1);
         chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
       }
-      const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}건</span>`:'';
-      yh+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0;border-bottom:1px solid #1e293b"><span style="color:#64748b">${y}</span><span style="font-weight:600">${p}억</span>${volStr}${chg}</div>`;
+      const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}\uAC74</span>`:'';
+
+      // min/max from details
+      let rangeStr='';
+      if(details && details[j]){
+        const d=details[j];
+        const mn=d[1], mx=d[2];
+        if(mn>0 && mx>0 && mn!==mx){
+          rangeStr=`<span style="color:#475569;font-size:10px">(${mn}~${mx})</span>`;
+        }
+      }
+
+      yh+=`<div class="yr-row" onclick="openTxModal(${x.i},${y})">
+        <span style="color:#64748b;min-width:32px">${y}</span>
+        <span style="font-weight:600">${p}\uC5B5</span>
+        ${rangeStr}
+        ${volStr}
+        ${chg}
+      </div>`;
     }
   });
   document.getElementById('yp').innerHTML=yh;
 
-  // Chart
+  // 차트
   const vp=[],vy=[];
   prices.forEach((p,j)=>{if(p>0){vp.push(p);vy.push(2015+j);}});
 
@@ -379,7 +475,7 @@ function renderDetail(x){
   ch=new Chart(document.getElementById('chart'),{
     type:'line',
     data:{
-      labels:vy.map(y=>y+'년'),
+      labels:vy.map(y=>y+'\uB144'),
       datasets:[{
         data:vp,
         borderColor:'#3b82f6',
@@ -390,19 +486,120 @@ function renderDetail(x){
     },
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'억원'}}},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
       scales:{
         x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
-        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'억'}}
+        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
       }
     }
   });
 
-  rt();
   document.getElementById('dp').scrollTop=0;
 }
 
-function cd(){document.getElementById('dp').classList.remove('open');si=-1;rt();}
+// --- 거래 드릴다운 모달 ---
+let txModalData=null, txModalYear=null, txModalMonth=0; // 0=전체
+
+async function openTxModal(dataIdx, year){
+  const x=DI[dataIdx];
+  if(!x)return;
+
+  const modal=document.getElementById('txModal');
+  modal.style.display='flex';
+  document.getElementById('txTitle').textContent=`${x.n} ${x.a}\u33A1 \u2014 ${year}\uB144 \uAC70\uB798 \uB0B4\uC5ED`;
+  document.getElementById('txSubtitle').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''}`;
+  document.getElementById('txSummary').innerHTML='<div style="color:#64748b;text-align:center;grid-column:1/-1">\uAC70\uB798 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
+  document.getElementById('txMonthTabs').innerHTML='';
+  document.getElementById('txTableWrap').innerHTML='';
+
+  // Load TX data
+  const txData=await loadTx(x.g);
+  const entryTx=txData[String(dataIdx)];
+  const yearTx=entryTx?entryTx[String(year)]:null;
+
+  txModalData=yearTx||[];
+  txModalYear=year;
+  txModalMonth=0;
+  renderTxModal(x);
+}
+
+function renderTxModal(x){
+  if(!x) x=DI[curDetailIdx];
+  const txs=txModalData;
+
+  // 월 탭
+  const months=new Set(txs.map(t=>t[0]));
+  let mtabs=`<button class="month-tab ${txModalMonth===0?'active':''}" onclick="txModalMonth=0;renderTxModal()">\uC804\uCCB4</button>`;
+  for(let m=1;m<=12;m++){
+    if(months.has(m)){
+      mtabs+=`<button class="month-tab ${txModalMonth===m?'active':''}" onclick="txModalMonth=${m};renderTxModal()">${m}\uC6D4</button>`;
+    }
+  }
+  document.getElementById('txMonthTabs').innerHTML=mtabs;
+
+  // 필터
+  const filtered=txModalMonth===0?txs:txs.filter(t=>t[0]===txModalMonth);
+
+  // 요약
+  if(filtered.length>0){
+    const prices=filtered.map(t=>t[2]);
+    const avg=Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
+    const mn=Math.min(...prices);
+    const mx=Math.max(...prices);
+    document.getElementById('txSummary').innerHTML=[
+      ['\uCD1D \uAC70\uB798',filtered.length+'\uAC74',''],
+      ['\uD3C9\uADE0',(avg/10000).toFixed(2)+'\uC5B5',''],
+      ['\uCD5C\uC800',(mn/10000).toFixed(2)+'\uC5B5','dn'],
+      ['\uCD5C\uACE0',(mx/10000).toFixed(2)+'\uC5B5','up']
+    ].map(([l,v,c])=>`<div class="tx-stat"><div class="label">${l}</div><div class="value ${c}">${v}</div></div>`).join('');
+  } else {
+    document.getElementById('txSummary').innerHTML='<div style="color:#64748b;text-align:center;grid-column:1/-1">\uAC70\uB798 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+  }
+
+  // 테이블
+  if(filtered.length>0){
+    let rows='';
+    filtered.forEach((t,i)=>{
+      const price=(t[2]/10000).toFixed(2);
+      let diff='';
+      if(i>0){
+        const prev=filtered[i-1][2];
+        const d=t[2]-prev;
+        if(d!==0){
+          const pct=(d/prev*100).toFixed(1);
+          const cls=d>0?'up':'dn';
+          diff=`<span class="${cls}">${d>0?'+':''}${pct}%</span>`;
+        }
+      }
+      rows+=`<tr>
+        <td>${t[0]}\uC6D4 ${t[1]}\uC77C</td>
+        <td style="font-weight:600">${price}\uC5B5</td>
+        <td>${t[3]?t[3]+'\uCE35':'-'}</td>
+        <td>${diff}</td>
+      </tr>`;
+    });
+    document.getElementById('txTableWrap').innerHTML=`<table class="tx-table">
+      <thead><tr><th>\uACC4\uC57D\uC77C</th><th>\uAC70\uB798\uAE08\uC561</th><th>\uCE35</th><th>\uC804\uAC74\uB300\uBE44</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  } else {
+    document.getElementById('txTableWrap').innerHTML='';
+  }
+}
+
+function closeTxModal(){
+  document.getElementById('txModal').style.display='none';
+  txModalData=null;
+}
+
+// ESC 키로 모달 닫기
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('txModal').style.display!=='none') closeTxModal();
+  }
+});
+
+function cd(){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;rt();}
 function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=0;}}
 function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;}}
 function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();}
@@ -411,8 +608,8 @@ function resetF(){
     const el=document.getElementById(id);
     if(el)el.value='';
   });
-  document.getElementById('fG').innerHTML='<option value="">전체</option>';
-  document.getElementById('fD').innerHTML='<option value="">전체</option>';
+  document.getElementById('fG').innerHTML='<option value="">\uC804\uCCB4</option>';
+  document.getElementById('fD').innerHTML='<option value="">\uC804\uCCB4</option>';
   af();
 }
 
