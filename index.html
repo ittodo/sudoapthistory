@@ -213,7 +213,9 @@ async function init(){
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   buildLoc();
-  af();
+
+  // URL 해시 복원, 없으면 기본 필터 적용
+  if(!loadHash()) af();
 
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
@@ -321,6 +323,7 @@ function af(){
     return true;
   });
   ds();cp=1;rt();
+  saveHash();
 }
 
 function ds(){
@@ -338,7 +341,7 @@ function sb(col){
   document.querySelectorAll('.sa').forEach(e=>{e.classList.remove('on');e.textContent='\u25BC'});
   const a=document.querySelector(`[data-c="${col}"]`);
   if(a){a.classList.add('on');a.textContent=sa?'\u25B2':'\u25BC';}
-  ds();rt();
+  ds();rt();saveHash();
 }
 
 function rt(){
@@ -386,6 +389,7 @@ function sd(i){
   const x=F[i];
   showDetail(x);
   rt();
+  saveHash();
 }
 
 function showDetail(x){
@@ -644,10 +648,10 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-function cd(){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;rt();}
-function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=0;}}
-function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;}}
-function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();}
+function cd(){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;rt();saveHash();}
+function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
+function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
+function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();saveHash();}
 function resetF(){
   ['fR','fG','fD','fS','cL','cH','mL','mH','pL','pH','sL','sH'].forEach(id=>{
     const el=document.getElementById(id);
@@ -656,6 +660,66 @@ function resetF(){
   document.getElementById('fG').innerHTML='<option value="">\uC804\uCCB4</option>';
   document.getElementById('fD').innerHTML='<option value="">\uC804\uCCB4</option>';
   af();
+}
+
+// --- URL 해시 상태 저장/복원 ---
+let hashLock=false;
+function saveHash(){
+  if(hashLock) return;
+  const p={};
+  const fR=gv('fR');if(fR)p.r=fR;
+  const fG=gv('fG');if(fG)p.g=fG;
+  const fD=gv('fD');if(fD)p.d=fD;
+  const fS=gv('fS');if(fS)p.s=fS;
+  const cLv=gv('cL');if(cLv)p.cL=cLv;
+  const cHv=gv('cH');if(cHv)p.cH=cHv;
+  const mLv=gv('mL');if(mLv)p.mL=mLv;
+  const mHv=gv('mH');if(mHv)p.mH=mHv;
+  const pLv=gv('pL');if(pLv)p.pL=pLv;
+  const pHv=gv('pH');if(pHv)p.pH=pHv;
+  const sLv=gv('sL');if(sLv)p.sL=sLv;
+  const sHv=gv('sH');if(sHv)p.sH=sHv;
+  if(sc!=='c')p.sc=sc;
+  if(sa)p.sa=1;
+  if(cp>1)p.p=cp;
+  if(ps!==100)p.ps=ps;
+  if(curDetailIdx!==null)p.i=curDetailIdx;
+  const h=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+  history.replaceState(null,null,h?'#'+h:'#');
+}
+
+function loadHash(){
+  const h=location.hash.slice(1);
+  if(!h) return false;
+  const p={};
+  h.split('&').forEach(s=>{const [k,v]=s.split('=');if(k)p[k]=decodeURIComponent(v||'');});
+  hashLock=true;
+  if(p.r){document.getElementById('fR').value=p.r;onR();}
+  if(p.g){document.getElementById('fG').value=p.g;onG();}
+  if(p.d)document.getElementById('fD').value=p.d;
+  if(p.s)document.getElementById('fS').value=p.s;
+  if(p.cL)document.getElementById('cL').value=p.cL;
+  if(p.cH)document.getElementById('cH').value=p.cH;
+  if(p.mL)document.getElementById('mL').value=p.mL;
+  if(p.mH)document.getElementById('mH').value=p.mH;
+  if(p.pL)document.getElementById('pL').value=p.pL;
+  if(p.pH)document.getElementById('pH').value=p.pH;
+  if(p.sL)document.getElementById('sL').value=p.sL;
+  if(p.sH)document.getElementById('sH').value=p.sH;
+  if(p.sc)sc=p.sc;
+  if(p.sa)sa=true;
+  if(p.ps){ps=parseInt(p.ps);document.getElementById('ps').value=p.ps;}
+  hashLock=false;
+  af();
+  if(p.p)cp=parseInt(p.p);
+  rt();
+  // 선택 아파트 복원
+  if(p.i!==undefined){
+    const dataIdx=parseInt(p.i);
+    const x=DI[dataIdx];
+    if(x){curDetailIdx=dataIdx;showDetail(x);}
+  }
+  return true;
 }
 
 init();
