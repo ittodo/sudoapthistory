@@ -667,9 +667,9 @@ function vworldJsonp(url){
 
 async function getCoordAsync(x){
   const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
-  const sync=getCoordSync(x);
-  if(sync && (GEO_CACHE[aptKey]||(GEO_DATA&&GEO_DATA[aptKey]))) return sync;
-  // geo.json에 아파트 단위 좌표 없음 → V-World search API JSONP 호출
+  // 1. 캐시에 있으면 즉시 반환
+  if(GEO_CACHE[aptKey]) return GEO_CACHE[aptKey];
+  // 2. V-World search API JSONP 호출 (항상 1순위)
   const region=x.r?'서울':'경기';
   const queries=[
     `${region} ${x.g} ${x.d||''} ${x.n}`,
@@ -685,8 +685,9 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  // 폴백: 동/구 단위
-  return sync;
+  // 3. API 실패 시 폴백: geo.json → 구 좌표
+  const dongKey=x.g+'|'+(x.d||'');
+  return (GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
 }
 
 function showOnMap(x){
