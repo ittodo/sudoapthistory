@@ -12,7 +12,13 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
   .fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; }
   .fi:focus { outline: none; border-color: var(--accent); }
-  .tc { max-height: calc(100vh - 380px); overflow-y: auto; }
+  .tc { max-height: calc(100vh - 260px); overflow-y: auto; }
+  .main-layout { display: flex; gap: 12px; }
+  .left-col { flex: 1; min-width: 0; }
+  .right-col { width: 340px; flex-shrink: 0; display: none; position: sticky; top: 12px; align-self: flex-start; max-height: calc(100vh - 80px); overflow-y: auto; }
+  .right-col.open { display: block; }
+  .right-col::-webkit-scrollbar { width: 5px; }
+  .right-col::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
   .tc::-webkit-scrollbar { width: 5px; }
   .tc::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
   table { width: 100%; border-collapse: collapse; }
@@ -44,7 +50,7 @@
 <body>
 <div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">데이터 로딩 중...</span></div>
 
-<div id="app" style="display:none" class="max-w-screen-xl mx-auto px-3 py-3">
+<div id="app" style="display:none;max-width:1600px" class="mx-auto px-3 py-3">
   <div class="flex items-center justify-between mb-3">
     <div>
       <h1 class="text-lg font-bold text-white">서울·경기 아파트 투자 스크리너</h1>
@@ -69,44 +75,47 @@
     </div>
   </div>
 
-  <div class="tc" id="tableWrap">
-    <table>
-      <thead><tr>
-        <th style="width:30px">#</th>
-        <th onclick="sb('n')" class="text-left">단지명 <span class="sa" data-c="n">▼</span></th>
-        <th onclick="sb('g')" class="text-left">구 <span class="sa" data-c="g">▼</span></th>
-        <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
-        <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
-        <th onclick="sb('p25')">25년가 <span class="sa" data-c="p25">▼</span></th>
-        <th onclick="sb('c')">CAGR <span class="sa" data-c="c">▼</span></th>
-        <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
-        <th onclick="sb('s')">샤프 <span class="sa" data-c="s">▼</span></th>
-        <th onclick="sb('q')">21→25 <span class="sa" data-c="q">▼</span></th>
-        <th onclick="sb('k')">26모멘텀 <span class="sa" data-c="k">▼</span></th>
-        <th onclick="sb('v')">거래 <span class="sa" data-c="v">▼</span></th>
-      </tr></thead>
-      <tbody id="tb"></tbody>
-    </table>
-  </div>
-
-  <div class="flex items-center justify-between mt-2" style="font-size:11px;color:#64748b">
-    <div>페이지당 <select id="ps" class="fi" style="width:60px;display:inline" onchange="cps()"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select></div>
-    <div class="flex items-center gap-2">
-      <button onclick="pp()" class="pg-btn">‹ 이전</button>
-      <span id="pi">1/1</span>
-      <button onclick="np()" class="pg-btn">다음 ›</button>
+  <div class="main-layout">
+    <div class="left-col">
+      <div class="tc" id="tableWrap">
+        <table>
+          <thead><tr>
+            <th style="width:30px">#</th>
+            <th onclick="sb('n')" class="text-left">단지명 <span class="sa" data-c="n">▼</span></th>
+            <th onclick="sb('g')" class="text-left">구 <span class="sa" data-c="g">▼</span></th>
+            <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
+            <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
+            <th onclick="sb('p25')">25년가 <span class="sa" data-c="p25">▼</span></th>
+            <th onclick="sb('c')">CAGR <span class="sa" data-c="c">▼</span></th>
+            <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
+            <th onclick="sb('s')">샤프 <span class="sa" data-c="s">▼</span></th>
+            <th onclick="sb('q')">21→25 <span class="sa" data-c="q">▼</span></th>
+            <th onclick="sb('k')">26모멘텀 <span class="sa" data-c="k">▼</span></th>
+            <th onclick="sb('v')">거래 <span class="sa" data-c="v">▼</span></th>
+          </tr></thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-between mt-2" style="font-size:11px;color:#64748b">
+        <div>페이지당 <select id="ps" class="fi" style="width:60px;display:inline" onchange="cps()"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select></div>
+        <div class="flex items-center gap-2">
+          <button onclick="pp()" class="pg-btn">‹ 이전</button>
+          <span id="pi">1/1</span>
+          <button onclick="np()" class="pg-btn">다음 ›</button>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div id="dp" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:12px">
-    <div class="flex items-start justify-between mb-3">
-      <div><h2 id="dn" class="text-base font-bold text-white"></h2><p id="dl" class="text-xs" style="color:#64748b;margin-top:2px"></p></div>
-      <button onclick="cd()" style="color:#64748b;font-size:18px;cursor:pointer;background:none;border:none">✕</button>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px" id="metrics"></div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
-      <div style="height:240px"><canvas id="chart"></canvas></div>
-      <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 평균가</h3><div id="yp" style="font-size:11px"></div></div>
+    <div class="right-col" id="dp">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div class="flex items-start justify-between mb-3">
+          <div><h2 id="dn" class="text-sm font-bold text-white"></h2><p id="dl" class="text-xs" style="color:#64748b;margin-top:2px"></p></div>
+          <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
+        <div style="height:200px;margin-bottom:12px"><canvas id="chart"></canvas></div>
+        <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 평균가</h3><div id="yp" style="font-size:11px"></div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -295,7 +304,7 @@ function sd(i){
   si=i;
   const x=F[i];
   const dp=document.getElementById('dp');
-  dp.style.display='block';
+  dp.classList.add('open');
 
   document.getElementById('dn').textContent=x.n;
   document.getElementById('dl').textContent=`${x.r?'서울':'경기'} ${x.g} ${x.d||''} | ${x.a}㎡ | ${x.b?x.b+'년 준공':''} | 총 ${x.t.toLocaleString()}건`;
@@ -373,10 +382,10 @@ function renderDetail(x){
   });
 
   rt();
-  document.getElementById('dp').scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('dp').scrollTop=0;
 }
 
-function cd(){document.getElementById('dp').style.display='none';si=-1;rt();}
+function cd(){document.getElementById('dp').classList.remove('open');si=-1;rt();}
 function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=0;}}
 function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;}}
 function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();}
