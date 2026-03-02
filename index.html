@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서울·경기 아파트 투자 스크리너</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .filter-input { background: #1e293b; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+  .filter-input:focus { outline: none; border-color: #3b82f6; }
+  select.filter-input { cursor: pointer; }
+  .table-container { max-height: calc(100vh - 420px); overflow-y: auto; }
+  .table-container::-webkit-scrollbar { width: 6px; }
+  .table-container::-webkit-scrollbar-track { background: #1e293b; }
+  .table-container::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  table { border-collapse: separate; border-spacing: 0; }
+  thead th { position: sticky; top: 0; z-index: 10; cursor: pointer; user-select: none; }
+  thead th:hover { background: #334155 !important; }
+  tbody tr { cursor: pointer; transition: background 0.15s; }
+  tbody tr:hover { background: #1e293b !important; }
+  tbody tr.selected { background: #1e3a5f !important; }
+  .up { color: #ef4444; }
+  .dn { color: #3b82f6; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
+  .badge-seoul { background: #7c3aed22; color: #a78bfa; border: 1px solid #7c3aed44; }
+  .badge-gg { background: #05966922; color: #6ee7b7; border: 1px solid #05966944; }
+  .detail-panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+  .metric-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; text-align: center; }
+  .metric-card .label { font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+  .metric-card .value { font-size: 20px; font-weight: 700; }
+  .sort-arrow { font-size: 10px; margin-left: 2px; opacity: 0.5; }
+  .sort-arrow.active { opacity: 1; color: #3b82f6; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0f172a; z-index: 9999; }
+  .spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .range-group { display: flex; align-items: center; gap: 4px; }
+  .range-group input { width: 70px; }
+  .tag { font-size: 11px; color: #94a3b8; background: #1e293b; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div></div>
+
+<div id="app" class="hidden max-w-[1400px] mx-auto px-4 py-4">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-xl font-bold text-white">서울·경기 아파트 투자 스크리너</h1>
+      <p class="text-xs text-slate-400 mt-1">국토교통부 실거래가 2015-2026 | <span id="totalCount">0</span>개 단지</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <span class="tag" id="filteredCount">0건 표시</span>
+      <button onclick="resetFilters()" class="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded border border-slate-600 hover:border-slate-400 transition">초기화</button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-slate-800/50 rounded-xl p-4 mb-4 border border-slate-700/50">
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <!-- Location cascade -->
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">지역</label>
+        <select id="fRegion" class="filter-input w-full" onchange="onRegionChange()">
+          <option value="">전체</option>
+          <option value="서울">서울</option>
+          <option value="경기">경기</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">시/구</label>
+        <select id="fGu" class="filter-input w-full" onchange="onGuChange()">
+          <option value="">전체</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">동</label>
+        <select id="fDong" class="filter-input w-full" onchange="applyFilters()">
+          <option value="">전체</option>
+        </select>
+      </div>
+      <!-- Search -->
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">단지 검색</label>
+        <input id="fSearch" type="text" class="filter-input w-full" placeholder="단지명..." oninput="applyFilters()">
+      </div>
+      <!-- CAGR range -->
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">CAGR(%)</label>
+        <div class="range-group">
+          <input id="fCagrMin" type="number" class="filter-input" placeholder="min" onchange="applyFilters()">
+          <span class="text-slate-500">~</span>
+          <input id="fCagrMax" type="number" class="filter-input" placeholder="max" onchange="applyFilters()">
+        </div>
+      </div>
+      <!-- MDD range -->
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">MDD(%)</label>
+        <div class="range-group">
+          <input id="fMddMin" type="number" class="filter-input" placeholder="min" onchange="applyFilters()">
+          <span class="text-slate-500">~</span>
+          <input id="fMddMax" type="number" class="filter-input" placeholder="max" onchange="applyFilters()">
+        </div>
+      </div>
+      <!-- Price range -->
+      <div>
+        <label class="text-[11px] text-slate-400 block mb-1">25년가(억)</label>
+        <div class="range-group">
+          <input id="fPriceMin" type="number" class="filter-input" placeholder="min" onchange="applyFilters()">
+          <span class="text-slate-500">~</span>
+          <input id="fPriceMax" type="number" class="filter-input" placeholder="max" onchange="applyFilters()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-container rounded-xl border border-slate-700/50">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-slate-800 text-slate-300 text-xs">
+          <th class="px-3 py-2.5 text-left font-medium w-8">#</th>
+          <th class="px-3 py-2.5 text-left font-medium" onclick="sortBy('name')">단지명 <span class="sort-arrow" data-col="name">▼</span></th>
+          <th class="px-3 py-2.5 text-left font-medium" onclick="sortBy('gu')">구 <span class="sort-arrow" data-col="gu">▼</span></th>
+          <th class="px-3 py-2.5 text-left font-medium" onclick="sortBy('dong')">동 <span class="sort-arrow" data-col="dong">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('area')">면적 <span class="sort-arrow" data-col="area">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('p25')">25년가 <span class="sort-arrow" data-col="p25">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('cagr')">CAGR <span class="sort-arrow" data-col="cagr">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('mdd')">MDD <span class="sort-arrow" data-col="mdd">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('sharpe')">샤프 <span class="sort-arrow" data-col="sharpe">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('ret2125')">21→25 <span class="sort-arrow" data-col="ret2125">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('mom26')">26모멘텀 <span class="sort-arrow" data-col="mom26">▼</span></th>
+          <th class="px-3 py-2.5 text-center font-medium" onclick="sortBy('vol25')">거래 <span class="sort-arrow" data-col="vol25">▼</span></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="flex items-center justify-between mt-3 text-xs text-slate-400">
+    <div>
+      페이지당
+      <select id="pageSize" class="filter-input text-xs" onchange="changePageSize()">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="prevPage()" class="px-3 py-1 rounded border border-slate-600 hover:border-slate-400 transition">&lt; 이전</button>
+      <span id="pageInfo">1 / 1</span>
+      <button onclick="nextPage()" class="px-3 py-1 rounded border border-slate-600 hover:border-slate-400 transition">다음 &gt;</button>
+    </div>
+  </div>
+
+  <!-- Detail Panel -->
+  <div id="detailPanel" class="detail-panel mt-4 p-5 hidden">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h2 id="detailName" class="text-lg font-bold text-white"></h2>
+        <p id="detailLocation" class="text-sm text-slate-400 mt-1"></p>
+      </div>
+      <button onclick="closeDetail()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+    </div>
+    <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
+      <div class="metric-card"><div class="label">CAGR</div><div class="value" id="dCagr">-</div></div>
+      <div class="metric-card"><div class="label">MDD</div><div class="value" id="dMdd">-</div></div>
+      <div class="metric-card"><div class="label">샤프비율</div><div class="value" id="dSharpe">-</div></div>
+      <div class="metric-card"><div class="label">25년 평균가</div><div class="value" id="dP25">-</div></div>
+      <div class="metric-card"><div class="label">21→25 수익</div><div class="value" id="dRet">-</div></div>
+      <div class="metric-card"><div class="label">26년 모멘텀</div><div class="value" id="dMom">-</div></div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="md:col-span-2" style="height:280px;">
+        <canvas id="priceChart"></canvas>
+      </div>
+      <div>
+        <h3 class="text-xs font-medium text-slate-400 mb-2">연도별 평균가 (억)</h3>
+        <div id="yearlyPrices" class="text-xs space-y-1"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let DATA = [];
+let filtered = [];
+let currentPage = 1;
+let pageSize = 100;
+let sortCol = 'cagr';
+let sortAsc = false;
+let selectedIdx = -1;
+let chart = null;
+
+const YEARS = [];
+for (let y = 2015; y <= 2026; y++) YEARS.push(y);
+
+async function init() {
+  const resp = await fetch('data/complexes.json');
+  const json = await resp.json();
+  DATA = json.data;
+  document.getElementById('totalCount').textContent = DATA.length.toLocaleString();
+
+  // Build gu/dong lookups
+  buildLocationData();
+  applyFilters();
+
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+}
+
+let locationTree = {};
+
+function buildLocationData() {
+  locationTree = {};
+  DATA.forEach(d => {
+    if (!locationTree[d.region]) locationTree[d.region] = {};
+    if (!locationTree[d.region][d.gu]) locationTree[d.region][d.gu] = new Set();
+    if (d.dong) locationTree[d.region][d.gu].add(d.dong);
+  });
+}
+
+function onRegionChange() {
+  const region = document.getElementById('fRegion').value;
+  const guSel = document.getElementById('fGu');
+  guSel.innerHTML = '<option value="">전체</option>';
+
+  const gus = new Set();
+  if (region) {
+    if (locationTree[region]) {
+      Object.keys(locationTree[region]).sort().forEach(g => gus.add(g));
+    }
+  } else {
+    Object.values(locationTree).forEach(rObj => {
+      Object.keys(rObj).sort().forEach(g => gus.add(g));
+    });
+  }
+  [...gus].sort().forEach(g => {
+    guSel.innerHTML += `<option value="${g}">${g}</option>`;
+  });
+
+  onGuChange();
+}
+
+function onGuChange() {
+  const region = document.getElementById('fRegion').value;
+  const gu = document.getElementById('fGu').value;
+  const dongSel = document.getElementById('fDong');
+  dongSel.innerHTML = '<option value="">전체</option>';
+
+  const dongs = new Set();
+  Object.entries(locationTree).forEach(([r, rObj]) => {
+    if (region && r !== region) return;
+    Object.entries(rObj).forEach(([g, dSet]) => {
+      if (gu && g !== gu) return;
+      dSet.forEach(d => dongs.add(d));
+    });
+  });
+  [...dongs].sort().forEach(d => {
+    dongSel.innerHTML += `<option value="${d}">${d}</option>`;
+  });
+
+  applyFilters();
+}
+
+function getVal(id) { return document.getElementById(id).value; }
+function getNum(id) { const v = document.getElementById(id).value; return v === '' ? null : parseFloat(v); }
+
+function applyFilters() {
+  const fRegion = getVal('fRegion');
+  const fGu = getVal('fGu');
+  const fDong = getVal('fDong');
+  const fSearch = getVal('fSearch').toLowerCase();
+  const cagrMin = getNum('fCagrMin'), cagrMax = getNum('fCagrMax');
+  const mddMin = getNum('fMddMin'), mddMax = getNum('fMddMax');
+  const priceMin = getNum('fPriceMin'), priceMax = getNum('fPriceMax');
+
+  filtered = DATA.filter(d => {
+    if (fRegion && d.region !== fRegion) return false;
+    if (fGu && d.gu !== fGu) return false;
+    if (fDong && d.dong !== fDong) return false;
+    if (fSearch && !d.name.toLowerCase().includes(fSearch) && !d.gu.toLowerCase().includes(fSearch) && !d.dong?.toLowerCase().includes(fSearch)) return false;
+    if (cagrMin !== null && (d.cagr === null || d.cagr < cagrMin)) return false;
+    if (cagrMax !== null && (d.cagr === null || d.cagr > cagrMax)) return false;
+    if (mddMin !== null && d.mdd < mddMin) return false;
+    if (mddMax !== null && d.mdd > mddMax) return false;
+    if (priceMin !== null && (d.p25 === null || d.p25 < priceMin)) return false;
+    if (priceMax !== null && (d.p25 === null || d.p25 > priceMax)) return false;
+    return true;
+  });
+
+  doSort();
+  currentPage = 1;
+  renderTable();
+}
+
+function doSort() {
+  filtered.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va === null || va === undefined) va = sortAsc ? Infinity : -Infinity;
+    if (vb === null || vb === undefined) vb = sortAsc ? Infinity : -Infinity;
+    if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? va - vb : vb - va;
+  });
+}
+
+function sortBy(col) {
+  if (sortCol === col) { sortAsc = !sortAsc; }
+  else { sortCol = col; sortAsc = false; }
+
+  document.querySelectorAll('.sort-arrow').forEach(el => {
+    el.classList.remove('active');
+    el.textContent = '▼';
+  });
+  const arrow = document.querySelector(`[data-col="${col}"]`);
+  if (arrow) {
+    arrow.classList.add('active');
+    arrow.textContent = sortAsc ? '▲' : '▼';
+  }
+
+  doSort();
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const start = (currentPage - 1) * pageSize;
+  const end = Math.min(start + pageSize, filtered.length);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  document.getElementById('filteredCount').textContent = `${filtered.length.toLocaleString()}건 표시`;
+  document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+
+  let html = '';
+  for (let i = start; i < end; i++) {
+    const d = filtered[i];
+    const regionBadge = d.region === '서울'
+      ? '<span class="badge badge-seoul">서울</span>'
+      : '<span class="badge badge-gg">경기</span>';
+
+    html += `<tr onclick="showDetail(${i})" class="${selectedIdx === i ? 'selected' : ''} ${i % 2 === 0 ? 'bg-slate-900/30' : 'bg-slate-900/10'}">
+      <td class="px-3 py-2 text-slate-500 text-xs">${i + 1}</td>
+      <td class="px-3 py-2 text-white font-medium text-xs">${regionBadge} ${d.name}</td>
+      <td class="px-3 py-2 text-slate-300 text-xs">${d.gu}</td>
+      <td class="px-3 py-2 text-slate-300 text-xs">${d.dong || '-'}</td>
+      <td class="px-3 py-2 text-center text-slate-300 text-xs">${d.area}㎡</td>
+      <td class="px-3 py-2 text-center text-white text-xs font-medium">${d.p25 != null ? d.p25 + '억' : '-'}</td>
+      <td class="px-3 py-2 text-center text-xs font-bold ${d.cagr > 0 ? 'up' : d.cagr < 0 ? 'dn' : ''}">${d.cagr != null ? d.cagr + '%' : '-'}</td>
+      <td class="px-3 py-2 text-center text-xs ${d.mdd < -10 ? 'dn' : 'text-slate-300'}">${d.mdd}%</td>
+      <td class="px-3 py-2 text-center text-xs text-slate-300">${d.sharpe != null ? d.sharpe : '-'}</td>
+      <td class="px-3 py-2 text-center text-xs font-medium ${d.ret2125 > 0 ? 'up' : d.ret2125 < 0 ? 'dn' : ''}">${d.ret2125 != null ? (d.ret2125 > 0 ? '+' : '') + d.ret2125 + '%' : '-'}</td>
+      <td class="px-3 py-2 text-center text-xs font-medium ${d.mom26 > 0 ? 'up' : d.mom26 < 0 ? 'dn' : ''}">${d.mom26 != null ? (d.mom26 > 0 ? '+' : '') + d.mom26 + '%' : '-'}</td>
+      <td class="px-3 py-2 text-center text-xs text-slate-400">${d.vol25}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+function showDetail(idx) {
+  selectedIdx = idx;
+  const d = filtered[idx];
+  const panel = document.getElementById('detailPanel');
+  panel.classList.remove('hidden');
+
+  document.getElementById('detailName').textContent = d.name;
+  document.getElementById('detailLocation').textContent =
+    `${d.region} ${d.gu} ${d.dong || ''} | ${d.area}㎡ | ${d.built ? d.built + '년 준공' : ''} | 총 ${d.totalVol}건 거래`;
+
+  const fmt = (v, suffix='%') => v != null ? (v > 0 ? '+' : '') + v + suffix : '-';
+  document.getElementById('dCagr').innerHTML = `<span class="${d.cagr > 0 ? 'up' : 'dn'}">${fmt(d.cagr)}</span>`;
+  document.getElementById('dMdd').innerHTML = `<span class="dn">${d.mdd}%</span>`;
+  document.getElementById('dSharpe').textContent = d.sharpe != null ? d.sharpe : '-';
+  document.getElementById('dP25').textContent = d.p25 != null ? d.p25 + '억' : '-';
+  document.getElementById('dRet').innerHTML = `<span class="${d.ret2125 > 0 ? 'up' : 'dn'}">${fmt(d.ret2125)}</span>`;
+  document.getElementById('dMom').innerHTML = d.mom26 != null ? `<span class="${d.mom26 > 0 ? 'up' : 'dn'}">${fmt(d.mom26)}</span>` : '-';
+
+  // Yearly prices list
+  let pricesHtml = '';
+  d.prices.forEach((p, i) => {
+    if (p != null) {
+      const year = 2015 + i;
+      const prev = i > 0 ? d.prices[i-1] : null;
+      let chg = '';
+      if (prev != null) {
+        const pct = ((p - prev) / prev * 100).toFixed(1);
+        chg = `<span class="${pct > 0 ? 'up' : pct < 0 ? 'dn' : ''}">${pct > 0 ? '+' : ''}${pct}%</span>`;
+      }
+      pricesHtml += `<div class="flex justify-between"><span class="text-slate-400">${year}</span><span class="text-white font-medium">${p}억</span>${chg}</div>`;
+    }
+  });
+  document.getElementById('yearlyPrices').innerHTML = pricesHtml;
+
+  // Chart
+  const validPrices = [];
+  const validYears = [];
+  d.prices.forEach((p, i) => {
+    if (p != null) { validPrices.push(p); validYears.push(2015 + i); }
+  });
+
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: validYears.map(y => y + '년'),
+      datasets: [{
+        label: '평균가(억)',
+        data: validPrices,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#3b82f6',
+        pointBorderColor: '#1e293b',
+        pointBorderWidth: 2,
+        borderWidth: 2.5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e293b',
+          titleColor: '#e2e8f0',
+          bodyColor: '#e2e8f0',
+          borderColor: '#334155',
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => ctx.parsed.y + '억원'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+        y: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 11 }, callback: v => v + '억' } }
+      }
+    }
+  });
+
+  renderTable();
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.add('hidden');
+  selectedIdx = -1;
+  renderTable();
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; renderTable(); } }
+function nextPage() {
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  if (currentPage < totalPages) { currentPage++; renderTable(); }
+}
+function changePageSize() {
+  pageSize = parseInt(document.getElementById('pageSize').value);
+  currentPage = 1;
+  renderTable();
+}
+
+function resetFilters() {
+  document.getElementById('fRegion').value = '';
+  document.getElementById('fGu').innerHTML = '<option value="">전체</option>';
+  document.getElementById('fDong').innerHTML = '<option value="">전체</option>';
+  document.getElementById('fSearch').value = '';
+  document.getElementById('fCagrMin').value = '';
+  document.getElementById('fCagrMax').value = '';
+  document.getElementById('fMddMin').value = '';
+  document.getElementById('fMddMax').value = '';
+  document.getElementById('fPriceMin').value = '';
+  document.getElementById('fPriceMax').value = '';
+  applyFilters();
+}
+
+init();
+</script>
+</body>
+</html>
