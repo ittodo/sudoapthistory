@@ -120,19 +120,25 @@ async function init(){
   const t0=performance.now();
   document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
 
-  // Phase 1: Load compressed index (860KB)
+  // Phase 1: Load index
   const r=await fetch('data/index.json');
   const j=await r.json();
 
-  // Expand compressed format: array rows + lookup tables
-  const GUS=j.g, DONGS=j.o;
-  D=j.d.map((x,idx)=>({
-    i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
-    a:x[4], b:x[5],
-    c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
-    v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
-    t:x[12], p25:x[13]||null
-  }));
+  // Auto-detect format: compressed (array rows) vs legacy (object rows)
+  if(j.g && j.o && Array.isArray(j.d[0])){
+    // Compressed format: lookup tables + array rows
+    const GUS=j.g, DONGS=j.o;
+    D=j.d.map((x,idx)=>({
+      i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
+      a:x[4], b:x[5],
+      c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
+      v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
+      t:x[12], p25:x[13]||null
+    }));
+  } else {
+    // Legacy format: object rows with short keys
+    D=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
+  }
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   buildLoc();
