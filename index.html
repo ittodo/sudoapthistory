@@ -114,7 +114,7 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
         <div style="height:200px;margin-bottom:12px"><canvas id="chart"></canvas></div>
-        <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 평균가</h3><div id="yp" style="font-size:11px"></div></div>
+        <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 & 거래 횟수</h3><div id="yp" style="font-size:11px"></div></div>
       </div>
     </div>
   </div>
@@ -122,7 +122,7 @@
 
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
-let PRICES=null; // lazy loaded
+let PRICES=null,VOLUMES=null; // lazy loaded
 const Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
 
 async function init(){
@@ -159,8 +159,9 @@ async function init(){
   const ms=Math.round(performance.now()-t0);
   console.log(`Index loaded: ${D.length} complexes in ${ms}ms`);
 
-  // Phase 2: Load prices in background (0.7MB)
+  // Phase 2: Load prices + volumes in background
   loadPrices();
+  loadVolumes();
 }
 
 async function loadPrices(){
@@ -171,9 +172,22 @@ async function loadPrices(){
   }catch(e){console.warn('Price load failed',e);}
 }
 
+async function loadVolumes(){
+  try{
+    const r=await fetch('data/volumes.json');
+    VOLUMES=await r.json();
+    console.log('Volumes loaded in background');
+  }catch(e){console.warn('Volumes load failed',e);}
+}
+
 function getPrices(idx){
   if(!PRICES)return null;
   return PRICES[String(idx)];
+}
+
+function getVolumes(idx){
+  if(!VOLUMES)return null;
+  return VOLUMES[String(idx)];
 }
 
 let LT={};
@@ -338,18 +352,21 @@ function sd(i){
 function renderDetail(x){
   const prices=getPrices(x.i);
   if(!prices)return;
+  const volumes=getVolumes(x.i);
 
-  // Yearly prices list
+  // Yearly prices + volumes list
   let yh='';
   prices.forEach((p,j)=>{
     if(p>0){
       const y=2015+j;
+      const vol=volumes?volumes[j]:0;
       let chg='';
       if(j>0&&prices[j-1]>0){
         const pct=((p-prices[j-1])/prices[j-1]*100).toFixed(1);
         chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
       }
-      yh+=`<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #1e293b"><span style="color:#64748b">${y}</span><span style="font-weight:600">${p}억</span>${chg}</div>`;
+      const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}건</span>`:'';
+      yh+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0;border-bottom:1px solid #1e293b"><span style="color:#64748b">${y}</span><span style="font-weight:600">${p}억</span>${volStr}${chg}</div>`;
     }
   });
   document.getElementById('yp').innerHTML=yh;
