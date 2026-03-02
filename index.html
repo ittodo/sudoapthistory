@@ -6,6 +6,8 @@
 <title>서울·경기 아파트 투자 스크리너</title>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,6 +74,11 @@
   .tx-stat .label { font-size: 10px; color: var(--muted); }
   .tx-stat .value { font-size: 16px; font-weight: 700; margin-top: 2px; }
   .footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
+  /* 지도 */
+  #mapWrap { height: 200px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: none; }
+  #vmap { width: 100%; height: 100%; }
+  #vmap .leaflet-control-attribution { font-size: 9px; background: rgba(30,41,59,.8); color: #64748b; }
+  #vmap .leaflet-control-attribution a { color: #94a3b8; }
 </style>
 </head>
 <body>
@@ -142,6 +149,7 @@
         <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
         <div style="height:200px;margin-bottom:12px"><canvas id="chart"></canvas></div>
+        <div id="mapWrap"><div id="vmap"></div></div>
         <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
       </div>
     </div>
@@ -175,6 +183,8 @@ let TX_CACHE={};
 let DI=null; // D index map: i → entry (for fast lookup by data index)
 let curDetailIdx=null; // current detail data index (for area tab switching)
 const Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
+const VWORLD_KEY='8B74D8CC-0DBF-311A-8E6E-3FBBB54FD034';
+let LMAP=null, LMARKER=null, GEO_CACHE={};
 
 async function init(){
   const t0=performance.now();
@@ -495,6 +505,7 @@ function renderDetail(x){
   });
 
   document.getElementById('dp').scrollTop=0;
+  showOnMap(x);
 }
 
 // --- 거래 드릴다운 모달 ---
@@ -590,6 +601,50 @@ function renderTxModal(x){
 function closeTxModal(){
   document.getElementById('txModal').style.display='none';
   txModalData=null;
+}
+
+// --- 지도 ---
+function initMap(){
+  if(LMAP) return;
+  LMAP=L.map('vmap',{center:[37.5665,126.978],zoom:12,zoomControl:false,attributionControl:false});
+  L.tileLayer('https://api.vworld.kr/req/wmts/1.0.0/'+VWORLD_KEY+'/Base/{z}/{y}/{x}.png',{
+    maxZoom:19, attribution:'V-World'
+  }).addTo(LMAP);
+  L.control.attribution({position:'bottomright',prefix:false}).addTo(LMAP);
+}
+
+async function geocodeAddr(addr){
+  if(GEO_CACHE[addr]) return GEO_CACHE[addr];
+  try{
+    const url='https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address='+encodeURIComponent(addr)+'&refine=true&simple=false&format=json&type=parcel&key='+VWORLD_KEY;
+    const r=await fetch(url);
+    const j=await r.json();
+    if(j.response&&j.response.result&&j.response.result.point){
+      const pt=j.response.result.point;
+      const coord=[parseFloat(pt.y),parseFloat(pt.x)]; // [lat,lon]
+      GEO_CACHE[addr]=coord;
+      return coord;
+    }
+  }catch(e){console.warn('Geocode failed',addr,e);}
+  return null;
+}
+
+async function showOnMap(x){
+  const region=x.r?'\uC11C\uC6B8\uD2B9\uBCC4\uC2DC':'\uACBD\uAE30\uB3C4';
+  const addr=`${region} ${x.g} ${x.d||''}`.trim();
+
+  document.getElementById('mapWrap').style.display='block';
+  initMap();
+  setTimeout(()=>LMAP.invalidateSize(),100);
+
+  const coord=await geocodeAddr(addr);
+  if(coord){
+    LMAP.setView(coord,16,{animate:true});
+    if(LMARKER) LMAP.removeLayer(LMARKER);
+    LMARKER=L.circleMarker(coord,{radius:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
+      .bindPopup(`<b>${x.n}</b><br>${x.g} ${x.d||''}<br>${x.a}\u33A1`,{className:''})
+      .addTo(LMAP).openPopup();
+  }
 }
 
 // ESC 키로 모달 닫기
