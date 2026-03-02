@@ -128,6 +128,7 @@
             <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
             <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
             <th onclick="sb('p25')">25년가 <span class="sa" data-c="p25">▼</span></th>
+            <th onclick="sb('y25')" title="24년→25년 가격 변동률">24→25 <span class="sa" data-c="y25">▼</span></th>
             <th onclick="sb('c')" title="연평균성장률: 첫 거래연도~2025년 기준. 신축일수록 기간이 짧아 높게 나올 수 있음">CAGR <span class="sa" data-c="c">▼</span></th>
             <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
             <th onclick="sb('s')">샤프 <span class="sa" data-c="s">▼</span></th>
@@ -376,6 +377,8 @@ function rt(){
     const bg=x.r?'b-s':'b-g';
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
     const p25=x.p25&&x.p25>0?x.p25+'\uC5B5':'-';
+    const y25v=x.y25!==null&&x.y25!==undefined?(x.y25>0?'+':'')+x.y25+'%':'-';
+    const y25c=x.y25>0?'up':x.y25<0?'dn':'';
     const cv=x.c!==null?x.c+'%':'-';
     const cc=x.c>0?'up':x.c<0?'dn':'';
     const qv=x.q!==null?(x.q>0?'+':'')+x.q+'%':'-';
@@ -391,6 +394,7 @@ function rt(){
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
       <td style="text-align:center;color:#94a3b8">${x.a}\u33A1</td>
       <td style="text-align:center;font-weight:600">${p25}</td>
+      <td style="text-align:center;font-weight:500" class="${y25c}">${y25v}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${x.m}%</td>
       <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
