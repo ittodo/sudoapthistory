@@ -643,27 +643,82 @@ function initMap(){
   L.control.attribution({position:'bottomright',prefix:false}).addTo(LMAP);
 }
 
-function getCoord(x){
+const GEO_CACHE={};
+let _jsonpId=0;
+
+function getCoordSync(x){
   const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
   const dongKey=x.g+'|'+(x.d||'');
-  return (GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
+  return GEO_CACHE[aptKey]||(GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
+}
+
+function vworldJsonp(url){
+  return new Promise((resolve)=>{
+    const cbName='_vwCb'+(++_jsonpId);
+    const script=document.createElement('script');
+    const timeout=setTimeout(()=>{cleanup();resolve(null)},5000);
+    function cleanup(){clearTimeout(timeout);delete window[cbName];if(script.parentNode)script.parentNode.removeChild(script)}
+    window[cbName]=function(data){cleanup();resolve(data)};
+    script.src=url+'&callback='+cbName;
+    script.onerror=function(){cleanup();resolve(null)};
+    document.head.appendChild(script);
+  });
+}
+
+async function getCoordAsync(x){
+  const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
+  const sync=getCoordSync(x);
+  if(sync && (GEO_CACHE[aptKey]||(GEO_DATA&&GEO_DATA[aptKey]))) return sync;
+  // geo.json에 아파트 단위 좌표 없음 → V-World search API JSONP 호출
+  const region=x.r?'서울':'경기';
+  const queries=[
+    `${region} ${x.g} ${x.d||''} ${x.n}`,
+    `${region} ${x.g} ${x.n}`
+  ];
+  for(const q of queries){
+    const url='https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&type=place&format=json&key='+VWORLD_KEY+'&query='+encodeURIComponent(q);
+    const data=await vworldJsonp(url);
+    if(data&&data.response&&data.response.status==='OK'&&data.response.result&&data.response.result.items&&data.response.result.items.length>0){
+      const pt=data.response.result.items[0].point;
+      const coord=[parseFloat(pt.y),parseFloat(pt.x)];
+      GEO_CACHE[aptKey]=coord;
+      return coord;
+    }
+  }
+  // 폴백: 동/구 단위
+  return sync;
 }
 
 function showOnMap(x){
-  const coord=getCoord(x);
-  if(!coord) return;
-  curMapCoord=coord; curMapEntry=x;
-
   document.getElementById('mapWrap').style.display='block';
   initMap();
-  setTimeout(()=>{
-    LMAP.invalidateSize();
+  // 먼저 동기 좌표로 빠르게 표시
+  const syncCoord=getCoordSync(x);
+  if(syncCoord){
+    curMapCoord=syncCoord; curMapEntry=x;
+    setTimeout(()=>{
+      LMAP.invalidateSize();
+      LMAP.setView(syncCoord,15,{animate:true});
+      if(LMARKER) LMAP.removeLayer(LMARKER);
+      LMARKER=L.circleMarker(syncCoord,{radius:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
+        .bindPopup(`<b>${x.n}</b><br>${x.g} ${x.d||''}<br>${x.a}\u33A1`,{className:''})
+        .addTo(LMAP).openPopup();
+    },150);
+  }
+  // 비동기로 정확한 좌표 조회 후 업데이트
+  getCoordAsync(x).then(coord=>{
+    if(!coord) return;
+    curMapCoord=coord; curMapEntry=x;
+    if(!syncCoord){
+      // 동기 좌표가 없었으면 처음 표시
+      setTimeout(()=>{ LMAP.invalidateSize(); },50);
+    }
     LMAP.setView(coord,15,{animate:true});
     if(LMARKER) LMAP.removeLayer(LMARKER);
     LMARKER=L.circleMarker(coord,{radius:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
       .bindPopup(`<b>${x.n}</b><br>${x.g} ${x.d||''}<br>${x.a}\u33A1`,{className:''})
       .addTo(LMAP).openPopup();
-  },150);
+  });
 }
 
 function openMapModal(){
