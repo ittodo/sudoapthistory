@@ -87,6 +87,49 @@
   .map-modal-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .map-modal-body { flex: 1; position: relative; }
   #vmapBig { width: 100%; height: 100%; }
+  /* 뷰 모드 탭 */
+  .view-tabs { display: flex; gap: 2px; margin-bottom: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; }
+  .view-tab { padding: 6px 16px; border-radius: 6px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+  .view-tab:hover { color: #fff; }
+  .view-tab.active { background: var(--accent); color: #fff; }
+  /* 지역 비교 뷰 */
+  .area-view { display: none; }
+  .area-view.show { display: flex; gap: 12px; }
+  .area-left { width: 280px; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; align-self: flex-start; position: sticky; top: 12px; max-height: calc(100vh - 120px); overflow-y: auto; }
+  .area-left::-webkit-scrollbar { width: 5px; }
+  .area-left::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  .area-right { flex: 1; min-width: 0; }
+  .level-tabs { display: flex; gap: 2px; margin-bottom: 10px; background: var(--bg); border-radius: 6px; padding: 2px; }
+  .level-tab { flex: 1; padding: 5px 0; border: none; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 600; text-align: center; transition: all .15s; }
+  .level-tab.active { background: var(--accent); color: #fff; }
+  .area-checklist { max-height: 420px; overflow-y: auto; }
+  .area-checklist::-webkit-scrollbar { width: 4px; }
+  .area-checklist::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  .area-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 4px; cursor: pointer; transition: background .1s; font-size: 12px; }
+  .area-item:hover { background: rgba(59,130,246,.08); }
+  .area-item.checked { background: rgba(59,130,246,.12); }
+  .area-check { width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 3px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: transparent; transition: all .15s; }
+  .area-item.checked .area-check { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .area-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; min-height: 24px; }
+  .area-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .area-badge .x { font-size: 13px; margin-left: 2px; opacity: .7; }
+  .area-badge .x:hover { opacity: 1; }
+  .cmp-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .cmp-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .cmp-summary { border-left: 3px solid; border-radius: 8px; background: var(--card); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 12px; }
+  .cmp-summary .name { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .cmp-summary .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; }
+  .cmp-summary .stat-label { color: var(--muted); }
+  .cmp-summary .stat-value { font-weight: 600; text-align: right; }
+  .cmp-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cmp-table th { padding: 8px 10px; text-align: center; color: var(--muted); font-weight: 600; font-size: 11px; border-bottom: 1px solid var(--border); }
+  .cmp-table th:first-child { text-align: left; }
+  .cmp-table td { padding: 6px 10px; border-bottom: 1px solid #1e293b; text-align: center; }
+  .cmp-table td:first-child { text-align: left; color: var(--muted); font-weight: 500; }
+  .cmp-table td.best { font-weight: 700; }
+  .cmp-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .cmp-empty .icon { font-size: 36px; margin-bottom: 12px; opacity: .4; }
+  .cmp-empty .msg { font-size: 13px; }
 </style>
 </head>
 <body>
@@ -104,6 +147,12 @@
     </div>
   </div>
 
+  <div class="view-tabs">
+    <button class="view-tab active" id="vtComplex" onclick="switchView('complex')">단지별</button>
+    <button class="view-tab" id="vtArea" onclick="switchView('area')">지역별 비교</button>
+  </div>
+
+  <div id="complexView">
   <div style="background:rgba(30,41,59,.5);border:1px solid rgba(51,65,85,.5);border-radius:10px;padding:12px;margin-bottom:12px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
       <div><label class="text-xs" style="color:#64748b">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select></div>
@@ -164,6 +213,33 @@
     </div>
   </div>
 
+  </div><!-- /complexView -->
+
+  <div id="areaView" class="area-view">
+    <div class="area-left">
+      <div class="level-tabs">
+        <button class="level-tab active" id="lvGu" onclick="setAreaLevel('gu')">시/구</button>
+        <button class="level-tab" id="lvDong" onclick="setAreaLevel('dong')">동</button>
+      </div>
+      <div style="margin-bottom:8px">
+        <select id="aR" class="fi" onchange="onAreaRegion()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select>
+      </div>
+      <div id="aGuFilter" style="display:none;margin-bottom:8px">
+        <select id="aGu" class="fi" onchange="renderAreaList()"><option value="">전체 시/구</option></select>
+      </div>
+      <div style="margin-bottom:8px">
+        <input id="aSearch" type="text" class="fi" placeholder="지역명 검색..." oninput="renderAreaList()">
+      </div>
+      <div class="area-badges" id="areaBadges"></div>
+      <div class="area-checklist" id="areaChecklist"></div>
+    </div>
+    <div class="area-right">
+      <div id="cmpResult">
+        <div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 지역을 선택하세요 (최대 4개)</div></div>
+      </div>
+    </div>
+  </div>
+
   <div class="footer-disclaimer">본 서비스에서 제공하는 정보는 법적인 효력이 없으므로 참고용으로만 활용하시기 바랍니다.</div>
 </div>
 
@@ -199,6 +275,13 @@
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
 let PRICES=null,VOLUMES=null,DETAILS=null;
+// 지역 비교
+let viewMode='complex';
+let areaLevel='gu'; // 'gu' | 'dong'
+let selectedAreas=[]; // max 4
+let areaCache={}; // name → aggregated data
+let cmpChart=null;
+const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b'];
 let TX_CACHE={};
 let DI=null; // D index map: i → entry (for fast lookup by data index)
 let curDetailIdx=null; // current detail data index (for area tab switching)
@@ -206,6 +289,242 @@ const Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
 const VWORLD_KEY='8B74D8CC-0DBF-311A-8E6E-3FBBB54FD034';
 let LMAP=null, LMARKER=null, GEO_DATA=null;
 const GEO_GU={"가평군":[37.8776,127.6018],"고양시 덕양구":[37.6101,126.8547],"고양시 일산동구":[37.657,126.7774],"고양시 일산서구":[37.7024,126.7282],"과천시":[37.418,126.9872],"광명시":[37.4238,126.87],"광주시":[37.4125,127.2641],"구리시":[37.6411,127.1312],"군포시":[37.3766,126.9451],"김포시":[37.6333,126.6751],"남양주시":[37.6387,127.2267],"동두천시":[37.9214,127.1156],"부천시 소사구":[37.4677,126.8061],"부천시 오정구":[37.5385,126.8211],"부천시 원미구":[37.5163,126.7799],"성남시 분당구":[37.3397,127.1295],"성남시 수정구":[37.4375,127.1063],"성남시 중원구":[37.4322,127.1934],"수원시 권선구":[37.2561,126.9841],"수원시 영통구":[37.2478,127.0532],"수원시 장안구":[37.3395,127.0106],"수원시 팔달구":[37.2796,127.0071],"시흥시":[37.3701,126.7595],"안산시 단원구":[37.3357,126.8368],"안산시 상록구":[37.3201,126.909],"안성시":[37.0213,127.2855],"안양시 동안구":[37.4142,126.9721],"안양시 만안구":[37.4078,126.9091],"양주시":[37.8382,127.0714],"양평군":[37.4752,127.4928],"여주시":[37.1944,127.5553],"연천군":[38.0244,127.0529],"오산시":[37.148,127.0486],"용인시 기흥구":[37.2195,127.1488],"용인시 수지구":[37.3499,127.0767],"용인시 처인구":[37.2477,127.2415],"의왕시":[37.3366,126.972],"의정부시":[37.7478,127.0521],"이천시":[37.2917,127.4761],"파주시":[37.7954,126.7573],"평택시":[37.0414,127.0885],"포천시":[37.8307,127.1828],"하남시":[37.5251,127.1693],"화성시 동탄구":[37.1843,127.0776],"화성시 만세구":[37.2151,126.8158],"화성시 병점구":[37.2211,127.0518],"화성시 효행구":[37.2308,126.9929],"강남구":[37.4829,127.0752],"강동구":[37.5797,127.1763],"강북구":[37.6189,127.0364],"강서구":[37.5649,126.8575],"관악구":[37.4753,126.9715],"광진구":[37.5569,127.1129],"구로구":[37.4861,126.8816],"금천구":[37.4823,126.8861],"노원구":[37.6202,127.1041],"도봉구":[37.6923,127.0478],"동대문구":[37.5764,127.0667],"동작구":[37.5161,126.9459],"마포구":[37.5513,126.9621],"서대문구":[37.5845,126.923],"서초구":[37.4616,127.0675],"성동구":[37.5577,127.0231],"성북구":[37.6067,127.0274],"송파구":[37.5031,127.1231],"양천구":[37.5473,126.8806],"영등포구":[37.5426,126.9019],"용산구":[37.5498,126.9728],"은평구":[37.6263,126.9201],"종로구":[37.5861,126.9854],"중구":[37.5654,127.0034],"중랑구":[37.6061,127.1144]};
+
+// === 지역 비교 기능 ===
+function switchView(mode){
+  viewMode=mode;
+  document.getElementById('complexView').style.display=mode==='complex'?'':'none';
+  document.getElementById('areaView').className=mode==='area'?'area-view show':'area-view';
+  document.getElementById('vtComplex').className='view-tab'+(mode==='complex'?' active':'');
+  document.getElementById('vtArea').className='view-tab'+(mode==='area'?' active':'');
+  if(mode==='area'){ renderAreaList(); renderComparison(); }
+  saveHash();
+}
+
+function setAreaLevel(level){
+  areaLevel=level;
+  document.getElementById('lvGu').className='level-tab'+(level==='gu'?' active':'');
+  document.getElementById('lvDong').className='level-tab'+(level==='dong'?' active':'');
+  document.getElementById('aGuFilter').style.display=level==='dong'?'':'none';
+  selectedAreas=[]; areaCache={};
+  if(level==='dong') buildAreaGuFilter();
+  renderAreaList(); renderComparison(); saveHash();
+}
+
+function onAreaRegion(){
+  if(areaLevel==='dong') buildAreaGuFilter();
+  renderAreaList();
+}
+
+function buildAreaGuFilter(){
+  const rv=document.getElementById('aR').value;
+  const sel=document.getElementById('aGu');
+  sel.innerHTML='<option value="">전체 시/구</option>';
+  const gs=new Set();
+  Object.entries(LT).forEach(([rk,ro])=>{
+    if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
+    Object.keys(ro).forEach(g=>gs.add(g));
+  });
+  [...gs].sort().forEach(g=>{sel.innerHTML+=`<option value="${g}">${g}</option>`});
+}
+
+function getAreaNames(){
+  const rv=document.getElementById('aR').value;
+  const sq=document.getElementById('aSearch').value.toLowerCase();
+  const names=new Set();
+  if(areaLevel==='gu'){
+    Object.entries(LT).forEach(([rk,ro])=>{
+      if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
+      Object.keys(ro).forEach(g=>{ if(!sq||g.toLowerCase().includes(sq)) names.add(g); });
+    });
+  } else {
+    const guF=document.getElementById('aGu').value;
+    Object.entries(LT).forEach(([rk,ro])=>{
+      if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
+      Object.entries(ro).forEach(([g,dset])=>{
+        if(guF&&g!==guF) return;
+        dset.forEach(d=>{
+          const label=g+' '+d;
+          if(!sq||label.toLowerCase().includes(sq)) names.add(label);
+        });
+      });
+    });
+  }
+  return [...names].sort();
+}
+
+function renderAreaList(){
+  const names=getAreaNames();
+  const el=document.getElementById('areaChecklist');
+  let h='';
+  names.forEach(name=>{
+    const checked=selectedAreas.includes(name);
+    h+=`<div class="area-item${checked?' checked':''}" onclick="toggleArea('${name.replace(/'/g,"\\'")}')">
+      <div class="area-check">${checked?'✓':''}</div>
+      <span>${name}</span>
+    </div>`;
+  });
+  el.innerHTML=h||'<div style="color:#64748b;padding:12px;text-align:center;font-size:11px">검색 결과 없음</div>';
+  renderBadges();
+}
+
+function toggleArea(name){
+  const idx=selectedAreas.indexOf(name);
+  if(idx>=0){ selectedAreas.splice(idx,1); }
+  else if(selectedAreas.length<4){ selectedAreas.push(name); }
+  renderAreaList(); renderComparison(); saveHash();
+}
+
+function renderBadges(){
+  const el=document.getElementById('areaBadges');
+  el.innerHTML=selectedAreas.map((name,i)=>
+    `<span class="area-badge" style="background:${CMP_COLORS[i]}22;color:${CMP_COLORS[i]}" onclick="toggleArea('${name.replace(/'/g,"\\'")}')">${name}<span class="x">×</span></span>`
+  ).join('');
+}
+
+function aggregateArea(name){
+  if(areaCache[name]) return areaCache[name];
+  let items;
+  if(areaLevel==='gu'){
+    items=D.filter(x=>x.g===name);
+  } else {
+    const parts=name.split(' ');
+    const dong=parts.pop();
+    const gu=parts.join(' ');
+    items=D.filter(x=>x.g===gu&&x.d===dong);
+  }
+  if(items.length===0) return null;
+
+  const avg=(arr)=>{const v=arr.filter(x=>x!==null&&x!==undefined);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+  const cnt=items.length;
+  const totalTx=items.reduce((s,x)=>s+(x.t||0),0);
+  const avgP25=avg(items.filter(x=>x.p25&&x.p25>0).map(x=>x.p25));
+  const avgCagr=avg(items.filter(x=>x.c!==null).map(x=>x.c));
+  const avgMdd=avg(items.map(x=>x.m));
+  const avgSharpe=avg(items.filter(x=>x.s!==null).map(x=>x.s));
+  const avgQ=avg(items.filter(x=>x.q!==null).map(x=>x.q));
+  const avgK=avg(items.filter(x=>x.k!==null).map(x=>x.k));
+
+  // 연도별 평균 가격 (PRICES에서 집계)
+  const yearAvg=new Array(12).fill(null);
+  if(PRICES){
+    for(let yi=0;yi<12;yi++){
+      const vals=[];
+      items.forEach(x=>{
+        const pr=PRICES[String(x.i)];
+        if(pr&&pr[yi]>0) vals.push(pr[yi]);
+      });
+      yearAvg[yi]=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+    }
+  }
+
+  // 24→25 수익률 계산
+  let y25=null;
+  if(yearAvg[9]&&yearAvg[10]) y25=((yearAvg[10]-yearAvg[9])/yearAvg[9]*100);
+
+  const result={name,cnt,totalTx,avgP25,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg};
+  areaCache[name]=result;
+  return result;
+}
+
+function renderComparison(){
+  const el=document.getElementById('cmpResult');
+  if(selectedAreas.length===0){
+    el.innerHTML='<div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 지역을 선택하세요 (최대 4개)</div></div>';
+    return;
+  }
+  const data=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
+  if(data.length===0){ el.innerHTML='<div class="cmp-empty"><div class="msg">데이터가 없습니다</div></div>'; return; }
+
+  let html='';
+  // 요약 카드
+  html+='<div class="cmp-cards-grid">';
+  data.forEach((d,i)=>{
+    const fm=v=>v!==null?v.toFixed(1)+'%':'-';
+    html+=`<div class="cmp-summary" style="border-left-color:${CMP_COLORS[i]}">
+      <div class="name" style="color:${CMP_COLORS[i]}">${d.name}</div>
+      <div class="stats">
+        <span class="stat-label">단지수</span><span class="stat-value">${d.cnt}</span>
+        <span class="stat-label">25년 평균가</span><span class="stat-value">${d.avgP25?d.avgP25.toFixed(2)+'억':'-'}</span>
+        <span class="stat-label">CAGR</span><span class="stat-value ${d.avgCagr>0?'up':'dn'}">${fm(d.avgCagr)}</span>
+        <span class="stat-label">MDD</span><span class="stat-value">${fm(d.avgMdd)}</span>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // 차트
+  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">평균 가격 추이 (억원)</h3><div style="height:260px"><canvas id="cmpChart"></canvas></div></div>';
+
+  // 상세 비교 테이블
+  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">지표 비교</h3>';
+  html+='<table class="cmp-table"><thead><tr><th>지표</th>';
+  data.forEach((d,i)=>{ html+=`<th style="color:${CMP_COLORS[i]}">${d.name}</th>`; });
+  html+='</tr></thead><tbody>';
+
+  const metrics=[
+    ['단지수',d=>d.cnt,v=>''+v,'max'],
+    ['총 거래건수',d=>d.totalTx,v=>v.toLocaleString(),'max'],
+    ['25년 평균가(억)',d=>d.avgP25,v=>v?v.toFixed(2):'-','max'],
+    ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
+    ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'], // MDD: closer to 0 is better → max
+    ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
+    ['24→25 수익(%)',d=>d.y25,v=>v!==null?v.toFixed(1):'-','max'],
+    ['21→25 수익(%)',d=>d.avgQ,v=>v!==null?v.toFixed(1):'-','max'],
+    ['26 모멘텀(%)',d=>d.avgK,v=>v!==null?v.toFixed(1):'-','max']
+  ];
+
+  metrics.forEach(([label,getter,fmt,bestDir])=>{
+    const vals=data.map(d=>getter(d));
+    const validVals=vals.filter(v=>v!==null&&v!==undefined);
+    const bestVal=validVals.length>0?(bestDir==='max'?Math.max(...validVals):Math.min(...validVals)):null;
+    html+='<tr><td>'+label+'</td>';
+    vals.forEach((v,i)=>{
+      const isBest=v!==null&&v===bestVal&&validVals.length>1;
+      const cc=typeof v==='number'&&label!=='단지수'&&label!=='총 거래건수'&&label!=='25년 평균가(억)'&&label!=='샤프비율'?(v>0?'up':v<0?'dn':''):'';
+      html+=`<td class="${isBest?'best':''} ${cc}" style="${isBest?'color:'+CMP_COLORS[i]:''}">${fmt(v)}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table></div>';
+
+  el.innerHTML=html;
+
+  // 차트 렌더링
+  renderComparisonChart(data);
+}
+
+function renderComparisonChart(data){
+  const ctx=document.getElementById('cmpChart');
+  if(!ctx) return;
+  if(cmpChart) cmpChart.destroy();
+
+  const datasets=data.map((d,i)=>({
+    label:d.name,
+    data:d.yearAvg.map(v=>v?parseFloat(v.toFixed(2)):null),
+    borderColor:CMP_COLORS[i],
+    backgroundColor:CMP_COLORS[i]+'18',
+    fill:false,tension:.3,
+    pointRadius:3,pointBackgroundColor:CMP_COLORS[i],pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,
+    spanGaps:true
+  }));
+
+  cmpChart=new Chart(ctx,{
+    type:'line',
+    data:{ labels:Y.map(y=>y+'년'), datasets },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top',labels:{color:'#94a3b8',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
+        tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'억'}}
+      },
+      scales:{
+        x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
+        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'억'}}
+      }
+    }
+  });
+}
 
 async function init(){
   const t0=performance.now();
@@ -816,6 +1135,9 @@ function saveHash(){
   if(cp>1)p.p=cp;
   if(ps!==100)p.ps=ps;
   if(curDetailIdx!==null)p.i=curDetailIdx;
+  if(viewMode==='area')p.vm='area';
+  if(areaLevel==='dong')p.al='dong';
+  if(selectedAreas.length)p.aa=selectedAreas.join('|');
   const h=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   history.replaceState(null,null,h?'#'+h:'#');
 }
@@ -851,6 +1173,10 @@ function loadHash(){
     const x=DI[dataIdx];
     if(x){curDetailIdx=dataIdx;showDetail(x);}
   }
+  // 지역 비교 뷰 복원
+  if(p.al==='dong'){ areaLevel='dong'; document.getElementById('lvGu').className='level-tab'; document.getElementById('lvDong').className='level-tab active'; document.getElementById('aGuFilter').style.display=''; buildAreaGuFilter(); }
+  if(p.aa){ selectedAreas=p.aa.split('|'); }
+  if(p.vm==='area') switchView('area');
   return true;
 }
 
