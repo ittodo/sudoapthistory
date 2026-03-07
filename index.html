@@ -358,6 +358,7 @@ let selectedAreas=[]; // max 10
 let areaCache={}; // name → aggregated data
 let cmpChart=null, cmpSimChart=null;
 let cmpSubTab='price'; // 'price' | 'sim'
+let simMode='gap'; // 'gap' | 'live'
 const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
 let TX_CACHE={};
 let DI=null;
@@ -946,6 +947,11 @@ function calcInvestReturn(areaData, params){
   };
 }
 
+function setSimMode(mode){
+  simMode=mode;
+  renderSimView();
+}
+
 function renderSimView(){
   const el=document.getElementById('cmpSimView');
   if(!el) return;
@@ -956,8 +962,14 @@ function renderSimView(){
 
   const simData=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
 
+  // 모드 토글
+  let html='<div class="cmp-sub-tabs" style="margin-bottom:10px">';
+  html+=`<button class="cmp-sub-tab ${simMode==='gap'?'active':''}" onclick="setSimMode(\'gap\')">갭투자</button>`;
+  html+=`<button class="cmp-sub-tab ${simMode==='live'?'active':''}" onclick="setSimMode(\'live\')">실거주</button>`;
+  html+='</div>';
+
   // 공통 파라미터 슬라이더
-  let html='<div class="sim-sliders">';
+  html+='<div class="sim-sliders">';
   html+=`<div class="sim-slider"><label>투자기간</label><input type="range" id="simYears" min="1" max="15" value="5" step="1" oninput="updateSim()"><div class="val" id="simYearsVal">5년</div></div>`;
   html+=`<div class="sim-slider"><label>보유세율(연)</label><input type="range" id="simHoldTax" min="0" max="2" value="0.3" step="0.1" oninput="updateSim()"><div class="val" id="simHoldTaxVal">0.3%</div></div>`;
   html+=`<div class="sim-slider"><label>주택수</label><div style="display:flex;gap:4px;margin-top:4px">`;
@@ -966,18 +978,32 @@ function renderSimView(){
   });
   html+=`</div></div>`;
   html+=`<div class="sim-slider"><label>1주택 비과세</label><div style="margin-top:6px"><label style="color:#fff;cursor:pointer;font-size:12px"><input type="checkbox" id="simExempt" checked onchange="updateSim()"> 적용 (2년↑보유, 12억↓비과세)</label></div></div>`;
-  html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
+
+  if(simMode==='gap'){
+    html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
+  } else {
+    html+=`<div class="sim-slider"><label>대출이자율</label><input type="range" id="simLoanRate" min="1" max="8" value="3.5" step="0.1" oninput="updateSim()"><div class="val" id="simLoanRateVal">3.5%</div></div>`;
+    html+=`<div class="sim-slider"><label>현재 월세(만원)</label><input type="range" id="simRent" min="0" max="300" value="100" step="10" oninput="updateSim()"><div class="val" id="simRentVal">100만원</div></div>`;
+  }
   html+='</div>';
 
-  // 항목별 전세가율 슬라이더
+  // 항목별 슬라이더: 갭투자→전세가율, 실거주→LTV
   html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:14px">';
   simData.forEach((d,i)=>{
     const color=CMP_COLORS[i];
-    html+=`<div style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px">
-      <label style="font-size:11px;color:${color};font-weight:600;display:block;margin-bottom:3px">${d.name} 전세가율</label>
-      <input type="range" class="simJeonseEach" data-idx="${i}" min="30" max="90" value="65" step="5" oninput="updateSim()" style="width:100%;accent-color:${color}">
-      <div class="val simJeonseEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:#fff;text-align:right">65%</div>
-    </div>`;
+    if(simMode==='gap'){
+      html+=`<div style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px">
+        <label style="font-size:11px;color:${color};font-weight:600;display:block;margin-bottom:3px">${d.name} 전세가율</label>
+        <input type="range" class="simJeonseEach" data-idx="${i}" min="30" max="90" value="65" step="5" oninput="updateSim()" style="width:100%;accent-color:${color}">
+        <div class="val simJeonseEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:#fff;text-align:right">65%</div>
+      </div>`;
+    } else {
+      html+=`<div style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px">
+        <label style="font-size:11px;color:${color};font-weight:600;display:block;margin-bottom:3px">${d.name} LTV(대출비율)</label>
+        <input type="range" class="simLtvEach" data-idx="${i}" min="0" max="80" value="50" step="5" oninput="updateSim()" style="width:100%;accent-color:${color}">
+        <div class="val simLtvEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:#fff;text-align:right">50%</div>
+      </div>`;
+    }
   });
   html+='</div>';
 
@@ -1003,32 +1029,111 @@ function getSimParams(){
   const activeBtn=document.querySelector('.sim-house-btn.active');
   const houseCnt=activeBtn?parseInt(activeBtn.dataset.cnt):1;
   const exempt1house=document.getElementById('simExempt')?.checked??true;
-  const depositRate=parseFloat(document.getElementById('simDeposit')?.value||3.5);
 
-  // 항목별 전세가율
-  const jeonseRates=[];
-  document.querySelectorAll('.simJeonseEach').forEach(el=>{
-    const val=parseFloat(el.value);
-    jeonseRates.push(val);
-    const valEl=document.querySelector(`.simJeonseEachVal[data-idx="${el.dataset.idx}"]`);
-    if(valEl) valEl.textContent=val+'%';
-  });
-
-  // 공통 슬라이더 값 표시 갱신
   const yv=document.getElementById('simYearsVal'); if(yv) yv.textContent=years+'년';
   const hv=document.getElementById('simHoldTaxVal'); if(hv) hv.textContent=holdTaxRate+'%';
-  const dv=document.getElementById('simDepositVal'); if(dv) dv.textContent=depositRate+'%';
 
-  return {jeonseRates, years, holdTaxRate, houseCnt, exempt1house, depositRate};
+  if(simMode==='gap'){
+    const depositRate=parseFloat(document.getElementById('simDeposit')?.value||3.5);
+    const dv=document.getElementById('simDepositVal'); if(dv) dv.textContent=depositRate+'%';
+    const jeonseRates=[];
+    document.querySelectorAll('.simJeonseEach').forEach(el=>{
+      const val=parseFloat(el.value);
+      jeonseRates.push(val);
+      const valEl=document.querySelector(`.simJeonseEachVal[data-idx="${el.dataset.idx}"]`);
+      if(valEl) valEl.textContent=val+'%';
+    });
+    return {mode:'gap', jeonseRates, years, holdTaxRate, houseCnt, exempt1house, depositRate};
+  } else {
+    const loanRate=parseFloat(document.getElementById('simLoanRate')?.value||3.5);
+    const rent=parseInt(document.getElementById('simRent')?.value||100);
+    const lr=document.getElementById('simLoanRateVal'); if(lr) lr.textContent=loanRate+'%';
+    const rv=document.getElementById('simRentVal'); if(rv) rv.textContent=rent+'만원';
+    const ltvRates=[];
+    document.querySelectorAll('.simLtvEach').forEach(el=>{
+      const val=parseFloat(el.value);
+      ltvRates.push(val);
+      const valEl=document.querySelector(`.simLtvEachVal[data-idx="${el.dataset.idx}"]`);
+      if(valEl) valEl.textContent=val+'%';
+    });
+    return {mode:'live', ltvRates, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent};
+  }
+}
+
+function calcLiveReturn(areaData, params){
+  const price=areaData.avgP25;
+  const cagr=areaData.avgCagr;
+  if(!price||price<=0||cagr===null) return null;
+
+  const {ltv, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent}=params;
+  const loanAmt=price*ltv/100;
+  const equity=price-loanAmt;
+  const acqTaxRate=getAcqTaxRate(price, houseCnt);
+  const acqTax=price*acqTaxRate;
+  const brokerBuy=getBrokerFee(price);
+  const initInvest=equity+acqTax+brokerBuy;
+
+  const futurePrice=price*Math.pow(1+cagr/100, years);
+  const capitalGain=futurePrice-price;
+  const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house);
+  const brokerSell=getBrokerFee(futurePrice);
+  const holdingTax=price*holdTaxRate/100*years;
+  const totalInterest=loanAmt*loanRate/100*years;
+  const rentSaved=rent*12*years/10000; // 만원→억
+
+  const totalProfit=capitalGain-capGainTax-acqTax-holdingTax-brokerBuy-brokerSell-totalInterest+rentSaved;
+  const roi=totalProfit/initInvest*100;
+  const annualReturn=(Math.pow(1+roi/100, 1/years)-1)*100;
+  const leverage=price/equity;
+
+  const yearlyOwn=[];
+  const yearlyRent=[];
+  for(let t=0;t<=years;t++){
+    const curPrice=price*Math.pow(1+cagr/100,t);
+    const cumHoldTax=price*holdTaxRate/100*t;
+    const cumInterest=loanAmt*loanRate/100*t;
+    const cumRentSaved=rent*12*t/10000;
+    yearlyOwn.push(curPrice-price-cumHoldTax-cumInterest-acqTax-brokerBuy+cumRentSaved);
+    // 기회비용: 전세살며 자기자본을 예금 (보수적 3.5%)
+    yearlyRent.push(initInvest*(Math.pow(1+3.5/100,t)-1));
+  }
+
+  // 손익분기 CAGR
+  let beLow=0, beHigh=20;
+  for(let iter=0;iter<50;iter++){
+    const mid=(beLow+beHigh)/2;
+    const fp=price*Math.pow(1+mid/100, years);
+    const cg=fp-price;
+    const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house);
+    const bs=getBrokerFee(fp);
+    const tp=cg-cgt-acqTax-holdingTax-brokerBuy-bs-totalInterest+rentSaved;
+    if(tp<0) beLow=mid; else beHigh=mid;
+  }
+  const beCagr=(beLow+beHigh)/2;
+
+  return {
+    roi, annualReturn, leverage, breakeven:beCagr,
+    costs:{acquisition:acqTax, holding:holdingTax, capitalGains:capGainTax, interest:totalInterest, brokerBuy, brokerSell},
+    initInvest, totalProfit, price, futurePrice, loanAmt, equity, ltv, rentSaved,
+    yearlyOwn, yearlyRent
+  };
 }
 
 function updateSim(){
   const params=getSimParams();
   const data=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
-  const results=data.map((d,i)=>{
-    const jeonseRate=params.jeonseRates[i]!==undefined?params.jeonseRates[i]:65;
-    return {area:d, result:calcInvestReturn(d, {...params, jeonseRate})};
-  });
+  let results;
+  if(params.mode==='gap'){
+    results=data.map((d,i)=>{
+      const jeonseRate=params.jeonseRates[i]!==undefined?params.jeonseRates[i]:65;
+      return {area:d, result:calcInvestReturn(d, {...params, jeonseRate})};
+    });
+  } else {
+    results=data.map((d,i)=>{
+      const ltv=params.ltvRates[i]!==undefined?params.ltvRates[i]:50;
+      return {area:d, result:calcLiveReturn(d, {...params, ltv})};
+    });
+  }
 
   const el=document.getElementById('simResults');
   if(!el) return;
@@ -1064,7 +1169,8 @@ function updateSim(){
   html+='</div>';
 
   // 차트
-  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">순수익 vs 기회비용 (연도별)</h3><div style="height:280px"><canvas id="cmpSimChartCanvas"></canvas></div></div>';
+  const chartTitle=params.mode==='gap'?'순수익 vs 기회비용 (연도별)':'매수 순자산 vs 전세+예금 (연도별)';
+  html+=`<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">${chartTitle}</h3><div style="height:280px"><canvas id="cmpSimChartCanvas"></canvas></div></div>`;
 
   // 비용 비교 테이블
   html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">비용 비교</h3>';
@@ -1075,22 +1181,44 @@ function updateSim(){
   });
   html+='</tr></thead><tbody>';
 
-  const rows=[
-    ['매매가(25년)',r=>fmtOk(r.result.price)],
-    ['전세가율',r=>r.result.jeonseRate+'%'],
-    ['전세가',r=>fmtOk(r.result.jeonse)],
-    ['자기자본(갭)',r=>fmtOk(r.result.gap)],
-    ['취득세',r=>fmtOk(r.result.costs.acquisition)],
-    ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)],
-    ['양도세',r=>fmtOk(r.result.costs.capitalGains)],
-    ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)],
-    ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)],
-    ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`}],
-    ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
-    ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
-    ['레버리지',r=>r.result.leverage.toFixed(1)+'x'],
-    ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%']
-  ];
+  let rows;
+  if(params.mode==='gap'){
+    rows=[
+      ['매매가(25년)',r=>fmtOk(r.result.price)],
+      ['전세가율',r=>r.result.jeonseRate+'%'],
+      ['전세가',r=>fmtOk(r.result.jeonse)],
+      ['자기자본(갭)',r=>fmtOk(r.result.gap)],
+      ['취득세',r=>fmtOk(r.result.costs.acquisition)],
+      ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)],
+      ['양도세',r=>fmtOk(r.result.costs.capitalGains)],
+      ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)],
+      ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)],
+      ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`}],
+      ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
+      ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
+      ['레버리지',r=>r.result.leverage.toFixed(1)+'x'],
+      ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%']
+    ];
+  } else {
+    rows=[
+      ['매매가(25년)',r=>fmtOk(r.result.price)],
+      ['LTV',r=>r.result.ltv+'%'],
+      ['대출금',r=>fmtOk(r.result.loanAmt)],
+      ['자기자본',r=>fmtOk(r.result.equity)],
+      ['취득세',r=>fmtOk(r.result.costs.acquisition)],
+      ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)],
+      ['대출이자('+params.years+'년)',r=>fmtOk(r.result.costs.interest)],
+      ['양도세',r=>fmtOk(r.result.costs.capitalGains)],
+      ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)],
+      ['월세절약('+params.years+'년)',r=>`<span class="up">+${fmtOk(r.result.rentSaved)}</span>`],
+      ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)],
+      ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`}],
+      ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
+      ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
+      ['레버리지',r=>r.result.leverage.toFixed(1)+'x'],
+      ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%']
+    ];
+  }
 
   rows.forEach(([label,getter])=>{
     html+='<tr><td>'+label+'</td>';
@@ -1114,28 +1242,50 @@ function renderSimChart(validResults, allResults, params){
   for(let t=0;t<=params.years;t++) labels.push(t+'년차');
 
   const datasets=[];
-  validResults.forEach((r,vi)=>{
-    const idx=allResults.indexOf(r);
-    datasets.push({
-      label:r.area.name+' 순수익',
-      data:r.result.yearlyAsset,
-      borderColor:CMP_COLORS[idx],
-      backgroundColor:CMP_COLORS[idx]+'18',
-      fill:false, tension:.3, borderWidth:2,
-      pointRadius:3, pointBackgroundColor:CMP_COLORS[idx]
+  if(params.mode==='gap'){
+    validResults.forEach((r,vi)=>{
+      const idx=allResults.indexOf(r);
+      datasets.push({
+        label:r.area.name+' 순수익',
+        data:r.result.yearlyAsset,
+        borderColor:CMP_COLORS[idx],
+        backgroundColor:CMP_COLORS[idx]+'18',
+        fill:false, tension:.3, borderWidth:2,
+        pointRadius:3, pointBackgroundColor:CMP_COLORS[idx]
+      });
     });
-  });
-
-  // 기회비용 (예금) - 첫 번째 유효 결과의 초기투자금 기준
-  if(validResults.length>0){
-    datasets.push({
-      label:'예금 수익 (기회비용)',
-      data:validResults[0].result.yearlyDeposit,
-      borderColor:'#64748b',
-      borderDash:[6,4],
-      fill:false, tension:.3, borderWidth:2,
-      pointRadius:2, pointBackgroundColor:'#64748b'
+    if(validResults.length>0){
+      datasets.push({
+        label:'예금 수익 (기회비용)',
+        data:validResults[0].result.yearlyDeposit,
+        borderColor:'#64748b',
+        borderDash:[6,4],
+        fill:false, tension:.3, borderWidth:2,
+        pointRadius:2, pointBackgroundColor:'#64748b'
+      });
+    }
+  } else {
+    validResults.forEach((r,vi)=>{
+      const idx=allResults.indexOf(r);
+      datasets.push({
+        label:r.area.name+' 매수 순자산',
+        data:r.result.yearlyOwn,
+        borderColor:CMP_COLORS[idx],
+        backgroundColor:CMP_COLORS[idx]+'18',
+        fill:false, tension:.3, borderWidth:2,
+        pointRadius:3, pointBackgroundColor:CMP_COLORS[idx]
+      });
     });
+    if(validResults.length>0){
+      datasets.push({
+        label:'전세+예금 수익',
+        data:validResults[0].result.yearlyRent,
+        borderColor:'#64748b',
+        borderDash:[6,4],
+        fill:false, tension:.3, borderWidth:2,
+        pointRadius:2, pointBackgroundColor:'#64748b'
+      });
+    }
   }
 
   cmpSimChart=new Chart(ctx,{
