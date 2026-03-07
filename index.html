@@ -290,7 +290,7 @@
     </div>
     <div class="area-right">
       <div id="cmpResult">
-        <div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 4개)</div></div>
+        <div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 10개)</div></div>
       </div>
     </div>
   </div>
@@ -335,10 +335,10 @@ let merged=false, DM=[]; // DM = merged entries
 // 비교
 let viewMode='complex';
 let areaLevel='gu'; // 'complex' | 'gu' | 'dong'
-let selectedAreas=[]; // max 4
+let selectedAreas=[]; // max 10
 let areaCache={}; // name → aggregated data
 let cmpChart=null;
-const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b'];
+const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
 let TX_CACHE={};
 let DI=null;
 let curDetailIdx=null;
@@ -476,7 +476,7 @@ function renderAreaList(){
 function toggleArea(key){
   const idx=selectedAreas.indexOf(key);
   if(idx>=0){ selectedAreas.splice(idx,1); }
-  else if(selectedAreas.length<4){ selectedAreas.push(key); }
+  else if(selectedAreas.length<10){ selectedAreas.push(key); }
   renderAreaList(); renderComparison(); saveHash();
 }
 
@@ -598,7 +598,7 @@ function aggregateArea(key){
 async function renderComparison(){
   const el=document.getElementById('cmpResult');
   if(selectedAreas.length===0){
-    el.innerHTML='<div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 4개)</div></div>';
+    el.innerHTML='<div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 10개)</div></div>';
     return;
   }
   const data=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
