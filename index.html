@@ -658,15 +658,22 @@ async function renderComparisonChartMonthly(data){
         }
       }
     } else {
-      // 구/동: 해당 단지들의 월별 평균
+      // 구/동: 각 단지를 개별 forward-fill 후 평균 (구성 편향 제거)
       if(d.items){
+        // 1. 각 단지의 월별 시리즈를 개별 forward-fill
+        const filledSeries=[];
+        d.items.forEach(x=>{
+          const md=MONTHLY_CACHE[x.g];
+          if(md&&md[String(x.i)]){
+            const ff=forwardFill(md[String(x.i)].p);
+            filledSeries.push(ff.values);
+          }
+        });
+        // 2. forward-fill된 값들의 평균
         for(let slot=0;slot<132;slot++){
           const vals=[];
-          d.items.forEach(x=>{
-            const md=MONTHLY_CACHE[x.g];
-            if(md&&md[String(x.i)]&&md[String(x.i)].p[slot]>0){
-              vals.push(md[String(x.i)].p[slot]);
-            }
+          filledSeries.forEach(s=>{
+            if(s[slot]>0) vals.push(s[slot]);
           });
           if(vals.length) monthlyPrices[slot]=vals.reduce((a,b)=>a+b,0)/vals.length;
         }
