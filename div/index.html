@@ -51,6 +51,21 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .sort-arrow { font-size: 9px; margin-left: 2px; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
+.clickable-name { cursor: pointer; color: var(--text); transition: color .15s; }
+.clickable-name:hover { color: var(--accent); text-decoration: underline; }
+/* Detail Panel */
+#detailPanel { display: none; position: fixed; top: 0; right: 0; width: 520px; height: 100vh; background: var(--bg); border-left: 1px solid var(--border); z-index: 100; overflow-y: auto; box-shadow: -4px 0 20px rgba(0,0,0,.5); }
+#detailPanel::-webkit-scrollbar { width: 5px; }
+#detailPanel::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+.detail-header { position: sticky; top: 0; background: var(--bg); padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; z-index: 3; }
+.detail-close { background: none; border: 1px solid var(--border); color: var(--muted); cursor: pointer; padding: 4px 10px; border-radius: 4px; font-size: 12px; }
+.detail-close:hover { color: #fff; border-color: var(--muted); }
+.detail-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.detail-section h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--muted); }
+.detail-table { width: 100%; }
+.detail-table td { padding: 5px 6px; font-size: 12px; border-bottom: 1px solid #1e293b; }
+.detail-table tr:hover { background: rgba(59,130,246,.06); }
+#detailOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 99; }
 </style>
 </head>
 <body>
@@ -159,6 +174,19 @@ a:hover { text-decoration: underline; }
 
 </div>
 
+<!-- Detail Panel (overlay) -->
+<div id="detailOverlay" onclick="closeDetail()"></div>
+<div id="detailPanel">
+  <div class="detail-header">
+    <div>
+      <div style="font-size:15px;font-weight:700;" id="detailName"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;" id="detailMeta"></div>
+    </div>
+    <button class="detail-close" onclick="closeDetail()">닫기</button>
+  </div>
+  <div id="detailContent"></div>
+</div>
+
 <script>
 let divData = [], bbData = [];
 let currentTab = 'div';
@@ -174,6 +202,32 @@ async function init() {
     ]);
     divData = divRes.events || [];
     bbData = bbRes.events || [];
+
+    // 후배당 보정: type이 비어있고 recordDate 연도 > fiscalYear이면 후배당
+    divData.forEach(e => {
+      if (!e.type && e.recordDate && e.fiscalYear) {
+        const rdYear = parseInt(e.recordDate.substring(0, 4));
+        const fyYear = parseInt(e.fiscalYear);
+        if (rdYear > fyYear) {
+          e.type = '후배당';
+        } else if (rdYear === fyYear) {
+          const rdMonth = parseInt(e.recordDate.substring(5, 7));
+          if (rdMonth === 12) {
+            e.type = '후배당';
+          } else {
+            e.type = '선배당';
+          }
+        }
+      }
+      // recordDate가 올해이고 fiscalYear가 작년이면 확실히 후배당
+      if (e.type !== '후배당' && e.recordDate && e.fiscalYear) {
+        const rdYear = parseInt(e.recordDate.substring(0, 4));
+        const fyYear = parseInt(e.fiscalYear);
+        if (rdYear > fyYear) {
+          e.type = '후배당';
+        }
+      }
+    });
 
     const updated = divRes.updated || bbRes.updated || '';
     document.getElementById('updatedAt').textContent = updated ? `DART 공시 기준 · 최종 업데이트 ${updated}` : '';
@@ -192,16 +246,24 @@ function buildMonthBar() {
   const months = new Set();
   divData.forEach(e => {
     if (e.recordDate) {
-      const m = e.recordDate.substring(0, 7); // YYYY-MM
+      const m = e.recordDate.substring(0, 7);
       months.add(m);
     }
   });
-  const sorted = [...months].sort();
+  // 최신 월이 앞으로 오도록 역순 정렬
+  const sorted = [...months].sort().reverse();
   const bar = document.getElementById('monthBar');
-  let html = '<button class="month-btn active" data-month="all" onclick="setMonthFilter(\'all\')">전체</button>';
+
+  // 최신 월을 기본 선택
+  if (sorted.length > 0) {
+    monthFilter = sorted[0];
+  }
+
+  let html = '<button class="month-btn" data-month="all" onclick="setMonthFilter(\'all\')">전체</button>';
   sorted.forEach(m => {
-    const label = m.substring(5) + '월'; // "03월"
-    html += `<button class="month-btn" data-month="${m}" onclick="setMonthFilter('${m}')">${m.substring(0,4)}.${label}</button>`;
+    const label = m.substring(5) + '월';
+    const isActive = m === monthFilter ? ' active' : '';
+    html += `<button class="month-btn${isActive}" data-month="${m}" onclick="setMonthFilter('${m}')">${m.substring(0,4)}.${label}</button>`;
   });
   bar.innerHTML = html;
 }
@@ -322,7 +384,7 @@ function renderDiv() {
 
     html += `<tr>
       <td style="color:var(--muted);font-family:monospace;">${esc(e.ticker)}</td>
-      <td style="font-weight:500;">${esc(e.name)}</td>
+      <td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td>
       <td>${mktBadge}</td>
       <td>${typeBadge}</td>
       <td>${esc(e.recordDate)}</td>
@@ -379,7 +441,7 @@ function renderBB() {
 
     html += `<tr>
       <td style="color:var(--muted);font-family:monospace;">${esc(e.ticker)}</td>
-      <td style="font-weight:500;">${esc(e.name)}</td>
+      <td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td>
       <td>${mktBadge}</td>
       <td>${typeBadge}</td>
       <td>${esc(e.buybackDate)}</td>
@@ -394,8 +456,81 @@ function renderBB() {
   document.getElementById('countInfo').textContent = `${filtered.length.toLocaleString()}건 표시 (전체 ${bbData.length.toLocaleString()}건)`;
 }
 
+// --- Detail Panel ---
+function showDetail(ticker, name) {
+  const panel = document.getElementById('detailPanel');
+  const overlay = document.getElementById('detailOverlay');
+  document.getElementById('detailName').textContent = name;
+
+  // Find matching events
+  const tickerDivs = divData.filter(e => e.ticker === ticker).sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''));
+  const tickerBBs = bbData.filter(e => e.ticker === ticker).sort((a, b) => (b.buybackDate || '').localeCompare(a.buybackDate || ''));
+
+  const market = tickerDivs[0]?.market || tickerBBs[0]?.market || '';
+  document.getElementById('detailMeta').textContent = `${ticker} · ${market}`;
+
+  let html = '';
+
+  // 배당 이력
+  if (tickerDivs.length > 0) {
+    html += `<div class="detail-section"><h3>배당 이력 (${tickerDivs.length}건)</h3><table class="detail-table">
+      <tr style="color:var(--muted);font-size:11px;"><td>기준일</td><td>구분</td><td style="text-align:right">DPS</td><td style="text-align:right">수익률</td><td>지급일</td><td>사업연도</td><td></td></tr>`;
+    for (const e of tickerDivs) {
+      const typeBadge = e.type === '선배당' ? '<span class="badge b-pre">선배당</span>'
+        : e.type === '후배당' ? '<span class="badge b-post">후배당</span>' : '';
+      html += `<tr>
+        <td>${esc(e.recordDate)}</td>
+        <td>${typeBadge}</td>
+        <td style="text-align:right;font-weight:600;">${e.dps ? e.dps.toLocaleString() : '-'}</td>
+        <td style="text-align:right;${e.yield >= 3 ? 'color:var(--up)' : ''}">${e.yield ? e.yield.toFixed(1) + '%' : '-'}</td>
+        <td style="color:var(--muted);">${esc(e.payDate)}</td>
+        <td style="color:var(--muted);">${esc(e.fiscalYear)}</td>
+        <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener">원문</a>` : ''}</td>
+      </tr>`;
+    }
+    html += '</table></div>';
+  }
+
+  // 자사주 이력
+  if (tickerBBs.length > 0) {
+    html += `<div class="detail-section"><h3>자사주 소각·매입 이력 (${tickerBBs.length}건)</h3><table class="detail-table">
+      <tr style="color:var(--muted);font-size:11px;"><td>일자</td><td>구분</td><td style="text-align:right">주식수</td><td style="text-align:right">총액</td><td>방법</td><td></td></tr>`;
+    for (const e of tickerBBs) {
+      const typeBadge = e.type === '소각' ? '<span class="badge b-bb">소각</span>'
+        : e.type === '매입' ? '<span class="badge b-buy">매입</span>'
+        : e.type === '처분' ? '<span class="badge b-dispose">처분</span>' : '';
+      html += `<tr>
+        <td>${esc(e.buybackDate)}</td>
+        <td>${typeBadge}</td>
+        <td style="text-align:right;font-weight:600;">${e.shareCount ? e.shareCount.toLocaleString() : '-'}</td>
+        <td style="text-align:right;font-weight:600;">${fmtAmount(e.totalAmount)}</td>
+        <td style="color:var(--muted);font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${esc(e.method || '')}">${esc(e.method || '')}</td>
+        <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener">원문</a>` : ''}</td>
+      </tr>`;
+    }
+    html += '</table></div>';
+  }
+
+  if (!tickerDivs.length && !tickerBBs.length) {
+    html = '<div class="detail-section" style="color:var(--muted);text-align:center;padding:40px;">데이터가 없습니다</div>';
+  }
+
+  document.getElementById('detailContent').innerHTML = html;
+  panel.style.display = 'block';
+  overlay.style.display = 'block';
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').style.display = 'none';
+  document.getElementById('detailOverlay').style.display = 'none';
+}
+
+// ESC key to close detail
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
 function fmtAmount(v) {
   if (!v) return '-';
+  if (v >= 1e12) return (v / 1e12).toFixed(1) + '조';
   if (v >= 1e8) return (v / 1e8).toFixed(0) + '억';
   if (v >= 1e4) return (v / 1e4).toFixed(0) + '만';
   return v.toLocaleString();
@@ -403,7 +538,7 @@ function fmtAmount(v) {
 
 function esc(s) {
   if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 init();
