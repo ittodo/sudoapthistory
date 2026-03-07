@@ -279,6 +279,10 @@
         </div>
         <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
+        <div id="chartTabWrap" style="display:none;margin-bottom:4px">
+          <button class="cmp-sub-tab active" id="chtYear" onclick="switchChartTab('year')">연도별</button>
+          <button class="cmp-sub-tab" id="chtMonth" onclick="switchChartTab('month')">월별</button>
+        </div>
         <div style="height:220px;margin-bottom:12px"><canvas id="chart"></canvas></div>
         <div id="mapWrap"><div id="vmap"></div><button class="map-expand-btn" onclick="openMapModal()" title="지도 크게 보기">&#x26F6;</button></div>
         <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
@@ -348,6 +352,8 @@
 
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
+let chartTab='year'; // 'year' | 'month'
+let chartDetailCtx=null; // {x, prices, entryMonthly} for re-rendering
 function isMobile(){ return window.innerWidth<=768; }
 let PRICES=null,VOLUMES=null,DETAILS=null;
 let merged=false, DM=[]; // DM = merged entries
@@ -393,6 +399,93 @@ function forwardFill(prices){
     else { result[i]=0; filled[i]=true; }
   }
   return {values:result, filled};
+}
+
+function switchChartTab(tab){
+  chartTab=tab;
+  document.getElementById('chtYear').className='cmp-sub-tab'+(tab==='year'?' active':'');
+  document.getElementById('chtMonth').className='cmp-sub-tab'+(tab==='month'?' active':'');
+  renderDetailChart();
+}
+
+function renderDetailChart(){
+  if(!chartDetailCtx) return;
+  const {prices,entryMonthly}=chartDetailCtx;
+  if(ch){ch.destroy();ch=null;}
+  const canvas=document.getElementById('chart');
+  if(!canvas) return;
+
+  if(chartTab==='month'&&entryMonthly&&entryMonthly.p.some(v=>v>0)){
+    // 월별 차트
+    const rawPrices=entryMonthly.p;
+    const rawCounts=entryMonthly.c;
+    const ff=entryMonthly._preFilled?{values:rawPrices, filled:entryMonthly._filled}:forwardFill(rawPrices);
+    let firstValid=-1, lastValid=-1;
+    for(let i=0;i<ff.values.length;i++){
+      if(ff.values[i]>0){
+        if(firstValid<0) firstValid=i;
+        lastValid=i;
+      }
+    }
+    if(firstValid<0) firstValid=0;
+    if(lastValid<0) lastValid=ff.values.length-1;
+    const sliceData=ff.values.slice(firstValid,lastValid+1);
+    const sliceFilled=ff.filled.slice(firstValid,lastValid+1);
+    const sliceCounts=rawCounts.slice(firstValid,lastValid+1);
+    const sliceLabels=MONTH_LABELS.slice(firstValid,lastValid+1);
+    const pointRadii=sliceData.map((v,i)=>v>0&&!sliceFilled[i]?2:0);
+    ch=new Chart(canvas,{
+      type:'line',
+      data:{labels:sliceLabels,datasets:[{
+        data:sliceData.map(v=>v>0?parseFloat(v.toFixed(2)):null),
+        borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.3,
+        pointRadius:pointRadii,
+        pointBackgroundColor:sliceData.map((v,i)=>!sliceFilled[i]?'#3b82f6':'transparent'),
+        pointBorderColor:'#1e293b',pointBorderWidth:1,borderWidth:2,spanGaps:true
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{
+          backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
+          callbacks:{
+            title:items=>sliceLabels[items[0].dataIndex],
+            label:c=>{
+              const idx=c.dataIndex;const cnt=sliceCounts[idx];const isFilled=sliceFilled[idx];
+              let label=c.parsed.y+'\uC5B5\uC6D0';
+              if(cnt>0) label+=' ('+cnt+'\uAC74)';
+              if(isFilled) label+=' (\uC9C1\uC804\uAC00 \uC720\uC9C0)';
+              return label;
+            }
+          }
+        }},
+        scales:{
+          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:9},maxRotation:0,
+            callback:function(val,idx){ return idx%12===0?sliceLabels[idx].slice(0,4):''; }
+          }},
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+        }
+      }
+    });
+  } else {
+    // 연도별 차트
+    const yrData=[],yrLabels=[];
+    prices.forEach((p,j)=>{if(p>0){yrData.push(p);yrLabels.push(Y[j]+'');}});
+    if(yrData.length===0) return;
+    ch=new Chart(canvas,{
+      type:'line',
+      data:{labels:yrLabels,datasets:[{
+        data:yrData,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',
+        fill:true,tension:.3,pointRadius:3,pointBackgroundColor:'#3b82f6',
+        pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,spanGaps:true
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
+        scales:{
+          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},maxRotation:0}},
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+        }
+      }
+    });
+  }
 }
 
 // === 비교 기능 ===
@@ -1888,142 +1981,24 @@ async function renderDetail(x){
     }
   }
 
-  if(ch)ch.destroy();
+  // 차트 컨텍스트 저장 (탭 전환용)
+  chartDetailCtx={prices, entryMonthly};
+  const hasMonthly=!!entryMonthly&&entryMonthly.p.some(v=>v>0);
+  const hasYearly=prices.some(p=>p>0);
 
-  // 연도별 가격에서 2015 이전 데이터 유무 확인
-  const i2015=Y.indexOf(2015);
-  const hasPreMonthly=prices.some((p,j)=>j<i2015&&p>0);
-
-  if(hasPreMonthly){
-    // 2006~ 데이터 존재: 연도별 차트 (전체 기간) + 월별 보조
-    // 연도별 데이터
-    const yrData=[],yrLabels=[];
-    prices.forEach((p,j)=>{if(p>0){yrData.push(p);yrLabels.push(Y[j]+'');}});
-
-    // 월별 데이터 (2015~): 연도별 뒤에 이어붙이지 않고, 연도별만 표시
-    // 단, 월별이 있으면 2015~ 구간을 더 정밀하게 보여주기 위해 2번째 데이터셋 추가 가능
-    // 여기서는 깔끔하게 연도별만 표시
-    ch=new Chart(document.getElementById('chart'),{
-      type:'line',
-      data:{
-        labels:yrLabels,
-        datasets:[{
-          data:yrData,
-          borderColor:'#3b82f6',
-          backgroundColor:'rgba(59,130,246,.08)',
-          fill:true,tension:.3,
-          pointRadius:3,pointBackgroundColor:'#3b82f6',pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,
-          spanGaps:true
-        }]
-      },
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
-        scales:{
-          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},maxRotation:0}},
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
-        }
-      }
-    });
-  } else if(entryMonthly){
-    // 2015~ 데이터만: 월별 차트
-    const rawPrices=entryMonthly.p;
-    const rawCounts=entryMonthly.c;
-    const ff=entryMonthly._preFilled?{values:rawPrices, filled:entryMonthly._filled}:forwardFill(rawPrices);
-
-    let firstValid=-1, lastValid=-1;
-    for(let i=0;i<ff.values.length;i++){
-      if(ff.values[i]>0){
-        if(firstValid<0) firstValid=i;
-        lastValid=i;
-      }
-    }
-    if(firstValid<0) firstValid=0;
-    if(lastValid<0) lastValid=ff.values.length-1;
-
-    const sliceData=ff.values.slice(firstValid,lastValid+1);
-    const sliceFilled=ff.filled.slice(firstValid,lastValid+1);
-    const sliceCounts=rawCounts.slice(firstValid,lastValid+1);
-    const sliceLabels=MONTH_LABELS.slice(firstValid,lastValid+1);
-
-    const pointRadii=sliceData.map((v,i)=>v>0&&!sliceFilled[i]?2:0);
-
-    ch=new Chart(document.getElementById('chart'),{
-      type:'line',
-      data:{
-        labels:sliceLabels,
-        datasets:[{
-          data:sliceData.map(v=>v>0?parseFloat(v.toFixed(2)):null),
-          borderColor:'#3b82f6',
-          backgroundColor:'rgba(59,130,246,.08)',
-          fill:true,tension:.3,
-          pointRadius:pointRadii,
-          pointBackgroundColor:sliceData.map((v,i)=>!sliceFilled[i]?'#3b82f6':'transparent'),
-          pointBorderColor:'#1e293b',
-          pointBorderWidth:1,
-          borderWidth:2,
-          spanGaps:true
-        }]
-      },
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{
-          legend:{display:false},
-          tooltip:{
-            backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
-            callbacks:{
-              title:items=>sliceLabels[items[0].dataIndex],
-              label:c=>{
-                const idx=c.dataIndex;
-                const cnt=sliceCounts[idx];
-                const isFilled=sliceFilled[idx];
-                let label=c.parsed.y+'\uC5B5\uC6D0';
-                if(cnt>0) label+=' ('+cnt+'\uAC74)';
-                if(isFilled) label+=' (직전가 유지)';
-                return label;
-              }
-            }
-          }
-        },
-        scales:{
-          x:{
-            grid:{color:'#1e293b'},
-            ticks:{
-              color:'#64748b',font:{size:9},maxRotation:0,
-              callback:function(val,idx){ return idx%12===0?sliceLabels[idx].slice(0,4):''; }
-            }
-          },
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
-        }
-      }
-    });
+  // 둘 다 있으면 탭 표시, 아니면 숨김
+  const tabWrap=document.getElementById('chartTabWrap');
+  if(hasYearly&&hasMonthly){
+    tabWrap.style.display='';
+    // 기본 탭: 2015 이전 데이터 있으면 연도별, 없으면 월별
+    const i2015=Y.indexOf(2015);
+    const hasPreData=prices.some((p,j)=>j<i2015&&p>0);
+    chartTab=hasPreData?'year':'month';
   } else {
-    // 월별도 연도별도 없으면 연도별 폴백
-    const vp=[],vy=[];
-    prices.forEach((p,j)=>{if(p>0){vp.push(p);vy.push(Y[j]);}});
-
-    ch=new Chart(document.getElementById('chart'),{
-      type:'line',
-      data:{
-        labels:vy.map(y=>y+''),
-        datasets:[{
-          data:vp,
-          borderColor:'#3b82f6',
-          backgroundColor:'rgba(59,130,246,.08)',
-          fill:true,tension:.3,
-          pointRadius:3,pointBackgroundColor:'#3b82f6',pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2
-        }]
-      },
-      options:{
-        responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
-        scales:{
-          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
-        }
-      }
-    });
+    tabWrap.style.display='none';
+    chartTab=hasYearly?'year':'month';
   }
+  renderDetailChart();
 
   document.getElementById('dp').scrollTop=0;
   showOnMap(x);
