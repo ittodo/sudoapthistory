@@ -983,6 +983,12 @@ function renderSimView(){
     html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
   } else {
     html+=`<div class="sim-slider"><label>대출이자율</label><input type="range" id="simLoanRate" min="1" max="8" value="3.5" step="0.1" oninput="updateSim()"><div class="val" id="simLoanRateVal">3.5%</div></div>`;
+    html+=`<div class="sim-slider"><label>대출한도</label><div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap">`;
+    [{v:0,l:'제한없음'},{v:6,l:'6억'},{v:4,l:'4억'},{v:2,l:'2억'}].forEach(o=>{
+      const isActive=o.v===0;
+      html+=`<button class="pg-btn sim-loancap-btn${isActive?' active':''}" data-cap="${o.v}" onclick="setSimLoanCap(${o.v})" style="flex:1;text-align:center;font-size:10px;${isActive?'background:var(--accent);color:#fff;border-color:var(--accent)':''}">${o.l}</button>`;
+    });
+    html+=`</div></div>`;
     html+=`<div class="sim-slider"><label>현재 월세(만원)</label><input type="range" id="simRent" min="0" max="300" value="100" step="10" oninput="updateSim()"><div class="val" id="simRentVal">100만원</div></div>`;
   }
   html+='</div>';
@@ -1009,6 +1015,17 @@ function renderSimView(){
 
   html+='<div id="simResults"></div>';
   el.innerHTML=html;
+  updateSim();
+}
+
+function setSimLoanCap(v){
+  document.querySelectorAll('.sim-loancap-btn').forEach(b=>{
+    const isActive=parseInt(b.dataset.cap)===v;
+    b.style.background=isActive?'var(--accent)':'';
+    b.style.color=isActive?'#fff':'';
+    b.style.borderColor=isActive?'var(--accent)':'';
+    b.classList.toggle('active',isActive);
+  });
   updateSim();
 }
 
@@ -1049,6 +1066,8 @@ function getSimParams(){
     const rent=parseInt(document.getElementById('simRent')?.value||100);
     const lr=document.getElementById('simLoanRateVal'); if(lr) lr.textContent=loanRate+'%';
     const rv=document.getElementById('simRentVal'); if(rv) rv.textContent=rent+'만원';
+    const capBtn=document.querySelector('.sim-loancap-btn.active');
+    const loanCap=capBtn?parseFloat(capBtn.dataset.cap):0; // 0=제한없음, 억 단위
     const ltvRates=[];
     document.querySelectorAll('.simLtvEach').forEach(el=>{
       const val=parseFloat(el.value);
@@ -1056,7 +1075,7 @@ function getSimParams(){
       const valEl=document.querySelector(`.simLtvEachVal[data-idx="${el.dataset.idx}"]`);
       if(valEl) valEl.textContent=val+'%';
     });
-    return {mode:'live', ltvRates, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent};
+    return {mode:'live', ltvRates, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent, loanCap};
   }
 }
 
@@ -1065,9 +1084,11 @@ function calcLiveReturn(areaData, params){
   const cagr=areaData.avgCagr;
   if(!price||price<=0||cagr===null) return null;
 
-  const {ltv, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent}=params;
-  const loanAmt=price*ltv/100;
+  const {ltv, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent, loanCap}=params;
+  let loanAmt=price*ltv/100;
+  if(loanCap>0&&loanAmt>loanCap) loanAmt=loanCap;
   const equity=price-loanAmt;
+  const effectiveLtv=loanAmt/price*100;
   const acqTaxRate=getAcqTaxRate(price, houseCnt);
   const acqTax=price*acqTaxRate;
   const brokerBuy=getBrokerFee(price);
@@ -1114,7 +1135,7 @@ function calcLiveReturn(areaData, params){
   return {
     roi, annualReturn, leverage, breakeven:beCagr,
     costs:{acquisition:acqTax, holding:holdingTax, capitalGains:capGainTax, interest:totalInterest, brokerBuy, brokerSell},
-    initInvest, totalProfit, price, futurePrice, loanAmt, equity, ltv, rentSaved,
+    initInvest, totalProfit, price, futurePrice, loanAmt, equity, ltv, effectiveLtv, loanCap, rentSaved,
     yearlyOwn, yearlyRent
   };
 }
@@ -1202,7 +1223,7 @@ function updateSim(){
   } else {
     rows=[
       ['매매가(25년)',r=>fmtOk(r.result.price)],
-      ['LTV',r=>r.result.ltv+'%'],
+      ['LTV(설정→실효)',r=>{const res=r.result;return res.effectiveLtv<res.ltv?`<span style="text-decoration:line-through;color:var(--muted)">${res.ltv}%</span> → ${res.effectiveLtv.toFixed(0)}% <span style="font-size:10px;color:#f59e0b">한도</span>`:res.ltv+'%';}],
       ['대출금',r=>fmtOk(r.result.loanAmt)],
       ['자기자본',r=>fmtOk(r.result.equity)],
       ['취득세',r=>fmtOk(r.result.costs.acquisition)],
