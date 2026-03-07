@@ -1887,14 +1887,47 @@ async function renderDetail(x){
 
   if(ch)ch.destroy();
 
-  if(entryMonthly){
-    // 월별 차트
+  // 연도별 가격에서 2015 이전 데이터 유무 확인
+  const i2015=Y.indexOf(2015);
+  const hasPreMonthly=prices.some((p,j)=>j<i2015&&p>0);
+
+  if(hasPreMonthly){
+    // 2006~ 데이터 존재: 연도별 차트 (전체 기간) + 월별 보조
+    // 연도별 데이터
+    const yrData=[],yrLabels=[];
+    prices.forEach((p,j)=>{if(p>0){yrData.push(p);yrLabels.push(Y[j]+'');}});
+
+    // 월별 데이터 (2015~): 연도별 뒤에 이어붙이지 않고, 연도별만 표시
+    // 단, 월별이 있으면 2015~ 구간을 더 정밀하게 보여주기 위해 2번째 데이터셋 추가 가능
+    // 여기서는 깔끔하게 연도별만 표시
+    ch=new Chart(document.getElementById('chart'),{
+      type:'line',
+      data:{
+        labels:yrLabels,
+        datasets:[{
+          data:yrData,
+          borderColor:'#3b82f6',
+          backgroundColor:'rgba(59,130,246,.08)',
+          fill:true,tension:.3,
+          pointRadius:3,pointBackgroundColor:'#3b82f6',pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,
+          spanGaps:true
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
+        scales:{
+          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},maxRotation:0}},
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+        }
+      }
+    });
+  } else if(entryMonthly){
+    // 2015~ 데이터만: 월별 차트
     const rawPrices=entryMonthly.p;
     const rawCounts=entryMonthly.c;
-    // _preFilled이면 이미 forward-fill 처리된 상태
     const ff=entryMonthly._preFilled?{values:rawPrices, filled:entryMonthly._filled}:forwardFill(rawPrices);
 
-    // 첫 유효값과 마지막 유효값 사이만 표시
     let firstValid=-1, lastValid=-1;
     for(let i=0;i<ff.values.length;i++){
       if(ff.values[i]>0){
@@ -1936,10 +1969,7 @@ async function renderDetail(x){
           tooltip:{
             backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
             callbacks:{
-              title:items=>{
-                const idx=items[0].dataIndex;
-                return sliceLabels[idx];
-              },
+              title:items=>sliceLabels[items[0].dataIndex],
               label:c=>{
                 const idx=c.dataIndex;
                 const cnt=sliceCounts[idx];
@@ -1965,14 +1995,14 @@ async function renderDetail(x){
       }
     });
   } else {
-    // 월별 데이터 없으면 기존 연도별 차트 폴백
+    // 월별도 연도별도 없으면 연도별 폴백
     const vp=[],vy=[];
     prices.forEach((p,j)=>{if(p>0){vp.push(p);vy.push(Y[j]);}});
 
     ch=new Chart(document.getElementById('chart'),{
       type:'line',
       data:{
-        labels:vy.map(y=>y+'\uB144'),
+        labels:vy.map(y=>y+''),
         datasets:[{
           data:vp,
           borderColor:'#3b82f6',
