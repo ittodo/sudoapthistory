@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>서울·경기 아파트 투자 스크리너</title>
+<meta name="description" content="국토교통부 실거래가 데이터 기반 서울·경기 아파트 49,015개 단지+평형 투자 지표 분석 스크리너">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4171612672605986"
+     crossorigin="anonymous"></script>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -47,15 +50,12 @@
   .sa.on { opacity: 1; color: var(--accent); }
   .pg-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; }
   .pg-btn:hover { border-color: var(--muted); color: #fff; }
-  /* 평형 탭 */
   .area-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
   .area-tab { padding: 3px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 500; transition: all .15s; }
   .area-tab:hover { border-color: var(--muted); color: #fff; }
   .area-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  /* 연도 행 (클릭 가능) */
   .yr-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 4px; border-bottom: 1px solid #1e293b; cursor: pointer; border-radius: 3px; transition: background .1s; }
   .yr-row:hover { background: rgba(59,130,246,.1); }
-  /* 모달 */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 1000; display: flex; align-items: center; justify-content: center; }
   .modal-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 680px; max-width: 95vw; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
   .modal-header { padding: 16px; border-bottom: 1px solid var(--border); display: flex; align-items: start; justify-content: space-between; }
@@ -74,25 +74,21 @@
   .tx-stat .label { font-size: 10px; color: var(--muted); }
   .tx-stat .value { font-size: 16px; font-weight: 700; margin-top: 2px; }
   .footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
-  /* 지도 */
   #mapWrap { height: 200px; margin-bottom: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: none; position: relative; }
   #vmap { width: 100%; height: 100%; }
   #vmap .leaflet-control-attribution, #vmapBig .leaflet-control-attribution { font-size: 9px; background: rgba(30,41,59,.8); color: #64748b; }
   #vmap .leaflet-control-attribution a, #vmapBig .leaflet-control-attribution a { color: #94a3b8; }
   .map-expand-btn { position: absolute; top: 8px; right: 8px; z-index: 500; width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: rgba(15,23,42,.85); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all .15s; }
   .map-expand-btn:hover { background: var(--card); color: #fff; border-color: var(--muted); }
-  /* 지도 팝업 모달 */
   .map-modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 1001; display: flex; align-items: center; justify-content: center; }
   .map-modal-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; width: 90vw; height: 80vh; max-width: 1200px; overflow: hidden; display: flex; flex-direction: column; }
   .map-modal-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .map-modal-body { flex: 1; position: relative; }
   #vmapBig { width: 100%; height: 100%; }
-  /* 뷰 모드 탭 */
   .view-tabs { display: flex; gap: 2px; margin-bottom: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; }
   .view-tab { padding: 6px 16px; border-radius: 6px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
   .view-tab:hover { color: #fff; }
   .view-tab.active { background: var(--accent); color: #fff; }
-  /* 지역 비교 뷰 */
   .area-view { display: none; }
   .area-view.show { display: flex; gap: 12px; }
   .area-left { width: 280px; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; align-self: flex-start; position: sticky; top: 12px; max-height: calc(100vh - 120px); overflow-y: auto; }
@@ -130,6 +126,16 @@
   .cmp-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
   .cmp-empty .icon { font-size: 36px; margin-bottom: 12px; opacity: .4; }
   .cmp-empty .msg { font-size: 13px; }
+  /* 단지 목록 테이블 in comparison */
+  .complex-list-section { margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+  .complex-list-section h4 { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .complex-list-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .complex-list-table th { padding: 5px 6px; text-align: center; color: var(--muted); font-weight: 600; font-size: 10px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+  .complex-list-table th:first-child, .complex-list-table th:nth-child(2) { text-align: left; }
+  .complex-list-table td { padding: 4px 6px; border-bottom: 1px solid #1e293b; text-align: center; }
+  .complex-list-table td:first-child, .complex-list-table td:nth-child(2) { text-align: left; }
+  .complex-list-table tbody tr { cursor: pointer; transition: background .1s; }
+  .complex-list-table tbody tr:hover { background: rgba(59,130,246,.08); }
 </style>
 </head>
 <body>
@@ -149,7 +155,7 @@
 
   <div class="view-tabs">
     <button class="view-tab active" id="vtComplex" onclick="switchView('complex')">단지별</button>
-    <button class="view-tab" id="vtArea" onclick="switchView('area')">지역별 비교</button>
+    <button class="view-tab" id="vtArea" onclick="switchView('area')">비교</button>
   </div>
 
   <div id="complexView">
@@ -206,7 +212,7 @@
         </div>
         <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
-        <div style="height:200px;margin-bottom:12px"><canvas id="chart"></canvas></div>
+        <div style="height:220px;margin-bottom:12px"><canvas id="chart"></canvas></div>
         <div id="mapWrap"><div id="vmap"></div><button class="map-expand-btn" onclick="openMapModal()" title="지도 크게 보기">&#x26F6;</button></div>
         <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
       </div>
@@ -218,7 +224,8 @@
   <div id="areaView" class="area-view">
     <div class="area-left">
       <div class="level-tabs">
-        <button class="level-tab active" id="lvGu" onclick="setAreaLevel('gu')">시/구</button>
+        <button class="level-tab active" id="lvComplex" onclick="setAreaLevel('complex')">단지</button>
+        <button class="level-tab" id="lvGu" onclick="setAreaLevel('gu')">시/구</button>
         <button class="level-tab" id="lvDong" onclick="setAreaLevel('dong')">동</button>
       </div>
       <div style="margin-bottom:8px">
@@ -228,14 +235,14 @@
         <select id="aGu" class="fi" onchange="renderAreaList()"><option value="">전체 시/구</option></select>
       </div>
       <div style="margin-bottom:8px">
-        <input id="aSearch" type="text" class="fi" placeholder="지역명 검색..." oninput="renderAreaList()">
+        <input id="aSearch" type="text" class="fi" placeholder="검색..." oninput="renderAreaList()">
       </div>
       <div class="area-badges" id="areaBadges"></div>
       <div class="area-checklist" id="areaChecklist"></div>
     </div>
     <div class="area-right">
       <div id="cmpResult">
-        <div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 지역을 선택하세요 (최대 4개)</div></div>
+        <div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 4개)</div></div>
       </div>
     </div>
   </div>
@@ -275,22 +282,49 @@
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
 let PRICES=null,VOLUMES=null,DETAILS=null;
-// 지역 비교
+// 비교
 let viewMode='complex';
-let areaLevel='gu'; // 'gu' | 'dong'
+let areaLevel='gu'; // 'complex' | 'gu' | 'dong'
 let selectedAreas=[]; // max 4
 let areaCache={}; // name → aggregated data
 let cmpChart=null;
 const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b'];
 let TX_CACHE={};
-let DI=null; // D index map: i → entry (for fast lookup by data index)
-let curDetailIdx=null; // current detail data index (for area tab switching)
+let DI=null;
+let curDetailIdx=null;
 const Y=[2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026];
 const VWORLD_KEY='8B74D8CC-0DBF-311A-8E6E-3FBBB54FD034';
 let LMAP=null, LMARKER=null, GEO_DATA=null;
 const GEO_GU={"가평군":[37.8776,127.6018],"고양시 덕양구":[37.6101,126.8547],"고양시 일산동구":[37.657,126.7774],"고양시 일산서구":[37.7024,126.7282],"과천시":[37.418,126.9872],"광명시":[37.4238,126.87],"광주시":[37.4125,127.2641],"구리시":[37.6411,127.1312],"군포시":[37.3766,126.9451],"김포시":[37.6333,126.6751],"남양주시":[37.6387,127.2267],"동두천시":[37.9214,127.1156],"부천시 소사구":[37.4677,126.8061],"부천시 오정구":[37.5385,126.8211],"부천시 원미구":[37.5163,126.7799],"성남시 분당구":[37.3397,127.1295],"성남시 수정구":[37.4375,127.1063],"성남시 중원구":[37.4322,127.1934],"수원시 권선구":[37.2561,126.9841],"수원시 영통구":[37.2478,127.0532],"수원시 장안구":[37.3395,127.0106],"수원시 팔달구":[37.2796,127.0071],"시흥시":[37.3701,126.7595],"안산시 단원구":[37.3357,126.8368],"안산시 상록구":[37.3201,126.909],"안성시":[37.0213,127.2855],"안양시 동안구":[37.4142,126.9721],"안양시 만안구":[37.4078,126.9091],"양주시":[37.8382,127.0714],"양평군":[37.4752,127.4928],"여주시":[37.1944,127.5553],"연천군":[38.0244,127.0529],"오산시":[37.148,127.0486],"용인시 기흥구":[37.2195,127.1488],"용인시 수지구":[37.3499,127.0767],"용인시 처인구":[37.2477,127.2415],"의왕시":[37.3366,126.972],"의정부시":[37.7478,127.0521],"이천시":[37.2917,127.4761],"파주시":[37.7954,126.7573],"평택시":[37.0414,127.0885],"포천시":[37.8307,127.1828],"하남시":[37.5251,127.1693],"화성시 동탄구":[37.1843,127.0776],"화성시 만세구":[37.2151,126.8158],"화성시 병점구":[37.2211,127.0518],"화성시 효행구":[37.2308,126.9929],"강남구":[37.4829,127.0752],"강동구":[37.5797,127.1763],"강북구":[37.6189,127.0364],"강서구":[37.5649,126.8575],"관악구":[37.4753,126.9715],"광진구":[37.5569,127.1129],"구로구":[37.4861,126.8816],"금천구":[37.4823,126.8861],"노원구":[37.6202,127.1041],"도봉구":[37.6923,127.0478],"동대문구":[37.5764,127.0667],"동작구":[37.5161,126.9459],"마포구":[37.5513,126.9621],"서대문구":[37.5845,126.923],"서초구":[37.4616,127.0675],"성동구":[37.5577,127.0231],"성북구":[37.6067,127.0274],"송파구":[37.5031,127.1231],"양천구":[37.5473,126.8806],"영등포구":[37.5426,126.9019],"용산구":[37.5498,126.9728],"은평구":[37.6263,126.9201],"종로구":[37.5861,126.9854],"중구":[37.5654,127.0034],"중랑구":[37.6061,127.1144]};
 
-// === 지역 비교 기능 ===
+// === 월별 데이터 ===
+const MONTHLY_CACHE={}; // gu → {entryIdx: {p:[132], c:[132]}}
+const MONTH_LABELS=(()=>{const a=[];for(let y=2015;y<=2026;y++)for(let m=1;m<=12;m++)a.push(y+'.'+(m<10?'0'+m:m));return a;})();
+
+async function loadMonthly(gu){
+  if(MONTHLY_CACHE[gu]) return MONTHLY_CACHE[gu];
+  try{
+    const r=await fetch('data/monthly/'+encodeURIComponent(gu)+'.json');
+    const j=await r.json();
+    MONTHLY_CACHE[gu]=j;
+    return j;
+  }catch(e){ console.warn('Monthly load failed for',gu,e); return {}; }
+}
+
+function forwardFill(prices){
+  // 0인 월을 직전 유효값으로 채움. filled[i]=true면 forward-fill된 값
+  const result=new Array(prices.length);
+  const filled=new Array(prices.length);
+  let last=0;
+  for(let i=0;i<prices.length;i++){
+    if(prices[i]>0){ last=prices[i]; result[i]=prices[i]; filled[i]=false; }
+    else if(last>0){ result[i]=last; filled[i]=true; }
+    else { result[i]=0; filled[i]=true; }
+  }
+  return {values:result, filled};
+}
+
+// === 비교 기능 ===
 function switchView(mode){
   viewMode=mode;
   document.getElementById('complexView').style.display=mode==='complex'?'':'none';
@@ -303,16 +337,17 @@ function switchView(mode){
 
 function setAreaLevel(level){
   areaLevel=level;
+  document.getElementById('lvComplex').className='level-tab'+(level==='complex'?' active':'');
   document.getElementById('lvGu').className='level-tab'+(level==='gu'?' active':'');
   document.getElementById('lvDong').className='level-tab'+(level==='dong'?' active':'');
-  document.getElementById('aGuFilter').style.display=level==='dong'?'':'none';
+  document.getElementById('aGuFilter').style.display=(level==='dong'||level==='complex')?'':'none';
   selectedAreas=[]; areaCache={};
-  if(level==='dong') buildAreaGuFilter();
+  if(level==='dong'||level==='complex') buildAreaGuFilter();
   renderAreaList(); renderComparison(); saveHash();
 }
 
 function onAreaRegion(){
-  if(areaLevel==='dong') buildAreaGuFilter();
+  if(areaLevel==='dong'||areaLevel==='complex') buildAreaGuFilter();
   renderAreaList();
 }
 
@@ -331,64 +366,121 @@ function buildAreaGuFilter(){
 function getAreaNames(){
   const rv=document.getElementById('aR').value;
   const sq=document.getElementById('aSearch').value.toLowerCase();
-  const names=new Set();
-  if(areaLevel==='gu'){
+  const names=[];
+
+  if(areaLevel==='complex'){
+    // 단지 목록: DI에서 필터링
+    const guF=document.getElementById('aGu').value;
+    const seen=new Set();
+    let count=0;
+    for(const x of D){
+      if(rv!==''&&x.r!==parseInt(rv)) continue;
+      if(guF&&x.g!==guF) continue;
+      const label=x.n+' '+x.a+'㎡ ('+x.g+')';
+      if(sq&&!label.toLowerCase().includes(sq)) continue;
+      const key='idx:'+x.i;
+      if(!seen.has(key)){ seen.add(key); names.push({label, key}); count++; }
+      if(count>=200) break;
+    }
+    return names;
+  } else if(areaLevel==='gu'){
+    const nameSet=new Set();
     Object.entries(LT).forEach(([rk,ro])=>{
       if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
-      Object.keys(ro).forEach(g=>{ if(!sq||g.toLowerCase().includes(sq)) names.add(g); });
+      Object.keys(ro).forEach(g=>{ if(!sq||g.toLowerCase().includes(sq)) nameSet.add(g); });
     });
+    return [...nameSet].sort().map(n=>({label:n,key:n}));
   } else {
     const guF=document.getElementById('aGu').value;
+    const nameSet=new Set();
     Object.entries(LT).forEach(([rk,ro])=>{
       if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
       Object.entries(ro).forEach(([g,dset])=>{
         if(guF&&g!==guF) return;
         dset.forEach(d=>{
           const label=g+' '+d;
-          if(!sq||label.toLowerCase().includes(sq)) names.add(label);
+          if(!sq||label.toLowerCase().includes(sq)) nameSet.add(label);
         });
       });
     });
+    return [...nameSet].sort().map(n=>({label:n,key:n}));
   }
-  return [...names].sort();
 }
 
 function renderAreaList(){
-  const names=getAreaNames();
+  const items=getAreaNames();
   const el=document.getElementById('areaChecklist');
   let h='';
-  names.forEach(name=>{
-    const checked=selectedAreas.includes(name);
-    h+=`<div class="area-item${checked?' checked':''}" onclick="toggleArea('${name.replace(/'/g,"\\'")}')">
+  items.forEach(item=>{
+    const checked=selectedAreas.includes(item.key);
+    h+=`<div class="area-item${checked?' checked':''}" onclick="toggleArea('${item.key.replace(/'/g,"\\'")}')">
       <div class="area-check">${checked?'✓':''}</div>
-      <span>${name}</span>
+      <span>${item.label}</span>
     </div>`;
   });
   el.innerHTML=h||'<div style="color:#64748b;padding:12px;text-align:center;font-size:11px">검색 결과 없음</div>';
   renderBadges();
 }
 
-function toggleArea(name){
-  const idx=selectedAreas.indexOf(name);
+function toggleArea(key){
+  const idx=selectedAreas.indexOf(key);
   if(idx>=0){ selectedAreas.splice(idx,1); }
-  else if(selectedAreas.length<4){ selectedAreas.push(name); }
+  else if(selectedAreas.length<4){ selectedAreas.push(key); }
   renderAreaList(); renderComparison(); saveHash();
 }
 
 function renderBadges(){
   const el=document.getElementById('areaBadges');
-  el.innerHTML=selectedAreas.map((name,i)=>
-    `<span class="area-badge" style="background:${CMP_COLORS[i]}22;color:${CMP_COLORS[i]}" onclick="toggleArea('${name.replace(/'/g,"\\'")}')">${name}<span class="x">×</span></span>`
-  ).join('');
+  el.innerHTML=selectedAreas.map((key,i)=>{
+    const label=areaLevel==='complex'?getComplexLabel(key):key;
+    return `<span class="area-badge" style="background:${CMP_COLORS[i]}22;color:${CMP_COLORS[i]}" onclick="toggleArea('${key.replace(/'/g,"\\'")}')">${label}<span class="x">×</span></span>`;
+  }).join('');
 }
 
-function aggregateArea(name){
-  if(areaCache[name]) return areaCache[name];
+function getComplexLabel(key){
+  if(key.startsWith('idx:')){
+    const idx=parseInt(key.slice(4));
+    const x=DI[idx];
+    return x?(x.n+' '+x.a+'㎡'):key;
+  }
+  return key;
+}
+
+function aggregateArea(key){
+  if(areaCache[key]) return areaCache[key];
+
+  if(areaLevel==='complex'){
+    // 단지 비교: 개별 단지 데이터 직접 반환
+    const dataIdx=parseInt(key.slice(4));
+    const x=DI[dataIdx];
+    if(!x) return null;
+
+    const yearAvg=new Array(12).fill(null);
+    if(PRICES){
+      const pr=PRICES[String(x.i)];
+      if(pr) pr.forEach((p,j)=>{ yearAvg[j]=p>0?p:null; });
+    }
+
+    let y25=null;
+    if(yearAvg[9]&&yearAvg[10]) y25=((yearAvg[10]-yearAvg[9])/yearAvg[9]*100);
+
+    const result={
+      name: x.n+' '+x.a+'㎡',
+      key,
+      cnt:1, totalTx:x.t||0,
+      avgP25:x.p25, avgCagr:x.c, avgMdd:x.m,
+      avgSharpe:x.s, avgQ:x.q, avgK:x.k, y25,
+      yearAvg, items:[x], gu:x.g
+    };
+    areaCache[key]=result;
+    return result;
+  }
+
   let items;
   if(areaLevel==='gu'){
-    items=D.filter(x=>x.g===name);
+    items=D.filter(x=>x.g===key);
   } else {
-    const parts=name.split(' ');
+    const parts=key.split(' ');
     const dong=parts.pop();
     const gu=parts.join(' ');
     items=D.filter(x=>x.g===gu&&x.d===dong);
@@ -405,7 +497,6 @@ function aggregateArea(name){
   const avgQ=avg(items.filter(x=>x.q!==null).map(x=>x.q));
   const avgK=avg(items.filter(x=>x.k!==null).map(x=>x.k));
 
-  // 연도별 평균 가격 (PRICES에서 집계)
   const yearAvg=new Array(12).fill(null);
   if(PRICES){
     for(let yi=0;yi<12;yi++){
@@ -418,19 +509,26 @@ function aggregateArea(name){
     }
   }
 
-  // 24→25 수익률 계산
   let y25=null;
   if(yearAvg[9]&&yearAvg[10]) y25=((yearAvg[10]-yearAvg[9])/yearAvg[9]*100);
 
-  const result={name,cnt,totalTx,avgP25,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg};
-  areaCache[name]=result;
+  // 구 이름 추출 (동 레벨일 때)
+  let gu=key;
+  if(areaLevel==='dong'){
+    const parts=key.split(' ');
+    parts.pop();
+    gu=parts.join(' ');
+  }
+
+  const result={name:key,key,cnt,totalTx,avgP25,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu};
+  areaCache[key]=result;
   return result;
 }
 
-function renderComparison(){
+async function renderComparison(){
   const el=document.getElementById('cmpResult');
   if(selectedAreas.length===0){
-    el.innerHTML='<div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 지역을 선택하세요 (최대 4개)</div></div>';
+    el.innerHTML='<div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 4개)</div></div>';
     return;
   }
   const data=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
@@ -440,11 +538,13 @@ function renderComparison(){
   // 요약 카드
   html+='<div class="cmp-cards-grid">';
   data.forEach((d,i)=>{
-    const fm=v=>v!==null?v.toFixed(1)+'%':'-';
+    const fm=v=>v!==null&&v!==undefined?v.toFixed(1)+'%':'-';
+    const cntLabel=areaLevel==='complex'?'면적':('단지수');
+    const cntVal=areaLevel==='complex'?(DI[parseInt(d.key.slice(4))]||{}).a+'㎡':d.cnt;
     html+=`<div class="cmp-summary" style="border-left-color:${CMP_COLORS[i]}">
       <div class="name" style="color:${CMP_COLORS[i]}">${d.name}</div>
       <div class="stats">
-        <span class="stat-label">단지수</span><span class="stat-value">${d.cnt}</span>
+        <span class="stat-label">${cntLabel}</span><span class="stat-value">${cntVal}</span>
         <span class="stat-label">25년 평균가</span><span class="stat-value">${d.avgP25?d.avgP25.toFixed(2)+'억':'-'}</span>
         <span class="stat-label">CAGR</span><span class="stat-value ${d.avgCagr>0?'up':'dn'}">${fm(d.avgCagr)}</span>
         <span class="stat-label">MDD</span><span class="stat-value">${fm(d.avgMdd)}</span>
@@ -454,7 +554,7 @@ function renderComparison(){
   html+='</div>';
 
   // 차트
-  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">평균 가격 추이 (억원)</h3><div style="height:260px"><canvas id="cmpChart"></canvas></div></div>';
+  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">평균 가격 추이 (억원, 월별)</h3><div style="height:280px"><canvas id="cmpChart"></canvas></div></div>';
 
   // 상세 비교 테이블
   html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">지표 비교</h3>';
@@ -467,7 +567,7 @@ function renderComparison(){
     ['총 거래건수',d=>d.totalTx,v=>v.toLocaleString(),'max'],
     ['25년 평균가(억)',d=>d.avgP25,v=>v?v.toFixed(2):'-','max'],
     ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
-    ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'], // MDD: closer to 0 is better → max
+    ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'],
     ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
     ['24→25 수익(%)',d=>d.y25,v=>v!==null?v.toFixed(1):'-','max'],
     ['21→25 수익(%)',d=>d.avgQ,v=>v!==null?v.toFixed(1):'-','max'],
@@ -488,38 +588,129 @@ function renderComparison(){
   });
   html+='</tbody></table></div>';
 
+  // 구/동 비교 시 단지 목록
+  if(areaLevel!=='complex'){
+    data.forEach((d,i)=>{
+      if(!d.items||d.items.length===0) return;
+      const sortedItems=[...d.items].sort((a,b)=>(b.p25||0)-(a.p25||0));
+      const displayItems=sortedItems.slice(0,50);
+      html+=`<div class="complex-list-section" style="border-left:3px solid ${CMP_COLORS[i]}">
+        <h4 style="color:${CMP_COLORS[i]}">${d.name} 단지 목록 (${d.items.length}개${d.items.length>50?' 중 상위 50개':''})</h4>
+        <table class="complex-list-table">
+          <thead><tr><th>단지명</th><th>동</th><th>면적</th><th>25년가</th><th>CAGR</th><th>MDD</th><th>거래</th></tr></thead>
+          <tbody>`;
+      displayItems.forEach(x=>{
+        const cv=x.c!==null?x.c+'%':'-';
+        const cc=x.c>0?'up':x.c<0?'dn':'';
+        html+=`<tr onclick="goToComplex(${x.i})">
+          <td style="text-align:left">${x.n}</td>
+          <td style="text-align:left;color:#64748b">${x.d||'-'}</td>
+          <td>${x.a}㎡</td>
+          <td style="font-weight:600">${x.p25?x.p25+'억':'-'}</td>
+          <td class="${cc}">${cv}</td>
+          <td>${x.m}%</td>
+          <td style="color:#64748b">${x.v}</td>
+        </tr>`;
+      });
+      html+=`</tbody></table></div>`;
+    });
+  }
+
   el.innerHTML=html;
 
-  // 차트 렌더링
-  renderComparisonChart(data);
+  // 월별 비교 차트 렌더링
+  await renderComparisonChartMonthly(data);
 }
 
-function renderComparisonChart(data){
+function goToComplex(dataIdx){
+  const x=DI[dataIdx];
+  if(!x) return;
+  switchView('complex');
+  curDetailIdx=dataIdx;
+  showDetail(x);
+}
+
+async function renderComparisonChartMonthly(data){
   const ctx=document.getElementById('cmpChart');
   if(!ctx) return;
   if(cmpChart) cmpChart.destroy();
 
-  const datasets=data.map((d,i)=>({
-    label:d.name,
-    data:d.yearAvg.map(v=>v?parseFloat(v.toFixed(2)):null),
-    borderColor:CMP_COLORS[i],
-    backgroundColor:CMP_COLORS[i]+'18',
-    fill:false,tension:.3,
-    pointRadius:3,pointBackgroundColor:CMP_COLORS[i],pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,
-    spanGaps:true
-  }));
+  // 각 데이터의 구 이름들 수집 → monthly 데이터 로드
+  const gusToLoad=new Set();
+  data.forEach(d=>{
+    if(d.items) d.items.forEach(x=>gusToLoad.add(x.g));
+    if(d.gu) gusToLoad.add(d.gu);
+  });
+  await Promise.all([...gusToLoad].map(g=>loadMonthly(g)));
+
+  const datasets=data.map((d,i)=>{
+    let monthlyPrices=new Array(132).fill(0);
+    let monthlyCounts=new Array(132).fill(0);
+
+    if(areaLevel==='complex'){
+      const dataIdx=parseInt(d.key.slice(4));
+      const x=DI[dataIdx];
+      if(x){
+        const md=MONTHLY_CACHE[x.g];
+        if(md&&md[String(x.i)]){
+          monthlyPrices=md[String(x.i)].p.slice();
+          monthlyCounts=md[String(x.i)].c.slice();
+        }
+      }
+    } else {
+      // 구/동: 해당 단지들의 월별 평균
+      if(d.items){
+        for(let slot=0;slot<132;slot++){
+          const vals=[];
+          d.items.forEach(x=>{
+            const md=MONTHLY_CACHE[x.g];
+            if(md&&md[String(x.i)]&&md[String(x.i)].p[slot]>0){
+              vals.push(md[String(x.i)].p[slot]);
+            }
+          });
+          if(vals.length) monthlyPrices[slot]=vals.reduce((a,b)=>a+b,0)/vals.length;
+        }
+      }
+    }
+
+    const ff=forwardFill(monthlyPrices);
+    const pointRadii=ff.values.map((v,j)=>v>0&&!ff.filled[j]?2:0);
+
+    return {
+      label:d.name,
+      data:ff.values.map(v=>v>0?parseFloat(v.toFixed(2)):null),
+      borderColor:CMP_COLORS[i],
+      backgroundColor:CMP_COLORS[i]+'18',
+      fill:false,tension:.3,
+      pointRadius:pointRadii,
+      pointBackgroundColor:CMP_COLORS[i],
+      pointBorderColor:'#1e293b',
+      pointBorderWidth:1,
+      borderWidth:2,
+      spanGaps:true
+    };
+  });
 
   cmpChart=new Chart(ctx,{
     type:'line',
-    data:{ labels:Y.map(y=>y+'년'), datasets },
+    data:{ labels:MONTH_LABELS, datasets },
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{
         legend:{position:'top',labels:{color:'#94a3b8',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
-        tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'억'}}
+        tooltip:{
+          backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
+          callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'억'}
+        }
       },
       scales:{
-        x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
+        x:{
+          grid:{color:'#1e293b'},
+          ticks:{
+            color:'#64748b',font:{size:10},maxRotation:0,
+            callback:function(val,idx){ return idx%12===0?MONTH_LABELS[idx].slice(0,4):''; }
+          }
+        },
         y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'억'}}
       }
     }
@@ -546,14 +737,12 @@ async function init(){
     D=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
   }
 
-  // Build index map: data index → entry object
   DI={};
   D.forEach(x=>{ DI[x.i]=x; });
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   buildLoc();
 
-  // URL 해시 복원, 없으면 기본 필터 적용
   if(!loadHash()) af();
 
   document.getElementById('loading').style.display='none';
@@ -789,13 +978,13 @@ function switchArea(dataIdx){
   showDetail(x);
 }
 
-function renderDetail(x){
+async function renderDetail(x){
   const prices=getPrices(x.i);
   if(!prices)return;
   const volumes=getVolumes(x.i);
   const details=getDetails(x.i);
 
-  // 연도별 가격 리스트 (min/max 포함, 클릭 가능)
+  // 연도별 가격 리스트
   let yh='';
   prices.forEach((p,j)=>{
     if(p>0){
@@ -808,7 +997,6 @@ function renderDetail(x){
       }
       const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}\uAC74</span>`:'';
 
-      // min/max from details
       let rangeStr='';
       if(details && details[j]){
         const d=details[j];
@@ -829,39 +1017,122 @@ function renderDetail(x){
   });
   document.getElementById('yp').innerHTML=yh;
 
-  // 차트
-  const vp=[],vy=[];
-  prices.forEach((p,j)=>{if(p>0){vp.push(p);vy.push(2015+j);}});
+  // 월별 차트
+  const md=await loadMonthly(x.g);
+  const entryMonthly=md[String(x.i)];
 
   if(ch)ch.destroy();
-  ch=new Chart(document.getElementById('chart'),{
-    type:'line',
-    data:{
-      labels:vy.map(y=>y+'\uB144'),
-      datasets:[{
-        data:vp,
-        borderColor:'#3b82f6',
-        backgroundColor:'rgba(59,130,246,.08)',
-        fill:true,tension:.3,
-        pointRadius:3,pointBackgroundColor:'#3b82f6',pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2
-      }]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
-      scales:{
-        x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
-        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+
+  if(entryMonthly){
+    // 월별 차트
+    const rawPrices=entryMonthly.p;
+    const rawCounts=entryMonthly.c;
+    const ff=forwardFill(rawPrices);
+
+    // 첫 유효값과 마지막 유효값 사이만 표시
+    let firstValid=-1, lastValid=-1;
+    for(let i=0;i<ff.values.length;i++){
+      if(ff.values[i]>0){
+        if(firstValid<0) firstValid=i;
+        lastValid=i;
       }
     }
-  });
+    if(firstValid<0) firstValid=0;
+    if(lastValid<0) lastValid=ff.values.length-1;
+
+    const sliceData=ff.values.slice(firstValid,lastValid+1);
+    const sliceFilled=ff.filled.slice(firstValid,lastValid+1);
+    const sliceCounts=rawCounts.slice(firstValid,lastValid+1);
+    const sliceLabels=MONTH_LABELS.slice(firstValid,lastValid+1);
+
+    const pointRadii=sliceData.map((v,i)=>v>0&&!sliceFilled[i]?2:0);
+
+    ch=new Chart(document.getElementById('chart'),{
+      type:'line',
+      data:{
+        labels:sliceLabels,
+        datasets:[{
+          data:sliceData.map(v=>v>0?parseFloat(v.toFixed(2)):null),
+          borderColor:'#3b82f6',
+          backgroundColor:'rgba(59,130,246,.08)',
+          fill:true,tension:.3,
+          pointRadius:pointRadii,
+          pointBackgroundColor:sliceData.map((v,i)=>!sliceFilled[i]?'#3b82f6':'transparent'),
+          pointBorderColor:'#1e293b',
+          pointBorderWidth:1,
+          borderWidth:2,
+          spanGaps:true
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
+            callbacks:{
+              title:items=>{
+                const idx=items[0].dataIndex;
+                return sliceLabels[idx];
+              },
+              label:c=>{
+                const idx=c.dataIndex;
+                const cnt=sliceCounts[idx];
+                const isFilled=sliceFilled[idx];
+                let label=c.parsed.y+'\uC5B5\uC6D0';
+                if(cnt>0) label+=' ('+cnt+'\uAC74)';
+                if(isFilled) label+=' (직전가 유지)';
+                return label;
+              }
+            }
+          }
+        },
+        scales:{
+          x:{
+            grid:{color:'#1e293b'},
+            ticks:{
+              color:'#64748b',font:{size:9},maxRotation:0,
+              callback:function(val,idx){ return idx%12===0?sliceLabels[idx].slice(0,4):''; }
+            }
+          },
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+        }
+      }
+    });
+  } else {
+    // 월별 데이터 없으면 기존 연도별 차트 폴백
+    const vp=[],vy=[];
+    prices.forEach((p,j)=>{if(p>0){vp.push(p);vy.push(2015+j);}});
+
+    ch=new Chart(document.getElementById('chart'),{
+      type:'line',
+      data:{
+        labels:vy.map(y=>y+'\uB144'),
+        datasets:[{
+          data:vp,
+          borderColor:'#3b82f6',
+          backgroundColor:'rgba(59,130,246,.08)',
+          fill:true,tension:.3,
+          pointRadius:3,pointBackgroundColor:'#3b82f6',pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
+        scales:{
+          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+        }
+      }
+    });
+  }
 
   document.getElementById('dp').scrollTop=0;
   showOnMap(x);
 }
 
 // --- 거래 드릴다운 모달 ---
-let txModalData=null, txModalYear=null, txModalMonth=0; // 0=전체
+let txModalData=null, txModalYear=null, txModalMonth=0;
 
 async function openTxModal(dataIdx, year){
   const x=DI[dataIdx];
@@ -875,7 +1146,6 @@ async function openTxModal(dataIdx, year){
   document.getElementById('txMonthTabs').innerHTML='';
   document.getElementById('txTableWrap').innerHTML='';
 
-  // Load TX data
   const txData=await loadTx(x.g);
   const entryTx=txData[String(dataIdx)];
   const yearTx=entryTx?entryTx[String(year)]:null;
@@ -890,7 +1160,6 @@ function renderTxModal(x){
   if(!x) x=DI[curDetailIdx];
   const txs=txModalData;
 
-  // 월 탭
   const months=new Set(txs.map(t=>t[0]));
   let mtabs=`<button class="month-tab ${txModalMonth===0?'active':''}" onclick="txModalMonth=0;renderTxModal()">\uC804\uCCB4</button>`;
   for(let m=1;m<=12;m++){
@@ -900,10 +1169,8 @@ function renderTxModal(x){
   }
   document.getElementById('txMonthTabs').innerHTML=mtabs;
 
-  // 필터
   const filtered=txModalMonth===0?txs:txs.filter(t=>t[0]===txModalMonth);
 
-  // 요약
   if(filtered.length>0){
     const prices=filtered.map(t=>t[2]);
     const avg=Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
@@ -919,7 +1186,6 @@ function renderTxModal(x){
     document.getElementById('txSummary').innerHTML='<div style="color:#64748b;text-align:center;grid-column:1/-1">\uAC70\uB798 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
   }
 
-  // 테이블
   if(filtered.length>0){
     let rows='';
     filtered.forEach((t,i)=>{
@@ -990,9 +1256,7 @@ function vworldJsonp(url){
 
 async function getCoordAsync(x){
   const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
-  // 1. 캐시에 있으면 즉시 반환
   if(GEO_CACHE[aptKey]) return GEO_CACHE[aptKey];
-  // 2. 지번주소 API (동+번지 → 정확한 좌표)
   if(x.j && x.d){
     const jibunQ=(x.d||'')+' '+x.j;
     const jUrl='https://apis.vworld.kr/jibun2coord.do?q='+encodeURIComponent(jibunQ)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
@@ -1003,7 +1267,6 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  // 3. 도로명주소 API
   if(x.rd){
     const rUrl='https://apis.vworld.kr/new2coord.do?q='+encodeURIComponent(x.rd)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
     const rData=await vworldJsonp(rUrl);
@@ -1013,7 +1276,6 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  // 4. place 검색 (아파트 명칭)
   const region=x.r?'서울':'경기';
   const queries=[
     `${region} ${x.g} ${x.d||''} ${x.n}`,
@@ -1029,7 +1291,6 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  // 5. 최종 폴백: geo.json → 구 좌표
   const dongKey=x.g+'|'+(x.d||'');
   return (GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
 }
@@ -1037,7 +1298,6 @@ async function getCoordAsync(x){
 function showOnMap(x){
   document.getElementById('mapWrap').style.display='block';
   initMap();
-  // 먼저 동기 좌표로 빠르게 표시
   const syncCoord=getCoordSync(x);
   if(syncCoord){
     curMapCoord=syncCoord; curMapEntry=x;
@@ -1050,12 +1310,10 @@ function showOnMap(x){
         .addTo(LMAP).openPopup();
     },150);
   }
-  // 비동기로 정확한 좌표 조회 후 업데이트
   getCoordAsync(x).then(coord=>{
     if(!coord) return;
     curMapCoord=coord; curMapEntry=x;
     if(!syncCoord){
-      // 동기 좌표가 없었으면 처음 표시
       setTimeout(()=>{ LMAP.invalidateSize(); },50);
     }
     LMAP.setView(coord,15,{animate:true});
@@ -1091,7 +1349,6 @@ function closeMapModal(){
   document.getElementById('mapModal').style.display='none';
 }
 
-// ESC 키로 모달 닫기
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if(document.getElementById('mapModal').style.display!=='none') closeMapModal();
@@ -1113,7 +1370,7 @@ function resetF(){
   af();
 }
 
-// --- URL 해시 상태 저장/복원 ---
+// --- URL 해시 ---
 let hashLock=false;
 function saveHash(){
   if(hashLock) return;
@@ -1136,7 +1393,7 @@ function saveHash(){
   if(ps!==100)p.ps=ps;
   if(curDetailIdx!==null)p.i=curDetailIdx;
   if(viewMode==='area')p.vm='area';
-  if(areaLevel==='dong')p.al='dong';
+  if(areaLevel!=='gu')p.al=areaLevel;
   if(selectedAreas.length)p.aa=selectedAreas.join('|');
   const h=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   history.replaceState(null,null,h?'#'+h:'#');
@@ -1167,14 +1424,20 @@ function loadHash(){
   af();
   if(p.p)cp=parseInt(p.p);
   rt();
-  // 선택 아파트 복원
   if(p.i!==undefined){
     const dataIdx=parseInt(p.i);
     const x=DI[dataIdx];
     if(x){curDetailIdx=dataIdx;showDetail(x);}
   }
-  // 지역 비교 뷰 복원
-  if(p.al==='dong'){ areaLevel='dong'; document.getElementById('lvGu').className='level-tab'; document.getElementById('lvDong').className='level-tab active'; document.getElementById('aGuFilter').style.display=''; buildAreaGuFilter(); }
+  // 비교 뷰 복원
+  if(p.al){
+    areaLevel=p.al;
+    document.getElementById('lvComplex').className='level-tab'+(areaLevel==='complex'?' active':'');
+    document.getElementById('lvGu').className='level-tab'+(areaLevel==='gu'?' active':'');
+    document.getElementById('lvDong').className='level-tab'+(areaLevel==='dong'?' active':'');
+    document.getElementById('aGuFilter').style.display=(areaLevel==='dong'||areaLevel==='complex')?'':'none';
+    if(areaLevel==='dong'||areaLevel==='complex') buildAreaGuFilter();
+  }
   if(p.aa){ selectedAreas=p.aa.split('|'); }
   if(p.vm==='area') switchView('area');
   return true;
