@@ -941,7 +941,7 @@ function calcInvestReturn(areaData, params){
   return {
     roi, annualReturn, leverage, breakeven:beCagr,
     costs:{acquisition:acqTax, holding:holdingTax, capitalGains:capGainTax, brokerBuy, brokerSell},
-    initInvest, totalProfit, price, futurePrice, jeonse, gap,
+    initInvest, totalProfit, price, futurePrice, jeonse, jeonseRate, gap,
     yearlyAsset, yearlyDeposit
   };
 }
@@ -954,8 +954,10 @@ function renderSimView(){
     return;
   }
 
+  const simData=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
+
+  // 공통 파라미터 슬라이더
   let html='<div class="sim-sliders">';
-  html+=`<div class="sim-slider"><label>전세가율</label><input type="range" id="simJeonse" min="30" max="90" value="65" step="5" oninput="updateSim()"><div class="val" id="simJeonseVal">65%</div></div>`;
   html+=`<div class="sim-slider"><label>투자기간</label><input type="range" id="simYears" min="1" max="15" value="5" step="1" oninput="updateSim()"><div class="val" id="simYearsVal">5년</div></div>`;
   html+=`<div class="sim-slider"><label>보유세율(연)</label><input type="range" id="simHoldTax" min="0" max="2" value="0.3" step="0.1" oninput="updateSim()"><div class="val" id="simHoldTaxVal">0.3%</div></div>`;
   html+=`<div class="sim-slider"><label>주택수</label><div style="display:flex;gap:4px;margin-top:4px">`;
@@ -965,6 +967,18 @@ function renderSimView(){
   html+=`</div></div>`;
   html+=`<div class="sim-slider"><label>1주택 비과세</label><div style="margin-top:6px"><label style="color:#fff;cursor:pointer;font-size:12px"><input type="checkbox" id="simExempt" checked onchange="updateSim()"> 적용 (2년↑보유, 12억↓비과세)</label></div></div>`;
   html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
+  html+='</div>';
+
+  // 항목별 전세가율 슬라이더
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:14px">';
+  simData.forEach((d,i)=>{
+    const color=CMP_COLORS[i];
+    html+=`<div style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px">
+      <label style="font-size:11px;color:${color};font-weight:600;display:block;margin-bottom:3px">${d.name} 전세가율</label>
+      <input type="range" class="simJeonseEach" data-idx="${i}" min="30" max="90" value="65" step="5" oninput="updateSim()" style="width:100%;accent-color:${color}">
+      <div class="val simJeonseEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:#fff;text-align:right">65%</div>
+    </div>`;
+  });
   html+='</div>';
 
   html+='<div id="simResults"></div>';
@@ -984,7 +998,6 @@ function setSimHouseCnt(n){
 }
 
 function getSimParams(){
-  const jeonseRate=parseFloat(document.getElementById('simJeonse')?.value||65);
   const years=parseInt(document.getElementById('simYears')?.value||5);
   const holdTaxRate=parseFloat(document.getElementById('simHoldTax')?.value||0.3);
   const activeBtn=document.querySelector('.sim-house-btn.active');
@@ -992,19 +1005,30 @@ function getSimParams(){
   const exempt1house=document.getElementById('simExempt')?.checked??true;
   const depositRate=parseFloat(document.getElementById('simDeposit')?.value||3.5);
 
-  // 슬라이더 값 표시 갱신
-  const jv=document.getElementById('simJeonseVal'); if(jv) jv.textContent=jeonseRate+'%';
+  // 항목별 전세가율
+  const jeonseRates=[];
+  document.querySelectorAll('.simJeonseEach').forEach(el=>{
+    const val=parseFloat(el.value);
+    jeonseRates.push(val);
+    const valEl=document.querySelector(`.simJeonseEachVal[data-idx="${el.dataset.idx}"]`);
+    if(valEl) valEl.textContent=val+'%';
+  });
+
+  // 공통 슬라이더 값 표시 갱신
   const yv=document.getElementById('simYearsVal'); if(yv) yv.textContent=years+'년';
   const hv=document.getElementById('simHoldTaxVal'); if(hv) hv.textContent=holdTaxRate+'%';
   const dv=document.getElementById('simDepositVal'); if(dv) dv.textContent=depositRate+'%';
 
-  return {jeonseRate, years, holdTaxRate, houseCnt, exempt1house, depositRate};
+  return {jeonseRates, years, holdTaxRate, houseCnt, exempt1house, depositRate};
 }
 
 function updateSim(){
   const params=getSimParams();
   const data=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
-  const results=data.map(d=>({area:d, result:calcInvestReturn(d, params)}));
+  const results=data.map((d,i)=>{
+    const jeonseRate=params.jeonseRates[i]!==undefined?params.jeonseRates[i]:65;
+    return {area:d, result:calcInvestReturn(d, {...params, jeonseRate})};
+  });
 
   const el=document.getElementById('simResults');
   if(!el) return;
@@ -1053,6 +1077,7 @@ function updateSim(){
 
   const rows=[
     ['매매가(25년)',r=>fmtOk(r.result.price)],
+    ['전세가율',r=>r.result.jeonseRate+'%'],
     ['전세가',r=>fmtOk(r.result.jeonse)],
     ['자기자본(갭)',r=>fmtOk(r.result.gap)],
     ['취득세',r=>fmtOk(r.result.costs.acquisition)],
