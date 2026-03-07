@@ -136,6 +136,50 @@
   .complex-list-table td:first-child, .complex-list-table td:nth-child(2) { text-align: left; }
   .complex-list-table tbody tr { cursor: pointer; transition: background .1s; }
   .complex-list-table tbody tr:hover { background: rgba(59,130,246,.08); }
+
+  /* 모바일 카드 */
+  .m-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: background .1s; }
+  .m-card:hover { background: rgba(59,130,246,.08); }
+  .m-card.sel { background: rgba(59,130,246,.15); }
+  .m-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .m-card-name { font-weight: 700; font-size: 13px; }
+  .m-card-loc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .m-card-price { font-size: 16px; font-weight: 700; text-align: right; }
+  .m-card-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .m-card-metric { text-align: center; }
+  .m-card-metric .ml { font-size: 9px; color: var(--muted); }
+  .m-card-metric .mv { font-size: 12px; font-weight: 600; }
+  .m-detail-back { display: none; background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-bottom: 10px; width: 100%; text-align: left; }
+  .m-detail-back:hover { color: #fff; border-color: var(--muted); }
+  .filter-toggle-btn { display: none; background: none; border: 1px solid var(--border); color: var(--muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; width: 100%; text-align: center; margin-top: 8px; }
+  .filter-toggle-btn:hover { color: #fff; border-color: var(--muted); }
+
+  @media (max-width: 768px) {
+    #app { padding: 8px !important; }
+    .flex.items-center.justify-between.mb-3 { flex-direction: column; align-items: flex-start !important; gap: 8px; }
+    .view-tabs { width: 100%; }
+    .view-tab { flex: 1; text-align: center; }
+    .filter-toggle-btn { display: block; }
+    .filter-hidden { display: none !important; }
+    #tableWrap { display: none; }
+    .left-col > .flex.items-center.justify-between.mt-2 { display: flex !important; }
+    #mobileCards { display: block !important; }
+    .right-col.open { position: fixed; inset: 0; width: 100% !important; z-index: 900; background: var(--bg); border-radius: 0; overflow-y: auto; max-height: 100vh !important; padding: 12px; }
+    .m-detail-back { display: block; }
+    .area-view.show { flex-direction: column; }
+    .area-left { width: 100% !important; position: static !important; max-height: none !important; }
+    .area-checklist { max-height: 200px !important; }
+    .cmp-cards-grid { grid-template-columns: 1fr !important; }
+    .modal-card { width: 100vw !important; max-width: 100vw !important; border-radius: 0 !important; max-height: 100vh !important; }
+    .map-modal-card { width: 100vw !important; border-radius: 0 !important; height: 90vh !important; }
+    .tx-summary { grid-template-columns: repeat(2, 1fr) !important; }
+    .main-layout { flex-direction: column; }
+  }
+  @media (min-width: 769px) {
+    #mobileCards { display: none !important; }
+    .filter-toggle-btn { display: none !important; }
+    .m-detail-back { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -171,6 +215,7 @@
       <div><label class="text-xs" style="color:#64748b">25년가(억)</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:#475569">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
     </div>
+    <button class="filter-toggle-btn" onclick="toggleFilters()" id="filterToggle">필터 더보기 ▼</button>
   </div>
 
   <div class="main-layout">
@@ -195,6 +240,7 @@
           <tbody id="tb"></tbody>
         </table>
       </div>
+      <div id="mobileCards" style="display:none"></div>
       <div class="flex items-center justify-between mt-2" style="font-size:11px;color:#64748b">
         <div>페이지당 <select id="ps" class="fi" style="width:60px;display:inline" onchange="cps()"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select></div>
         <div class="flex items-center gap-2">
@@ -207,6 +253,7 @@
 
     <div class="right-col" id="dp">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <button class="m-detail-back" onclick="cd()">‹ 목록으로 돌아가기</button>
         <div class="flex items-start justify-between mb-2">
           <div><h2 id="dn" class="text-sm font-bold text-white"></h2><p id="dl" class="text-xs" style="color:#64748b;margin-top:2px"></p></div>
           <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">&#10005;</button>
@@ -282,6 +329,7 @@
 
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
+function isMobile(){ return window.innerWidth<=768; }
 let PRICES=null,VOLUMES=null,DETAILS=null;
 let merged=false, DM=[]; // DM = merged entries
 // 비교
@@ -1041,6 +1089,38 @@ function rt(){
     </tr>`);
   }
   tb.innerHTML=frags.join('');
+
+  // 모바일 카드 렌더링
+  const mc=document.getElementById('mobileCards');
+  if(mc){
+    const cfrags=[];
+    for(let i=s;i<e;i++){
+      const x=F[i];
+      const bg=x.r?'b-s':'b-g';
+      const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
+      const p25=x.p25&&x.p25>0?x.p25+'\uC5B5':'-';
+      const cv=x.c!==null?(x.c>0?'+':'')+x.c+'%':'-';
+      const cc=x.c>0?'up':x.c<0?'dn':'';
+      const mv=x.m+'%';
+      const qv=x.q!==null?(x.q>0?'+':'')+x.q+'%':'-';
+      const qc=x.q>0?'up':x.q<0?'dn':'';
+      const kv=x.k!==null?(x.k>0?'+':'')+x.k+'%':'-';
+      const kc=x.k>0?'up':x.k<0?'dn':'';
+      cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
+        <div class="m-card-header">
+          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a}\u33A1</div></div>
+          <div class="m-card-price">${p25}</div>
+        </div>
+        <div class="m-card-metrics">
+          <div class="m-card-metric"><div class="ml">CAGR</div><div class="mv ${cc}">${cv}</div></div>
+          <div class="m-card-metric"><div class="ml">MDD</div><div class="mv dn">${mv}</div></div>
+          <div class="m-card-metric"><div class="ml">21→25</div><div class="mv ${qc}">${qv}</div></div>
+          <div class="m-card-metric"><div class="ml">모멘텀</div><div class="mv ${kc}">${kv}</div></div>
+        </div>
+      </div>`);
+    }
+    mc.innerHTML=cfrags.join('');
+  }
 }
 
 // --- 상세 패널 ---
@@ -1049,6 +1129,7 @@ function sd(i){
   const x=F[i];
   showDetail(x);
   rt();
+  if(isMobile()) document.body.style.overflow='hidden';
   saveHash();
 }
 
@@ -1619,7 +1700,7 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-function cd(){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;rt();saveHash();}
+function cd(){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;document.body.style.overflow='';rt();saveHash();}
 function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
 function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
 function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();saveHash();}
@@ -1715,7 +1796,41 @@ function loadHash(){
   return true;
 }
 
+// --- 모바일 필터 토글 ---
+let filtersExpanded=false;
+function toggleFilters(){
+  filtersExpanded=!filtersExpanded;
+  const btn=document.getElementById('filterToggle');
+  btn.textContent=filtersExpanded?'필터 접기 ▲':'필터 더보기 ▼';
+  applyMobileFilterVisibility();
+}
+function applyMobileFilterVisibility(){
+  if(!isMobile()) return;
+  const grid=document.querySelector('#complexView > div > div[style*="grid"]');
+  if(!grid) return;
+  const children=grid.children;
+  for(let i=2;i<children.length;i++){
+    if(filtersExpanded) children[i].classList.remove('filter-hidden');
+    else children[i].classList.add('filter-hidden');
+  }
+}
+function initMobileFilters(){
+  if(isMobile()) applyMobileFilterVisibility();
+}
+window.addEventListener('resize',function(){
+  if(!isMobile()){
+    const grid=document.querySelector('#complexView > div > div[style*="grid"]');
+    if(grid){
+      for(let i=0;i<grid.children.length;i++) grid.children[i].classList.remove('filter-hidden');
+    }
+    document.body.style.overflow='';
+  } else {
+    applyMobileFilterVisibility();
+  }
+});
+
 init();
+initMobileFilters();
 </script>
 </body>
 </html>
