@@ -371,11 +371,12 @@ function getAreaNames(){
   const names=[];
 
   if(areaLevel==='complex'){
-    // 단지 목록: DI에서 필터링
+    // 단지 목록: 통합 모드 반영
     const guF=document.getElementById('aGu').value;
     const seen=new Set();
     let count=0;
-    for(const x of D){
+    const src=merged?DM:D;
+    for(const x of src){
       if(rv!==''&&x.r!==parseInt(rv)) continue;
       if(guF&&x.g!==guF) continue;
       const label=x.n+' '+x.a+'㎡ ('+x.g+')';
@@ -452,40 +453,59 @@ function aggregateArea(key){
   if(areaCache[key]) return areaCache[key];
 
   if(areaLevel==='complex'){
-    // 단지 비교: 개별 단지 데이터 직접 반환
+    // 단지 비교: 통합 모드면 DM에서 찾기
     const dataIdx=parseInt(key.slice(4));
-    const x=DI[dataIdx];
+    let x=DI[dataIdx];
+    if(merged){
+      const mx=DM.find(e=>e.i===dataIdx);
+      if(mx) x=mx;
+    }
     if(!x) return null;
 
     const yearAvg=new Array(12).fill(null);
     if(PRICES){
-      const pr=PRICES[String(x.i)];
-      if(pr) pr.forEach((p,j)=>{ yearAvg[j]=p>0?p:null; });
+      if(x._merged&&x.si){
+        // 통합: 모든 평형 평균
+        for(let j=0;j<12;j++){
+          const vals=[];
+          x.si.forEach(sibIdx=>{
+            const pr=PRICES[String(sibIdx)];
+            if(pr&&pr[j]>0) vals.push(pr[j]);
+          });
+          yearAvg[j]=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+        }
+      } else {
+        const pr=PRICES[String(x.i)];
+        if(pr) pr.forEach((p,j)=>{ yearAvg[j]=p>0?p:null; });
+      }
     }
 
     let y25=null;
     if(yearAvg[9]&&yearAvg[10]) y25=((yearAvg[10]-yearAvg[9])/yearAvg[9]*100);
 
+    const cntLabel=x._merged?x.si.length:1;
     const result={
       name: x.n+' '+x.a+'㎡',
-      key,
-      cnt:1, totalTx:x.t||0,
+      key, _merged:x._merged,
+      cnt:cntLabel, totalTx:x.t||0,
       avgP25:x.p25, avgCagr:x.c, avgMdd:x.m,
       avgSharpe:x.s, avgQ:x.q, avgK:x.k, y25,
-      yearAvg, items:[x], gu:x.g
+      yearAvg, items:x._merged?x.si.map(i=>DI[i]).filter(Boolean):[x], gu:x.g,
+      si:x.si
     };
     areaCache[key]=result;
     return result;
   }
 
+  const src=merged?DM:D;
   let items;
   if(areaLevel==='gu'){
-    items=D.filter(x=>x.g===key);
+    items=src.filter(x=>x.g===key);
   } else {
     const parts=key.split(' ');
     const dong=parts.pop();
     const gu=parts.join(' ');
-    items=D.filter(x=>x.g===gu&&x.d===dong);
+    items=src.filter(x=>x.g===gu&&x.d===dong);
   }
   if(items.length===0) return null;
 
@@ -650,13 +670,33 @@ async function renderComparisonChartMonthly(data){
     let monthlyCounts=new Array(132).fill(0);
 
     if(areaLevel==='complex'){
-      const dataIdx=parseInt(d.key.slice(4));
-      const x=DI[dataIdx];
-      if(x){
-        const md=MONTHLY_CACHE[x.g];
-        if(md&&md[String(x.i)]){
-          monthlyPrices=md[String(x.i)].p.slice();
-          monthlyCounts=md[String(x.i)].c.slice();
+      if(d._merged&&d.si&&d.si.length>1){
+        // 통합 단지: 각 평형 개별 forward-fill 후 평균
+        const filledSeries=[];
+        d.si.forEach(sibIdx=>{
+          const sib=DI[sibIdx];
+          if(!sib) return;
+          const md=MONTHLY_CACHE[sib.g];
+          if(md&&md[String(sibIdx)]){
+            const ff=forwardFill(md[String(sibIdx)].p);
+            filledSeries.push({values:ff.values, raw:md[String(sibIdx)]});
+          }
+        });
+        for(let slot=0;slot<132;slot++){
+          const vals=[];
+          filledSeries.forEach(s=>{ if(s.values[slot]>0) vals.push(s.values[slot]); });
+          if(vals.length) monthlyPrices[slot]=vals.reduce((a,b)=>a+b,0)/vals.length;
+          filledSeries.forEach(s=>{ monthlyCounts[slot]+=s.raw.c[slot]; });
+        }
+      } else {
+        const dataIdx=parseInt(d.key.slice(4));
+        const x=DI[dataIdx];
+        if(x){
+          const md=MONTHLY_CACHE[x.g];
+          if(md&&md[String(x.i)]){
+            monthlyPrices=md[String(x.i)].p.slice();
+            monthlyCounts=md[String(x.i)].c.slice();
+          }
         }
       }
     } else {
@@ -876,8 +916,11 @@ function toggleMerged(){
   document.getElementById('mgBtn').style.background=merged?'var(--accent)':'';
   document.getElementById('mgBtn').style.color=merged?'#fff':'';
   document.getElementById('mgBtn').style.borderColor=merged?'var(--accent)':'';
+  areaCache={}; // 비교 캐시 클리어
   cd(); // 상세 패널 닫기
   af();
+  // 비교 뷰가 열려있으면 갱신
+  if(viewMode==='area'){ selectedAreas=[]; renderAreaList(); renderComparison(); }
 }
 
 function onR(){
