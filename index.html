@@ -1080,7 +1080,7 @@ function renderSimView(){
   if(simMode==='gap'){
     html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
   } else {
-    html+=`<div class="sim-slider"><label>대출이자율</label><input type="range" id="simLoanRate" min="1" max="8" value="3.5" step="0.1" oninput="updateSim()"><div class="val" id="simLoanRateVal">3.5%</div></div>`;
+    html+=`<div class="sim-slider"><label>대출이자율 <span style="font-size:9px;color:#64748b">(원리금균등 30년)</span></label><input type="range" id="simLoanRate" min="1" max="8" value="3.5" step="0.1" oninput="updateSim()"><div class="val" id="simLoanRateVal">3.5%</div></div>`;
     html+=`<div class="sim-slider"><label>대출한도</label><div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap">`;
     [{v:0,l:'제한없음'},{v:6,l:'6억'},{v:4,l:'4억'},{v:2,l:'2억'}].forEach(o=>{
       const isActive=o.v===0;
@@ -1197,9 +1197,30 @@ function calcLiveReturn(areaData, params){
   const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house);
   const brokerSell=getBrokerFee(futurePrice);
   const holdingTax=price*holdTaxRate/100*years;
-  const totalInterest=loanAmt*loanRate/100*years;
+  // 원리금 균등 상환 30년 기준 이자 계산
+  const loanTermMonths=360; // 30년
+  const monthlyRate=loanRate/100/12;
+  let monthlyPayment=0, totalInterest=0, remainingBalance=loanAmt;
+  const cumInterestByYear=[0]; // cumInterestByYear[t] = t년까지 누적이자
+  const remainBalByYear=[loanAmt]; // 잔액
+  if(loanAmt>0&&monthlyRate>0){
+    monthlyPayment=loanAmt*monthlyRate*Math.pow(1+monthlyRate,loanTermMonths)/(Math.pow(1+monthlyRate,loanTermMonths)-1);
+    let cumInt=0; let bal=loanAmt;
+    for(let m=1;m<=Math.min(years*12,loanTermMonths);m++){
+      const intPart=bal*monthlyRate;
+      const prinPart=monthlyPayment-intPart;
+      cumInt+=intPart;
+      bal-=prinPart;
+      if(m%12===0){cumInterestByYear.push(cumInt);remainBalByYear.push(Math.max(0,bal));}
+    }
+    // 마지막 연도가 12개월 안 채운 경우 보정
+    while(cumInterestByYear.length<=years){cumInterestByYear.push(cumInt);remainBalByYear.push(Math.max(0,bal));}
+    totalInterest=cumInterestByYear[years];
+  }
   const rentSaved=rent*12*years/10000; // 만원→억
 
+  // 매도 시 잔여 대출금 상환 반영
+  const remainLoan=remainBalByYear[years]||0;
   const totalProfit=capitalGain-capGainTax-acqTax-holdingTax-brokerBuy-brokerSell-totalInterest+rentSaved;
   const roi=totalProfit/initInvest*100;
   const annualReturn=(Math.pow(1+roi/100, 1/years)-1)*100;
@@ -1210,10 +1231,9 @@ function calcLiveReturn(areaData, params){
   for(let t=0;t<=years;t++){
     const curPrice=price*Math.pow(1+cagr/100,t);
     const cumHoldTax=price*holdTaxRate/100*t;
-    const cumInterest=loanAmt*loanRate/100*t;
+    const cumInt=cumInterestByYear[t]||0;
     const cumRentSaved=rent*12*t/10000;
-    yearlyOwn.push(curPrice-price-cumHoldTax-cumInterest-acqTax-brokerBuy+cumRentSaved);
-    // 기회비용: 전세살며 자기자본을 예금 (보수적 3.5%)
+    yearlyOwn.push(curPrice-price-cumHoldTax-cumInt-acqTax-brokerBuy+cumRentSaved);
     yearlyRent.push(initInvest*(Math.pow(1+3.5/100,t)-1));
   }
 
@@ -1234,7 +1254,7 @@ function calcLiveReturn(areaData, params){
     roi, annualReturn, leverage, breakeven:beCagr,
     costs:{acquisition:acqTax, holding:holdingTax, capitalGains:capGainTax, interest:totalInterest, brokerBuy, brokerSell},
     initInvest, totalProfit, price, futurePrice, loanAmt, equity, ltv, effectiveLtv, loanCap, rentSaved,
-    yearlyOwn, yearlyRent
+    monthlyPayment, remainLoan, yearlyOwn, yearlyRent
   };
 }
 
@@ -1323,10 +1343,12 @@ function updateSim(){
       ['매매가(25년)',r=>fmtOk(r.result.price)],
       ['LTV(설정→실효)',r=>{const res=r.result;return res.effectiveLtv<res.ltv?`<span style="text-decoration:line-through;color:var(--muted)">${res.ltv}%</span> → ${res.effectiveLtv.toFixed(0)}% <span style="font-size:10px;color:#f59e0b">한도</span>`:res.ltv+'%';}],
       ['대출금',r=>fmtOk(r.result.loanAmt)],
+      ['월 상환액',r=>{const m=r.result.monthlyPayment;return m?(m*10000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'만원':'-';}],
       ['자기자본',r=>fmtOk(r.result.equity)],
       ['취득세',r=>fmtOk(r.result.costs.acquisition)],
       ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)],
-      ['대출이자('+params.years+'년)',r=>fmtOk(r.result.costs.interest)],
+      ['대출이자('+params.years+'년)',r=>fmtOk(r.result.costs.interest)+' <span style="font-size:9px;color:#64748b">원리금균등30년</span>'],
+      ['잔여대출('+params.years+'년후)',r=>fmtOk(r.result.remainLoan)],
       ['양도세',r=>fmtOk(r.result.costs.capitalGains)],
       ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)],
       ['월세절약('+params.years+'년)',r=>`<span class="up">+${fmtOk(r.result.rentSaved)}</span>`],
