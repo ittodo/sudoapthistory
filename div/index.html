@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배당·소각 캘린더</title>
+<meta name="description" content="한국 주식 배당금 지급일정 및 자사주 소각 캘린더. DART 공시 기반 실시간 데이터.">
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<style>
+:root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --gold: #f59e0b; --green: #10b981; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+.fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; }
+.fi:focus { outline: none; border-color: var(--accent); }
+table { width: 100%; border-collapse: collapse; }
+thead th { position: sticky; top: 0; background: #1a2332; padding: 8px 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; border-bottom: 1px solid var(--border); z-index: 2; }
+thead th:hover { color: #fff; }
+tbody td { padding: 6px; border-bottom: 1px solid #1e293b; white-space: nowrap; font-size: 12px; }
+tbody tr { transition: background .1s; }
+tbody tr:hover { background: rgba(59,130,246,.08); }
+.up { color: var(--up); }
+.dn { color: var(--dn); }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+.b-pre { background: #f59e0b22; color: #fbbf24; }
+.b-post { background: #3b82f622; color: #93c5fd; }
+.b-bb { background: #ef444422; color: #fca5a5; }
+.b-kospi { background: #7c3aed22; color: #a78bfa; }
+.b-kosdaq { background: #05966922; color: #6ee7b7; }
+.tab-btn { padding: 6px 16px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+.tab-btn:hover { border-color: var(--muted); color: #fff; }
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align: center; }
+.stat-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-card .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+.tc { max-height: calc(100vh - 260px); overflow-y: auto; }
+.tc::-webkit-scrollbar { width: 5px; }
+.tc::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+#loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 999; gap: 12px; }
+.sp { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.sa { font-size: 10px; opacity: .6; }
+.month-bar { display: flex; gap: 3px; flex-wrap: wrap; }
+.month-btn { padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; transition: all .15s; }
+.month-btn:hover { border-color: var(--muted); color: #fff; }
+.month-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
+.note-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
+.note-cell:hover { white-space: normal; overflow: visible; }
+.sort-arrow { font-size: 9px; margin-left: 2px; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="sp"></div><div class="sa">데이터 로딩 중...</div></div>
+
+<div style="max-width:1200px;margin:0 auto;padding:12px 16px;">
+
+<!-- Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1 style="font-size:18px;font-weight:700;">배당·소각 캘린더</h1>
+    <div class="sa" id="updatedAt"></div>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <a href="../" style="font-size:11px;color:var(--muted);">아파트 스크리너</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px;" id="stats"></div>
+
+<!-- Tabs: 배당 / 소각 -->
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+  <div style="display:flex;gap:4px;">
+    <button class="tab-btn active" data-tab="div" onclick="switchTab('div')">배당</button>
+    <button class="tab-btn" data-tab="bb" onclick="switchTab('bb')">자사주 소각</button>
+  </div>
+  <div style="flex:1;"></div>
+  <input type="text" class="fi" id="search" placeholder="종목명 또는 코드 검색..." style="width:200px;" oninput="render()">
+</div>
+
+<!-- Filters (dividend tab) -->
+<div id="divFilters" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+  <div class="month-bar" id="monthBar"></div>
+  <div style="display:flex;gap:4px;">
+    <button class="month-btn" data-type="all" onclick="setTypeFilter('all')">전체</button>
+    <button class="month-btn" data-type="선배당" onclick="setTypeFilter('선배당')">선배당</button>
+    <button class="month-btn" data-type="후배당" onclick="setTypeFilter('후배당')">후배당</button>
+  </div>
+  <div style="display:flex;gap:4px;">
+    <button class="month-btn" data-market="all" onclick="setMarketFilter('all')">전체</button>
+    <button class="month-btn" data-market="KOSPI" onclick="setMarketFilter('KOSPI')">KOSPI</button>
+    <button class="month-btn" data-market="KOSDAQ" onclick="setMarketFilter('KOSDAQ')">KOSDAQ</button>
+  </div>
+</div>
+
+<!-- Dividend Table -->
+<div id="divTable" class="tc">
+<table>
+  <thead>
+    <tr>
+      <th onclick="sortBy('ticker')">코드 <span class="sort-arrow" id="sa-ticker"></span></th>
+      <th onclick="sortBy('name')">종목명 <span class="sort-arrow" id="sa-name"></span></th>
+      <th onclick="sortBy('market')">시장 <span class="sort-arrow" id="sa-market"></span></th>
+      <th onclick="sortBy('type')">구분 <span class="sort-arrow" id="sa-type"></span></th>
+      <th onclick="sortBy('recordDate')">기준일 <span class="sort-arrow" id="sa-recordDate"></span></th>
+      <th onclick="sortBy('payDate')">지급일 <span class="sort-arrow" id="sa-payDate"></span></th>
+      <th onclick="sortBy('dps')" style="text-align:right">DPS(원) <span class="sort-arrow" id="sa-dps"></span></th>
+      <th onclick="sortBy('yield')" style="text-align:right">수익률(%) <span class="sort-arrow" id="sa-yield"></span></th>
+      <th onclick="sortBy('fiscalYear')">사업연도 <span class="sort-arrow" id="sa-fiscalYear"></span></th>
+      <th>비고</th>
+    </tr>
+  </thead>
+  <tbody id="divBody"></tbody>
+</table>
+</div>
+
+<!-- Buyback Table -->
+<div id="bbTable" class="tc" style="display:none;">
+<table>
+  <thead>
+    <tr>
+      <th onclick="sortByBB('ticker')">코드</th>
+      <th onclick="sortByBB('name')">종목명</th>
+      <th onclick="sortByBB('market')">시장</th>
+      <th onclick="sortByBB('buybackDate')">소각일</th>
+      <th onclick="sortByBB('shareCount')" style="text-align:right">소각주식수</th>
+      <th onclick="sortByBB('totalAmount')" style="text-align:right">소각총액</th>
+      <th onclick="sortByBB('method')">취득방법</th>
+      <th>비고</th>
+    </tr>
+  </thead>
+  <tbody id="bbBody"></tbody>
+</table>
+</div>
+
+<!-- Footer -->
+<div id="countInfo" style="text-align:center;padding:8px;font-size:11px;color:var(--muted);"></div>
+<div class="footer-disclaimer">
+  DART 공시 기반 데이터 · 투자 판단의 책임은 본인에게 있습니다 · <a href="../">아파트 스크리너</a>
+</div>
+
+</div>
+
+<script>
+let divData = [], bbData = [];
+let currentTab = 'div';
+let sortKey = 'recordDate', sortAsc = false;
+let bbSortKey = 'buybackDate', bbSortAsc = false;
+let typeFilter = 'all', marketFilter = 'all', monthFilter = 'all';
+
+async function init() {
+  try {
+    const [divRes, bbRes] = await Promise.all([
+      fetch('data/dividends.json').then(r => r.ok ? r.json() : { events: [] }),
+      fetch('data/buybacks.json').then(r => r.ok ? r.json() : { events: [] })
+    ]);
+    divData = divRes.events || [];
+    bbData = bbRes.events || [];
+
+    const updated = divRes.updated || bbRes.updated || '';
+    document.getElementById('updatedAt').textContent = updated ? `DART 공시 기준 · 최종 업데이트 ${updated}` : '';
+
+    buildMonthBar();
+    buildStats();
+    render();
+  } catch (e) {
+    console.error('Data load error:', e);
+    document.getElementById('divBody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터를 불러올 수 없습니다. companysearch --export-json 으로 데이터를 먼저 생성하세요.</td></tr>';
+  }
+  document.getElementById('loading').style.display = 'none';
+}
+
+function buildMonthBar() {
+  const months = new Set();
+  divData.forEach(e => {
+    if (e.recordDate) {
+      const m = e.recordDate.substring(0, 7); // YYYY-MM
+      months.add(m);
+    }
+  });
+  const sorted = [...months].sort();
+  const bar = document.getElementById('monthBar');
+  let html = '<button class="month-btn active" data-month="all" onclick="setMonthFilter(\'all\')">전체</button>';
+  sorted.forEach(m => {
+    const label = m.substring(5) + '월'; // "03월"
+    html += `<button class="month-btn" data-month="${m}" onclick="setMonthFilter('${m}')">${m.substring(0,4)}.${label}</button>`;
+  });
+  bar.innerHTML = html;
+}
+
+function buildStats() {
+  const totalDiv = divData.length;
+  const totalBB = bbData.length;
+  const preDivCount = divData.filter(e => e.type === '선배당').length;
+  const postDivCount = divData.filter(e => e.type === '후배당').length;
+  const tickers = new Set([...divData.map(e => e.ticker), ...bbData.map(e => e.ticker)]);
+
+  const html = `
+    <div class="stat-card"><div class="label">총 배당 건수</div><div class="value">${totalDiv.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">선배당 (중간)</div><div class="value" style="color:var(--gold)">${preDivCount.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">후배당 (결산)</div><div class="value" style="color:var(--accent)">${postDivCount.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">자사주 소각</div><div class="value" style="color:var(--up)">${totalBB.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="label">종목 수</div><div class="value">${tickers.size.toLocaleString()}</div></div>
+  `;
+  document.getElementById('stats').innerHTML = html;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('divTable').style.display = tab === 'div' ? '' : 'none';
+  document.getElementById('bbTable').style.display = tab === 'bb' ? '' : 'none';
+  document.getElementById('divFilters').style.display = tab === 'div' ? '' : 'none';
+  render();
+}
+
+function setTypeFilter(t) {
+  typeFilter = t;
+  document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+  render();
+}
+
+function setMarketFilter(m) {
+  marketFilter = m;
+  document.querySelectorAll('[data-market]').forEach(b => b.classList.toggle('active', b.dataset.market === m));
+  render();
+}
+
+function setMonthFilter(m) {
+  monthFilter = m;
+  document.querySelectorAll('[data-month]').forEach(b => b.classList.toggle('active', b.dataset.month === m));
+  render();
+}
+
+function sortBy(key) {
+  if (sortKey === key) { sortAsc = !sortAsc; }
+  else { sortKey = key; sortAsc = true; }
+  render();
+}
+
+function sortByBB(key) {
+  if (bbSortKey === key) { bbSortAsc = !bbSortAsc; }
+  else { bbSortKey = key; bbSortAsc = true; }
+  render();
+}
+
+function render() {
+  if (currentTab === 'div') renderDiv();
+  else renderBB();
+}
+
+function renderDiv() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+  let filtered = divData.filter(e => {
+    if (q && !e.name.toLowerCase().includes(q) && !e.ticker.includes(q)) return false;
+    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
+    if (marketFilter !== 'all' && e.market !== marketFilter) return false;
+    if (monthFilter !== 'all' && (!e.recordDate || !e.recordDate.startsWith(monthFilter))) return false;
+    return true;
+  });
+
+  // Sort
+  filtered.sort((a, b) => {
+    let va = a[sortKey] ?? '', vb = b[sortKey] ?? '';
+    if (typeof va === 'number' && typeof vb === 'number') {
+      return sortAsc ? va - vb : vb - va;
+    }
+    va = String(va); vb = String(vb);
+    return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+
+  // Update sort arrows
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+  const arrow = document.getElementById('sa-' + sortKey);
+  if (arrow) arrow.textContent = sortAsc ? '\u25B2' : '\u25BC';
+
+  const tbody = document.getElementById('divBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
+    document.getElementById('countInfo').textContent = '';
+    return;
+  }
+
+  let html = '';
+  for (const e of filtered) {
+    const typeBadge = e.type === '선배당'
+      ? '<span class="badge b-pre">선배당</span>'
+      : e.type === '후배당'
+        ? '<span class="badge b-post">후배당</span>'
+        : '';
+    const mktBadge = e.market === 'KOSPI'
+      ? '<span class="badge b-kospi">KOSPI</span>'
+      : e.market === 'KOSDAQ'
+        ? '<span class="badge b-kosdaq">KOSDAQ</span>'
+        : e.market || '';
+    const yieldClass = e.yield >= 3 ? 'up' : '';
+
+    html += `<tr>
+      <td style="color:var(--muted);font-family:monospace;">${esc(e.ticker)}</td>
+      <td style="font-weight:500;">${esc(e.name)}</td>
+      <td>${mktBadge}</td>
+      <td>${typeBadge}</td>
+      <td>${esc(e.recordDate)}</td>
+      <td>${esc(e.payDate)}</td>
+      <td style="text-align:right;font-weight:600;">${e.dps ? e.dps.toLocaleString() : '-'}</td>
+      <td style="text-align:right;" class="${yieldClass}">${e.yield ? e.yield.toFixed(1) : '-'}</td>
+      <td style="color:var(--muted);">${esc(e.fiscalYear)}</td>
+      <td class="note-cell" title="${esc(e.note || '')}">${esc(e.note || '')}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  document.getElementById('countInfo').textContent = `${filtered.length.toLocaleString()}건 표시 (전체 ${divData.length.toLocaleString()}건)`;
+}
+
+function renderBB() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+  let filtered = bbData.filter(e => {
+    if (q && !e.name.toLowerCase().includes(q) && !e.ticker.includes(q)) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    let va = a[bbSortKey] ?? '', vb = b[bbSortKey] ?? '';
+    if (typeof va === 'number' && typeof vb === 'number') {
+      return bbSortAsc ? va - vb : vb - va;
+    }
+    va = String(va); vb = String(vb);
+    return bbSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+
+  const tbody = document.getElementById('bbBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
+    document.getElementById('countInfo').textContent = '';
+    return;
+  }
+
+  let html = '';
+  for (const e of filtered) {
+    const mktBadge = e.market === 'KOSPI'
+      ? '<span class="badge b-kospi">KOSPI</span>'
+      : e.market === 'KOSDAQ'
+        ? '<span class="badge b-kosdaq">KOSDAQ</span>'
+        : e.market || '';
+
+    html += `<tr>
+      <td style="color:var(--muted);font-family:monospace;">${esc(e.ticker)}</td>
+      <td style="font-weight:500;">${esc(e.name)}</td>
+      <td>${mktBadge}</td>
+      <td>${esc(e.buybackDate)}</td>
+      <td style="text-align:right;font-weight:600;">${e.shareCount ? e.shareCount.toLocaleString() : '-'}</td>
+      <td style="text-align:right;font-weight:600;">${fmtAmount(e.totalAmount)}</td>
+      <td style="color:var(--muted);">${esc(e.method || '')}</td>
+      <td class="note-cell" title="${esc(e.note || '')}">${esc(e.note || '')}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  document.getElementById('countInfo').textContent = `${filtered.length.toLocaleString()}건 표시 (전체 ${bbData.length.toLocaleString()}건)`;
+}
+
+function fmtAmount(v) {
+  if (!v) return '-';
+  if (v >= 1e8) return (v / 1e8).toFixed(0) + '억';
+  if (v >= 1e4) return (v / 1e4).toFixed(0) + '만';
+  return v.toLocaleString();
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>
