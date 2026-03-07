@@ -298,7 +298,7 @@
       <div style="margin-bottom:8px">
         <select id="aR" class="fi" onchange="onAreaRegion()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select>
       </div>
-      <div id="aGuFilter" style="display:none;margin-bottom:8px">
+      <div id="aGuFilter" style="margin-bottom:8px">
         <select id="aGu" class="fi" onchange="renderAreaList()"><option value="">전체 시/구</option></select>
       </div>
       <div style="margin-bottom:8px">
@@ -353,7 +353,7 @@ let PRICES=null,VOLUMES=null,DETAILS=null;
 let merged=false, DM=[]; // DM = merged entries
 // 비교
 let viewMode='complex';
-let areaLevel='gu'; // 'complex' | 'gu' | 'dong'
+let areaLevel='complex'; // 'complex' | 'gu' | 'dong'
 let selectedAreas=[]; // max 10
 let areaCache={}; // name → aggregated data
 let cmpChart=null, cmpSimChart=null;
@@ -402,7 +402,10 @@ function switchView(mode){
   document.getElementById('areaView').className=mode==='area'?'area-view show':'area-view';
   document.getElementById('vtComplex').className='view-tab'+(mode==='complex'?' active':'');
   document.getElementById('vtArea').className='view-tab'+(mode==='area'?' active':'');
-  if(mode==='area'){ renderAreaList(); renderComparison(); }
+  if(mode==='area'){
+    if(areaLevel==='dong'||areaLevel==='complex') buildAreaGuFilter();
+    renderAreaList(); renderComparison();
+  }
   saveHash();
 }
 
