@@ -113,6 +113,7 @@ a:hover { text-decoration: underline; }
       <th onclick="sortBy('yield')" style="text-align:right">수익률(%) <span class="sort-arrow" id="sa-yield"></span></th>
       <th onclick="sortBy('fiscalYear')">사업연도 <span class="sort-arrow" id="sa-fiscalYear"></span></th>
       <th>비고</th>
+      <th>공시</th>
     </tr>
   </thead>
   <tbody id="divBody"></tbody>
@@ -143,6 +144,7 @@ a:hover { text-decoration: underline; }
       <th onclick="sortByBB('totalAmount')" style="text-align:right">총액</th>
       <th onclick="sortByBB('method')">방법</th>
       <th>비고</th>
+      <th>공시</th>
     </tr>
   </thead>
   <tbody id="bbBody"></tbody>
@@ -181,7 +183,7 @@ async function init() {
     render();
   } catch (e) {
     console.error('Data load error:', e);
-    document.getElementById('divBody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터를 불러올 수 없습니다. companysearch --export-json 으로 데이터를 먼저 생성하세요.</td></tr>';
+    document.getElementById('divBody').innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted);">데이터를 불러올 수 없습니다. companysearch --export-json 으로 데이터를 먼저 생성하세요.</td></tr>';
   }
   document.getElementById('loading').style.display = 'none';
 }
@@ -299,7 +301,7 @@ function renderDiv() {
 
   const tbody = document.getElementById('divBody');
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
     document.getElementById('countInfo').textContent = '';
     return;
   }
@@ -329,6 +331,7 @@ function renderDiv() {
       <td style="text-align:right;" class="${yieldClass}">${e.yield ? e.yield.toFixed(1) : '-'}</td>
       <td style="color:var(--muted);">${esc(e.fiscalYear)}</td>
       <td class="note-cell" title="${esc(e.note || '')}">${esc(e.note || '')}</td>
+      <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener" style="color:var(--accent);">원문</a>` : ''}</td>
     </tr>`;
   }
   tbody.innerHTML = html;
@@ -354,7 +357,7 @@ function renderBB() {
 
   const tbody = document.getElementById('bbBody');
   if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
     document.getElementById('countInfo').textContent = '';
     return;
   }
@@ -384,6 +387,7 @@ function renderBB() {
       <td style="text-align:right;font-weight:600;">${fmtAmount(e.totalAmount)}</td>
       <td style="color:var(--muted);">${esc(e.method || '')}</td>
       <td class="note-cell" title="${esc(e.note || '')}">${esc(e.note || '')}</td>
+      <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener" style="color:var(--accent);">원문</a>` : ''}</td>
     </tr>`;
   }
   tbody.innerHTML = html;
