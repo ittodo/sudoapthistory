@@ -149,6 +149,7 @@
     </div>
     <div class="flex gap-2 items-center">
       <span id="fc" class="text-xs" style="color:#64748b">0건</span>
+      <button onclick="toggleMerged()" class="pg-btn" id="mgBtn" title="같은 단지의 모든 평형을 하나로 합쳐서 봅니다">평형별</button>
       <button onclick="resetF()" class="pg-btn">초기화</button>
     </div>
   </div>
@@ -282,6 +283,7 @@
 <script>
 let D=[],F=[],cp=1,ps=100,sc='c',sa=false,si=-1,ch=null;
 let PRICES=null,VOLUMES=null,DETAILS=null;
+let merged=false, DM=[]; // DM = merged entries
 // 비교
 let viewMode='complex';
 let areaLevel='gu'; // 'complex' | 'gu' | 'dong'
@@ -749,6 +751,7 @@ async function init(){
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   buildLoc();
+  buildMerged();
 
   if(!loadHash()) af();
 
@@ -804,6 +807,79 @@ function buildLoc(){
   });
 }
 
+function buildMerged(){
+  // si 필드로 같은 단지 그룹핑 → 통합 엔트리 생성
+  const grouped=new Map(); // complexKey → [entries]
+  const assigned=new Set();
+  D.forEach(x=>{
+    if(assigned.has(x.i)) return;
+    if(x.si && x.si.length>1){
+      const key=x.si.slice().sort().join(',');
+      if(!grouped.has(key)){
+        const siblings=x.si.map(idx=>DI[idx]).filter(Boolean);
+        grouped.set(key, siblings);
+        siblings.forEach(s=>assigned.add(s.i));
+      }
+    } else {
+      // 단일 평형: 그대로 통과
+      grouped.set('solo:'+x.i, [x]);
+      assigned.add(x.i);
+    }
+  });
+
+  DM=[];
+  grouped.forEach((siblings, key)=>{
+    if(siblings.length===1){
+      // 단일 평형: 원본 그대로 사용
+      DM.push(siblings[0]);
+      return;
+    }
+    // 다평형 통합: 거래건수(t) 가중평균
+    const totalT=siblings.reduce((s,x)=>s+(x.t||1),0);
+    const wavg=(field)=>{
+      const valid=siblings.filter(x=>x[field]!==null&&x[field]!==undefined);
+      if(valid.length===0) return null;
+      const wt=valid.reduce((s,x)=>s+(x.t||1),0);
+      return valid.reduce((s,x)=>s+x[field]*(x.t||1),0)/wt;
+    };
+    const areas=siblings.map(x=>x.a).sort((a,b)=>a-b);
+    const aMin=areas[0], aMax=areas[areas.length-1];
+    const rep=siblings[0]; // 대표 엔트리
+    const mc=wavg('c'); const mm=wavg('m'); const ms=wavg('s');
+    const mq=wavg('q'); const mk=wavg('k'); const my25=wavg('y25');
+    const mp25=wavg('p25');
+    DM.push({
+      _merged:true,
+      i:rep.i, // 대표 인덱스
+      n:rep.n, r:rep.r, g:rep.g, d:rep.d, b:rep.b,
+      a:aMin===aMax?aMin:(aMin+'~'+aMax),
+      _aNum:aMax, // 정렬용
+      c:mc!==null?parseFloat(mc.toFixed(1)):null,
+      m:mm!==null?parseFloat(mm.toFixed(1)):0,
+      s:ms!==null?parseFloat(ms.toFixed(2)):null,
+      v:siblings.reduce((s,x)=>s+(x.v||0),0),
+      q:mq!==null?parseFloat(mq.toFixed(1)):null,
+      k:mk!==null?parseFloat(mk.toFixed(1)):null,
+      t:totalT,
+      p25:mp25!==null?parseFloat(mp25.toFixed(2)):null,
+      y25:my25!==null?parseFloat(my25.toFixed(1)):null,
+      si:siblings.map(x=>x.i),
+      j:rep.j, rd:rep.rd
+    });
+  });
+  console.log(`Merged: ${D.length} → ${DM.length} entries`);
+}
+
+function toggleMerged(){
+  merged=!merged;
+  document.getElementById('mgBtn').textContent=merged?'통합':'평형별';
+  document.getElementById('mgBtn').style.background=merged?'var(--accent)':'';
+  document.getElementById('mgBtn').style.color=merged?'#fff':'';
+  document.getElementById('mgBtn').style.borderColor=merged?'var(--accent)':'';
+  cd(); // 상세 패널 닫기
+  af();
+}
+
 function onR(){
   const v=gv('fR');
   const s=document.getElementById('fG');
@@ -842,7 +918,8 @@ function af(){
   const fR=gv('fR'),fG=gv('fG'),fD=gv('fD'),fS=gv('fS').toLowerCase();
   const cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH');
 
-  F=D.filter(x=>{
+  const src=merged?DM:D;
+  F=src.filter(x=>{
     if(fR!==''&&x.r!==parseInt(fR))return false;
     if(fG&&x.g!==fG)return false;
     if(fD&&x.d!==fD)return false;
@@ -864,6 +941,8 @@ function af(){
 function ds(){
   F.sort((a,b)=>{
     let va=a[sc], vb=b[sc];
+    // 통합 모드 면적 정렬: _aNum 사용
+    if(sc==='a'&&merged){ va=a._aNum||a.a; vb=b._aNum||b.a; }
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
     if(vb===null||vb===undefined)vb=sa?Infinity:-Infinity;
     if(typeof va==='string')return sa?va.localeCompare(vb):vb.localeCompare(va);
@@ -935,6 +1014,8 @@ function showDetail(x){
   const dp=document.getElementById('dp');
   dp.classList.add('open');
 
+  const isMerged=x._merged&&x.si&&x.si.length>1;
+
   document.getElementById('dn').textContent=x.n;
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
 
@@ -942,12 +1023,24 @@ function showDetail(x){
   const tabsEl=document.getElementById('areaTabs');
   if(x.si && x.si.length>1){
     let tabs='';
-    x.si.forEach(sibIdx=>{
-      const sib=DI[sibIdx];
-      if(!sib)return;
-      const isActive=sibIdx===x.i?'active':'';
-      tabs+=`<button class="area-tab ${isActive}" onclick="switchArea(${sibIdx})">${sib.a}\u33A1</button>`;
-    });
+    if(isMerged){
+      // 통합 모드: "통합" 탭 + 개별 평형 탭
+      const isAllActive=curDetailIdx===x.i&&!window._showingSingleArea;
+      tabs+=`<button class="area-tab ${isAllActive?'active':''}" onclick="showMergedDetail()">통합</button>`;
+      x.si.forEach(sibIdx=>{
+        const sib=DI[sibIdx];
+        if(!sib)return;
+        const isActive=window._showingSingleArea&&curDetailIdx===sibIdx?'active':'';
+        tabs+=`<button class="area-tab ${isActive}" onclick="switchAreaFromMerged(${sibIdx})">${sib.a}\u33A1</button>`;
+      });
+    } else {
+      x.si.forEach(sibIdx=>{
+        const sib=DI[sibIdx];
+        if(!sib)return;
+        const isActive=sibIdx===x.i?'active':'';
+        tabs+=`<button class="area-tab ${isActive}" onclick="switchArea(${sibIdx})">${sib.a}\u33A1</button>`;
+      });
+    }
     tabsEl.innerHTML=tabs;
     tabsEl.style.display='flex';
   } else {
@@ -966,7 +1059,10 @@ function showDetail(x){
     ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
-  const prices=getPrices(x.i);
+  let prices=getPrices(x.i);
+  if(!prices&&x._merged&&x.si){
+    for(const sibIdx of x.si){ prices=getPrices(sibIdx); if(prices) break; }
+  }
   if(!prices){
     document.getElementById('yp').innerHTML='<div style="color:#64748b">\uAC00\uACA9 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
     if(ch)ch.destroy();
@@ -975,7 +1071,51 @@ function showDetail(x){
     },200);
     return;
   }
+  window._showingSingleArea=false;
   renderDetail(x);
+}
+
+// 통합 모드에서 개별 평형 클릭
+function switchAreaFromMerged(dataIdx){
+  const x=DI[dataIdx];
+  if(!x)return;
+  window._showingSingleArea=true;
+  curDetailIdx=dataIdx;
+  // 탭만 업데이트 (통합 엔트리의 si 사용)
+  const mergedEntry=F.find(f=>f._merged&&f.si&&f.si.includes(dataIdx));
+  const tabsEl=document.getElementById('areaTabs');
+  if(mergedEntry&&mergedEntry.si){
+    let tabs=`<button class="area-tab" onclick="showMergedDetail()">통합</button>`;
+    mergedEntry.si.forEach(sibIdx=>{
+      const sib=DI[sibIdx];
+      if(!sib)return;
+      tabs+=`<button class="area-tab ${sibIdx===dataIdx?'active':''}" onclick="switchAreaFromMerged(${sibIdx})">${sib.a}\u33A1</button>`;
+    });
+    tabsEl.innerHTML=tabs;
+  }
+  // 메트릭/차트는 개별 평형 것으로 표시
+  const fm=(v,s='%')=>v!==null&&v!==undefined?(v>0?'+':'')+v+s:'-';
+  document.getElementById('dn').textContent=x.n;
+  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
+  document.getElementById('metrics').innerHTML=[
+    ['CAGR',fm(x.c),x.c>0?'up':'dn'],
+    ['MDD',x.m+'%','dn'],
+    ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
+    ['25\uB144 \uD3C9\uADE0\uAC00',x.p25&&x.p25>0?x.p25+'\uC5B5':'-',''],
+    ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
+    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
+  ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
+  renderDetail(x);
+}
+
+// 통합 뷰로 돌아가기
+function showMergedDetail(){
+  const mergedEntry=F.find(f=>f._merged&&f.si&&f.si.includes(curDetailIdx));
+  if(mergedEntry){
+    window._showingSingleArea=false;
+    curDetailIdx=mergedEntry.i;
+    showDetail(mergedEntry);
+  }
 }
 
 function switchArea(dataIdx){
@@ -986,47 +1126,119 @@ function switchArea(dataIdx){
 }
 
 async function renderDetail(x){
-  const prices=getPrices(x.i);
+  let prices=getPrices(x.i);
+  // 통합 엔트리면 si 중 아무 가격이라도 있으면 진행
+  if(!prices&&x._merged&&x.si){
+    for(const sibIdx of x.si){ prices=getPrices(sibIdx); if(prices) break; }
+  }
   if(!prices)return;
   const volumes=getVolumes(x.i);
   const details=getDetails(x.i);
 
   // 연도별 가격 리스트
   let yh='';
-  prices.forEach((p,j)=>{
-    if(p>0){
-      const y=2015+j;
-      const vol=volumes?volumes[j]:0;
-      let chg='';
-      if(j>0&&prices[j-1]>0){
-        const pct=((p-prices[j-1])/prices[j-1]*100).toFixed(1);
-        chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
-      }
-      const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}\uAC74</span>`:'';
-
-      let rangeStr='';
-      if(details && details[j]){
-        const d=details[j];
-        const mn=d[1], mx=d[2];
-        if(mn>0 && mx>0 && mn!==mx){
-          rangeStr=`<span style="color:#475569;font-size:10px">(${mn}~${mx})</span>`;
+  if(x._merged&&x.si&&x.si.length>1){
+    // 통합 엔트리: 모든 평형의 연도별 가격을 평균
+    const mergedYearPrices=new Array(12).fill(0);
+    const mergedYearVols=new Array(12).fill(0);
+    const mergedYearCounts=new Array(12).fill(0); // 해당 연도에 가격 있는 평형 수
+    x.si.forEach(sibIdx=>{
+      const pr=getPrices(sibIdx);
+      const vl=getVolumes(sibIdx);
+      if(pr) pr.forEach((p,j)=>{
+        if(p>0){ mergedYearPrices[j]+=p; mergedYearCounts[j]++; }
+      });
+      if(vl) vl.forEach((v,j)=>{ mergedYearVols[j]+=v; });
+    });
+    for(let j=0;j<12;j++){
+      if(mergedYearCounts[j]>0){
+        const avgP=parseFloat((mergedYearPrices[j]/mergedYearCounts[j]).toFixed(2));
+        const y=2015+j;
+        let chg='';
+        // 이전 연도와 비교
+        if(j>0&&mergedYearCounts[j-1]>0){
+          const prevAvg=mergedYearPrices[j-1]/mergedYearCounts[j-1];
+          const pct=((avgP-prevAvg)/prevAvg*100).toFixed(1);
+          chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
         }
+        const volStr=mergedYearVols[j]>0?`<span style="color:#64748b;font-size:10px">${mergedYearVols[j]}건</span>`:'';
+        yh+=`<div class="yr-row">
+          <span style="color:#64748b;min-width:32px">${y}</span>
+          <span style="font-weight:600">${avgP}억</span>
+          <span style="color:#475569;font-size:10px">(${mergedYearCounts[j]}평형)</span>
+          ${volStr}
+          ${chg}
+        </div>`;
       }
-
-      yh+=`<div class="yr-row" onclick="openTxModal(${x.i},${y})">
-        <span style="color:#64748b;min-width:32px">${y}</span>
-        <span style="font-weight:600">${p}\uC5B5</span>
-        ${rangeStr}
-        ${volStr}
-        ${chg}
-      </div>`;
     }
-  });
+  } else {
+    prices.forEach((p,j)=>{
+      if(p>0){
+        const y=2015+j;
+        const vol=volumes?volumes[j]:0;
+        let chg='';
+        if(j>0&&prices[j-1]>0){
+          const pct=((p-prices[j-1])/prices[j-1]*100).toFixed(1);
+          chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
+        }
+        const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}건</span>`:'';
+
+        let rangeStr='';
+        if(details && details[j]){
+          const d=details[j];
+          const mn=d[1], mx=d[2];
+          if(mn>0 && mx>0 && mn!==mx){
+            rangeStr=`<span style="color:#475569;font-size:10px">(${mn}~${mx})</span>`;
+          }
+        }
+
+        yh+=`<div class="yr-row" onclick="openTxModal(${x.i},${y})">
+          <span style="color:#64748b;min-width:32px">${y}</span>
+          <span style="font-weight:600">${p}억</span>
+          ${rangeStr}
+          ${volStr}
+          ${chg}
+        </div>`;
+      }
+    });
+  }
   document.getElementById('yp').innerHTML=yh;
 
   // 월별 차트
   const md=await loadMonthly(x.g);
-  const entryMonthly=md[String(x.i)];
+  let entryMonthly=md[String(x.i)];
+
+  // 통합 엔트리: 각 평형을 개별 forward-fill 후 평균 (구성 편향 제거)
+  if(x._merged&&x.si&&x.si.length>1){
+    const filledSeries=[];
+    for(const sibIdx of x.si){
+      const sib=DI[sibIdx];
+      if(!sib) continue;
+      const sibMd=MONTHLY_CACHE[sib.g]||await loadMonthly(sib.g);
+      if(sibMd&&sibMd[String(sibIdx)]){
+        const ff=forwardFill(sibMd[String(sibIdx)].p);
+        filledSeries.push({values:ff.values, filled:ff.filled, raw:sibMd[String(sibIdx)]});
+      }
+    }
+    if(filledSeries.length>0){
+      const mergedP=new Array(132).fill(0);
+      const mergedC=new Array(132).fill(0);
+      const mergedFilled=new Array(132).fill(true);
+      for(let slot=0;slot<132;slot++){
+        const vals=[];
+        let anyReal=false;
+        filledSeries.forEach(s=>{
+          if(s.values[slot]>0){ vals.push(s.values[slot]); if(!s.filled[slot]) anyReal=true; }
+        });
+        if(vals.length){
+          mergedP[slot]=vals.reduce((a,b)=>a+b,0)/vals.length;
+          mergedFilled[slot]=!anyReal;
+        }
+        filledSeries.forEach(s=>{ mergedC[slot]+=s.raw.c[slot]; });
+      }
+      entryMonthly={p:mergedP, c:mergedC, _filled:mergedFilled, _preFilled:true};
+    }
+  }
 
   if(ch)ch.destroy();
 
@@ -1034,7 +1246,8 @@ async function renderDetail(x){
     // 월별 차트
     const rawPrices=entryMonthly.p;
     const rawCounts=entryMonthly.c;
-    const ff=forwardFill(rawPrices);
+    // _preFilled이면 이미 forward-fill 처리된 상태
+    const ff=entryMonthly._preFilled?{values:rawPrices, filled:entryMonthly._filled}:forwardFill(rawPrices);
 
     // 첫 유효값과 마지막 유효값 사이만 표시
     let firstValid=-1, lastValid=-1;
@@ -1399,6 +1612,7 @@ function saveHash(){
   if(cp>1)p.p=cp;
   if(ps!==100)p.ps=ps;
   if(curDetailIdx!==null)p.i=curDetailIdx;
+  if(merged)p.mg=1;
   if(viewMode==='area')p.vm='area';
   if(areaLevel!=='gu')p.al=areaLevel;
   if(selectedAreas.length)p.aa=selectedAreas.join('|');
@@ -1427,6 +1641,14 @@ function loadHash(){
   if(p.sc)sc=p.sc;
   if(p.sa)sa=true;
   if(p.ps){ps=parseInt(p.ps);document.getElementById('ps').value=p.ps;}
+  if(p.mg){
+    merged=true;
+    const btn=document.getElementById('mgBtn');
+    btn.textContent='통합';
+    btn.style.background='var(--accent)';
+    btn.style.color='#fff';
+    btn.style.borderColor='var(--accent)';
+  }
   hashLock=false;
   af();
   if(p.p)cp=parseInt(p.p);
