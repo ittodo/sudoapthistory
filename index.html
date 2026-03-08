@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>서울·경기 아파트 투자 스크리너</title>
 <meta name="description" content="국토교통부 실거래가 데이터 기반 서울·경기 아파트 49,015개 단지+평형 투자 지표 분석 스크리너">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4171612672605986"
-     crossorigin="anonymous"></script>
+<!-- AdSense: 콘텐츠 로드 완료 후 동적 삽입 (정책 준수) -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -152,6 +151,13 @@
   .sim-result-card .sim-stats { display:grid; grid-template-columns:1fr 1fr; gap:3px; font-size:11px; }
   .sim-result-card .sim-stat-label { color:var(--muted); }
   .sim-result-card .sim-stat-value { font-weight:600; text-align:right; }
+
+  /* 산식 툴팁 */
+  .sim-help { display:inline-block; width:15px; height:15px; border-radius:50%; background:rgba(59,130,246,.15); color:#93c5fd; font-size:10px; text-align:center; line-height:15px; cursor:help; margin-left:4px; position:relative; font-weight:700; vertical-align:middle; }
+  .sim-help:hover .sim-tooltip { display:block; }
+  .sim-tooltip { display:none; position:absolute; left:20px; top:-4px; background:#1a2332; border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:11px; color:var(--muted); white-space:pre-line; z-index:100; min-width:280px; line-height:1.6; font-weight:400; box-shadow:0 4px 12px rgba(0,0,0,.4); }
+  .sim-tooltip .tt-formula { color:#93c5fd; font-weight:600; }
+  .sim-tooltip .tt-num { color:#e2e8f0; }
 
   /* 모바일 카드 */
   .m-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer; transition: background .1s; }
@@ -318,7 +324,34 @@
     </div>
   </div>
 
-  <div class="footer-disclaimer">본 서비스에서 제공하는 정보는 법적인 효력이 없으므로 참고용으로만 활용하시기 바랍니다.</div>
+  <!-- 콘텐츠 섹션: 분석 방법론 및 지표 설명 (AdSense 정책 준수용 에디토리얼 콘텐츠) -->
+  <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:20px;">
+    <h2 class="text-sm font-bold text-white" style="margin-bottom:12px;">분석 방법론 및 투자 지표 안내</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">CAGR (연평균성장률)</h3>
+        <p style="font-size:11px;color:var(--muted);line-height:1.6;">2015년부터 2025년까지 아파트 가격의 연평균 복리 성장률입니다. (최종가/초기가)^(1/기간)-1 공식으로 산출하며, 최소 3개년 이상 거래 데이터가 있는 단지만 계산합니다. 장기 투자 수익률의 핵심 지표입니다.</p>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">MDD (최대낙폭)</h3>
+        <p style="font-size:11px;color:var(--muted);line-height:1.6;">연간 평균 거래가 기준으로 고점 대비 최대 하락폭을 측정합니다. 투자 위험도를 판단하는 핵심 지표로, MDD가 작을수록 가격 방어력이 우수한 단지입니다. 2022~2023년 하락장에서의 낙폭이 주로 반영됩니다.</p>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">샤프비율 (위험조정수익)</h3>
+        <p style="font-size:11px;color:var(--muted);line-height:1.6;">CAGR을 연간 수익률의 표준편차로 나눈 값으로, 변동성 대비 수익률의 효율성을 나타냅니다. 샤프비율이 높을수록 리스크 대비 안정적인 수익을 제공하는 단지입니다. 일반적으로 1.0 이상이면 우수한 투자처로 평가됩니다.</p>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">26년 모멘텀</h3>
+        <p style="font-size:11px;color:var(--muted);line-height:1.6;">2026년 1분기 거래가를 2025년 연평균가와 비교한 단기 가격 추세입니다. 양수이면 최근 가격이 상승 중이며, 음수이면 하락 추세에 있음을 의미합니다. 단기 투자 타이밍 판단에 활용할 수 있습니다.</p>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
+      <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">데이터 출처 및 활용 안내</h3>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;">본 스크리너는 국토교통부 실거래가 공개시스템의 공식 데이터를 기반으로 합니다. 서울 및 경기도 아파트의 2015년부터 2026년 1분기까지 약 250만 건의 실거래 기록을 분석하여 투자 지표를 산출했습니다. 모든 가격은 전용면적 기준 평균 거래가(억원)이며, 연도별 거래 건수가 충분하지 않은 경우 일부 지표가 표시되지 않을 수 있습니다. 본 정보는 투자 판단의 참고 자료로만 활용하시고, 실제 투자 결정 시에는 반드시 전문가 상담 및 현장 실사를 병행하시기 바랍니다.</p>
+    </div>
+  </div>
+
+  <div class="footer-disclaimer">본 서비스에서 제공하는 정보는 법적인 효력이 없으므로 참고용으로만 활용하시기 바랍니다. | 데이터 출처: 국토교통부 실거래가 공개시스템 | &copy; 2026</div>
 </div>
 
 <!-- 거래 드릴다운 모달 -->
@@ -1006,7 +1039,9 @@ function calcInvestReturn(areaData, params){
   const capitalGain=futurePrice-price;
   const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house);
   const brokerSell=getBrokerFee(futurePrice);
-  const holdingTax=price*holdTaxRate/100*years;
+  // 보유세: 매년 해당연도 시가 기준으로 산출
+  let holdingTax=0;
+  for(let t=1;t<=years;t++) holdingTax+=price*Math.pow(1+cagr/100,t)*holdTaxRate/100;
 
   const totalProfit=capitalGain-capGainTax-acqTax-holdingTax-brokerBuy-brokerSell;
   const roi=totalProfit/initInvest*100;
@@ -1018,7 +1053,7 @@ function calcInvestReturn(areaData, params){
   const yearlyDeposit=[];
   for(let t=0;t<=years;t++){
     const curPrice=price*Math.pow(1+cagr/100,t);
-    const cumHoldTax=price*holdTaxRate/100*t;
+    let cumHoldTax=0; for(let y=1;y<=t;y++) cumHoldTax+=price*Math.pow(1+cagr/100,y)*holdTaxRate/100;
     yearlyAsset.push(curPrice-price-cumHoldTax-acqTax-brokerBuy);
     yearlyDeposit.push(initInvest*(Math.pow(1+depositRate/100,t)-1));
   }
@@ -1031,7 +1066,8 @@ function calcInvestReturn(areaData, params){
     const cg=fp-price;
     const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house);
     const bs=getBrokerFee(fp);
-    const tp=cg-cgt-acqTax-holdingTax-brokerBuy-bs;
+    let beHold=0; for(let t=1;t<=years;t++) beHold+=price*Math.pow(1+mid/100,t)*holdTaxRate/100;
+    const tp=cg-cgt-acqTax-beHold-brokerBuy-bs;
     if(tp<0) beLow=mid; else beHigh=mid;
     if(Math.abs(tp)<0.001){beCagr=mid;break;}
   }
@@ -1196,7 +1232,9 @@ function calcLiveReturn(areaData, params){
   const capitalGain=futurePrice-price;
   const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house);
   const brokerSell=getBrokerFee(futurePrice);
-  const holdingTax=price*holdTaxRate/100*years;
+  // 보유세: 매년 해당연도 시가 기준으로 산출
+  let holdingTax=0;
+  for(let t=1;t<=years;t++) holdingTax+=price*Math.pow(1+cagr/100,t)*holdTaxRate/100;
   // 원리금 균등 상환 30년 기준 이자 계산
   const loanTermMonths=360; // 30년
   const monthlyRate=loanRate/100/12;
@@ -1230,7 +1268,7 @@ function calcLiveReturn(areaData, params){
   const yearlyRent=[];
   for(let t=0;t<=years;t++){
     const curPrice=price*Math.pow(1+cagr/100,t);
-    const cumHoldTax=price*holdTaxRate/100*t;
+    let cumHoldTax=0; for(let y=1;y<=t;y++) cumHoldTax+=price*Math.pow(1+cagr/100,y)*holdTaxRate/100;
     const cumInt=cumInterestByYear[t]||0;
     const cumRentSaved=rent*12*t/10000;
     yearlyOwn.push(curPrice-price-cumHoldTax-cumInt-acqTax-brokerBuy+cumRentSaved);
@@ -1245,7 +1283,8 @@ function calcLiveReturn(areaData, params){
     const cg=fp-price;
     const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house);
     const bs=getBrokerFee(fp);
-    const tp=cg-cgt-acqTax-holdingTax-brokerBuy-bs-totalInterest+rentSaved;
+    let beHold=0; for(let t=1;t<=years;t++) beHold+=price*Math.pow(1+mid/100,t)*holdTaxRate/100;
+    const tp=cg-cgt-acqTax-beHold-brokerBuy-bs-totalInterest+rentSaved;
     if(tp<0) beLow=mid; else beHigh=mid;
   }
   const beCagr=(beLow+beHigh)/2;
@@ -1320,44 +1359,111 @@ function updateSim(){
   });
   html+='</tr></thead><tbody>';
 
+  // 산식 툴팁 헬퍼
+  const tip=(formula)=>`<span class="sim-help">?<span class="sim-tooltip">${formula}</span></span>`;
+  const tipR=(formula,r)=>{
+    // r의 실제 숫자를 대입한 산식
+    let s=typeof formula==='function'?formula(r):formula;
+    return `<span class="sim-help">?<span class="sim-tooltip">${s}</span></span>`;
+  };
+
+  // 산식에 실제 숫자를 넣어주는 함수들
+  function acqTip(r){
+    const p=r.result.price, rate=getAcqTaxRate(p,params.houseCnt)*100;
+    return `<span class="tt-formula">매매가 × 취득세율</span>\n<span class="tt-num">${p.toFixed(2)}억 × ${rate}% = ${r.result.costs.acquisition.toFixed(2)}억</span>\n\n세율: 6억↓ 1%, 9억↓ 2%, 9억↑ 3%\n2주택 8%, 3주택↑ 12%`;
+  }
+  function holdTip(r){
+    const p=r.result.price, rate=params.holdTaxRate, y=params.years;
+    const fp=r.result.futurePrice;
+    return `<span class="tt-formula">매년 해당연도 시가 × 보유세율</span>\n<span class="tt-num">Σ(t=1~${y}) 시가(t년) × ${rate}%</span>\n<span class="tt-num">1년차: ${(p*Math.pow(1+r.area.avgCagr/100,1)).toFixed(2)}억 × ${rate}%</span>\n<span class="tt-num">${y}년차: ${(p*Math.pow(1+r.area.avgCagr/100,y)).toFixed(2)}억 × ${rate}%</span>\n<span class="tt-num">합계: ${r.result.costs.holding.toFixed(2)}억</span>\n\n매년 시가가 CAGR만큼 상승한다고 가정`;
+  }
+  function cgTip(r){
+    const res=r.result, gain=(res.futurePrice-res.price);
+    let s=`<span class="tt-formula">양도차익에 누진세율 적용</span>\n<span class="tt-num">양도차익: ${res.futurePrice.toFixed(2)} - ${res.price.toFixed(2)} = ${gain.toFixed(2)}억</span>\n`;
+    if(params.exempt1house&&params.houseCnt===1&&params.years>=2) s+=`<span class="tt-num">1주택 비과세: 12억 공제 적용</span>\n`;
+    if(params.years>=3){
+      const dr=Math.min(params.years*(params.exempt1house&&params.houseCnt===1?.04:.02), params.exempt1house&&params.houseCnt===1?.8:.3);
+      s+=`<span class="tt-num">장기보유공제: ${(dr*100).toFixed(0)}% (${params.years}년)</span>\n`;
+    }
+    s+=`<span class="tt-num">양도세: ${res.costs.capitalGains.toFixed(2)}억</span>\n\n누진세: 1400만↓6%~5억↑45%`;
+    return s;
+  }
+  function brokerTip(r){
+    const res=r.result;
+    return `<span class="tt-formula">매수 중개료 + 매도 중개료</span>\n<span class="tt-num">매수: ${res.price.toFixed(2)}억 → ${res.costs.brokerBuy.toFixed(4)}억</span>\n<span class="tt-num">매도: ${res.futurePrice.toFixed(2)}억 → ${res.costs.brokerSell.toFixed(4)}억</span>\n<span class="tt-num">합계: ${(res.costs.brokerBuy+res.costs.brokerSell).toFixed(4)}억</span>\n\n5천만↓ 0.4%, 9천만↓ 0.5%, 9천만↑ 0.9%\n매도 수수료는 미래가격 기준`;
+  }
+  function futureTip(r){
+    const res=r.result;
+    return `<span class="tt-formula">매매가 × (1+CAGR)^기간</span>\n<span class="tt-num">${res.price.toFixed(2)}억 × (1+${r.area.avgCagr.toFixed(1)}%)^${params.years}</span>\n<span class="tt-num">= ${res.futurePrice.toFixed(2)}억</span>`;
+  }
+  function profitTip(r){
+    const res=r.result;
+    if(params.mode==='gap'){
+      return `<span class="tt-formula">시세차익 - 세금 - 비용</span>\n<span class="tt-num">시세차익: ${(res.futurePrice-res.price).toFixed(2)}억</span>\n<span class="tt-num">- 취득세: ${res.costs.acquisition.toFixed(2)}억</span>\n<span class="tt-num">- 보유세: ${res.costs.holding.toFixed(2)}억</span>\n<span class="tt-num">- 양도세: ${res.costs.capitalGains.toFixed(2)}억</span>\n<span class="tt-num">- 중개료: ${(res.costs.brokerBuy+res.costs.brokerSell).toFixed(4)}억</span>\n<span class="tt-num">= 순수익: ${res.totalProfit.toFixed(2)}억</span>`;
+    }
+    return `<span class="tt-formula">시세차익 - 세금 - 비용 - 이자 + 월세절약</span>\n<span class="tt-num">시세차익: ${(res.futurePrice-res.price).toFixed(2)}억</span>\n<span class="tt-num">- 취득세: ${res.costs.acquisition.toFixed(2)}억</span>\n<span class="tt-num">- 보유세: ${res.costs.holding.toFixed(2)}억</span>\n<span class="tt-num">- 양도세: ${res.costs.capitalGains.toFixed(2)}억</span>\n<span class="tt-num">- 중개료: ${(res.costs.brokerBuy+res.costs.brokerSell).toFixed(4)}억</span>\n<span class="tt-num">- 대출이자: ${res.costs.interest.toFixed(2)}억</span>\n<span class="tt-num">+ 월세절약: ${res.rentSaved.toFixed(2)}억</span>\n<span class="tt-num">= 순수익: ${res.totalProfit.toFixed(2)}억</span>`;
+  }
+  function roiTip(r){
+    const res=r.result;
+    return `<span class="tt-formula">순수익 / 초기투자금 × 100</span>\n<span class="tt-num">${res.totalProfit.toFixed(2)}억 / ${res.initInvest.toFixed(2)}억 × 100</span>\n<span class="tt-num">= ${res.roi.toFixed(1)}%</span>`;
+  }
+  function annualTip(r){
+    const res=r.result;
+    return `<span class="tt-formula">(1+ROI)^(1/기간) - 1</span>\n<span class="tt-num">(1+${res.roi.toFixed(1)}%)^(1/${params.years}) - 1</span>\n<span class="tt-num">= ${res.annualReturn.toFixed(1)}%</span>`;
+  }
+  function leverageTip(r){
+    const res=r.result;
+    if(params.mode==='gap'){
+      return `<span class="tt-formula">매매가 / 자기자본(갭)</span>\n<span class="tt-num">${res.price.toFixed(2)}억 / ${res.gap.toFixed(2)}억 = ${res.leverage.toFixed(1)}x</span>`;
+    }
+    return `<span class="tt-formula">매매가 / 자기자본</span>\n<span class="tt-num">${res.price.toFixed(2)}억 / ${res.equity.toFixed(2)}억 = ${res.leverage.toFixed(1)}x</span>`;
+  }
+  function initTip(r){
+    const res=r.result;
+    if(params.mode==='gap'){
+      return `<span class="tt-formula">갭 + 취득세 + 매수중개료</span>\n<span class="tt-num">${res.gap.toFixed(2)} + ${res.costs.acquisition.toFixed(2)} + ${res.costs.brokerBuy.toFixed(4)}</span>\n<span class="tt-num">= ${res.initInvest.toFixed(2)}억</span>`;
+    }
+    return `<span class="tt-formula">자기자본 + 취득세 + 매수중개료</span>\n<span class="tt-num">${res.equity.toFixed(2)} + ${res.costs.acquisition.toFixed(2)} + ${res.costs.brokerBuy.toFixed(4)}</span>\n<span class="tt-num">= ${res.initInvest.toFixed(2)}억</span>`;
+  }
+
   let rows;
   if(params.mode==='gap'){
     rows=[
       ['매매가(25년)',r=>fmtOk(r.result.price)],
       ['전세가율',r=>r.result.jeonseRate+'%'],
-      ['전세가',r=>fmtOk(r.result.jeonse)],
-      ['자기자본(갭)',r=>fmtOk(r.result.gap)],
-      ['취득세',r=>fmtOk(r.result.costs.acquisition)],
-      ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)],
-      ['양도세',r=>fmtOk(r.result.costs.capitalGains)],
-      ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)],
-      ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)],
-      ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`}],
-      ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
-      ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
-      ['레버리지',r=>r.result.leverage.toFixed(1)+'x'],
-      ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%']
+      ['전세가',r=>fmtOk(r.result.jeonse)+tipR(rr=>`<span class="tt-formula">매매가 × 전세가율</span>\n<span class="tt-num">${rr.result.price.toFixed(2)}억 × ${rr.result.jeonseRate}% = ${rr.result.jeonse.toFixed(2)}억</span>`,r)],
+      ['자기자본(갭)',r=>fmtOk(r.result.gap)+tipR(rr=>`<span class="tt-formula">매매가 - 전세가</span>\n<span class="tt-num">${rr.result.price.toFixed(2)} - ${rr.result.jeonse.toFixed(2)} = ${rr.result.gap.toFixed(2)}억</span>`,r)],
+      ['취득세',r=>fmtOk(r.result.costs.acquisition)+tipR(acqTip,r)],
+      ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)+tipR(holdTip,r)],
+      ['양도세',r=>fmtOk(r.result.costs.capitalGains)+tipR(cgTip,r)],
+      ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)+tipR(brokerTip,r)],
+      ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)+tipR(futureTip,r)],
+      ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`+tipR(profitTip,r)}],
+      ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`+tipR(roiTip,r)}],
+      ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`+tipR(annualTip,r)}],
+      ['레버리지',r=>r.result.leverage.toFixed(1)+'x'+tipR(leverageTip,r)],
+      ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%'+tip('모든 비용을 차감한 순수익이\n0이 되는 최소 CAGR')]
     ];
   } else {
     rows=[
       ['매매가(25년)',r=>fmtOk(r.result.price)],
       ['LTV(설정→실효)',r=>{const res=r.result;return res.effectiveLtv<res.ltv?`<span style="text-decoration:line-through;color:var(--muted)">${res.ltv}%</span> → ${res.effectiveLtv.toFixed(0)}% <span style="font-size:10px;color:#f59e0b">한도</span>`:res.ltv+'%';}],
-      ['대출금',r=>fmtOk(r.result.loanAmt)],
-      ['월 상환액',r=>{const m=r.result.monthlyPayment;return m?(m*10000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'만원':'-';}],
-      ['자기자본',r=>fmtOk(r.result.equity)],
-      ['취득세',r=>fmtOk(r.result.costs.acquisition)],
-      ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)],
-      ['대출이자('+params.years+'년)',r=>fmtOk(r.result.costs.interest)+' <span style="font-size:9px;color:#64748b">원리금균등30년</span>'],
+      ['대출금',r=>fmtOk(r.result.loanAmt)+tipR(rr=>`<span class="tt-formula">매매가 × LTV</span>\n<span class="tt-num">${rr.result.price.toFixed(2)}억 × ${rr.result.effectiveLtv.toFixed(0)}% = ${rr.result.loanAmt.toFixed(2)}억</span>`,r)],
+      ['월 상환액',r=>{const m=r.result.monthlyPayment;return m?(m*10000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,',')+'만원'+tip('원리금균등상환 30년 기준\n월상환액 = 대출금 × r(1+r)^360 / ((1+r)^360-1)\nr = 연이율/12'):'-';}],
+      ['자기자본',r=>fmtOk(r.result.equity)+tipR(rr=>`<span class="tt-formula">매매가 - 대출금</span>\n<span class="tt-num">${rr.result.price.toFixed(2)} - ${rr.result.loanAmt.toFixed(2)} = ${rr.result.equity.toFixed(2)}억</span>`,r)],
+      ['취득세',r=>fmtOk(r.result.costs.acquisition)+tipR(acqTip,r)],
+      ['보유세('+params.years+'년)',r=>fmtOk(r.result.costs.holding)+tipR(holdTip,r)],
+      ['대출이자('+params.years+'년)',r=>fmtOk(r.result.costs.interest)+tipR(rr=>`<span class="tt-formula">원리금균등 30년 상환 이자 합계</span>\n<span class="tt-num">${params.years}년간 누적 이자: ${rr.result.costs.interest.toFixed(2)}억</span>\n<span class="tt-num">잔여원금: ${rr.result.remainLoan.toFixed(2)}억 (매도시 상환)</span>`,r)],
       ['잔여대출('+params.years+'년후)',r=>fmtOk(r.result.remainLoan)],
-      ['양도세',r=>fmtOk(r.result.costs.capitalGains)],
-      ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)],
-      ['월세절약('+params.years+'년)',r=>`<span class="up">+${fmtOk(r.result.rentSaved)}</span>`],
-      ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)],
-      ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`}],
-      ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
-      ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`}],
-      ['레버리지',r=>r.result.leverage.toFixed(1)+'x'],
-      ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%']
+      ['양도세',r=>fmtOk(r.result.costs.capitalGains)+tipR(cgTip,r)],
+      ['중개수수료(매수+매도)',r=>fmtOk(r.result.costs.brokerBuy+r.result.costs.brokerSell)+tipR(brokerTip,r)],
+      ['월세절약('+params.years+'년)',r=>`<span class="up">+${fmtOk(r.result.rentSaved)}</span>`+tipR(rr=>`<span class="tt-formula">월세 × 12 × 기간</span>\n<span class="tt-num">${params.rent}만원 × 12 × ${params.years}년 = ${rr.result.rentSaved.toFixed(2)}억</span>`,r)],
+      ['미래매매가('+params.years+'년후)',r=>fmtOk(r.result.futurePrice)+tipR(futureTip,r)],
+      ['총 순수익',r=>{const v=r.result.totalProfit;return `<span class="${v>0?'up':'dn'}">${fmtOk(v)}</span>`+tipR(profitTip,r)}],
+      ['ROI',r=>{const v=r.result.roi;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`+tipR(roiTip,r)}],
+      ['연환산 수익률',r=>{const v=r.result.annualReturn;return `<span class="${v>0?'up':'dn'}">${fmtPct(v)}</span>`+tipR(annualTip,r)}],
+      ['레버리지',r=>r.result.leverage.toFixed(1)+'x'+tipR(leverageTip,r)],
+      ['손익분기 CAGR',r=>'연'+r.result.breakeven.toFixed(1)+'%'+tip('모든 비용을 차감한 순수익이\n0이 되는 최소 CAGR')]
     ];
   }
 
@@ -1485,6 +1591,15 @@ async function init(){
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
   console.log(`Index loaded: ${D.length} complexes in ${Math.round(performance.now()-t0)}ms`);
+
+  // AdSense: 콘텐츠가 표시된 후에만 광고 스크립트 로드 (정책 준수)
+  setTimeout(function(){
+    var s=document.createElement('script');
+    s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4171612672605986';
+    s.async=true;
+    s.crossOrigin='anonymous';
+    document.head.appendChild(s);
+  }, 1000);
 
   loadPrices();
   loadVolumes();
