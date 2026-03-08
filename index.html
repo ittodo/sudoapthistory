@@ -1009,8 +1009,15 @@ function applyProgressiveTax(amtOk){
   }
   return Math.max(0,tax/10000);
 }
-function calcCapGainTax(gain, years, cnt, exempt){
+function calcCapGainTax(gain, years, cnt, exempt, flatRate){
   if(gain<=0) return 0;
+  // 비과세가 아닐 때 고정세율 적용
+  if(!exempt&&flatRate!==undefined&&flatRate!==null){
+    let deductRate=0;
+    if(years>=3) deductRate=Math.min(years*.02, .3);
+    const taxable=gain*(1-deductRate);
+    return Math.max(0, taxable*flatRate/100);
+  }
   let taxableGain=gain;
   if(exempt&&cnt===1&&years>=2){
     taxableGain=Math.max(0, gain-12);
@@ -1027,7 +1034,7 @@ function calcInvestReturn(areaData, params){
   const cagr=areaData.avgCagr;
   if(!price||price<=0||cagr===null) return null;
 
-  const {jeonseRate, years, holdTaxRate, houseCnt, exempt1house, depositRate}=params;
+  const {jeonseRate, years, holdTaxRate, houseCnt, exempt1house, depositRate, cgTaxRate}=params;
   const jeonse=price*jeonseRate/100;
   const gap=price-jeonse;
   const acqTaxRate=getAcqTaxRate(price, houseCnt);
@@ -1037,7 +1044,7 @@ function calcInvestReturn(areaData, params){
 
   const futurePrice=price*Math.pow(1+cagr/100, years);
   const capitalGain=futurePrice-price;
-  const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house);
+  const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house, cgTaxRate);
   const brokerSell=getBrokerFee(futurePrice);
   // 보유세: 매년 해당연도 시가 기준으로 산출
   let holdingTax=0;
@@ -1064,7 +1071,7 @@ function calcInvestReturn(areaData, params){
     const mid=(beLow+beHigh)/2;
     const fp=price*Math.pow(1+mid/100, years);
     const cg=fp-price;
-    const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house);
+    const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house, cgTaxRate);
     const bs=getBrokerFee(fp);
     let beHold=0; for(let t=1;t<=years;t++) beHold+=price*Math.pow(1+mid/100,t)*holdTaxRate/100;
     const tp=cg-cgt-acqTax-beHold-brokerBuy-bs;
@@ -1112,6 +1119,7 @@ function renderSimView(){
   });
   html+=`</div></div>`;
   html+=`<div class="sim-slider"><label>1주택 비과세</label><div style="margin-top:6px"><label style="color:#fff;cursor:pointer;font-size:12px"><input type="checkbox" id="simExempt" checked onchange="updateSim()"> 적용 (2년↑보유, 12억↓비과세)</label></div></div>`;
+  html+=`<div class="sim-slider" id="simCgTaxWrap" style="display:none"><label>양도세율(고정)</label><input type="range" id="simCgTaxRate" min="6" max="50" value="35" step="1" oninput="updateSim()"><div class="val" id="simCgTaxRateVal">35%</div><div style="font-size:9px;color:#64748b;margin-top:2px">누진세 대신 고정세율 적용</div></div>`;
 
   if(simMode==='gap'){
     html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
@@ -1180,6 +1188,15 @@ function getSimParams(){
   const activeBtn=document.querySelector('.sim-house-btn.active');
   const houseCnt=activeBtn?parseInt(activeBtn.dataset.cnt):1;
   const exempt1house=document.getElementById('simExempt')?.checked??true;
+  const cgWrap=document.getElementById('simCgTaxWrap');
+  let cgTaxRate=null;
+  if(!exempt1house){
+    if(cgWrap) cgWrap.style.display='';
+    cgTaxRate=parseFloat(document.getElementById('simCgTaxRate')?.value||35);
+    const cv=document.getElementById('simCgTaxRateVal'); if(cv) cv.textContent=cgTaxRate+'%';
+  } else {
+    if(cgWrap) cgWrap.style.display='none';
+  }
 
   const yv=document.getElementById('simYearsVal'); if(yv) yv.textContent=years+'년';
   const hv=document.getElementById('simHoldTaxVal'); if(hv) hv.textContent=holdTaxRate+'%';
@@ -1194,7 +1211,7 @@ function getSimParams(){
       const valEl=document.querySelector(`.simJeonseEachVal[data-idx="${el.dataset.idx}"]`);
       if(valEl) valEl.textContent=val+'%';
     });
-    return {mode:'gap', jeonseRates, years, holdTaxRate, houseCnt, exempt1house, depositRate};
+    return {mode:'gap', jeonseRates, years, holdTaxRate, houseCnt, exempt1house, depositRate, cgTaxRate};
   } else {
     const loanRate=parseFloat(document.getElementById('simLoanRate')?.value||3.5);
     const rent=parseInt(document.getElementById('simRent')?.value||100);
@@ -1209,7 +1226,7 @@ function getSimParams(){
       const valEl=document.querySelector(`.simLtvEachVal[data-idx="${el.dataset.idx}"]`);
       if(valEl) valEl.textContent=val+'%';
     });
-    return {mode:'live', ltvRates, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent, loanCap};
+    return {mode:'live', ltvRates, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent, loanCap, cgTaxRate};
   }
 }
 
@@ -1218,7 +1235,7 @@ function calcLiveReturn(areaData, params){
   const cagr=areaData.avgCagr;
   if(!price||price<=0||cagr===null) return null;
 
-  const {ltv, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent, loanCap}=params;
+  const {ltv, years, holdTaxRate, houseCnt, exempt1house, loanRate, rent, loanCap, cgTaxRate}=params;
   let loanAmt=price*ltv/100;
   if(loanCap>0&&loanAmt>loanCap) loanAmt=loanCap;
   const equity=price-loanAmt;
@@ -1230,7 +1247,7 @@ function calcLiveReturn(areaData, params){
 
   const futurePrice=price*Math.pow(1+cagr/100, years);
   const capitalGain=futurePrice-price;
-  const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house);
+  const capGainTax=calcCapGainTax(capitalGain, years, houseCnt, exempt1house, cgTaxRate);
   const brokerSell=getBrokerFee(futurePrice);
   // 보유세: 매년 해당연도 시가 기준으로 산출
   let holdingTax=0;
@@ -1281,7 +1298,7 @@ function calcLiveReturn(areaData, params){
     const mid=(beLow+beHigh)/2;
     const fp=price*Math.pow(1+mid/100, years);
     const cg=fp-price;
-    const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house);
+    const cgt=calcCapGainTax(cg, years, houseCnt, exempt1house, cgTaxRate);
     const bs=getBrokerFee(fp);
     let beHold=0; for(let t=1;t<=years;t++) beHold+=price*Math.pow(1+mid/100,t)*holdTaxRate/100;
     const tp=cg-cgt-acqTax-beHold-brokerBuy-bs-totalInterest+rentSaved;
@@ -1379,13 +1396,25 @@ function updateSim(){
   }
   function cgTip(r){
     const res=r.result, gain=(res.futurePrice-res.price);
-    let s=`<span class="tt-formula">양도차익에 누진세율 적용</span>\n<span class="tt-num">양도차익: ${res.futurePrice.toFixed(2)} - ${res.price.toFixed(2)} = ${gain.toFixed(2)}억</span>\n`;
-    if(params.exempt1house&&params.houseCnt===1&&params.years>=2) s+=`<span class="tt-num">1주택 비과세: 12억 공제 적용</span>\n`;
-    if(params.years>=3){
-      const dr=Math.min(params.years*(params.exempt1house&&params.houseCnt===1?.04:.02), params.exempt1house&&params.houseCnt===1?.8:.3);
-      s+=`<span class="tt-num">장기보유공제: ${(dr*100).toFixed(0)}% (${params.years}년)</span>\n`;
+    let s='';
+    if(!params.exempt1house&&params.cgTaxRate!==null){
+      s+=`<span class="tt-formula">양도차익 × 고정세율 ${params.cgTaxRate}%</span>\n`;
+      s+=`<span class="tt-num">양도차익: ${res.futurePrice.toFixed(2)} - ${res.price.toFixed(2)} = ${gain.toFixed(2)}억</span>\n`;
+      if(params.years>=3){
+        const dr=Math.min(params.years*.02, .3);
+        s+=`<span class="tt-num">장기보유공제: ${(dr*100).toFixed(0)}% (${params.years}년)</span>\n`;
+        s+=`<span class="tt-num">과세표준: ${(gain*(1-dr)).toFixed(2)}억</span>\n`;
+      }
+      s+=`<span class="tt-num">양도세: ${res.costs.capitalGains.toFixed(2)}억</span>`;
+    } else {
+      s+=`<span class="tt-formula">양도차익에 누진세율 적용</span>\n<span class="tt-num">양도차익: ${res.futurePrice.toFixed(2)} - ${res.price.toFixed(2)} = ${gain.toFixed(2)}억</span>\n`;
+      if(params.exempt1house&&params.houseCnt===1&&params.years>=2) s+=`<span class="tt-num">1주택 비과세: 12억 공제 적용</span>\n`;
+      if(params.years>=3){
+        const dr=Math.min(params.years*(params.exempt1house&&params.houseCnt===1?.04:.02), params.exempt1house&&params.houseCnt===1?.8:.3);
+        s+=`<span class="tt-num">장기보유공제: ${(dr*100).toFixed(0)}% (${params.years}년)</span>\n`;
+      }
+      s+=`<span class="tt-num">양도세: ${res.costs.capitalGains.toFixed(2)}억</span>\n\n누진세: 1400만↓6%~5억↑45%`;
     }
-    s+=`<span class="tt-num">양도세: ${res.costs.capitalGains.toFixed(2)}억</span>\n\n누진세: 1400만↓6%~5억↑45%`;
     return s;
   }
   function brokerTip(r){
