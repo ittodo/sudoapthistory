@@ -261,6 +261,7 @@
             <th onclick="sb('q')">21→25 <span class="sa" data-c="q">▼</span></th>
             <th onclick="sb('k')">26모멘텀 <span class="sa" data-c="k">▼</span></th>
             <th onclick="sb('v')">거래 <span class="sa" data-c="v">▼</span></th>
+            <th onclick="sb('u')">세대 <span class="sa" data-c="u">▼</span></th>
           </tr></thead>
           <tbody id="tb"></tbody>
         </table>
@@ -1878,6 +1879,7 @@ function rt(){
       <td style="text-align:center;font-weight:500" class="${qc}">${qv}</td>
       <td style="text-align:center;font-weight:500" class="${kc}">${kv}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
+      <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
     </tr>`);
   }
   tb.innerHTML=frags.join('');
@@ -1900,7 +1902,7 @@ function rt(){
       const kc=x.k>0?'up':x.k<0?'dn':'';
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
-          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a}\u33A1</div></div>
+          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a}\u33A1${x.u?' | '+x.u+'세대':''}</div></div>
           <div class="m-card-price">${p25}</div>
         </div>
         <div class="m-card-metrics">
