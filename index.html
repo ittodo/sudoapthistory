@@ -1933,7 +1933,8 @@ function showDetail(x){
   const isMerged=x._merged&&x.si&&x.si.length>1;
 
   document.getElementById('dn').textContent=x.n;
-  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
+  const unitStr=x.u?` | ${x.u.toLocaleString()}세대`:'';
+  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
 
   // 평형 탭
   const tabsEl=document.getElementById('areaTabs');
@@ -1942,19 +1943,23 @@ function showDetail(x){
     if(isMerged){
       // 통합 모드: "통합" 탭 + 개별 평형 탭
       const isAllActive=curDetailIdx===x.i&&!window._showingSingleArea;
-      tabs+=`<button class="area-tab ${isAllActive?'active':''}" onclick="showMergedDetail()">통합</button>`;
+      const totalUnits=x.si.reduce((s,idx)=>{const sb=DI[idx];return s+(sb&&sb.u?sb.u:0);},0);
+      const totalUnitStr=totalUnits>0?` (${totalUnits.toLocaleString()}세대)`:'';
+      tabs+=`<button class="area-tab ${isAllActive?'active':''}" onclick="showMergedDetail()">통합${totalUnitStr}</button>`;
       x.si.forEach(sibIdx=>{
         const sib=DI[sibIdx];
         if(!sib)return;
         const isActive=window._showingSingleArea&&curDetailIdx===sibIdx?'active':'';
-        tabs+=`<button class="area-tab ${isActive}" onclick="switchAreaFromMerged(${sibIdx})">${sib.a}\u33A1</button>`;
+        const uStr=sib.u?` (${sib.u})`:' ';
+        tabs+=`<button class="area-tab ${isActive}" onclick="switchAreaFromMerged(${sibIdx})">${sib.a}\u33A1${uStr}</button>`;
       });
     } else {
       x.si.forEach(sibIdx=>{
         const sib=DI[sibIdx];
         if(!sib)return;
         const isActive=sibIdx===x.i?'active':'';
-        tabs+=`<button class="area-tab ${isActive}" onclick="switchArea(${sibIdx})">${sib.a}\u33A1</button>`;
+        const uStr=sib.u?` (${sib.u})`:' ';
+        tabs+=`<button class="area-tab ${isActive}" onclick="switchArea(${sibIdx})">${sib.a}\u33A1${uStr}</button>`;
       });
     }
     tabsEl.innerHTML=tabs;
@@ -2001,18 +2006,22 @@ function switchAreaFromMerged(dataIdx){
   const mergedEntry=F.find(f=>f._merged&&f.si&&f.si.includes(dataIdx));
   const tabsEl=document.getElementById('areaTabs');
   if(mergedEntry&&mergedEntry.si){
-    let tabs=`<button class="area-tab" onclick="showMergedDetail()">통합</button>`;
+    const totalUnits2=mergedEntry.si.reduce((s,idx)=>{const sb=DI[idx];return s+(sb&&sb.u?sb.u:0);},0);
+    const totalUnitStr2=totalUnits2>0?` (${totalUnits2.toLocaleString()}세대)`:'';
+    let tabs=`<button class="area-tab" onclick="showMergedDetail()">통합${totalUnitStr2}</button>`;
     mergedEntry.si.forEach(sibIdx=>{
       const sib=DI[sibIdx];
       if(!sib)return;
-      tabs+=`<button class="area-tab ${sibIdx===dataIdx?'active':''}" onclick="switchAreaFromMerged(${sibIdx})">${sib.a}\u33A1</button>`;
+      const uS=sib.u?` (${sib.u})`:'';
+      tabs+=`<button class="area-tab ${sibIdx===dataIdx?'active':''}" onclick="switchAreaFromMerged(${sibIdx})">${sib.a}\u33A1${uS}</button>`;
     });
     tabsEl.innerHTML=tabs;
   }
   // 메트릭/차트는 개별 평형 것으로 표시
   const fm=(v,s='%')=>v!==null&&v!==undefined?(v>0?'+':'')+v+s:'-';
   document.getElementById('dn').textContent=x.n;
-  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
+  const uStr2=x.u?` | ${x.u.toLocaleString()}세대`:'';
+  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
