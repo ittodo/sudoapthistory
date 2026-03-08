@@ -663,14 +663,15 @@ function aggregateArea(key){
     const yearAvg=new Array(Y.length).fill(null);
     if(PRICES){
       if(x._merged&&x.si){
-        // 통합: 모든 평형 평균
+        // 통합: 세대수 가중평균 (u가 있으면 사용, 없으면 t)
         for(let j=0;j<Y.length;j++){
-          const vals=[];
+          let sumW=0, sumV=0;
           x.si.forEach(sibIdx=>{
+            const sib=DI[sibIdx];
             const pr=PRICES[String(sibIdx)];
-            if(pr&&pr[j]>0) vals.push(pr[j]);
+            if(pr&&pr[j]>0){ const w=sib?(sib.u||sib.t||1):1; sumV+=pr[j]*w; sumW+=w; }
           });
-          yearAvg[j]=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+          yearAvg[j]=sumW>0?sumV/sumW:null;
         }
       } else {
         const pr=PRICES[String(x.i)];
@@ -708,25 +709,33 @@ function aggregateArea(key){
   }
   if(items.length===0) return null;
 
-  const avg=(arr)=>{const v=arr.filter(x=>x!==null&&x!==undefined);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+  // 가중평균: 세대수(u)가 있으면 사용, 없으면 거래건수(t)로 대체
+  const wt=x=>(x.u||x.t||1);
+  const wavg=(items,getter)=>{
+    const valid=items.filter(x=>{const v=getter(x);return v!==null&&v!==undefined;});
+    if(!valid.length) return null;
+    const totalW=valid.reduce((s,x)=>s+wt(x),0);
+    if(totalW===0) return valid.reduce((s,x)=>s+getter(x),0)/valid.length;
+    return valid.reduce((s,x)=>s+getter(x)*wt(x),0)/totalW;
+  };
   const cnt=items.length;
   const totalTx=items.reduce((s,x)=>s+(x.t||0),0);
-  const avgP25=avg(items.filter(x=>x.p25&&x.p25>0).map(x=>x.p25));
-  const avgCagr=avg(items.filter(x=>x.c!==null).map(x=>x.c));
-  const avgMdd=avg(items.map(x=>x.m));
-  const avgSharpe=avg(items.filter(x=>x.s!==null).map(x=>x.s));
-  const avgQ=avg(items.filter(x=>x.q!==null).map(x=>x.q));
-  const avgK=avg(items.filter(x=>x.k!==null).map(x=>x.k));
+  const avgP25=wavg(items.filter(x=>x.p25&&x.p25>0),x=>x.p25);
+  const avgCagr=wavg(items.filter(x=>x.c!==null),x=>x.c);
+  const avgMdd=wavg(items,x=>x.m);
+  const avgSharpe=wavg(items.filter(x=>x.s!==null),x=>x.s);
+  const avgQ=wavg(items.filter(x=>x.q!==null),x=>x.q);
+  const avgK=wavg(items.filter(x=>x.k!==null),x=>x.k);
 
   const yearAvg=new Array(Y.length).fill(null);
   if(PRICES){
     for(let yi=0;yi<Y.length;yi++){
-      const vals=[];
+      let sumW=0, sumV=0;
       items.forEach(x=>{
         const pr=PRICES[String(x.i)];
-        if(pr&&pr[yi]>0) vals.push(pr[yi]);
+        if(pr&&pr[yi]>0){ const w=wt(x); sumV+=pr[yi]*w; sumW+=w; }
       });
-      yearAvg[yi]=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+      yearAvg[yi]=sumW>0?sumV/sumW:null;
     }
   }
 
