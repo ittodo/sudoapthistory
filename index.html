@@ -903,7 +903,7 @@ async function renderComparisonChartMonthly(data){
 
     if(areaLevel==='complex'){
       if(d._merged&&d.si&&d.si.length>1){
-        // 통합 단지: 각 평형 개별 forward-fill 후 평균
+        // 통합 단지: 각 평형 개별 forward-fill 후 세대수 가중평균
         const filledSeries=[];
         d.si.forEach(sibIdx=>{
           const sib=DI[sibIdx];
@@ -911,13 +911,14 @@ async function renderComparisonChartMonthly(data){
           const md=MONTHLY_CACHE[sib.g];
           if(md&&md[String(sibIdx)]){
             const ff=forwardFill(md[String(sibIdx)].p);
-            filledSeries.push({values:ff.values, raw:md[String(sibIdx)]});
+            const w=sib.u||sib.t||1;
+            filledSeries.push({values:ff.values, raw:md[String(sibIdx)], w});
           }
         });
         for(let slot=0;slot<132;slot++){
-          const vals=[];
-          filledSeries.forEach(s=>{ if(s.values[slot]>0) vals.push(s.values[slot]); });
-          if(vals.length) monthlyPrices[slot]=vals.reduce((a,b)=>a+b,0)/vals.length;
+          let sumW=0, sumV=0;
+          filledSeries.forEach(s=>{ if(s.values[slot]>0){ sumV+=s.values[slot]*s.w; sumW+=s.w; } });
+          if(sumW>0) monthlyPrices[slot]=sumV/sumW;
           filledSeries.forEach(s=>{ monthlyCounts[slot]+=s.raw.c[slot]; });
         }
       } else {
@@ -1715,13 +1716,14 @@ function buildMerged(){
       DM.push(siblings[0]);
       return;
     }
-    // 다평형 통합: 거래건수(t) 가중평균
+    // 다평형 통합: 세대수(u) 우선 가중평균, 없으면 거래건수(t) 대체
     const totalT=siblings.reduce((s,x)=>s+(x.t||1),0);
+    const mwt=x=>(x.u||x.t||1);
     const wavg=(field)=>{
       const valid=siblings.filter(x=>x[field]!==null&&x[field]!==undefined);
       if(valid.length===0) return null;
-      const wt=valid.reduce((s,x)=>s+(x.t||1),0);
-      return valid.reduce((s,x)=>s+x[field]*(x.t||1),0)/wt;
+      const wt=valid.reduce((s,x)=>s+mwt(x),0);
+      return valid.reduce((s,x)=>s+x[field]*mwt(x),0)/wt;
     };
     const areas=siblings.map(x=>x.a).sort((a,b)=>a-b);
     const aMin=areas[0], aMax=areas[areas.length-1];
@@ -2065,26 +2067,28 @@ async function renderDetail(x){
   // 연도별 가격 리스트
   let yh='';
   if(x._merged&&x.si&&x.si.length>1){
-    // 통합 엔트리: 모든 평형의 연도별 가격을 평균
-    const mergedYearPrices=new Array(Y.length).fill(0);
+    // 통합 엔트리: 세대수(u) 가중평균으로 연도별 가격 산출
+    const mergedYearAvg=new Array(Y.length).fill(0);
+    const mergedYearW=new Array(Y.length).fill(0);
     const mergedYearVols=new Array(Y.length).fill(0);
-    const mergedYearCounts=new Array(Y.length).fill(0); // 해당 연도에 가격 있는 평형 수
+    const mergedYearCounts=new Array(Y.length).fill(0);
     x.si.forEach(sibIdx=>{
+      const sib=DI[sibIdx];
       const pr=getPrices(sibIdx);
       const vl=getVolumes(sibIdx);
+      const w=sib?(sib.u||sib.t||1):1;
       if(pr) pr.forEach((p,j)=>{
-        if(p>0){ mergedYearPrices[j]+=p; mergedYearCounts[j]++; }
+        if(p>0){ mergedYearAvg[j]+=p*w; mergedYearW[j]+=w; mergedYearCounts[j]++; }
       });
       if(vl) vl.forEach((v,j)=>{ mergedYearVols[j]+=v; });
     });
     for(let j=0;j<Y.length;j++){
-      if(mergedYearCounts[j]>0){
-        const avgP=parseFloat((mergedYearPrices[j]/mergedYearCounts[j]).toFixed(2));
+      if(mergedYearW[j]>0){
+        const avgP=parseFloat((mergedYearAvg[j]/mergedYearW[j]).toFixed(2));
         const y=Y[j];
         let chg='';
-        // 이전 연도와 비교
-        if(j>0&&mergedYearCounts[j-1]>0){
-          const prevAvg=mergedYearPrices[j-1]/mergedYearCounts[j-1];
+        if(j>0&&mergedYearW[j-1]>0){
+          const prevAvg=mergedYearAvg[j-1]/mergedYearW[j-1];
           const pct=((avgP-prevAvg)/prevAvg*100).toFixed(1);
           chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
         }
@@ -2135,7 +2139,7 @@ async function renderDetail(x){
   const md=await loadMonthly(x.g);
   let entryMonthly=md[String(x.i)];
 
-  // 통합 엔트리: 각 평형을 개별 forward-fill 후 평균 (구성 편향 제거)
+  // 통합 엔트리: 각 평형을 개별 forward-fill 후 세대수 가중평균
   if(x._merged&&x.si&&x.si.length>1){
     const filledSeries=[];
     for(const sibIdx of x.si){
@@ -2144,7 +2148,8 @@ async function renderDetail(x){
       const sibMd=MONTHLY_CACHE[sib.g]||await loadMonthly(sib.g);
       if(sibMd&&sibMd[String(sibIdx)]){
         const ff=forwardFill(sibMd[String(sibIdx)].p);
-        filledSeries.push({values:ff.values, filled:ff.filled, raw:sibMd[String(sibIdx)]});
+        const w=sib.u||sib.t||1;
+        filledSeries.push({values:ff.values, filled:ff.filled, raw:sibMd[String(sibIdx)], w});
       }
     }
     if(filledSeries.length>0){
@@ -2152,13 +2157,13 @@ async function renderDetail(x){
       const mergedC=new Array(132).fill(0);
       const mergedFilled=new Array(132).fill(true);
       for(let slot=0;slot<132;slot++){
-        const vals=[];
+        let sumW=0, sumV=0;
         let anyReal=false;
         filledSeries.forEach(s=>{
-          if(s.values[slot]>0){ vals.push(s.values[slot]); if(!s.filled[slot]) anyReal=true; }
+          if(s.values[slot]>0){ sumV+=s.values[slot]*s.w; sumW+=s.w; if(!s.filled[slot]) anyReal=true; }
         });
-        if(vals.length){
-          mergedP[slot]=vals.reduce((a,b)=>a+b,0)/vals.length;
+        if(sumW>0){
+          mergedP[slot]=sumV/sumW;
           mergedFilled[slot]=!anyReal;
         }
         filledSeries.forEach(s=>{ mergedC[slot]+=s.raw.c[slot]; });
