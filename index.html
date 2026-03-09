@@ -15,6 +15,10 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
   .fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; }
+  .chip-wrap { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; background: rgba(59,130,246,.15); color: #93c5fd; border: 1px solid rgba(59,130,246,.3); cursor: pointer; transition: all .15s; }
+  .chip:hover { background: rgba(239,68,68,.2); color: #fca5a5; border-color: rgba(239,68,68,.4); }
+  .chip .x { font-size: 13px; line-height: 1; }
   .fi:focus { outline: none; border-color: var(--accent); }
   .tc { max-height: calc(100vh - 290px); overflow-y: auto; }
   .main-layout { display: flex; gap: 12px; }
@@ -232,7 +236,7 @@
   <div style="background:rgba(30,41,59,.5);border:1px solid rgba(51,65,85,.5);border-radius:10px;padding:12px;margin-bottom:12px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
       <div><label class="text-xs" style="color:#64748b">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select></div>
-      <div><label class="text-xs" style="color:#64748b">시/구</label><select id="fG" class="fi" onchange="onG()"><option value="">전체</option></select></div>
+      <div><label class="text-xs" style="color:#64748b">시/구</label><select id="fG" class="fi" onchange="onGAdd()"><option value="">선택</option></select><div id="fGChips" class="chip-wrap"></div></div>
       <div><label class="text-xs" style="color:#64748b">동</label><select id="fD" class="fi" onchange="af()"><option value="">전체</option></select></div>
       <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명..." oninput="af()"></div>
       <div><label class="text-xs" style="color:#64748b">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
@@ -1766,10 +1770,12 @@ function toggleMerged(){
   if(viewMode==='area'){ selectedAreas=[]; renderAreaList(); renderComparison(); }
 }
 
+let selGus=[];
+
 function onR(){
   const v=gv('fR');
   const s=document.getElementById('fG');
-  s.innerHTML='<option value="">전체</option>';
+  s.innerHTML='<option value="">선택</option>';
   const gs=new Set();
   if(v!==''){
     const rk=parseInt(v);
@@ -1777,19 +1783,43 @@ function onR(){
   }else{
     Object.values(LT).forEach(o=>Object.keys(o).forEach(g=>gs.add(g)));
   }
-  [...gs].sort().forEach(g=>{s.innerHTML+=`<option value="${g}">${g}</option>`});
-  onG();
+  [...gs].sort().forEach(g=>{if(!selGus.includes(g))s.innerHTML+=`<option value="${g}">${g}</option>`});
+  selGus=selGus.filter(g=>gs.has(g));
+  renderGuChips();
+  onGUpdate();
 }
 
-function onG(){
-  const rv=gv('fR'), gv2=gv('fG');
+function onGAdd(){
+  const v=gv('fG');
+  if(!v) return;
+  if(!selGus.includes(v)) selGus.push(v);
+  document.getElementById('fG').value='';
+  const s=document.getElementById('fG');
+  const opt=s.querySelector(`option[value="${CSS.escape(v)}"]`);
+  if(opt) opt.remove();
+  renderGuChips();
+  onGUpdate();
+}
+
+function removeGu(g){
+  selGus=selGus.filter(x=>x!==g);
+  onR();
+}
+
+function renderGuChips(){
+  const el=document.getElementById('fGChips');
+  el.innerHTML=selGus.map(g=>`<span class="chip" onclick="removeGu('${g.replace(/'/g,"\\'")}')">${g} <span class="x">×</span></span>`).join('');
+}
+
+function onGUpdate(){
+  const rv=gv('fR');
   const s=document.getElementById('fD');
   s.innerHTML='<option value="">전체</option>';
   const ds=new Set();
   Object.entries(LT).forEach(([rk,ro])=>{
     if(rv!==''&&parseInt(rv)!==parseInt(rk))return;
     Object.entries(ro).forEach(([g,dset])=>{
-      if(gv2&&g!==gv2)return;
+      if(selGus.length>0&&!selGus.includes(g))return;
       dset.forEach(d=>ds.add(d));
     });
   });
@@ -1801,13 +1831,13 @@ function gv(id){return document.getElementById(id).value}
 function gn(id){const v=document.getElementById(id).value;return v===''?null:parseFloat(v)}
 
 function af(){
-  const fR=gv('fR'),fG=gv('fG'),fD=gv('fD'),fS=gv('fS').toLowerCase();
+  const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
   const cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH');
 
   const src=merged?DM:D;
   F=src.filter(x=>{
     if(fR!==''&&x.r!==parseInt(fR))return false;
-    if(fG&&x.g!==fG)return false;
+    if(selGus.length>0&&!selGus.includes(x.g))return false;
     if(fD&&x.d!==fD)return false;
     if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS))return false;
     if(cL!==null&&(x.c===null||x.c<cL))return false;
@@ -2449,9 +2479,9 @@ function resetF(){
     const el=document.getElementById(id);
     if(el)el.value='';
   });
-  document.getElementById('fG').innerHTML='<option value="">\uC804\uCCB4</option>';
-  document.getElementById('fD').innerHTML='<option value="">\uC804\uCCB4</option>';
-  af();
+  selGus=[];
+  renderGuChips();
+  onR();
 }
 
 // --- URL 해시 ---
@@ -2460,7 +2490,7 @@ function saveHash(){
   if(hashLock) return;
   const p={};
   const fR=gv('fR');if(fR)p.r=fR;
-  const fG=gv('fG');if(fG)p.g=fG;
+  if(selGus.length)p.g=selGus.join('|');
   const fD=gv('fD');if(fD)p.d=fD;
   const fS=gv('fS');if(fS)p.s=fS;
   const cLv=gv('cL');if(cLv)p.cL=cLv;
@@ -2492,7 +2522,7 @@ function loadHash(){
   h.split('&').forEach(s=>{const [k,v]=s.split('=');if(k)p[k]=decodeURIComponent(v||'');});
   hashLock=true;
   if(p.r){document.getElementById('fR').value=p.r;onR();}
-  if(p.g){document.getElementById('fG').value=p.g;onG();}
+  if(p.g){selGus=p.g.split('|');renderGuChips();onR();}
   if(p.d)document.getElementById('fD').value=p.d;
   if(p.s)document.getElementById('fS').value=p.s;
   if(p.cL)document.getElementById('cL').value=p.cL;
