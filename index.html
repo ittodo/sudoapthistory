@@ -266,6 +266,7 @@
             <th onclick="sb('k')">26모멘텀 <span class="sa" data-c="k">▼</span></th>
             <th onclick="sb('v')">거래 <span class="sa" data-c="v">▼</span></th>
             <th onclick="sb('u')">세대 <span class="sa" data-c="u">▼</span></th>
+            <th onclick="sb('ls')" title="세대당 대지지분 (대지면적÷세대수)">대지지분 <span class="sa" data-c="ls">▼</span></th>
           </tr></thead>
           <tbody id="tb"></tbody>
         </table>
@@ -582,7 +583,7 @@ function getAreaNames(){
     for(const x of src){
       if(rv!==''&&x.r!==parseInt(rv)) continue;
       if(guF&&x.g!==guF) continue;
-      const label=x.n+' '+x.a+'㎡ ('+x.g+')';
+      const label=x.n+' '+x.a+'㎡('+Math.round(x.a/3.3058)+'평) ('+x.g+')';
       if(sq&&!label.toLowerCase().includes(sq)) continue;
       const key='idx:'+x.i;
       if(!seen.has(key)){ seen.add(key); names.push({label, key}); count++; }
@@ -647,7 +648,7 @@ function getComplexLabel(key){
   if(key.startsWith('idx:')){
     const idx=parseInt(key.slice(4));
     const x=DI[idx];
-    return x?(x.n+' '+x.a+'㎡'):key;
+    return x?(x.n+' '+x.a+'㎡('+Math.round(x.a/3.3058)+'평)'):key;
   }
   return key;
 }
@@ -690,7 +691,7 @@ function aggregateArea(key){
 
     const cntLabel=x._merged?x.si.length:1;
     const result={
-      name: x.n+' '+x.a+'㎡',
+      name: x.n+' '+x.a+'㎡('+Math.round(x.a/3.3058)+'평)',
       key, _merged:x._merged,
       cnt:cntLabel, totalTx:x.t||0,
       avgLp:x.lp, avgCagr:x.c, avgMdd:x.m,
@@ -859,7 +860,7 @@ async function renderComparison(){
         html+=`<tr onclick="goToComplex(${x.i})">
           <td style="text-align:left">${x.n}</td>
           <td style="text-align:left;color:#64748b">${x.d||'-'}</td>
-          <td>${x.a}㎡</td>
+          <td>${x.a}㎡(${Math.round(x.a/3.3058)}평)</td>
           <td style="font-weight:600">${x.lp?x.lp+'억':'-'}</td>
           <td class="${cc}">${cv}</td>
           <td>${x.m}%</td>
@@ -1751,7 +1752,9 @@ function buildMerged(){
       lp:mlp!==null?parseFloat(mlp.toFixed(2)):null,
       y25:my25!==null?parseFloat(my25.toFixed(1)):null,
       si:siblings.map(x=>x.i),
-      j:rep.j, rd:rep.rd
+      j:rep.j, rd:rep.rd,
+      pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
+      u:siblings.reduce((s,x)=>s+(x.u||0),0) || null // 총 세대수
     });
   });
   console.log(`Merged: ${D.length} → ${DM.length} entries`);
@@ -1859,6 +1862,8 @@ function ds(){
     let va=a[sc], vb=b[sc];
     // 통합 모드 면적 정렬: _aNum 사용
     if(sc==='a'&&merged){ va=a._aNum||a.a; vb=b._aNum||b.a; }
+    // 대지지분 정렬: pa/u 계산
+    if(sc==='ls'){ va=a.pa&&a.u?a.pa/a.u:null; vb=b.pa&&b.u?b.pa/b.u:null; }
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
     if(vb===null||vb===undefined)vb=sa?Infinity:-Infinity;
     if(typeof va==='string')return sa?va.localeCompare(vb):vb.localeCompare(va);
@@ -1902,7 +1907,7 @@ function rt(){
       <td class="text-left"><span class="badge ${bg}">${rl}</span>${x.n}</td>
       <td class="text-left" style="color:#94a3b8">${x.g}</td>
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
-      <td style="text-align:center;color:#94a3b8">${x.a}\u33A1</td>
+      <td style="text-align:center;color:#94a3b8">${x.a}\u33A1<span style="color:#64748b"> ${Math.round(x.a/3.3058)}평</span></td>
       <td style="text-align:center;font-weight:600">${lpv}</td>
       <td style="text-align:center;font-weight:500" class="${y25c}">${y25v}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
@@ -1912,6 +1917,7 @@ function rt(){
       <td style="text-align:center;font-weight:500" class="${kc}">${kv}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
+      <td style="text-align:center;color:#94a3b8">${x.pa&&x.u?(x.pa/x.u).toFixed(1)+'㎡':'-'}</td>
     </tr>`);
   }
   tb.innerHTML=frags.join('');
@@ -1934,7 +1940,7 @@ function rt(){
       const kc=x.k>0?'up':x.k<0?'dn':'';
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
-          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a}\u33A1${x.u?' | '+x.u+'세대':''}</div></div>
+          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a}\u33A1(${Math.round(x.a/3.3058)}평)${x.u?' | '+x.u+'세대':''}</div></div>
           <div class="m-card-price">${lpv}</div>
         </div>
         <div class="m-card-metrics">
@@ -2006,13 +2012,17 @@ function showDetail(x){
 
   // 메트릭 카드
   const fm=(v,s='%')=>v!==null&&v!==undefined?(v>0?'+':'')+v+s:'-';
+  const lsVal=x.pa&&x.u?(x.pa/x.u):null;
+  const lsPy=lsVal?(lsVal/3.3058).toFixed(1)+'평':'-';
+  const lsM2=lsVal?lsVal.toFixed(1)+'㎡':'-';
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
     ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
     ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
-    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
+    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':''],
+    ['\uB300\uC9C0\uC9C0\uBD84',lsVal?lsM2+' ('+lsPy+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
   let prices=getPrices(x.i);
@@ -2057,13 +2067,17 @@ function switchAreaFromMerged(dataIdx){
   document.getElementById('dn').textContent=x.n;
   const uStr2=x.u?` | ${x.u.toLocaleString()}세대`:'';
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${x.a}\u33A1 | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74`;
+  const lsVal2=x.pa&&x.u?(x.pa/x.u):null;
+  const lsPy2=lsVal2?(lsVal2/3.3058).toFixed(1)+'평':'-';
+  const lsM22=lsVal2?lsVal2.toFixed(1)+'㎡':'-';
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
     ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
     ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
-    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
+    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':''],
+    ['\uB300\uC9C0\uC9C0\uBD84',lsVal2?lsM22+' ('+lsPy2+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
   renderDetail(x);
 }
