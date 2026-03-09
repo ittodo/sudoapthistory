@@ -1932,6 +1932,7 @@ function sd(i){
 function showDetail(x){
   curDetailIdx=x.i;
   const dp=document.getElementById('dp');
+  if(!dp.classList.contains('open')) pushPopup('detail');
   dp.classList.add('open');
 
   const isMerged=x._merged&&x.si&&x.si.length>1;
@@ -2203,6 +2204,7 @@ async function openTxModal(dataIdx, year){
   if(!x)return;
 
   const modal=document.getElementById('txModal');
+  pushPopup('tx');
   modal.style.display='flex';
   document.getElementById('txTitle').textContent=`${x.n} ${x.a}\u33A1 \u2014 ${year}\uB144 \uAC70\uB798 \uB0B4\uC5ED`;
   document.getElementById('txSubtitle').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''}`;
@@ -2280,9 +2282,10 @@ function renderTxModal(x){
   }
 }
 
-function closeTxModal(){
+function closeTxModal(fromPop){
   document.getElementById('txModal').style.display='none';
   txModalData=null;
+  if(!fromPop) history.back();
 }
 
 // --- 지도 ---
@@ -2394,6 +2397,7 @@ function showOnMap(x){
 function openMapModal(){
   if(!curMapCoord||!curMapEntry) return;
   const x=curMapEntry;
+  pushPopup('map');
   document.getElementById('mapModal').style.display='flex';
   document.getElementById('mapModalTitle').textContent=`${x.n} \u2014 ${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} ${x.a}\u33A1`;
 
@@ -2412,8 +2416,9 @@ function openMapModal(){
   },200);
 }
 
-function closeMapModal(){
+function closeMapModal(fromPop){
   document.getElementById('mapModal').style.display='none';
+  if(!fromPop) history.back();
 }
 
 document.addEventListener('keydown',e=>{
@@ -2423,7 +2428,19 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-function cd(){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;document.body.style.overflow='';rt();saveHash();}
+// 뒤로가기로 팝업/상세 닫기
+let _popLock=false;
+function pushPopup(tag){ history.pushState({popup:tag},null); }
+window.addEventListener('popstate',function(e){
+  if(_popLock) return;
+  _popLock=true;
+  if(document.getElementById('mapModal').style.display!=='none') closeMapModal(true);
+  else if(document.getElementById('txModal').style.display!=='none') closeTxModal(true);
+  else if(document.getElementById('dp').classList.contains('open')) cd(true);
+  _popLock=false;
+});
+
+function cd(fromPop){document.getElementById('dp').classList.remove('open');si=-1;curDetailIdx=null;document.body.style.overflow='';rt();saveHash();if(!fromPop)history.back();}
 function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
 function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
 function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();saveHash();}
