@@ -2321,8 +2321,10 @@ function vworldJsonp(url){
 async function getCoordAsync(x){
   const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
   if(GEO_CACHE[aptKey]) return GEO_CACHE[aptKey];
+  const region=x.r?'서울특별시':'경기도';
+  const gu=x.g.includes(' ')?x.g.split(' ').pop():x.g;
   if(x.j && x.d){
-    const jibunQ=(x.d||'')+' '+x.j;
+    const jibunQ=region+' '+x.g+' '+(x.d||'')+' '+x.j;
     const jUrl='https://apis.vworld.kr/jibun2coord.do?q='+encodeURIComponent(jibunQ)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
     const jData=await vworldJsonp(jUrl);
     if(jData&&jData.EPSG_4326_Y&&jData.EPSG_4326_X){
@@ -2332,7 +2334,8 @@ async function getCoordAsync(x){
     }
   }
   if(x.rd){
-    const rUrl='https://apis.vworld.kr/new2coord.do?q='+encodeURIComponent(x.rd)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
+    const rdQ=region+' '+gu+' '+x.rd;
+    const rUrl='https://apis.vworld.kr/new2coord.do?q='+encodeURIComponent(rdQ)+'&output=json&epsg=epsg:4326&apiKey='+VWORLD_KEY;
     const rData=await vworldJsonp(rUrl);
     if(rData&&rData.EPSG_4326_Y&&rData.EPSG_4326_X){
       const coord=[parseFloat(rData.EPSG_4326_Y),parseFloat(rData.EPSG_4326_X)];
@@ -2340,10 +2343,10 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  const region=x.r?'서울':'경기';
+  const regionShort=x.r?'서울':'경기';
   const queries=[
-    `${region} ${x.g} ${x.d||''} ${x.n}`,
-    `${region} ${x.g} ${x.n}`
+    `${regionShort} ${x.g} ${x.d||''} ${x.n}`,
+    `${regionShort} ${x.g} ${x.n}`
   ];
   for(const q of queries){
     const url='https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&size=1&page=1&type=place&format=json&key='+VWORLD_KEY+'&query='+encodeURIComponent(q);
