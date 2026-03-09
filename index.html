@@ -1784,7 +1784,7 @@ function onR(){
     Object.values(LT).forEach(o=>Object.keys(o).forEach(g=>gs.add(g)));
   }
   [...gs].sort().forEach(g=>{if(!selGus.includes(g))s.innerHTML+=`<option value="${g}">${g}</option>`});
-  selGus=selGus.filter(g=>gs.has(g));
+  // 지역 변경해도 기존 선택 유지 (다른 지역 구도 남겨둠)
   renderGuChips();
   onGUpdate();
 }
@@ -1817,7 +1817,7 @@ function onGUpdate(){
   s.innerHTML='<option value="">전체</option>';
   const ds=new Set();
   Object.entries(LT).forEach(([rk,ro])=>{
-    if(rv!==''&&parseInt(rv)!==parseInt(rk))return;
+    if(selGus.length===0&&rv!==''&&parseInt(rv)!==parseInt(rk))return;
     Object.entries(ro).forEach(([g,dset])=>{
       if(selGus.length>0&&!selGus.includes(g))return;
       dset.forEach(d=>ds.add(d));
@@ -1836,8 +1836,8 @@ function af(){
 
   const src=merged?DM:D;
   F=src.filter(x=>{
-    if(fR!==''&&x.r!==parseInt(fR))return false;
-    if(selGus.length>0&&!selGus.includes(x.g))return false;
+    if(selGus.length>0){if(!selGus.includes(x.g))return false;}
+    else if(fR!==''&&x.r!==parseInt(fR))return false;
     if(fD&&x.d!==fD)return false;
     if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS))return false;
     if(cL!==null&&(x.c===null||x.c<cL))return false;
