@@ -237,7 +237,7 @@
       <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명..." oninput="af()"></div>
       <div><label class="text-xs" style="color:#64748b">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">25년가(억)</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:#64748b">최근가</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:#475569">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
     </div>
     <button class="filter-toggle-btn" onclick="toggleFilters()" id="filterToggle">필터 더보기 ▼</button>
@@ -253,7 +253,7 @@
             <th onclick="sb('g')" class="text-left">구 <span class="sa" data-c="g">▼</span></th>
             <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
             <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
-            <th onclick="sb('p25')">25년가 <span class="sa" data-c="p25">▼</span></th>
+            <th onclick="sb('lp')">최근가 <span class="sa" data-c="lp">▼</span></th>
             <th onclick="sb('y25')" title="24년→25년 가격 변동률">24→25 <span class="sa" data-c="y25">▼</span></th>
             <th onclick="sb('c')" title="연평균성장률: 첫 거래연도~2025년 기준. 신축일수록 기간이 짧아 높게 나올 수 있음">CAGR <span class="sa" data-c="c">▼</span></th>
             <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
@@ -385,7 +385,7 @@
 </div>
 
 <script>
-let D=[],F=[],cp=1,ps=100,sc='p25',sa=false,si=-1,ch=null;
+let D=[],F=[],cp=1,ps=100,sc='lp',sa=false,si=-1,ch=null;
 let chartTab='year'; // 'year' | 'month'
 let chartDetailCtx=null; // {x, prices, entryMonthly} for re-rendering
 function isMobile(){ return window.innerWidth<=768; }
@@ -689,7 +689,7 @@ function aggregateArea(key){
       name: x.n+' '+x.a+'㎡',
       key, _merged:x._merged,
       cnt:cntLabel, totalTx:x.t||0,
-      avgP25:x.p25, avgCagr:x.c, avgMdd:x.m,
+      avgLp:x.lp, avgCagr:x.c, avgMdd:x.m,
       avgSharpe:x.s, avgQ:x.q, avgK:x.k, y25,
       yearAvg, items:x._merged?x.si.map(i=>DI[i]).filter(Boolean):[x], gu:x.g,
       si:x.si
@@ -721,7 +721,7 @@ function aggregateArea(key){
   };
   const cnt=items.length;
   const totalTx=items.reduce((s,x)=>s+(x.t||0),0);
-  const avgP25=wavg(items.filter(x=>x.p25&&x.p25>0),x=>x.p25);
+  const avgLp=wavg(items.filter(x=>x.lp&&x.lp>0),x=>x.lp);
   const avgCagr=wavg(items.filter(x=>x.c!==null),x=>x.c);
   const avgMdd=wavg(items,x=>x.m);
   const avgSharpe=wavg(items.filter(x=>x.s!==null),x=>x.s);
@@ -752,7 +752,7 @@ function aggregateArea(key){
     gu=parts.join(' ');
   }
 
-  const result={name:key,key,cnt,totalTx,avgP25,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu};
+  const result={name:key,key,cnt,totalTx,avgLp,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu};
   areaCache[key]=result;
   return result;
 }
@@ -795,7 +795,7 @@ async function renderComparison(){
       <div class="name" style="color:${CMP_COLORS[i]}">${d.name}</div>
       <div class="stats">
         <span class="stat-label">${cntLabel}</span><span class="stat-value">${cntVal}</span>
-        <span class="stat-label">25년 평균가</span><span class="stat-value">${d.avgP25?d.avgP25.toFixed(2)+'억':'-'}</span>
+        <span class="stat-label">최근가</span><span class="stat-value">${d.avgLp?d.avgLp.toFixed(2)+'억':'-'}</span>
         <span class="stat-label">CAGR</span><span class="stat-value ${d.avgCagr>0?'up':'dn'}">${fm(d.avgCagr)}</span>
         <span class="stat-label">MDD</span><span class="stat-value">${fm(d.avgMdd)}</span>
       </div>
@@ -815,7 +815,7 @@ async function renderComparison(){
   const metrics=[
     ['단지수',d=>d.cnt,v=>''+v,'max'],
     ['총 거래건수',d=>d.totalTx,v=>v.toLocaleString(),'max'],
-    ['25년 평균가(억)',d=>d.avgP25,v=>v?v.toFixed(2):'-','max'],
+    ['최근가',d=>d.avgLp,v=>v?v.toFixed(2):'-','max'],
     ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
     ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'],
     ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
@@ -831,7 +831,7 @@ async function renderComparison(){
     html+='<tr><td>'+label+'</td>';
     vals.forEach((v,i)=>{
       const isBest=v!==null&&v===bestVal&&validVals.length>1;
-      const cc=typeof v==='number'&&label!=='단지수'&&label!=='총 거래건수'&&label!=='25년 평균가(억)'&&label!=='샤프비율'?(v>0?'up':v<0?'dn':''):'';
+      const cc=typeof v==='number'&&label!=='단지수'&&label!=='총 거래건수'&&label!=='최근가'&&label!=='샤프비율'?(v>0?'up':v<0?'dn':''):'';
       html+=`<td class="${isBest?'best':''} ${cc}" style="${isBest?'color:'+CMP_COLORS[i]:''}">${fmt(v)}</td>`;
     });
     html+='</tr>';
@@ -842,12 +842,12 @@ async function renderComparison(){
   if(areaLevel!=='complex'){
     data.forEach((d,i)=>{
       if(!d.items||d.items.length===0) return;
-      const sortedItems=[...d.items].sort((a,b)=>(b.p25||0)-(a.p25||0));
+      const sortedItems=[...d.items].sort((a,b)=>(b.lp||0)-(a.lp||0));
       const displayItems=sortedItems.slice(0,50);
       html+=`<div class="complex-list-section" style="border-left:3px solid ${CMP_COLORS[i]}">
         <h4 style="color:${CMP_COLORS[i]}">${d.name} 단지 목록 (${d.items.length}개${d.items.length>50?' 중 상위 50개':''})</h4>
         <table class="complex-list-table">
-          <thead><tr><th>단지명</th><th>동</th><th>면적</th><th>25년가</th><th>CAGR</th><th>MDD</th><th>거래</th></tr></thead>
+          <thead><tr><th>단지명</th><th>동</th><th>면적</th><th>최근가</th><th>CAGR</th><th>MDD</th><th>거래</th></tr></thead>
           <tbody>`;
       displayItems.forEach(x=>{
         const cv=x.c!==null?x.c+'%':'-';
@@ -856,7 +856,7 @@ async function renderComparison(){
           <td style="text-align:left">${x.n}</td>
           <td style="text-align:left;color:#64748b">${x.d||'-'}</td>
           <td>${x.a}㎡</td>
-          <td style="font-weight:600">${x.p25?x.p25+'억':'-'}</td>
+          <td style="font-weight:600">${x.lp?x.lp+'억':'-'}</td>
           <td class="${cc}">${cv}</td>
           <td>${x.m}%</td>
           <td style="color:#64748b">${x.v}</td>
@@ -1041,7 +1041,7 @@ function calcCapGainTax(gain, years, cnt, exempt, flatRate){
 }
 
 function calcInvestReturn(areaData, params){
-  const price=areaData.avgP25;
+  const price=areaData.avgLp;
   const cagr=areaData.avgCagr;
   if(!price||price<=0||cagr===null) return null;
 
@@ -1242,7 +1242,7 @@ function getSimParams(){
 }
 
 function calcLiveReturn(areaData, params){
-  const price=areaData.avgP25;
+  const price=areaData.avgLp;
   const cagr=areaData.avgCagr;
   if(!price||price<=0||cagr===null) return null;
 
@@ -1346,7 +1346,7 @@ function updateSim(){
 
   const validResults=results.filter(r=>r.result);
   if(validResults.length===0){
-    el.innerHTML='<div class="cmp-empty"><div class="msg">시뮬레이션 가능한 데이터가 없습니다 (25년 평균가와 CAGR 필요)</div></div>';
+    el.innerHTML='<div class="cmp-empty"><div class="msg">시뮬레이션 가능한 데이터가 없습니다 (최근가와 CAGR 필요)</div></div>';
     return;
   }
 
@@ -1612,7 +1612,7 @@ async function init(){
       a:x[4], b:x[5],
       c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
       v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
-      t:x[12], p25:x[13]||null, si:x[14]||null
+      t:x[12], lp:x[13]||null, si:x[14]||null
     }));
   } else {
     D=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
@@ -1730,7 +1730,7 @@ function buildMerged(){
     const rep=siblings[0]; // 대표 엔트리
     const mc=wavg('c'); const mm=wavg('m'); const ms=wavg('s');
     const mq=wavg('q'); const mk=wavg('k'); const my25=wavg('y25');
-    const mp25=wavg('p25');
+    const mlp=wavg('lp');
     DM.push({
       _merged:true,
       i:rep.i, // 대표 인덱스
@@ -1744,7 +1744,7 @@ function buildMerged(){
       q:mq!==null?parseFloat(mq.toFixed(1)):null,
       k:mk!==null?parseFloat(mk.toFixed(1)):null,
       t:totalT,
-      p25:mp25!==null?parseFloat(mp25.toFixed(2)):null,
+      lp:mlp!==null?parseFloat(mlp.toFixed(2)):null,
       y25:my25!==null?parseFloat(my25.toFixed(1)):null,
       si:siblings.map(x=>x.i),
       j:rep.j, rd:rep.rd
@@ -1814,8 +1814,8 @@ function af(){
     if(cH!==null&&(x.c===null||x.c>cH))return false;
     if(mL!==null&&x.m<mL)return false;
     if(mH!==null&&x.m>mH)return false;
-    if(pL!==null&&(x.p25===null||x.p25===0||x.p25<pL))return false;
-    if(pH2!==null&&(x.p25===null||x.p25===0||x.p25>pH2))return false;
+    if(pL!==null&&(x.lp===null||x.lp===0||x.lp<pL))return false;
+    if(pH2!==null&&(x.lp===null||x.lp===0||x.lp>pH2))return false;
     if(sL!==null&&(x.s===null||x.s<sL))return false;
     if(sH!==null&&(x.s===null||x.s>sH))return false;
     return true;
@@ -1856,7 +1856,7 @@ function rt(){
     const x=F[i];
     const bg=x.r?'b-s':'b-g';
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
-    const p25=x.p25&&x.p25>0?x.p25+'\uC5B5':'-';
+    const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
     const y25v=x.y25!==null&&x.y25!==undefined?(x.y25>0?'+':'')+x.y25+'%':'-';
     const y25c=x.y25>0?'up':x.y25<0?'dn':'';
     const cv=x.c!==null?x.c+'%':'-';
@@ -1873,7 +1873,7 @@ function rt(){
       <td class="text-left" style="color:#94a3b8">${x.g}</td>
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
       <td style="text-align:center;color:#94a3b8">${x.a}\u33A1</td>
-      <td style="text-align:center;font-weight:600">${p25}</td>
+      <td style="text-align:center;font-weight:600">${lpv}</td>
       <td style="text-align:center;font-weight:500" class="${y25c}">${y25v}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${x.m}%</td>
@@ -1894,7 +1894,7 @@ function rt(){
       const x=F[i];
       const bg=x.r?'b-s':'b-g';
       const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
-      const p25=x.p25&&x.p25>0?x.p25+'\uC5B5':'-';
+      const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
       const cv=x.c!==null?(x.c>0?'+':'')+x.c+'%':'-';
       const cc=x.c>0?'up':x.c<0?'dn':'';
       const mv=x.m+'%';
@@ -1905,7 +1905,7 @@ function rt(){
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
           <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a}\u33A1${x.u?' | '+x.u+'세대':''}</div></div>
-          <div class="m-card-price">${p25}</div>
+          <div class="m-card-price">${lpv}</div>
         </div>
         <div class="m-card-metrics">
           <div class="m-card-metric"><div class="ml">CAGR</div><div class="mv ${cc}">${cv}</div></div>
@@ -1980,7 +1980,7 @@ function showDetail(x){
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
-    ['25\uB144 \uD3C9\uADE0\uAC00',x.p25&&x.p25>0?x.p25+'\uC5B5':'-',''],
+    ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
     ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
     ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
@@ -2031,7 +2031,7 @@ function switchAreaFromMerged(dataIdx){
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
-    ['25\uB144 \uD3C9\uADE0\uAC00',x.p25&&x.p25>0?x.p25+'\uC5B5':'-',''],
+    ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
     ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
     ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':'']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
