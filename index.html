@@ -244,6 +244,7 @@
       <div><label class="text-xs" style="color:#64748b">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">최근가</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:#475569">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:#64748b">세대수</label><div class="rg"><input id="uL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="uH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
     </div>
     <button class="filter-toggle-btn" onclick="toggleFilters()" id="filterToggle">필터 더보기 ▼</button>
   </div>
@@ -1755,7 +1756,8 @@ function buildMerged(){
       si:siblings.map(x=>x.i),
       j:rep.j, rd:rep.rd,
       pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
-      u:siblings.reduce((s,x)=>s+(x.u||0),0) || null // 총 세대수
+      u:siblings.reduce((s,x)=>s+(x.u||0),0) || null, // 총 세대수
+      tu:siblings[0].tu||null // 단지 전체 세대수
     });
   });
   console.log(`Merged: ${D.length} → ${DM.length} entries`);
@@ -1845,7 +1847,7 @@ function gn(id){const v=document.getElementById(id).value;return v===''?null:par
 
 function af(){
   const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
-  const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH');
+  const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH');
 
   const src=merged?DM:D;
   F=src.filter(x=>{
@@ -1862,6 +1864,8 @@ function af(){
     if(pH2!==null&&(x.lp===null||x.lp===0||x.lp>pH2))return false;
     if(sL!==null&&(x.s===null||x.s<sL))return false;
     if(sH!==null&&(x.s===null||x.s>sH))return false;
+    if(uL!==null&&(!x.tu||x.tu<uL))return false;
+    if(uH!==null&&(!x.tu||x.tu>uH))return false;
     return true;
   });
   ds();cp=1;rt();
@@ -2528,6 +2532,8 @@ function saveHash(){
   const pHv=gv('pH');if(pHv)p.pH=pHv;
   const sLv=gv('sL');if(sLv)p.sL=sLv;
   const sHv=gv('sH');if(sHv)p.sH=sHv;
+  const uLv=gv('uL');if(uLv)p.uL=uLv;
+  const uHv=gv('uH');if(uHv)p.uH=uHv;
   if(sc!=='c')p.sc=sc;
   if(sa)p.sa=1;
   if(cp>1)p.p=cp;
@@ -2562,6 +2568,8 @@ function loadHash(){
   if(p.pH)document.getElementById('pH').value=p.pH;
   if(p.sL)document.getElementById('sL').value=p.sL;
   if(p.sH)document.getElementById('sH').value=p.sH;
+  if(p.uL)document.getElementById('uL').value=p.uL;
+  if(p.uH)document.getElementById('uH').value=p.uH;
   if(p.sc)sc=p.sc;
   if(p.sa)sa=true;
   if(p.ps){ps=parseInt(p.ps);document.getElementById('ps').value=p.ps;}
