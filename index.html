@@ -238,7 +238,7 @@
       <div><label class="text-xs" style="color:#64748b">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select></div>
       <div><label class="text-xs" style="color:#64748b">시/구</label><select id="fG" class="fi" onchange="onGAdd()"><option value="">선택</option></select><div id="fGChips" class="chip-wrap"></div></div>
       <div><label class="text-xs" style="color:#64748b">동</label><select id="fD" class="fi" onchange="af()"><option value="">전체</option></select></div>
-      <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명..." oninput="af()"></div>
+      <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명, 평형..." oninput="af()"></div>
       <div><label class="text-xs" style="color:#64748b">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">최근가</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
@@ -1851,7 +1851,7 @@ function af(){
     if(selGus.length>0){if(!selGus.includes(x.g))return false;}
     else if(fR!==''&&x.r!==parseInt(fR))return false;
     if(fD&&x.d!==fD)return false;
-    if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS))return false;
+    if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
     if(cL!==null&&(x.c===null||x.c<cL))return false;
     if(cH!==null&&(x.c===null||x.c>cH))return false;
     if(mL!==null&&x.m<mL)return false;
