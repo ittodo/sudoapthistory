@@ -239,6 +239,7 @@
       <div><label class="text-xs" style="color:#64748b">시/구</label><select id="fG" class="fi" onchange="onGAdd()"><option value="">선택</option></select><div id="fGChips" class="chip-wrap"></div></div>
       <div><label class="text-xs" style="color:#64748b">동</label><select id="fD" class="fi" onchange="af()"><option value="">전체</option></select></div>
       <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명, 평형..." oninput="af()"></div>
+      <div><label class="text-xs" style="color:#64748b">평형(평)</label><div class="rg"><input id="aL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="aH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">최근가</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
@@ -1844,7 +1845,7 @@ function gn(id){const v=document.getElementById(id).value;return v===''?null:par
 
 function af(){
   const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
-  const cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH');
+  const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH');
 
   const src=merged?DM:D;
   F=src.filter(x=>{
@@ -1852,6 +1853,7 @@ function af(){
     else if(fR!==''&&x.r!==parseInt(fR))return false;
     if(fD&&x.d!==fD)return false;
     if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
+    if(aL!==null||aH!==null){const ap=typeof x.a==='number'?x.a/3.3058:(()=>{const m=String(x.a).match(/^([\d.]+)~([\d.]+)$/);return m?[parseFloat(m[1])/3.3058,parseFloat(m[2])/3.3058]:null})();if(ap===null)return false;if(typeof ap==='number'){if(aL!==null&&ap<aL)return false;if(aH!==null&&ap>aH)return false;}else{if(aL!==null&&ap[1]<aL)return false;if(aH!==null&&ap[0]>aH)return false;}}
     if(cL!==null&&(x.c===null||x.c<cL))return false;
     if(cH!==null&&(x.c===null||x.c>cH))return false;
     if(mL!==null&&x.m<mL)return false;
@@ -2516,6 +2518,8 @@ function saveHash(){
   if(selGus.length)p.g=selGus.join('|');
   const fD=gv('fD');if(fD)p.d=fD;
   const fS=gv('fS');if(fS)p.s=fS;
+  const aLv=gv('aL');if(aLv)p.aL=aLv;
+  const aHv=gv('aH');if(aHv)p.aH=aHv;
   const cLv=gv('cL');if(cLv)p.cL=cLv;
   const cHv=gv('cH');if(cHv)p.cH=cHv;
   const mLv=gv('mL');if(mLv)p.mL=mLv;
@@ -2548,6 +2552,8 @@ function loadHash(){
   if(p.g){selGus=p.g.split('|');renderGuChips();onR();}
   if(p.d)document.getElementById('fD').value=p.d;
   if(p.s)document.getElementById('fS').value=p.s;
+  if(p.aL)document.getElementById('aL').value=p.aL;
+  if(p.aH)document.getElementById('aH').value=p.aH;
   if(p.cL)document.getElementById('cL').value=p.cL;
   if(p.cH)document.getElementById('cH').value=p.cH;
   if(p.mL)document.getElementById('mL').value=p.mL;
