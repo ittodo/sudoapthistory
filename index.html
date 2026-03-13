@@ -1710,30 +1710,49 @@ function retMonths(){
   if(retYearTo===lastY&&dataLastMonth<12) months=months-12+dataLastMonth;
   return Math.max(months,1);
 }
-function calcReturn(x){
+function calcRetMonths(actualFromY,toY){
+  const lastY=Y[Y.length-1];
+  let m=(toY-actualFromY)*12;
+  if(toY===lastY&&dataLastMonth<12) m=m-12+dataLastMonth;
+  return Math.max(m,1);
+}
+function calcReturnObj(x){
+  // returns {val, years} or null  (years = "1.3" 형태 실제 기간)
   if(!PRICES) return null;
-  const iFrom=Y.indexOf(retYearFrom), iTo=Y.indexOf(retYearTo);
-  if(iFrom<0||iTo<0) return null;
-  const months=retMonths();
+  const iTo=Y.indexOf(retYearTo);
+  if(iTo<0) return null;
+
+  function singleReturn(p){
+    if(!p||!p[iTo]) return null;
+    // 시작년 가격이 없으면 가장 가까운 이후 연도 탐색
+    let actualFromI=Y.indexOf(retYearFrom);
+    if(actualFromI<0) return null;
+    while(actualFromI<iTo&&(!p[actualFromI]||p[actualFromI]===0)) actualFromI++;
+    if(actualFromI>=iTo) return null;
+    const pFrom=p[actualFromI], pTo=p[iTo];
+    if(!pFrom||!pTo) return null;
+    const months=calcRetMonths(Y[actualFromI],retYearTo);
+    const totalRet=(pTo-pFrom)/pFrom*100;
+    return {val:totalRet/months*12, years:(months/12)};
+  }
+
   // 통합 엔트리: 시블링 세대수 가중평균
   if(x._merged&&x.si&&x.si.length>1){
-    let wSum=0,wTotal=0;
+    let wSum=0,wTotal=0,minYears=null;
     for(const idx of x.si){
-      const p=PRICES[String(idx)];
-      if(!p||!p[iFrom]||!p[iTo]) continue;
+      const r=singleReturn(PRICES[String(idx)]);
+      if(!r) continue;
       const w=(DI[idx]&&DI[idx].u)||DI[idx]&&DI[idx].t||1;
-      const totalRet=(p[iTo]-p[iFrom])/p[iFrom]*100;
-      wSum+=(totalRet/months*12)*w;
-      wTotal+=w;
+      wSum+=r.val*w; wTotal+=w;
+      if(minYears===null||r.years<minYears) minYears=r.years;
     }
-    return wTotal>0?wSum/wTotal:null;
+    return wTotal>0?{val:wSum/wTotal, years:minYears}:null;
   }
-  const p=PRICES[String(x.i)];
-  if(!p) return null;
-  const pFrom=p[iFrom], pTo=p[iTo];
-  if(!pFrom||!pTo) return null;
-  const totalRet=(pTo-pFrom)/pFrom*100;
-  return totalRet/months*12;
+  return singleReturn(PRICES[String(x.i)]);
+}
+function calcReturn(x){
+  const r=calcReturnObj(x);
+  return r?r.val:null;
 }
 
 async function loadPrices(){
@@ -1995,9 +2014,10 @@ function rt(){
     const bg=x.r?'b-s':'b-g';
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
     const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
-    const ret=calcReturn(x);
-    const retv=ret!==null?(ret>0?'+':'')+ret.toFixed(1)+'%':'-';
-    const retc=ret>0?'up':ret<0?'dn':'';
+    const retObj=calcReturnObj(x);
+    const retv=retObj?(retObj.val>0?'+':'')+retObj.val.toFixed(1)+'%':'-';
+    const retc=retObj?(retObj.val>0?'up':retObj.val<0?'dn':''):'';
+    const retYrs=retObj&&retObj.years!==(retMonths()/12)?'<span style="font-size:9px;color:#64748b;margin-left:2px">'+retObj.years.toFixed(1)+'년</span>':'';
     const cv=x.c!==null?x.c+'%':'-';
     const cc=x.c>0?'up':x.c<0?'dn':'';
     const mc=x.m<-10?'dn':'';
@@ -2009,7 +2029,7 @@ function rt(){
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
       <td style="text-align:center;color:#94a3b8">${fmtArea(x.a)}</td>
       <td style="text-align:center;font-weight:600">${lpv}</td>
-      <td style="text-align:center;font-weight:600" class="${retc}">${retv}</td>
+      <td style="text-align:center;font-weight:600" class="${retc}">${retv}${retYrs}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${x.m}%</td>
       <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
@@ -2032,9 +2052,9 @@ function rt(){
       const cv=x.c!==null?(x.c>0?'+':'')+x.c+'%':'-';
       const cc=x.c>0?'up':x.c<0?'dn':'';
       const mv=x.m+'%';
-      const ret=calcReturn(x);
-      const retv=ret!==null?(ret>0?'+':'')+ret.toFixed(1)+'%':'-';
-      const retc=ret>0?'up':ret<0?'dn':'';
+      const retObj2=calcReturnObj(x);
+      const retv=retObj2?(retObj2.val>0?'+':'')+retObj2.val.toFixed(1)+'%':'-';
+      const retc=retObj2?(retObj2.val>0?'up':retObj2.val<0?'dn':''):'';
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
           <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${fmtArea(x.a)}${x.u?' | '+x.u+'세대':''}</div></div>
@@ -2112,15 +2132,16 @@ function showDetail(x){
   const lsVal=calcLandShare(x);
   const lsPy=lsVal?(lsVal/3.3058).toFixed(1)+'평':'-';
   const lsM2=lsVal?lsVal.toFixed(1)+'㎡':'-';
-  const ret=calcReturn(x);
-  const retFmt=ret!==null?(ret>0?'+':'')+ret.toFixed(1)+'%':'-';
-  const retCls=ret>0?'up':ret<0?'dn':'';
+  const retO=calcReturnObj(x);
+  const retFmt=retO?(retO.val>0?'+':'')+retO.val.toFixed(1)+'%':'-';
+  const retCls=retO?(retO.val>0?'up':retO.val<0?'dn':''):'';
+  const retLbl=retO?retYearFrom+'\u2192'+retYearTo+' ('+retO.years.toFixed(1)+'년)':retYearFrom+'\u2192'+retYearTo;
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
     ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
-    [retYearFrom+'\u2192'+retYearTo+' \uC218\uC775',retFmt,retCls],
+    [retLbl,retFmt,retCls],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal?lsM2+' ('+lsPy+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
@@ -2169,15 +2190,16 @@ function switchAreaFromMerged(dataIdx){
   const lsVal2=calcLandShare(x);
   const lsPy2=lsVal2?(lsVal2/3.3058).toFixed(1)+'평':'-';
   const lsM22=lsVal2?lsVal2.toFixed(1)+'㎡':'-';
-  const ret2=calcReturn(x);
-  const retFmt2=ret2!==null?(ret2>0?'+':'')+ret2.toFixed(1)+'%':'-';
-  const retCls2=ret2>0?'up':ret2<0?'dn':'';
+  const retO2=calcReturnObj(x);
+  const retFmt2=retO2?(retO2.val>0?'+':'')+retO2.val.toFixed(1)+'%':'-';
+  const retCls2=retO2?(retO2.val>0?'up':retO2.val<0?'dn':''):'';
+  const retLbl2=retO2?retYearFrom+'\u2192'+retYearTo+' ('+retO2.years.toFixed(1)+'년)':retYearFrom+'\u2192'+retYearTo;
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
     ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
-    [retYearFrom+'\u2192'+retYearTo+' \uC218\uC775',retFmt2,retCls2],
+    [retLbl2,retFmt2,retCls2],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal2?lsM22+' ('+lsPy2+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
   renderDetail(x);
