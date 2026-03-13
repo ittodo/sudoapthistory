@@ -394,6 +394,7 @@
 <script>
 let D=[],F=[],cp=1,ps=100,sc='lp',sa=false,si=-1,ch=null;
 let retYearFrom=2024, retYearTo=2025; // 수익률 기간 슬라이더
+let dataLastMonth=12; // 마지막 연도의 데이터 월수 (meta.updated에서 파싱)
 let chartTab='year'; // 'year' | 'month'
 let chartDetailCtx=null; // {x, prices, entryMonthly} for re-rendering
 function isMobile(){ return window.innerWidth<=768; }
@@ -831,10 +832,11 @@ async function renderComparison(){
     ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
     ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'],
     ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
-    [retYearFrom+'→'+retYearTo+' 수익(%)',d=>{
+    [retYearFrom+'→'+retYearTo+' 연환산(%)',d=>{
       const iF=Y.indexOf(retYearFrom),iT=Y.indexOf(retYearTo);
       if(iF<0||iT<0||!d.yearAvg||!d.yearAvg[iF]||!d.yearAvg[iT])return null;
-      return (d.yearAvg[iT]-d.yearAvg[iF])/d.yearAvg[iF]*100;
+      const totalRet=(d.yearAvg[iT]-d.yearAvg[iF])/d.yearAvg[iF]*100;
+      return totalRet/retMonths()*12;
     },v=>v!==null?v.toFixed(1):'-','max']
   ];
 
@@ -1623,6 +1625,13 @@ async function init(){
     N_MONTHS=Y.length*12;
     initMonthLabels();
   }
+  // 마지막 연도의 데이터 월수 파악
+  if(j.meta&&j.meta.updated){
+    const ud=new Date(j.meta.updated);
+    const lastY=Y[Y.length-1];
+    if(ud.getFullYear()===lastY){ dataLastMonth=ud.getMonth()+1; }
+    else { dataLastMonth=12; }
+  }
 
   if(j.g && j.o && Array.isArray(j.d[0])){
     const GUS=j.g, DONGS=j.o;
@@ -1685,14 +1694,27 @@ function onReturnRange(){
   rt();saveHash();
 }
 function updateRetLabel(){
-  document.getElementById('retLabel').textContent=retYearFrom+'→'+retYearTo+' 수익률';
+  const m=retMonths();
+  document.getElementById('retLabel').textContent=retYearFrom+'→'+retYearTo+' ('+m+'개월→연환산)';
   const th=document.getElementById('thRet');
   if(th){th.childNodes[0].textContent=retYearFrom%100+'→'+retYearTo%100+' ';}
+}
+function retMonths(){
+  // 선택 기간의 총 개월수 계산
+  const lastY=Y[Y.length-1];
+  const fromM=retYearFrom===lastY?dataLastMonth:12;
+  const toM=retYearTo===lastY?dataLastMonth:12;
+  // 시작년 중간~끝년 중간: (끝년-시작년-1)*12 + 끝년월수/2 + (12-시작년월수/2)
+  // 간단히: 연차이 * 12, 단 끝년이 부분연도면 보정
+  let months=(retYearTo-retYearFrom)*12;
+  if(retYearTo===lastY&&dataLastMonth<12) months=months-12+dataLastMonth;
+  return Math.max(months,1);
 }
 function calcReturn(x){
   if(!PRICES) return null;
   const iFrom=Y.indexOf(retYearFrom), iTo=Y.indexOf(retYearTo);
   if(iFrom<0||iTo<0) return null;
+  const months=retMonths();
   // 통합 엔트리: 시블링 세대수 가중평균
   if(x._merged&&x.si&&x.si.length>1){
     let wSum=0,wTotal=0;
@@ -1700,7 +1722,8 @@ function calcReturn(x){
       const p=PRICES[String(idx)];
       if(!p||!p[iFrom]||!p[iTo]) continue;
       const w=(DI[idx]&&DI[idx].u)||DI[idx]&&DI[idx].t||1;
-      wSum+=((p[iTo]-p[iFrom])/p[iFrom]*100)*w;
+      const totalRet=(p[iTo]-p[iFrom])/p[iFrom]*100;
+      wSum+=(totalRet/months*12)*w;
       wTotal+=w;
     }
     return wTotal>0?wSum/wTotal:null;
@@ -1709,7 +1732,8 @@ function calcReturn(x){
   if(!p) return null;
   const pFrom=p[iFrom], pTo=p[iTo];
   if(!pFrom||!pTo) return null;
-  return (pTo-pFrom)/pFrom*100;
+  const totalRet=(pTo-pFrom)/pFrom*100;
+  return totalRet/months*12;
 }
 
 async function loadPrices(){
