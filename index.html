@@ -1862,7 +1862,8 @@ function toggleMerged(){
   document.getElementById('mgBtn').style.color=merged?'#fff':'';
   document.getElementById('mgBtn').style.borderColor=merged?'var(--accent)':'';
   areaCache={}; // 비교 캐시 클리어
-  cd(); // 상세 패널 닫기
+  if(curDetailIdx!==null) cd(); // 상세 패널 열려있을 때만 닫기
+  else { si=-1; document.getElementById('dp').classList.remove('open'); }
   af();
   // 비교 뷰가 열려있으면 갱신
   if(viewMode==='area'){ selectedAreas=[]; renderAreaList(); renderComparison(); }
