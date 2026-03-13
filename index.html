@@ -245,6 +245,8 @@
       <div><label class="text-xs" style="color:#64748b">최근가</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:#475569">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">세대수</label><div class="rg"><input id="uL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="uH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:#64748b">준공연도</label><div class="rg"><input id="bL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="bH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div style="grid-column:span 2"><label class="text-xs" style="color:#64748b">수익률 기간</label><div style="display:flex;align-items:center;gap:6px"><select id="ryL" class="fi" style="width:auto" onchange="onReturnRange()"></select><span style="color:#475569">→</span><select id="ryH" class="fi" style="width:auto" onchange="onReturnRange()"></select><span id="retLabel" style="font-size:11px;color:#93c5fd;font-weight:600;white-space:nowrap"></span></div></div>
     </div>
     <button class="filter-toggle-btn" onclick="toggleFilters()" id="filterToggle">필터 더보기 ▼</button>
   </div>
@@ -260,12 +262,10 @@
             <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
             <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
             <th onclick="sb('lp')">최근가 <span class="sa" data-c="lp">▼</span></th>
-            <th onclick="sb('y25')" title="24년→25년 가격 변동률">24→25 <span class="sa" data-c="y25">▼</span></th>
+            <th onclick="sb('ret')" title="선택한 기간의 수익률" id="thRet">수익률 <span class="sa" data-c="ret">▼</span></th>
             <th onclick="sb('c')" title="연평균성장률: 첫 거래연도~2025년 기준. 신축일수록 기간이 짧아 높게 나올 수 있음">CAGR <span class="sa" data-c="c">▼</span></th>
             <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
             <th onclick="sb('s')">샤프 <span class="sa" data-c="s">▼</span></th>
-            <th onclick="sb('q')">21→25 <span class="sa" data-c="q">▼</span></th>
-            <th onclick="sb('k')">26모멘텀 <span class="sa" data-c="k">▼</span></th>
             <th onclick="sb('v')">거래 <span class="sa" data-c="v">▼</span></th>
             <th onclick="sb('u')">세대 <span class="sa" data-c="u">▼</span></th>
             <th onclick="sb('ls')" title="세대당 대지지분 (대지면적÷세대수)">대지지분 <span class="sa" data-c="ls">▼</span></th>
@@ -393,6 +393,7 @@
 
 <script>
 let D=[],F=[],cp=1,ps=100,sc='lp',sa=false,si=-1,ch=null;
+let retYearFrom=2024, retYearTo=2025; // 수익률 기간 슬라이더
 let chartTab='year'; // 'year' | 'month'
 let chartDetailCtx=null; // {x, prices, entryMonthly} for re-rendering
 function isMobile(){ return window.innerWidth<=768; }
@@ -830,9 +831,11 @@ async function renderComparison(){
     ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
     ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'],
     ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
-    ['24→25 수익(%)',d=>d.y25,v=>v!==null?v.toFixed(1):'-','max'],
-    ['21→25 수익(%)',d=>d.avgQ,v=>v!==null?v.toFixed(1):'-','max'],
-    ['26 모멘텀(%)',d=>d.avgK,v=>v!==null?v.toFixed(1):'-','max']
+    [retYearFrom+'→'+retYearTo+' 수익(%)',d=>{
+      const iF=Y.indexOf(retYearFrom),iT=Y.indexOf(retYearTo);
+      if(iF<0||iT<0||!d.yearAvg||!d.yearAvg[iF]||!d.yearAvg[iT])return null;
+      return (d.yearAvg[iT]-d.yearAvg[iF])/d.yearAvg[iF]*100;
+    },v=>v!==null?v.toFixed(1):'-','max']
   ];
 
   metrics.forEach(([label,getter,fmt,bestDir])=>{
@@ -1639,6 +1642,7 @@ async function init(){
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   document.getElementById('yearRange').textContent=Y[0]+'-'+Y[Y.length-1];
+  initReturnYearSelects();
   buildLoc();
   buildMerged();
 
@@ -1661,6 +1665,51 @@ async function init(){
   loadVolumes();
   loadDetails();
   loadGeo();
+}
+
+function initReturnYearSelects(){
+  const selL=document.getElementById('ryL'), selH=document.getElementById('ryH');
+  selL.innerHTML=''; selH.innerHTML='';
+  Y.forEach(y=>{
+    selL.innerHTML+=`<option value="${y}"${y===retYearFrom?' selected':''}>${y}</option>`;
+    selH.innerHTML+=`<option value="${y}"${y===retYearTo?' selected':''}>${y}</option>`;
+  });
+  updateRetLabel();
+}
+function onReturnRange(){
+  retYearFrom=parseInt(document.getElementById('ryL').value);
+  retYearTo=parseInt(document.getElementById('ryH').value);
+  if(retYearFrom>=retYearTo){retYearTo=Math.min(retYearFrom+1,Y[Y.length-1]);document.getElementById('ryH').value=retYearTo;}
+  updateRetLabel();
+  if(sc==='ret') ds();
+  rt();saveHash();
+}
+function updateRetLabel(){
+  document.getElementById('retLabel').textContent=retYearFrom+'→'+retYearTo+' 수익률';
+  const th=document.getElementById('thRet');
+  if(th){th.childNodes[0].textContent=retYearFrom%100+'→'+retYearTo%100+' ';}
+}
+function calcReturn(x){
+  if(!PRICES) return null;
+  const iFrom=Y.indexOf(retYearFrom), iTo=Y.indexOf(retYearTo);
+  if(iFrom<0||iTo<0) return null;
+  // 통합 엔트리: 시블링 세대수 가중평균
+  if(x._merged&&x.si&&x.si.length>1){
+    let wSum=0,wTotal=0;
+    for(const idx of x.si){
+      const p=PRICES[String(idx)];
+      if(!p||!p[iFrom]||!p[iTo]) continue;
+      const w=(DI[idx]&&DI[idx].u)||DI[idx]&&DI[idx].t||1;
+      wSum+=((p[iTo]-p[iFrom])/p[iFrom]*100)*w;
+      wTotal+=w;
+    }
+    return wTotal>0?wSum/wTotal:null;
+  }
+  const p=PRICES[String(x.i)];
+  if(!p) return null;
+  const pFrom=p[iFrom], pTo=p[iTo];
+  if(!pFrom||!pTo) return null;
+  return (pTo-pFrom)/pFrom*100;
 }
 
 async function loadPrices(){
@@ -1857,7 +1906,7 @@ function gn(id){const v=document.getElementById(id).value;return v===''?null:par
 
 function af(){
   const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
-  const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH');
+  const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH'),bL=gn('bL'),bH=gn('bH');
 
   const src=merged?DM:D;
   F=src.filter(x=>{
@@ -1876,6 +1925,8 @@ function af(){
     if(sH!==null&&(x.s===null||x.s>sH))return false;
     if(uL!==null&&(!x.tu||x.tu<uL))return false;
     if(uH!==null&&(!x.tu||x.tu>uH))return false;
+    if(bL!==null&&(!x.b||x.b<bL))return false;
+    if(bH!==null&&(!x.b||x.b>bH))return false;
     return true;
   });
   ds();cp=1;rt();
@@ -1889,6 +1940,8 @@ function ds(){
     if(sc==='a'&&merged){ va=a._aNum||a.a; vb=b._aNum||b.a; }
     // 대지지분 정렬: pa/u 계산
     if(sc==='ls'){ va=calcLandShare(a); vb=calcLandShare(b); }
+    // 수익률 정렬: 동적 계산
+    if(sc==='ret'){ va=calcReturn(a); vb=calcReturn(b); }
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
     if(vb===null||vb===undefined)vb=sa?Infinity:-Infinity;
     if(typeof va==='string')return sa?va.localeCompare(vb):vb.localeCompare(va);
@@ -1917,14 +1970,11 @@ function rt(){
     const bg=x.r?'b-s':'b-g';
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
     const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
-    const y25v=x.y25!==null&&x.y25!==undefined?(x.y25>0?'+':'')+x.y25+'%':'-';
-    const y25c=x.y25>0?'up':x.y25<0?'dn':'';
+    const ret=calcReturn(x);
+    const retv=ret!==null?(ret>0?'+':'')+ret.toFixed(1)+'%':'-';
+    const retc=ret>0?'up':ret<0?'dn':'';
     const cv=x.c!==null?x.c+'%':'-';
     const cc=x.c>0?'up':x.c<0?'dn':'';
-    const qv=x.q!==null?(x.q>0?'+':'')+x.q+'%':'-';
-    const qc=x.q>0?'up':x.q<0?'dn':'';
-    const kv=x.k!==null?(x.k>0?'+':'')+x.k+'%':'-';
-    const kc=x.k>0?'up':x.k<0?'dn':'';
     const mc=x.m<-10?'dn':'';
 
     frags.push(`<tr onclick="sd(${i})" class="${si===i?'sel':''}">
@@ -1934,12 +1984,10 @@ function rt(){
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
       <td style="text-align:center;color:#94a3b8">${fmtArea(x.a)}</td>
       <td style="text-align:center;font-weight:600">${lpv}</td>
-      <td style="text-align:center;font-weight:500" class="${y25c}">${y25v}</td>
+      <td style="text-align:center;font-weight:600" class="${retc}">${retv}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${x.m}%</td>
       <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
-      <td style="text-align:center;font-weight:500" class="${qc}">${qv}</td>
-      <td style="text-align:center;font-weight:500" class="${kc}">${kv}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
       <td style="text-align:center;color:#94a3b8">${(()=>{const ls=calcLandShare(x);return ls?ls.toFixed(1)+'㎡':'-';})()}</td>
@@ -1959,10 +2007,9 @@ function rt(){
       const cv=x.c!==null?(x.c>0?'+':'')+x.c+'%':'-';
       const cc=x.c>0?'up':x.c<0?'dn':'';
       const mv=x.m+'%';
-      const qv=x.q!==null?(x.q>0?'+':'')+x.q+'%':'-';
-      const qc=x.q>0?'up':x.q<0?'dn':'';
-      const kv=x.k!==null?(x.k>0?'+':'')+x.k+'%':'-';
-      const kc=x.k>0?'up':x.k<0?'dn':'';
+      const ret=calcReturn(x);
+      const retv=ret!==null?(ret>0?'+':'')+ret.toFixed(1)+'%':'-';
+      const retc=ret>0?'up':ret<0?'dn':'';
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
           <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${fmtArea(x.a)}${x.u?' | '+x.u+'세대':''}</div></div>
@@ -1971,8 +2018,8 @@ function rt(){
         <div class="m-card-metrics">
           <div class="m-card-metric"><div class="ml">CAGR</div><div class="mv ${cc}">${cv}</div></div>
           <div class="m-card-metric"><div class="ml">MDD</div><div class="mv dn">${mv}</div></div>
-          <div class="m-card-metric"><div class="ml">21→25</div><div class="mv ${qc}">${qv}</div></div>
-          <div class="m-card-metric"><div class="ml">모멘텀</div><div class="mv ${kc}">${kv}</div></div>
+          <div class="m-card-metric"><div class="ml">${retYearFrom%100}→${retYearTo%100}</div><div class="mv ${retc}">${retv}</div></div>
+          <div class="m-card-metric"><div class="ml">샤프</div><div class="mv" style="color:#94a3b8">${x.s!==null?x.s:'-'}</div></div>
         </div>
       </div>`);
     }
@@ -2040,13 +2087,15 @@ function showDetail(x){
   const lsVal=calcLandShare(x);
   const lsPy=lsVal?(lsVal/3.3058).toFixed(1)+'평':'-';
   const lsM2=lsVal?lsVal.toFixed(1)+'㎡':'-';
+  const ret=calcReturn(x);
+  const retFmt=ret!==null?(ret>0?'+':'')+ret.toFixed(1)+'%':'-';
+  const retCls=ret>0?'up':ret<0?'dn':'';
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
     ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
-    ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
-    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':''],
+    [retYearFrom+'\u2192'+retYearTo+' \uC218\uC775',retFmt,retCls],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal?lsM2+' ('+lsPy+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
@@ -2095,13 +2144,15 @@ function switchAreaFromMerged(dataIdx){
   const lsVal2=calcLandShare(x);
   const lsPy2=lsVal2?(lsVal2/3.3058).toFixed(1)+'평':'-';
   const lsM22=lsVal2?lsVal2.toFixed(1)+'㎡':'-';
+  const ret2=calcReturn(x);
+  const retFmt2=ret2!==null?(ret2>0?'+':'')+ret2.toFixed(1)+'%':'-';
+  const retCls2=ret2>0?'up':ret2<0?'dn':'';
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
     ['MDD',x.m+'%','dn'],
     ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
     ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
-    ['21\u219225 \uC218\uC775',fm(x.q),x.q>0?'up':'dn'],
-    ['26\uB144 \uBAA8\uBA58\uD140',x.k!==null?fm(x.k):'-',x.k>0?'up':x.k<0?'dn':''],
+    [retYearFrom+'\u2192'+retYearTo+' \uC218\uC775',retFmt2,retCls2],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal2?lsM22+' ('+lsPy2+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
   renderDetail(x);
@@ -2514,11 +2565,15 @@ function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=
 function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
 function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();saveHash();}
 function resetF(){
-  ['fR','fG','fD','fS','cL','cH','mL','mH','pL','pH','sL','sH'].forEach(id=>{
+  ['fR','fG','fD','fS','aL','aH','cL','cH','mL','mH','pL','pH','sL','sH','uL','uH','bL','bH'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.value='';
   });
   selGus=[];
+  retYearFrom=2024;retYearTo=2025;
+  document.getElementById('ryL').value='2024';
+  document.getElementById('ryH').value='2025';
+  updateRetLabel();
   renderGuChips();
   onR();
 }
@@ -2544,6 +2599,10 @@ function saveHash(){
   const sHv=gv('sH');if(sHv)p.sH=sHv;
   const uLv=gv('uL');if(uLv)p.uL=uLv;
   const uHv=gv('uH');if(uHv)p.uH=uHv;
+  const bLv=gv('bL');if(bLv)p.bL=bLv;
+  const bHv=gv('bH');if(bHv)p.bH=bHv;
+  if(retYearFrom!==2024)p.ryL=retYearFrom;
+  if(retYearTo!==2025)p.ryH=retYearTo;
   if(sc!=='c')p.sc=sc;
   if(sa)p.sa=1;
   if(cp>1)p.p=cp;
@@ -2580,6 +2639,11 @@ function loadHash(){
   if(p.sH)document.getElementById('sH').value=p.sH;
   if(p.uL)document.getElementById('uL').value=p.uL;
   if(p.uH)document.getElementById('uH').value=p.uH;
+  if(p.bL)document.getElementById('bL').value=p.bL;
+  if(p.bH)document.getElementById('bH').value=p.bH;
+  if(p.ryL){retYearFrom=parseInt(p.ryL);document.getElementById('ryL').value=p.ryL;}
+  if(p.ryH){retYearTo=parseInt(p.ryH);document.getElementById('ryH').value=p.ryH;}
+  updateRetLabel();
   if(p.sc)sc=p.sc;
   if(p.sa)sa=true;
   if(p.ps){ps=parseInt(p.ps);document.getElementById('ps').value=p.ps;}
