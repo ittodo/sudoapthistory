@@ -355,13 +355,11 @@ function calcGuStats(gd, s) {
   const curC = gd.c[s] || 0;
   const curP = gd.p[s] || 0;
   const prevC = s > 0 ? (gd.c[s - 1] || 0) : 0;
-  const momC = prevC > 0 ? ((curC - prevC) / prevC * 100) : null;
   const prevP = s > 0 ? (gd.p[s - 1] || 0) : 0;
-  const momP = prevP > 0 ? ((curP - prevP) / prevP * 100) : null;
   const yoySlot = s - 12;
   const yoyC = yoySlot >= 0 && gd.c[yoySlot] > 0
     ? ((curC - gd.c[yoySlot]) / gd.c[yoySlot] * 100) : null;
-  return { curC, curP, momC, momP, yoyC };
+  return { curC, curP, prevC, prevP, yoyC };
 }
 
 function updateStats() {
@@ -374,15 +372,19 @@ function updateStats() {
   }
 
   // 구 선택 시 → 미니 비교 테이블
+  const curLabel = slotLabel(s);
+  const prevLabel = s > 0 ? slotLabel(s - 1) : '';
+
   if (selectedGus.length > 0) {
+    const th = 'padding:6px 8px;text-align:right;color:var(--muted);font-size:10px;';
     let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;">';
     html += '<thead><tr style="border-bottom:1px solid var(--border);">';
-    html += '<th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:10px;">구/시</th>';
-    html += '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:10px;">거래건수</th>';
-    html += '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:10px;">전월비</th>';
-    html += '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:10px;">평균가</th>';
-    html += '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:10px;">전월비</th>';
-    html += '<th style="padding:6px 8px;text-align:right;color:var(--muted);font-size:10px;">전년동월비(건)</th>';
+    html += `<th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:10px;">구/시</th>`;
+    html += `<th style="${th}">거래(${curLabel})</th>`;
+    html += `<th style="${th}">거래(${prevLabel})</th>`;
+    html += `<th style="${th}">평균가(${curLabel})</th>`;
+    html += `<th style="${th}">평균가(${prevLabel})</th>`;
+    html += `<th style="${th}">전년동월비(건)</th>`;
     html += '</tr></thead><tbody>';
 
     for (let i = 0; i < selectedGus.length; i++) {
@@ -394,9 +396,9 @@ function updateStats() {
       html += `<tr style="border-bottom:1px solid var(--border);">
         <td style="padding:5px 8px;font-weight:600;"><span style="color:${color};margin-right:4px;">●</span>${g}</td>
         <td style="padding:5px 8px;text-align:right;font-weight:600;">${st.curC.toLocaleString()}</td>
-        <td style="padding:5px 8px;text-align:right;">${fmtChg(st.momC)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--muted);">${st.prevC.toLocaleString()}</td>
         <td style="padding:5px 8px;text-align:right;font-weight:600;">${st.curP.toFixed(2)}억</td>
-        <td style="padding:5px 8px;text-align:right;">${fmtChg(st.momP)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--muted);">${st.prevP ? st.prevP.toFixed(2) + '억' : '-'}</td>
         <td style="padding:5px 8px;text-align:right;">${fmtChg(st.yoyC)}</td>
       </tr>`;
     }
@@ -417,12 +419,12 @@ function updateStats() {
     <div class="stat-card">
       <div class="label">거래건수</div>
       <div class="value">${st.curC.toLocaleString()}</div>
-      <div class="sub">전월 ${fmtChg(st.momC)} · 전년 ${fmtChg(st.yoyC)}</div>
+      <div class="sub">전월(${prevLabel}) ${st.prevC.toLocaleString()}건 · 전년동월 ${fmtChg(st.yoyC)}</div>
     </div>
     <div class="stat-card">
       <div class="label">평균가</div>
       <div class="value">${st.curP.toFixed(2)}<span style="font-size:13px;color:var(--muted)"> 억</span></div>
-      <div class="sub">전월 ${fmtChg(st.momP)}</div>
+      <div class="sub">전월(${prevLabel}) ${st.prevP ? st.prevP.toFixed(2) + '억' : '-'}</div>
     </div>
     <div class="stat-card">
       <div class="label">3개월 평균 거래</div>
