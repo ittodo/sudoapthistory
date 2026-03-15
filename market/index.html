@@ -16,7 +16,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .tab-btn { padding: 6px 16px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
 .tab-btn:hover { border-color: var(--muted); color: #fff; }
 .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align: center; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; text-align: center; flex: 1; min-width: 140px; }
 .stat-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 .stat-card .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
 .stat-card .sub { font-size: 11px; margin-top: 2px; }
@@ -103,8 +103,15 @@ a:hover { text-decoration: underline; }
   </div>
 </div>
 
-<!-- Stats -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;" id="stats"></div>
+<!-- Month Navigator + Stats -->
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+  <div style="display:flex;align-items:center;gap:6px;">
+    <button class="tab-btn" onclick="moveMonth(-1)" style="padding:4px 10px;font-size:14px;" title="이전 월">&larr;</button>
+    <div id="refMonthLabel" style="font-size:15px;font-weight:700;min-width:80px;text-align:center;"></div>
+    <button class="tab-btn" onclick="moveMonth(1)" style="padding:4px 10px;font-size:14px;" title="다음 월">&rarr;</button>
+  </div>
+  <div id="stats" style="display:flex;gap:8px;flex:1;flex-wrap:wrap;"></div>
+</div>
 
 <!-- Price Chart -->
 <div class="chart-wrap price">
@@ -151,6 +158,7 @@ let MKT = null;
 let region = 'all';
 let selectedGus = [];
 let tSortKey = 'lastC', tSortAsc = false;
+let refSlot = -1; // 기준월 슬롯 (자동 설정)
 
 const GU_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6'];
 
@@ -176,10 +184,45 @@ async function init() {
     toSel.innerHTML += `<option value="${y}" ${y === endYear ? 'selected' : ''}>${y}</option>`;
   }
 
+  // 기준월 초기화: 마지막 "충분한" 데이터가 있는 월
+  initRefSlot();
+
   buildGuMenu();
   parseHash();
   updateAll();
   document.getElementById('loading').style.display = 'none';
+}
+
+function initRefSlot() {
+  const allC = MKT.all.c;
+  // 마지막 데이터 슬롯 찾기
+  let last = findLastDataSlot(allC);
+  if (last < 0) { refSlot = 0; return; }
+  // 최근월 거래건수가 이전월의 50% 미만이면 이전월을 기본으로
+  if (last > 0 && allC[last - 1] > 0 && allC[last] < allC[last - 1] * 0.5) {
+    last--;
+  }
+  refSlot = last;
+}
+
+function slotLabel(slot) {
+  const y = MKT.meta.startYear + Math.floor(slot / 12);
+  const m = (slot % 12) + 1;
+  return `${y}.${String(m).padStart(2, '0')}`;
+}
+
+function moveMonth(delta) {
+  const allC = MKT.all.c;
+  let next = refSlot + delta;
+  // 데이터가 있는 월로만 이동
+  while (next >= 0 && next < MKT.meta.months && allC[next] === 0) {
+    next += delta;
+  }
+  if (next >= 0 && next < MKT.meta.months && allC[next] > 0) {
+    refSlot = next;
+    updateAll();
+    saveHash();
+  }
 }
 
 // ---- Region ----
@@ -303,27 +346,28 @@ function findLastDataSlot(cArr) {
 // ---- Stats ----
 function updateStats() {
   const data = getMainData();
-  const lastSlot = findLastDataSlot(data.c);
-  if (lastSlot < 1) {
+  const s = refSlot;
+  if (s < 0 || !data.c[s]) {
     document.getElementById('stats').innerHTML = '';
+    document.getElementById('refMonthLabel').textContent = '';
     return;
   }
 
-  const lastC = data.c[lastSlot];
-  const prevC = data.c[lastSlot - 1] || 0;
-  const momC = prevC > 0 ? ((lastC - prevC) / prevC * 100) : null;
+  document.getElementById('refMonthLabel').textContent = slotLabel(s);
 
-  const lastP = data.p[lastSlot];
-  const prevP = data.p[lastSlot - 1] || 0;
-  const momP = prevP > 0 ? ((lastP - prevP) / prevP * 100) : null;
+  const curC = data.c[s];
+  const prevC = s > 0 ? (data.c[s - 1] || 0) : 0;
+  const momC = prevC > 0 ? ((curC - prevC) / prevC * 100) : null;
 
-  const yoySlot = lastSlot - 12;
-  const yoyC_val = yoySlot >= 0 && data.c[yoySlot] > 0
-    ? ((lastC - data.c[yoySlot]) / data.c[yoySlot] * 100) : null;
+  const curP = data.p[s];
+  const prevP = s > 0 ? (data.p[s - 1] || 0) : 0;
+  const momP = prevP > 0 ? ((curP - prevP) / prevP * 100) : null;
 
-  const slotYear = MKT.meta.startYear + Math.floor(lastSlot / 12);
-  const slotMonth = (lastSlot % 12) + 1;
-  const periodLabel = `${slotYear}.${String(slotMonth).padStart(2,'0')}`;
+  const yoySlot = s - 12;
+  const yoyC = yoySlot >= 0 && data.c[yoySlot] > 0
+    ? ((curC - data.c[yoySlot]) / data.c[yoySlot] * 100) : null;
+  const yoyP = yoySlot >= 0 && data.p[yoySlot] > 0
+    ? ((curP - data.p[yoySlot]) / data.p[yoySlot] * 100) : null;
 
   function fmtChg(v) {
     if (v === null) return '<span style="color:var(--muted)">-</span>';
@@ -334,22 +378,18 @@ function updateStats() {
 
   document.getElementById('stats').innerHTML = `
     <div class="stat-card">
-      <div class="label">최근월 거래건수 (${periodLabel})</div>
-      <div class="value">${lastC.toLocaleString()}</div>
-      <div class="sub">전월비 ${fmtChg(momC)}</div>
+      <div class="label">거래건수</div>
+      <div class="value">${curC.toLocaleString()}</div>
+      <div class="sub">전월 ${fmtChg(momC)} · 전년 ${fmtChg(yoyC)}</div>
     </div>
     <div class="stat-card">
-      <div class="label">전년동월비 (거래건수)</div>
-      <div class="value">${fmtChg(yoyC_val)}</div>
+      <div class="label">평균가</div>
+      <div class="value">${curP.toFixed(2)}<span style="font-size:13px;color:var(--muted)"> 억</span></div>
+      <div class="sub">전월 ${fmtChg(momP)} · 전년 ${fmtChg(yoyP)}</div>
     </div>
     <div class="stat-card">
-      <div class="label">최근월 평균가</div>
-      <div class="value">${lastP.toFixed(2)}<span style="font-size:13px;color:var(--muted)"> 억</span></div>
-      <div class="sub">전월비 ${fmtChg(momP)}</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">최근 3개월 평균 거래</div>
-      <div class="value">${Math.round((data.c[lastSlot] + (data.c[lastSlot-1]||0) + (data.c[lastSlot-2]||0)) / 3).toLocaleString()}</div>
+      <div class="label">3개월 평균 거래</div>
+      <div class="value">${Math.round((curC + (data.c[s-1]||0) + (data.c[s-2]||0)) / 3).toLocaleString()}</div>
     </div>
   `;
 }
@@ -520,27 +560,25 @@ function updateGuTable() {
   const gus = Object.keys(MKT.gu);
   const rows = [];
 
+  const s = refSlot;
   for (const g of gus) {
     const gd = MKT.gu[g];
-    // Filter by region
     if (region === 'seoul' && gd.r !== 1) continue;
     if (region === 'gyeonggi' && gd.r !== 0) continue;
 
-    const lastSlot = findLastDataSlot(gd.c);
-    if (lastSlot < 1) continue;
-
-    const lastC = gd.c[lastSlot];
-    const prevC = gd.c[lastSlot - 1] || 0;
-    const momC = prevC > 0 ? (lastC - prevC) / prevC * 100 : null;
-    const avg3C = Math.round((gd.c[lastSlot] + (gd.c[lastSlot-1]||0) + (gd.c[lastSlot-2]||0)) / 3);
-    const lastP = gd.p[lastSlot];
-    const prevP = gd.p[lastSlot - 1] || 0;
-    const momP = prevP > 0 ? (lastP - prevP) / prevP * 100 : null;
-    const yoySlot = lastSlot - 12;
+    const curC = gd.c[s] || 0;
+    const curP = gd.p[s] || 0;
+    // 해당 월에 거래가 아예 없는 구는 표시하되 0으로
+    const prevC = s > 0 ? (gd.c[s - 1] || 0) : 0;
+    const momC = prevC > 0 ? (curC - prevC) / prevC * 100 : null;
+    const avg3C = Math.round((curC + (gd.c[s-1]||0) + (gd.c[s-2]||0)) / 3);
+    const prevP = s > 0 ? (gd.p[s - 1] || 0) : 0;
+    const momP = prevP > 0 ? (curP - prevP) / prevP * 100 : null;
+    const yoySlot = s - 12;
     const yoyC = yoySlot >= 0 && gd.c[yoySlot] > 0
-      ? (lastC - gd.c[yoySlot]) / gd.c[yoySlot] * 100 : null;
+      ? (curC - gd.c[yoySlot]) / gd.c[yoySlot] * 100 : null;
 
-    rows.push({ name: g, region: gd.r, lastC, momC, avg3C, lastP, momP, yoyC });
+    rows.push({ name: g, region: gd.r, lastC: curC, momC, avg3C, lastP: curP, momP, yoyC });
   }
 
   // Sort
@@ -611,6 +649,7 @@ function saveHash() {
   if (selectedGus.length) params.push('gu=' + selectedGus.join(','));
   params.push('from=' + document.getElementById('fromYear').value);
   params.push('to=' + document.getElementById('toYear').value);
+  params.push('m=' + refSlot);
   location.hash = params.join('&');
 }
 
@@ -634,6 +673,10 @@ function parseHash() {
   }
   if (params.from) document.getElementById('fromYear').value = params.from;
   if (params.to) document.getElementById('toYear').value = params.to;
+  if (params.m) {
+    const m = parseInt(params.m);
+    if (m >= 0 && m < MKT.meta.months) refSlot = m;
+  }
 }
 
 init();
