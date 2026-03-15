@@ -2122,7 +2122,8 @@ function showDetail(x){
   document.getElementById('dn').textContent=x.n;
   const unitStr=x.u?` | ${x.u.toLocaleString()}세대`:'';
   const farStr=x.fr?` | 용적률 ${x.fr}%`:'';
-  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr}`;
+  const pkStr=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
+  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr}${pkStr}`;
 
   // 평형 탭
   const tabsEl=document.getElementById('areaTabs');
@@ -2217,7 +2218,8 @@ function switchAreaFromMerged(dataIdx){
   document.getElementById('dn').textContent=x.n;
   const uStr2=x.u?` | ${x.u.toLocaleString()}세대`:'';
   const farStr2=x.fr?` | 용적률 ${x.fr}%`:'';
-  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}`;
+  const pkStr2=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
+  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}${pkStr2}`;
   const lsVal2=calcLandShare(x);
   const lsPy2=lsVal2?(lsVal2/3.3058).toFixed(1)+'평':'-';
   const lsM22=lsVal2?lsVal2.toFixed(1)+'㎡':'-';
