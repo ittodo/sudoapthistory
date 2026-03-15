@@ -50,7 +50,9 @@ a:hover { text-decoration: underline; }
 .gu-item .check { width: 14px; text-align: center; font-size: 11px; }
 .gu-group-label { font-size: 10px; color: var(--muted); padding: 6px 8px 2px; font-weight: 600; text-transform: uppercase; }
 .footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
-.chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; position: relative; }
+.chart-wrap.price { height: 340px; }
+.chart-wrap.volume { height: 260px; }
 .chart-wrap h3 { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
 </style>
 </head>
@@ -105,15 +107,15 @@ a:hover { text-decoration: underline; }
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;" id="stats"></div>
 
 <!-- Price Chart -->
-<div class="chart-wrap">
+<div class="chart-wrap price">
   <h3>가격 추이 (거래건수 가중평균, 억원)</h3>
-  <canvas id="priceChart" height="100"></canvas>
+  <canvas id="priceChart"></canvas>
 </div>
 
 <!-- Volume Chart -->
-<div class="chart-wrap">
+<div class="chart-wrap volume">
   <h3>월간 거래건수</h3>
-  <canvas id="volumeChart" height="80"></canvas>
+  <canvas id="volumeChart"></canvas>
 </div>
 
 <!-- Gu Comparison Table -->
