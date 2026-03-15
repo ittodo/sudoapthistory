@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>월간 시장 동향 — 서울·경기 아파트</title>
+<meta name="description" content="서울·경기 아파트 월간 거래량과 가격 추이. 구별 비교 분석.">
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+.fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
+.fi:focus { outline: none; border-color: var(--accent); }
+.tab-btn { padding: 6px 16px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
+.tab-btn:hover { border-color: var(--muted); color: #fff; }
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align: center; }
+.stat-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-card .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
+.stat-card .sub { font-size: 11px; margin-top: 2px; }
+table { width: 100%; border-collapse: collapse; }
+thead th { position: sticky; top: 0; background: #1a2332; padding: 8px 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; border-bottom: 1px solid var(--border); z-index: 2; }
+thead th:hover { color: #fff; }
+tbody td { padding: 6px; border-bottom: 1px solid #1e293b; white-space: nowrap; font-size: 12px; }
+tbody tr { transition: background .1s; cursor: pointer; }
+tbody tr:hover { background: rgba(59,130,246,.08); }
+.up { color: var(--up); }
+.dn { color: var(--dn); }
+.sort-arrow { font-size: 9px; margin-left: 2px; }
+#loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 999; gap: 12px; }
+.sp { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.sa { font-size: 10px; opacity: .6; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--text); transition: all .15s; }
+.chip:hover { border-color: var(--muted); }
+.chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip .x { font-size: 13px; line-height: 1; margin-left: 2px; }
+.gu-dropdown { position: relative; display: inline-block; }
+.gu-dropdown-menu { display: none; position: absolute; top: 100%; left: 0; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px; z-index: 50; max-height: 360px; overflow-y: auto; width: 280px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.gu-dropdown-menu.open { display: block; }
+.gu-dropdown-menu::-webkit-scrollbar { width: 5px; }
+.gu-dropdown-menu::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+.gu-item { padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+.gu-item:hover { background: rgba(59,130,246,.1); }
+.gu-item.selected { color: var(--accent); font-weight: 600; }
+.gu-item .check { width: 14px; text-align: center; font-size: 11px; }
+.gu-group-label { font-size: 10px; color: var(--muted); padding: 6px 8px 2px; font-weight: 600; text-transform: uppercase; }
+.footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
+.chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.chart-wrap h3 { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="sp"></div><div class="sa">데이터 로딩 중...</div></div>
+
+<div style="max-width:1200px;margin:0 auto;padding:12px 16px;">
+
+<!-- Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1 style="font-size:18px;font-weight:700;">월간 시장 동향</h1>
+    <div class="sa" id="updatedAt"></div>
+  </div>
+  <div style="display:flex;gap:6px;">
+    <a href="../" class="tab-btn" style="text-decoration:none;font-size:11px;">아파트 스크리너</a>
+    <a href="../div/" class="tab-btn" style="text-decoration:none;font-size:11px;">배당·소각</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+  <!-- Region -->
+  <div style="display:flex;gap:4px;">
+    <button class="tab-btn active" data-region="all" onclick="setRegion('all')">전체</button>
+    <button class="tab-btn" data-region="seoul" onclick="setRegion('seoul')">서울</button>
+    <button class="tab-btn" data-region="gyeonggi" onclick="setRegion('gyeonggi')">경기</button>
+  </div>
+
+  <!-- Gu Selector -->
+  <div class="gu-dropdown">
+    <button class="tab-btn" id="guBtn" onclick="toggleGuMenu()">구/시 선택</button>
+    <div class="gu-dropdown-menu" id="guMenu"></div>
+  </div>
+
+  <!-- Selected chips -->
+  <div id="guChips" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+
+  <div style="flex:1;"></div>
+
+  <!-- Period -->
+  <div style="display:flex;gap:4px;align-items:center;">
+    <span style="font-size:11px;color:var(--muted);">기간</span>
+    <select class="fi" id="fromYear" style="width:80px;" onchange="updateCharts()"></select>
+    <span style="color:var(--muted);">~</span>
+    <select class="fi" id="toYear" style="width:80px;" onchange="updateCharts()"></select>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;" id="stats"></div>
+
+<!-- Price Chart -->
+<div class="chart-wrap">
+  <h3>가격 추이 (거래건수 가중평균, 억원)</h3>
+  <canvas id="priceChart" height="100"></canvas>
+</div>
+
+<!-- Volume Chart -->
+<div class="chart-wrap">
+  <h3>월간 거래건수</h3>
+  <canvas id="volumeChart" height="80"></canvas>
+</div>
+
+<!-- Gu Comparison Table -->
+<div style="margin-top:4px;">
+  <h3 style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;">구별 비교</h3>
+  <div style="max-height:500px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortTable('name')">구/시 <span class="sort-arrow" id="st-name"></span></th>
+        <th onclick="sortTable('region')">지역 <span class="sort-arrow" id="st-region"></span></th>
+        <th onclick="sortTable('lastC')" style="text-align:right">최근월 거래 <span class="sort-arrow" id="st-lastC"></span></th>
+        <th onclick="sortTable('momC')" style="text-align:right">전월비(건) <span class="sort-arrow" id="st-momC"></span></th>
+        <th onclick="sortTable('avg3C')" style="text-align:right">3개월 평균 <span class="sort-arrow" id="st-avg3C"></span></th>
+        <th onclick="sortTable('lastP')" style="text-align:right">최근월 평균가 <span class="sort-arrow" id="st-lastP"></span></th>
+        <th onclick="sortTable('momP')" style="text-align:right">전월비(가격) <span class="sort-arrow" id="st-momP"></span></th>
+        <th onclick="sortTable('yoyC')" style="text-align:right">전년동월비(건) <span class="sort-arrow" id="st-yoyC"></span></th>
+      </tr>
+    </thead>
+    <tbody id="guBody"></tbody>
+  </table>
+  </div>
+</div>
+
+<div class="footer-disclaimer">
+  국토교통부 실거래가 데이터 기반 · 투자 판단의 책임은 본인에게 있습니다 · <a href="../">아파트 스크리너</a>
+</div>
+
+</div>
+
+<script>
+let MKT = null;
+let region = 'all';
+let selectedGus = [];
+let tSortKey = 'lastC', tSortAsc = false;
+
+const GU_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6'];
+
+async function init() {
+  try {
+    const res = await fetch('../data/market.json');
+    MKT = await res.json();
+  } catch(e) {
+    console.error(e);
+    document.getElementById('loading').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('updatedAt').textContent = `실거래가 기준 · ${MKT.meta.updated}`;
+
+  // Period selects
+  const startYear = MKT.meta.startYear;
+  const endYear = startYear + Math.floor((MKT.meta.months - 1) / 12);
+  const fromSel = document.getElementById('fromYear');
+  const toSel = document.getElementById('toYear');
+  for (let y = startYear; y <= endYear; y++) {
+    fromSel.innerHTML += `<option value="${y}" ${y === endYear - 4 ? 'selected' : ''}>${y}</option>`;
+    toSel.innerHTML += `<option value="${y}" ${y === endYear ? 'selected' : ''}>${y}</option>`;
+  }
+
+  buildGuMenu();
+  parseHash();
+  updateAll();
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ---- Region ----
+function setRegion(r) {
+  region = r;
+  document.querySelectorAll('[data-region]').forEach(b => b.classList.toggle('active', b.dataset.region === r));
+  selectedGus = [];
+  buildGuMenu();
+  renderChips();
+  updateAll();
+  saveHash();
+}
+
+// ---- Gu Selector ----
+function buildGuMenu() {
+  const menu = document.getElementById('guMenu');
+  const gus = Object.keys(MKT.gu).sort();
+
+  // Group by region
+  const seoul = gus.filter(g => MKT.gu[g].r === 1);
+  const gg = gus.filter(g => MKT.gu[g].r === 0);
+
+  let html = '<input type="text" class="fi" id="guSearch" placeholder="검색..." style="width:100%;margin-bottom:6px;" oninput="filterGuMenu()">';
+
+  const showSeoul = region !== 'gyeonggi';
+  const showGG = region !== 'seoul';
+
+  if (showSeoul && seoul.length) {
+    html += '<div class="gu-group-label">서울</div>';
+    for (const g of seoul) {
+      const sel = selectedGus.includes(g) ? ' selected' : '';
+      html += `<div class="gu-item${sel}" data-gu="${g}" onclick="toggleGu('${g}')"><span class="check">${sel ? '✓' : ''}</span>${g}</div>`;
+    }
+  }
+  if (showGG && gg.length) {
+    html += '<div class="gu-group-label">경기</div>';
+    for (const g of gg) {
+      const sel = selectedGus.includes(g) ? ' selected' : '';
+      html += `<div class="gu-item${sel}" data-gu="${g}" onclick="toggleGu('${g}')"><span class="check">${sel ? '✓' : ''}</span>${g}</div>`;
+    }
+  }
+  menu.innerHTML = html;
+}
+
+function toggleGuMenu() {
+  const menu = document.getElementById('guMenu');
+  menu.classList.toggle('open');
+}
+
+function filterGuMenu() {
+  const q = (document.getElementById('guSearch')?.value || '').toLowerCase();
+  document.querySelectorAll('.gu-item').forEach(el => {
+    el.style.display = el.dataset.gu.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function toggleGu(g) {
+  const idx = selectedGus.indexOf(g);
+  if (idx >= 0) {
+    selectedGus.splice(idx, 1);
+  } else {
+    if (selectedGus.length >= 5) return; // max 5
+    selectedGus.push(g);
+  }
+  buildGuMenu();
+  renderChips();
+  updateAll();
+  saveHash();
+}
+
+function removeGu(g) {
+  selectedGus = selectedGus.filter(x => x !== g);
+  buildGuMenu();
+  renderChips();
+  updateAll();
+  saveHash();
+}
+
+function renderChips() {
+  const div = document.getElementById('guChips');
+  div.innerHTML = selectedGus.map((g, i) =>
+    `<span class="chip selected" style="background:${GU_COLORS[i]};border-color:${GU_COLORS[i]}" onclick="removeGu('${g}')">${g} <span class="x">&times;</span></span>`
+  ).join('');
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  const dd = document.querySelector('.gu-dropdown');
+  if (dd && !dd.contains(e.target)) {
+    document.getElementById('guMenu').classList.remove('open');
+  }
+});
+
+// ---- Data helpers ----
+function getSlotRange() {
+  const fromY = parseInt(document.getElementById('fromYear').value);
+  const toY = parseInt(document.getElementById('toYear').value);
+  const start = (fromY - MKT.meta.startYear) * 12;
+  const end = (toY - MKT.meta.startYear + 1) * 12;
+  return [Math.max(0, start), Math.min(MKT.meta.months, end)];
+}
+
+function makeLabels(from, to) {
+  const labels = [];
+  const startYear = MKT.meta.startYear;
+  for (let s = from; s < to; s++) {
+    const y = startYear + Math.floor(s / 12);
+    const m = (s % 12) + 1;
+    labels.push(`${y}.${String(m).padStart(2, '0')}`);
+  }
+  return labels;
+}
+
+function findLastDataSlot(cArr) {
+  for (let i = cArr.length - 1; i >= 0; i--) {
+    if (cArr[i] > 0) return i;
+  }
+  return -1;
+}
+
+// ---- Stats ----
+function updateStats() {
+  const data = getMainData();
+  const lastSlot = findLastDataSlot(data.c);
+  if (lastSlot < 1) {
+    document.getElementById('stats').innerHTML = '';
+    return;
+  }
+
+  const lastC = data.c[lastSlot];
+  const prevC = data.c[lastSlot - 1] || 0;
+  const momC = prevC > 0 ? ((lastC - prevC) / prevC * 100) : null;
+
+  const lastP = data.p[lastSlot];
+  const prevP = data.p[lastSlot - 1] || 0;
+  const momP = prevP > 0 ? ((lastP - prevP) / prevP * 100) : null;
+
+  const yoySlot = lastSlot - 12;
+  const yoyC_val = yoySlot >= 0 && data.c[yoySlot] > 0
+    ? ((lastC - data.c[yoySlot]) / data.c[yoySlot] * 100) : null;
+
+  const slotYear = MKT.meta.startYear + Math.floor(lastSlot / 12);
+  const slotMonth = (lastSlot % 12) + 1;
+  const periodLabel = `${slotYear}.${String(slotMonth).padStart(2,'0')}`;
+
+  function fmtChg(v) {
+    if (v === null) return '<span style="color:var(--muted)">-</span>';
+    const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
+    const sign = v > 0 ? '+' : '';
+    return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+  }
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card">
+      <div class="label">최근월 거래건수 (${periodLabel})</div>
+      <div class="value">${lastC.toLocaleString()}</div>
+      <div class="sub">전월비 ${fmtChg(momC)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">전년동월비 (거래건수)</div>
+      <div class="value">${fmtChg(yoyC_val)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">최근월 평균가</div>
+      <div class="value">${lastP.toFixed(2)}<span style="font-size:13px;color:var(--muted)"> 억</span></div>
+      <div class="sub">전월비 ${fmtChg(momP)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">최근 3개월 평균 거래</div>
+      <div class="value">${Math.round((data.c[lastSlot] + (data.c[lastSlot-1]||0) + (data.c[lastSlot-2]||0)) / 3).toLocaleString()}</div>
+    </div>
+  `;
+}
+
+function getMainData() {
+  if (selectedGus.length === 0) {
+    return MKT[region] || MKT.all;
+  }
+  // Aggregate selected gus
+  const n = MKT.meta.months;
+  const sum_pc = new Float64Array(n);
+  const sum_c = new Int32Array(n);
+  for (const g of selectedGus) {
+    const gd = MKT.gu[g];
+    if (!gd) continue;
+    for (let i = 0; i < n; i++) {
+      if (gd.c[i] > 0) {
+        sum_pc[i] += gd.p[i] * gd.c[i];
+        sum_c[i] += gd.c[i];
+      }
+    }
+  }
+  const p = Array.from({length: n}, (_, i) => sum_c[i] > 0 ? Math.round(sum_pc[i] / sum_c[i] * 100) / 100 : 0);
+  return { p, c: Array.from(sum_c) };
+}
+
+// ---- Charts ----
+let priceChart = null, volumeChart = null;
+
+function updateCharts() {
+  const [from, to] = getSlotRange();
+  const labels = makeLabels(from, to);
+
+  // Determine tick density
+  const span = to - from;
+  const maxTicks = span <= 60 ? undefined : span <= 120 ? 40 : 20;
+
+  // Datasets
+  const priceSets = [];
+  const volSets = [];
+
+  if (selectedGus.length === 0) {
+    const data = getMainData();
+    const pSlice = data.p.slice(from, to);
+    const cSlice = data.c.slice(from, to);
+    const regionLabel = region === 'seoul' ? '서울' : region === 'gyeonggi' ? '경기' : '서울+경기';
+
+    priceSets.push({
+      label: regionLabel,
+      data: pSlice.map(v => v || null),
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+      borderWidth: 2,
+      spanGaps: true,
+    });
+
+    // Volume bars with color by MoM
+    const bgColors = cSlice.map((v, i) => {
+      if (i === 0) return 'rgba(59,130,246,.6)';
+      return v >= (cSlice[i-1] || 0) ? 'rgba(239,68,68,.6)' : 'rgba(59,130,246,.6)';
+    });
+    volSets.push({
+      label: regionLabel,
+      data: cSlice,
+      backgroundColor: bgColors,
+      borderRadius: 1,
+      barPercentage: 0.9,
+      categoryPercentage: 0.95,
+    });
+  } else {
+    for (let gi = 0; gi < selectedGus.length; gi++) {
+      const g = selectedGus[gi];
+      const gd = MKT.gu[g];
+      if (!gd) continue;
+      const color = GU_COLORS[gi];
+      const pSlice = gd.p.slice(from, to);
+      const cSlice = gd.c.slice(from, to);
+
+      priceSets.push({
+        label: g,
+        data: pSlice.map(v => v || null),
+        borderColor: color,
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+        spanGaps: true,
+      });
+
+      volSets.push({
+        label: g,
+        data: cSlice,
+        backgroundColor: color + '99',
+        borderRadius: 1,
+        barPercentage: 0.9,
+        categoryPercentage: 0.95,
+      });
+    }
+  }
+
+  const commonScaleX = {
+    ticks: { color: '#94a3b8', font: { size: 10 }, maxTicksLimit: maxTicks, maxRotation: 0 },
+    grid: { color: 'rgba(51,65,85,.3)' },
+  };
+
+  // Price chart
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart(document.getElementById('priceChart'), {
+    type: 'line',
+    data: { labels, datasets: priceSets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: selectedGus.length > 0, labels: { color: '#e2e8f0', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) ?? '-'}억`,
+          }
+        },
+      },
+      scales: {
+        x: commonScaleX,
+        y: {
+          ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '억' },
+          grid: { color: 'rgba(51,65,85,.3)' },
+        },
+      },
+    },
+  });
+
+  // Volume chart
+  if (volumeChart) volumeChart.destroy();
+  volumeChart = new Chart(document.getElementById('volumeChart'), {
+    type: 'bar',
+    data: { labels, datasets: volSets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: selectedGus.length > 0, labels: { color: '#e2e8f0', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() ?? 0}건`,
+          }
+        },
+      },
+      scales: {
+        x: commonScaleX,
+        y: {
+          ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v >= 1000 ? (v/1000).toFixed(0) + 'k' : v },
+          grid: { color: 'rgba(51,65,85,.3)' },
+        },
+      },
+    },
+  });
+
+  saveHash();
+}
+
+// ---- Gu Table ----
+function updateGuTable() {
+  const gus = Object.keys(MKT.gu);
+  const rows = [];
+
+  for (const g of gus) {
+    const gd = MKT.gu[g];
+    // Filter by region
+    if (region === 'seoul' && gd.r !== 1) continue;
+    if (region === 'gyeonggi' && gd.r !== 0) continue;
+
+    const lastSlot = findLastDataSlot(gd.c);
+    if (lastSlot < 1) continue;
+
+    const lastC = gd.c[lastSlot];
+    const prevC = gd.c[lastSlot - 1] || 0;
+    const momC = prevC > 0 ? (lastC - prevC) / prevC * 100 : null;
+    const avg3C = Math.round((gd.c[lastSlot] + (gd.c[lastSlot-1]||0) + (gd.c[lastSlot-2]||0)) / 3);
+    const lastP = gd.p[lastSlot];
+    const prevP = gd.p[lastSlot - 1] || 0;
+    const momP = prevP > 0 ? (lastP - prevP) / prevP * 100 : null;
+    const yoySlot = lastSlot - 12;
+    const yoyC = yoySlot >= 0 && gd.c[yoySlot] > 0
+      ? (lastC - gd.c[yoySlot]) / gd.c[yoySlot] * 100 : null;
+
+    rows.push({ name: g, region: gd.r, lastC, momC, avg3C, lastP, momP, yoyC });
+  }
+
+  // Sort
+  rows.sort((a, b) => {
+    let va = a[tSortKey], vb = b[tSortKey];
+    if (va === null) va = -Infinity;
+    if (vb === null) vb = -Infinity;
+    if (typeof va === 'string') return tSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return tSortAsc ? va - vb : vb - va;
+  });
+
+  // Arrows
+  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
+  const arrow = document.getElementById('st-' + tSortKey);
+  if (arrow) arrow.textContent = tSortAsc ? '\u25B2' : '\u25BC';
+
+  const tbody = document.getElementById('guBody');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted)">데이터 없음</td></tr>';
+    return;
+  }
+
+  function fmtChg(v) {
+    if (v === null) return '<span style="color:var(--muted)">-</span>';
+    const cls = v > 0 ? 'up' : v < 0 ? 'dn' : '';
+    const sign = v > 0 ? '+' : '';
+    return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
+  }
+
+  let html = '';
+  for (const r of rows) {
+    const isSel = selectedGus.includes(r.name);
+    const bgStyle = isSel ? `background:${GU_COLORS[selectedGus.indexOf(r.name)]}22;` : '';
+    const regionBadge = r.region === 1
+      ? '<span style="color:#a78bfa;font-size:10px;">서울</span>'
+      : '<span style="color:#6ee7b7;font-size:10px;">경기</span>';
+    html += `<tr style="${bgStyle}" onclick="toggleGu('${r.name}')">
+      <td style="font-weight:${isSel ? 700 : 400}">${r.name}</td>
+      <td>${regionBadge}</td>
+      <td style="text-align:right;font-weight:600">${r.lastC.toLocaleString()}</td>
+      <td style="text-align:right">${fmtChg(r.momC)}</td>
+      <td style="text-align:right">${r.avg3C.toLocaleString()}</td>
+      <td style="text-align:right;font-weight:600">${r.lastP.toFixed(2)}억</td>
+      <td style="text-align:right">${fmtChg(r.momP)}</td>
+      <td style="text-align:right">${fmtChg(r.yoyC)}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+function sortTable(key) {
+  if (tSortKey === key) tSortAsc = !tSortAsc;
+  else { tSortKey = key; tSortAsc = key === 'name'; }
+  updateGuTable();
+}
+
+// ---- Update all ----
+function updateAll() {
+  updateStats();
+  updateCharts();
+  updateGuTable();
+}
+
+// ---- Hash state ----
+function saveHash() {
+  const params = [];
+  if (region !== 'all') params.push('r=' + region);
+  if (selectedGus.length) params.push('gu=' + selectedGus.join(','));
+  params.push('from=' + document.getElementById('fromYear').value);
+  params.push('to=' + document.getElementById('toYear').value);
+  location.hash = params.join('&');
+}
+
+function parseHash() {
+  const h = location.hash.replace('#', '');
+  if (!h) return;
+  const params = {};
+  h.split('&').forEach(p => {
+    const [k, v] = p.split('=');
+    if (k && v) params[k] = decodeURIComponent(v);
+  });
+
+  if (params.r && ['all','seoul','gyeonggi'].includes(params.r)) {
+    region = params.r;
+    document.querySelectorAll('[data-region]').forEach(b => b.classList.toggle('active', b.dataset.region === region));
+  }
+  if (params.gu) {
+    selectedGus = params.gu.split(',').filter(g => MKT.gu[g]).slice(0, 5);
+    buildGuMenu();
+    renderChips();
+  }
+  if (params.from) document.getElementById('fromYear').value = params.from;
+  if (params.to) document.getElementById('toYear').value = params.to;
+}
+
+init();
+</script>
+</body>
+</html>
