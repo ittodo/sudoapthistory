@@ -1784,6 +1784,13 @@ async function loadGeo(){
 }
 
 function calcLandShare(x){ return x.ls||null; }
+function fmtLs(ls){
+  if(!ls) return '-';
+  if(typeof ls==='number') return ls.toFixed(1)+'㎡('+(ls/3.3058).toFixed(1)+'평)';
+  const m=String(ls).match(/^([\d.]+)~([\d.]+)$/);
+  if(m) return parseFloat(m[1]).toFixed(1)+'~'+parseFloat(m[2]).toFixed(1)+'㎡('+Math.round(parseFloat(m[1])/3.3058)+'~'+Math.round(parseFloat(m[2])/3.3058)+'평)';
+  return ls+'㎡';
+}
 function getPrices(idx){ return PRICES?PRICES[String(idx)]:null; }
 function getVolumes(idx){ return VOLUMES?VOLUMES[String(idx)]:null; }
 function getDetails(idx){ return DETAILS?DETAILS[String(idx)]:null; }
@@ -1869,8 +1876,19 @@ function buildMerged(){
       si:siblings.map(x=>x.i),
       j:rep.j, rd:rep.rd,
       pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
+      fr:rep.fr, // 용적률
       u:siblings.reduce((s,x)=>s+(x.u||0),0) || null, // 총 세대수
-      tu:siblings[0].tu||null // 단지 전체 세대수
+      tu:siblings[0].tu||null, // 단지 전체 세대수
+      ls:(()=>{
+        const lsVals=siblings.map(x=>x.ls).filter(v=>v);
+        if(lsVals.length===0) return null;
+        const lsMin=Math.min(...lsVals), lsMax=Math.max(...lsVals);
+        return lsMin===lsMax?lsMin:lsMin+'~'+lsMax;
+      })(),
+      _lsNum:(()=>{
+        const lsVals=siblings.map(x=>x.ls).filter(v=>v);
+        return lsVals.length>0?Math.max(...lsVals):null;
+      })()
     });
   });
   console.log(`Merged: ${D.length} → ${DM.length} entries`);
@@ -1991,10 +2009,9 @@ function af(){
 function ds(){
   F.sort((a,b)=>{
     let va=a[sc], vb=b[sc];
-    // 통합 모드 면적 정렬: _aNum 사용
+    // 통합 모드: 면적·대지지분은 최대값 기준 정렬
     if(sc==='a'&&merged){ va=a._aNum||a.a; vb=b._aNum||b.a; }
-    // 대지지분 정렬: pa/u 계산
-    if(sc==='ls'){ va=calcLandShare(a); vb=calcLandShare(b); }
+    if(sc==='ls'){ va=merged?(a._lsNum||calcLandShare(a)):calcLandShare(a); vb=merged?(b._lsNum||calcLandShare(b)):calcLandShare(b); }
     // 수익률 정렬: 동적 계산
     if(sc==='ret'){ va=calcReturn(a); vb=calcReturn(b); }
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
@@ -2046,7 +2063,7 @@ function rt(){
       <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
-      <td style="text-align:center;color:#94a3b8">${(()=>{const ls=calcLandShare(x);return ls?ls.toFixed(1)+'㎡('+(ls/3.3058).toFixed(1)+'평)':'-';})()}</td>
+      <td style="text-align:center;color:#94a3b8">${fmtLs(x.ls)}</td>
     </tr>`);
   }
   tb.innerHTML=frags.join('');
