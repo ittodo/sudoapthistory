@@ -2046,7 +2046,7 @@ function rt(){
       <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
-      <td style="text-align:center;color:#94a3b8">${(()=>{const ls=calcLandShare(x);return ls?ls.toFixed(1)+'㎡':'-';})()}</td>
+      <td style="text-align:center;color:#94a3b8">${(()=>{const ls=calcLandShare(x);return ls?(ls/3.3058).toFixed(1)+'평':'-';})()}</td>
     </tr>`);
   }
   tb.innerHTML=frags.join('');
