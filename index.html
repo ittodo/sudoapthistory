@@ -1878,6 +1878,7 @@ function buildMerged(){
       j:rep.j, rd:rep.rd,
       pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
       fr:rep.fr, // 용적률
+      pk:rep.pk, // 총 주차대수
       u:siblings.reduce((s,x)=>s+(x.u||0),0) || null, // 총 세대수
       tu:siblings[0].tu||null, // 단지 전체 세대수
       ls:(()=>{
