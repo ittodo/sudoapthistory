@@ -205,7 +205,7 @@ const YEARS=[2022,2023,2024,2025,2026];
 let divData=[],bbData=[],priceMap={},currentTab='calendar';
 let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null;
 let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
-let dataUpdated='';
+let dataUpdated='',priceDate='';
 
 // Precomputed
 let tickerMeta={}, yearAgg={};
@@ -216,7 +216,7 @@ async function init(){
       fetch('data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
       fetch('data/buybacks.json').then(r=>r.ok?r.json():{events:[]})
     ]);
-    divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};
+    divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};priceDate=dR.priceDate||'';
     // Fix dividend types
     divData.forEach(e=>{
       if(!e.type&&e.recordDate&&e.fiscalYear){
@@ -361,7 +361,8 @@ function renderCal(){
     if(ev.divs.length){
       const isPast=calSelectedDate<TODAY;
       const yieldHdr1=isPast?'기준일수익률':'공시수익률';
-      const yieldHdr2=isPast?'현재가수익률':'현재가수익률';
+      const pdLabel=priceDate?` (${priceDate})`:'';
+      const yieldHdr2=`현재가수익률${pdLabel}`;
       ehtml+=`<table><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">DPS</th><th style="text-align:right">배당총액</th><th style="text-align:right">${yieldHdr1}</th><th style="text-align:right">${yieldHdr2}</th><th>공시</th></tr></thead><tbody>`;
       ev.divs.sort((a,b)=>(b.totalDividend||0)-(a.totalDividend||0));
       for(const e of ev.divs){
@@ -677,7 +678,7 @@ function showDetail(ticker,name){
     const sorted=[...m.events].sort((a,b)=>(b.recordDate||'').localeCompare(a.recordDate||''));
     const cp=priceMap[ticker]||0;
     html+=`<div class="detail-section"><h3>배당 이력 (${sorted.length}건)</h3>`;
-    if(cp>0)html+=`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">현재가: ${cp.toLocaleString()}원 (${dataUpdated} 기준)</div>`;
+    if(cp>0)html+=`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">현재가: ${cp.toLocaleString()}원 (${priceDate||dataUpdated} 종가)</div>`;
     html+=`<table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>기준일</td><td>구분</td><td style="text-align:right">DPS</td><td style="text-align:right">배당총액</td><td style="text-align:right">공시수익률</td><td style="text-align:right">현재가수익률</td><td></td></tr>`;
     for(const e of sorted){
       const cYld=cp>0&&e.dps>0?(e.dps/cp*100):0;
