@@ -115,7 +115,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
       <button class="pill" data-cmarket="KOSDAQ" onclick="setF('cmarket','KOSDAQ')">KOSDAQ</button>
     </div>
     <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
-      <input type="checkbox" id="chkPayDate" onchange="renderCal()"> 지급일 기준
+      <input type="checkbox" id="chkPayDate" onchange="renderCal()"> 지급일(입금일) 기준
     </label>
   </div>
   <div class="cal-grid" id="calGrid"></div>
@@ -171,7 +171,8 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
         <th>시장</th>
         <th style="text-align:right">배당총액</th>
         <th style="text-align:right">DPS</th>
-        <th style="text-align:right">수익률</th>
+        <th style="text-align:right">공시수익률</th>
+        <th style="text-align:right">현재가수익률</th>
         <th style="text-align:right">자사주총액</th>
         <th style="text-align:right">배당+자사주</th>
         <th>배당추이</th>
@@ -200,7 +201,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <script>
 const NOW=new Date(), TODAY=NOW.toISOString().slice(0,10), THIS_YEAR=NOW.getFullYear();
 const YEARS=[2022,2023,2024,2025,2026];
-let divData=[],bbData=[],currentTab='calendar';
+let divData=[],bbData=[],priceMap={},currentTab='calendar';
 let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null;
 let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
 let dataUpdated='';
@@ -214,7 +215,7 @@ async function init(){
       fetch('data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
       fetch('data/buybacks.json').then(r=>r.ok?r.json():{events:[]})
     ]);
-    divData=dR.events||[];bbData=bR.events||[];
+    divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};
     // Fix dividend types
     divData.forEach(e=>{
       if(!e.type&&e.recordDate&&e.fiscalYear){
@@ -351,10 +352,14 @@ function renderCal(){
     const ev=dateMap[calSelectedDate];
     let ehtml=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;">${calSelectedDate} — 배당 ${ev.divs.length}건, 자사주 ${ev.bbs.length}건</div>`;
     if(ev.divs.length){
-      ehtml+='<table><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">DPS</th><th style="text-align:right">배당총액</th><th style="text-align:right">수익률</th><th>공시</th></tr></thead><tbody>';
+      ehtml+='<table><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">DPS</th><th style="text-align:right">배당총액</th><th style="text-align:right">공시수익률</th><th style="text-align:right">현재가수익률</th><th>공시</th></tr></thead><tbody>';
       ev.divs.sort((a,b)=>(b.totalDividend||0)-(a.totalDividend||0));
       for(const e of ev.divs){
-        ehtml+=`<tr><td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td><td>${mktB(e.market)}</td><td>${typeB(e.type)}</td><td style="text-align:right;font-weight:600;">${e.dps?e.dps.toLocaleString():'-'}</td><td style="text-align:right;">${fmtAmt(e.totalDividend)}</td><td style="text-align:right;${e.yield>=3?'color:var(--up)':''}">${e.yield?e.yield.toFixed(1)+'%':'-'}</td><td>${dartL(e.rceptNo)}</td></tr>`;
+        const cp=priceMap[e.ticker]||0;
+        const curYield=cp>0&&e.dps>0?(e.dps/cp*100):0;
+        const curYieldStr=curYield>0?curYield.toFixed(1)+'%':'-';
+        const curYieldCls=curYield>=3?'color:var(--up)':'';
+        ehtml+=`<tr><td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td><td>${mktB(e.market)}</td><td>${typeB(e.type)}</td><td style="text-align:right;font-weight:600;">${e.dps?e.dps.toLocaleString():'-'}</td><td style="text-align:right;">${fmtAmt(e.totalDividend)}</td><td style="text-align:right;${e.yield>=3?'color:var(--up)':''}">${e.yield?e.yield.toFixed(1)+'%':'-'}</td><td style="text-align:right;${curYieldCls}">${curYieldStr}</td><td>${dartL(e.rceptNo)}</td></tr>`;
       }
       ehtml+='</tbody></table>';
     }
@@ -551,7 +556,9 @@ function renderCompany(){
     // latest rceptNo for this year
     let rn='';
     for(const e of m.events){if((e.recordDate||'').startsWith(String(sy))&&e.rceptNo){rn=e.rceptNo;break;}}
-    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBB:bb,dps,yield:yld,trend,rceptNo:rn,totalAll:dv+bb});
+    const cp=priceMap[t]||0;
+    const curYield=cp>0&&dps>0?(dps/cp*100):0;
+    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBB:bb,dps,yield:yld,curYield,trend,rceptNo:rn,totalAll:dv+bb});
   }
 
   if(sortMode==='totalDiv')rows.sort((a,b)=>b.totalDiv-a.totalDiv);
@@ -562,7 +569,7 @@ function renderCompany(){
   else rows.sort((a,b)=>a.name.localeCompare(b.name));
 
   const tbody=document.getElementById('cmpBody');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
 
   // Top 200
   const show=rows.slice(0,200);
@@ -584,6 +591,7 @@ function renderCompany(){
       <td style="text-align:right;font-weight:600;">${fmtAmt(r.totalDiv)}</td>
       <td style="text-align:right;">${r.dps?r.dps.toLocaleString():'-'}</td>
       <td style="text-align:right;${r.yield>=3?'color:var(--up)':''}">${r.yield?r.yield.toFixed(1)+'%':'-'}</td>
+      <td style="text-align:right;${r.curYield>=3?'color:var(--up)':''}">${r.curYield?r.curYield.toFixed(1)+'%':'-'}</td>
       <td style="text-align:right;font-weight:600;color:var(--up);">${fmtAmt(r.totalBB)}</td>
       <td style="text-align:right;font-weight:700;color:var(--gold);">${fmtAmt(r.totalAll)}</td>
       <td>${th}</td>
