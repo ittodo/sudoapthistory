@@ -154,8 +154,8 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
     </div>
     <select class="fi" id="selCmpSort" onchange="render()" style="width:140px;">
       <option value="totalDiv">배당총액순</option>
-      <option value="totalBB">자사주총액순</option>
-      <option value="totalAll">배당+자사주순</option>
+      <option value="totalBB">자사주매입순</option>
+      <option value="totalAll">배당+매입순</option>
       <option value="yield">수익률순</option>
       <option value="dps">DPS순</option>
       <option value="name">종목명순</option>
@@ -173,8 +173,9 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
         <th style="text-align:right">DPS</th>
         <th style="text-align:right">공시수익률</th>
         <th style="text-align:right">현재가수익률</th>
-        <th style="text-align:right">자사주총액</th>
-        <th style="text-align:right">배당+자사주</th>
+        <th style="text-align:right">자사주매입</th>
+        <th style="text-align:right">자사주소각</th>
+        <th style="text-align:right">배당+매입</th>
         <th>배당추이</th>
         <th>공시</th>
       </tr></thead>
@@ -237,10 +238,10 @@ async function init(){
 
 function buildMeta(){
   tickerMeta={};yearAgg={};
-  YEARS.forEach(y=>yearAgg[y]={divTotal:0,bbTotal:0,divCount:0,bbCount:0,divTickers:new Set(),bbTickers:new Set()});
+  YEARS.forEach(y=>yearAgg[y]={divTotal:0,buyTotal:0,cancelTotal:0,divCount:0,buyCount:0,cancelCount:0,divTickers:new Set(),buyTickers:new Set(),cancelTickers:new Set()});
   for(const e of divData){
     const t=e.ticker,y=+(e.recordDate||'').substring(0,4);
-    if(!tickerMeta[t])tickerMeta[t]={name:e.name,market:e.market,yearDiv:{},yearBB:{},yearDPS:{},yearYield:{},events:[]};
+    if(!tickerMeta[t])tickerMeta[t]={name:e.name,market:e.market,yearDiv:{},yearBuy:{},yearCancel:{},yearDPS:{},yearYield:{},events:[]};
     const m=tickerMeta[t];m.events.push(e);
     if(y&&YEARS.includes(y)){
       m.yearDiv[y]=(m.yearDiv[y]||0)+(e.totalDividend||0);
@@ -251,11 +252,19 @@ function buildMeta(){
   }
   for(const e of bbData){
     const t=e.ticker,y=+((e.buybackDate||'').replace(/\./g,'-').substring(0,4));
-    if(!tickerMeta[t])tickerMeta[t]={name:e.name,market:e.market,yearDiv:{},yearBB:{},yearDPS:{},yearYield:{},events:[]};
+    if(!tickerMeta[t])tickerMeta[t]={name:e.name,market:e.market,yearDiv:{},yearBuy:{},yearCancel:{},yearDPS:{},yearYield:{},events:[]};
     const m=tickerMeta[t];
+    const amt=e.totalAmount||0;
+    const isBuy=e.type==='매입'||(!e.type&&e.type!=='소각');
+    const isCancel=e.type==='소각';
     if(y&&YEARS.includes(y)){
-      m.yearBB[y]=(m.yearBB[y]||0)+(e.totalAmount||0);
-      if(yearAgg[y]){yearAgg[y].bbTotal+=(e.totalAmount||0);yearAgg[y].bbCount++;yearAgg[y].bbTickers.add(t);}
+      if(isCancel){
+        m.yearCancel[y]=(m.yearCancel[y]||0)+amt;
+        if(yearAgg[y]){yearAgg[y].cancelTotal+=amt;yearAgg[y].cancelCount++;yearAgg[y].cancelTickers.add(t);}
+      }else{
+        m.yearBuy[y]=(m.yearBuy[y]||0)+amt;
+        if(yearAgg[y]){yearAgg[y].buyTotal+=amt;yearAgg[y].buyCount++;yearAgg[y].buyTickers.add(t);}
+      }
     }
   }
 }
@@ -270,15 +279,12 @@ function buildYearSelect(){
 
 function buildStats(){
   const ty=THIS_YEAR,a=yearAgg[ty]||{};
-  const divT=(a.divTotal||0)/1e12, bbT=(a.bbTotal||0)/1e12;
-  const prevA=yearAgg[ty-1]||{};
-  const prevDivT=(prevA.divTotal||0)/1e12;
-  const growth=prevDivT>0?((divT-prevDivT)/prevDivT*100).toFixed(0)+'%':'-';
+  const divT=(a.divTotal||0)/1e12, buyT=(a.buyTotal||0)/1e12, cancelT=(a.cancelTotal||0)/1e12;
   document.getElementById('stats').innerHTML=`
     <div class="stat-card"><div class="label">${ty} 배당총액</div><div class="value">${divT.toFixed(1)}조</div><div class="sub">${a.divTickers?.size||0}개 종목</div></div>
-    <div class="stat-card"><div class="label">${ty} 자사주총액</div><div class="value" style="color:var(--up)">${bbT.toFixed(1)}조</div><div class="sub">${a.bbTickers?.size||0}개 종목</div></div>
-    <div class="stat-card"><div class="label">${ty} 주주환원 합계</div><div class="value" style="color:var(--gold)">${(divT+bbT).toFixed(1)}조</div><div class="sub">배당+자사주</div></div>
-    <div class="stat-card"><div class="label">전년비 배당</div><div class="value" style="color:${growth.includes('-')?'var(--dn)':'var(--green)'}">${growth}</div><div class="sub">${ty-1}→${ty}</div></div>
+    <div class="stat-card"><div class="label">${ty} 자사주 매입</div><div class="value" style="color:var(--green)">${buyT.toFixed(1)}조</div><div class="sub">${a.buyTickers?.size||0}개 종목</div></div>
+    <div class="stat-card"><div class="label">${ty} 자사주 소각</div><div class="value" style="color:var(--up)">${cancelT.toFixed(1)}조</div><div class="sub">${a.cancelTickers?.size||0}개 종목</div></div>
+    <div class="stat-card"><div class="label">${ty} 주주환원</div><div class="value" style="color:var(--gold)">${(divT+buyT).toFixed(1)}조</div><div class="sub">배당+매입</div></div>
   `;
 }
 
@@ -389,52 +395,56 @@ function renderAnnual(){
   const mkt=F.amarket, view=F.aview||'monthly';
   document.getElementById('buildDate').textContent=`데이터 빌드: ${dataUpdated}`;
 
-  // Build monthly aggregation: year-month → {divT, bbT, divN, bbN}
+  // Build monthly aggregation: year-month → {divT, buyT, cancelT}
   const monthly={};
   for(const e of divData){
     const rd=e.recordDate||'';if(rd.length<7)continue;
     if(mkt!=='all'&&e.market!==mkt)continue;
     const ym=rd.substring(0,7);
-    if(!monthly[ym])monthly[ym]={divT:0,bbT:0,divN:0,bbN:0};
-    monthly[ym].divT+=(e.totalDividend||0);monthly[ym].divN++;
+    if(!monthly[ym])monthly[ym]={divT:0,buyT:0,cancelT:0};
+    monthly[ym].divT+=(e.totalDividend||0);
   }
   for(const e of bbData){
     const bd=(e.buybackDate||'').replace(/\./g,'-');if(bd.length<7)continue;
     if(mkt!=='all'&&e.market!==mkt)continue;
     const ym=bd.substring(0,7);
-    if(!monthly[ym])monthly[ym]={divT:0,bbT:0,divN:0,bbN:0};
-    monthly[ym].bbT+=(e.totalAmount||0);monthly[ym].bbN++;
+    if(!monthly[ym])monthly[ym]={divT:0,buyT:0,cancelT:0};
+    const amt=e.totalAmount||0;
+    if(e.type==='소각')monthly[ym].cancelT+=amt;
+    else monthly[ym].buyT+=amt;
   }
 
   // Build yearly aggregation from monthly
-  const ya={};YEARS.forEach(y=>ya[y]={divT:0,bbT:0,divN:0,bbN:0});
+  const ya={};YEARS.forEach(y=>ya[y]={divT:0,buyT:0,cancelT:0});
   for(const [ym,d] of Object.entries(monthly)){
     const y=+ym.substring(0,4);if(!YEARS.includes(y))continue;
-    ya[y].divT+=d.divT;ya[y].bbT+=d.bbT;ya[y].divN+=d.divN;ya[y].bbN+=d.bbN;
+    ya[y].divT+=d.divT;ya[y].buyT+=d.buyT;ya[y].cancelT+=d.cancelT;
   }
 
-  const sy=F.aYear, a=ya[sy]||{divT:0,bbT:0,divN:0,bbN:0};
-  const dT=a.divT/1e12, bT=a.bbT/1e12;
+  const sy=F.aYear, a=ya[sy]||{divT:0,buyT:0,cancelT:0};
+  const dT=a.divT/1e12, buyT=a.buyT/1e12, canT=a.cancelT/1e12;
 
   // YTD comparison: same months in previous year
   const curMaxMonth=sy===THIS_YEAR?NOW.getMonth()+1:12;
-  let ytdCur=0,ytdPrev=0,ytdBBCur=0,ytdBBPrev=0;
+  let ytdDivCur=0,ytdDivPrev=0,ytdBuyCur=0,ytdBuyPrev=0;
   for(let m=1;m<=curMaxMonth;m++){
     const ymCur=`${sy}-${String(m).padStart(2,'0')}`;
     const ymPrev=`${sy-1}-${String(m).padStart(2,'0')}`;
-    ytdCur+=(monthly[ymCur]?.divT||0);ytdPrev+=(monthly[ymPrev]?.divT||0);
-    ytdBBCur+=(monthly[ymCur]?.bbT||0);ytdBBPrev+=(monthly[ymPrev]?.bbT||0);
+    ytdDivCur+=(monthly[ymCur]?.divT||0);ytdDivPrev+=(monthly[ymPrev]?.divT||0);
+    ytdBuyCur+=(monthly[ymCur]?.buyT||0);ytdBuyPrev+=(monthly[ymPrev]?.buyT||0);
   }
   const ytdLabel=sy===THIS_YEAR?`1~${curMaxMonth}월 YTD`:`연간`;
-  const dGrow=ytdPrev>0?((ytdCur-ytdPrev)/ytdPrev*100).toFixed(0)+'%':'-';
-  const bGrow=ytdBBPrev>0?((ytdBBCur-ytdBBPrev)/ytdBBPrev*100).toFixed(0)+'%':'-';
+  const dGrow=ytdDivPrev>0?((ytdDivCur-ytdDivPrev)/ytdDivPrev*100).toFixed(0)+'%':'-';
+  const bGrow=ytdBuyPrev>0?((ytdBuyCur-ytdBuyPrev)/ytdBuyPrev*100).toFixed(0)+'%':'-';
+  const partial=sy===THIS_YEAR?' (진행중)':'';
 
   document.getElementById('annualStats').innerHTML=`
-    <div class="stat-card"><div class="label">${sy} 배당총액</div><div class="value">${dT.toFixed(1)}조</div><div class="sub">${a.divN}건 ${sy===THIS_YEAR?'(진행중)':''}</div></div>
-    <div class="stat-card"><div class="label">${sy} 자사주총액</div><div class="value" style="color:var(--up)">${bT.toFixed(1)}조</div><div class="sub">${a.bbN}건</div></div>
-    <div class="stat-card"><div class="label">${sy} 주주환원</div><div class="value" style="color:var(--gold)">${(dT+bT).toFixed(1)}조</div></div>
-    <div class="stat-card"><div class="label">배당 전년비 (${ytdLabel})</div><div class="value" style="color:${dGrow.includes('-')?'var(--dn)':'var(--green)'}">${dGrow}</div><div class="sub">${(ytdPrev/1e12).toFixed(1)}→${(ytdCur/1e12).toFixed(1)}조</div></div>
-    <div class="stat-card"><div class="label">자사주 전년비 (${ytdLabel})</div><div class="value" style="color:${bGrow.includes('-')?'var(--dn)':'var(--green)'}">${bGrow}</div><div class="sub">${(ytdBBPrev/1e12).toFixed(1)}→${(ytdBBCur/1e12).toFixed(1)}조</div></div>
+    <div class="stat-card"><div class="label">${sy} 배당총액</div><div class="value">${dT.toFixed(1)}조</div><div class="sub">${partial}</div></div>
+    <div class="stat-card"><div class="label">${sy} 자사주 매입</div><div class="value" style="color:var(--green)">${buyT.toFixed(1)}조</div></div>
+    <div class="stat-card"><div class="label">${sy} 자사주 소각</div><div class="value" style="color:var(--up)">${canT.toFixed(1)}조</div></div>
+    <div class="stat-card"><div class="label">${sy} 주주환원</div><div class="value" style="color:var(--gold)">${(dT+buyT).toFixed(1)}조</div><div class="sub">배당+매입</div></div>
+    <div class="stat-card"><div class="label">배당 전년비 (${ytdLabel})</div><div class="value" style="color:${dGrow.includes('-')?'var(--dn)':'var(--green)'}">${dGrow}</div><div class="sub">${(ytdDivPrev/1e12).toFixed(1)}→${(ytdDivCur/1e12).toFixed(1)}조</div></div>
+    <div class="stat-card"><div class="label">매입 전년비 (${ytdLabel})</div><div class="value" style="color:${bGrow.includes('-')?'var(--dn)':'var(--green)'}">${bGrow}</div><div class="sub">${(ytdBuyPrev/1e12).toFixed(1)}→${(ytdBuyCur/1e12).toFixed(1)}조</div></div>
   `;
 
   if(view==='monthly') renderMonthlyChart(monthly);
@@ -478,21 +488,52 @@ function renderMonthlyChart(monthly){
   }
   html+=`</div>`;
 
-  // 자사주 월별
-  let maxBB=0;
-  const bbGrid={};
+  // 자사주 매입 월별
+  let maxBuy=0;
+  const buyGrid={};
   for(const y of selYears){
-    bbGrid[y]={};
+    buyGrid[y]={};
     for(const m of MONTHS){
       const ym=`${y}-${m}`;
-      const v=(monthly[ym]?.bbT||0)/1e12;
-      bbGrid[y][m]=v;if(v>maxBB)maxBB=v;
+      const v=(monthly[ym]?.buyT||0)/1e12;
+      buyGrid[y][m]=v;if(v>maxBuy)maxBuy=v;
     }
   }
-  maxBB=maxBB||1;
+  maxBuy=maxBuy||1;
+
+  html+=`<div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
+    <div class="label" style="margin-bottom:4px;">자사주 매입 월별 비교 (조원)</div>
+    <div style="display:flex;gap:1px;font-size:9px;color:var(--muted);margin-bottom:2px;"><div style="width:30px;"></div>${MONTHS.map(m=>`<div style="flex:1;text-align:center;">${+m}월</div>`).join('')}</div>`;
+  for(const y of selYears){
+    const isSel=y===F.aYear;
+    const col=colors[y]||'#475569';
+    html+=`<div style="display:flex;gap:1px;align-items:end;height:32px;margin-bottom:1px;">
+      <div style="width:30px;font-size:9px;color:${isSel?'#fff':'var(--muted)'};font-weight:${isSel?700:400};line-height:32px;">${y}</div>`;
+    for(const m of MONTHS){
+      const v=buyGrid[y][m];
+      const h=v>0?Math.max(2,Math.round(v/maxBuy*28)):0;
+      const opacity=isSel?1:0.5;
+      html+=`<div style="flex:1;display:flex;align-items:end;justify-content:center;height:100%;"><div style="width:100%;height:${h}px;background:${col};opacity:${opacity};border-radius:1px;" title="${y}.${m}: ${v.toFixed(1)}조"></div></div>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  // 자사주 소각 월별
+  let maxCan=0;
+  const canGrid={};
+  for(const y of selYears){
+    canGrid[y]={};
+    for(const m of MONTHS){
+      const ym=`${y}-${m}`;
+      const v=(monthly[ym]?.cancelT||0)/1e12;
+      canGrid[y][m]=v;if(v>maxCan)maxCan=v;
+    }
+  }
+  maxCan=maxCan||1;
 
   html+=`<div class="stat-card" style="text-align:left;padding:16px;">
-    <div class="label" style="margin-bottom:4px;">자사주 총액 월별 비교 (조원)</div>
+    <div class="label" style="margin-bottom:4px;">자사주 소각 월별 비교 (조원)</div>
     <div style="display:flex;gap:1px;font-size:9px;color:var(--muted);margin-bottom:2px;"><div style="width:30px;"></div>${MONTHS.map(m=>`<div style="flex:1;text-align:center;">${+m}월</div>`).join('')}</div>`;
   for(const y of selYears){
     const isSel=y===F.aYear;
@@ -500,8 +541,8 @@ function renderMonthlyChart(monthly){
     html+=`<div style="display:flex;gap:1px;align-items:end;height:32px;margin-bottom:1px;">
       <div style="width:30px;font-size:9px;color:${isSel?'#fff':'var(--muted)'};font-weight:${isSel?700:400};line-height:32px;">${y}</div>`;
     for(const m of MONTHS){
-      const v=bbGrid[y][m];
-      const h=v>0?Math.max(2,Math.round(v/maxBB*28)):0;
+      const v=canGrid[y][m];
+      const h=v>0?Math.max(2,Math.round(v/maxCan*28)):0;
       const opacity=isSel?1:0.5;
       html+=`<div style="flex:1;display:flex;align-items:end;justify-content:center;height:100%;"><div style="width:100%;height:${h}px;background:${col};opacity:${opacity};border-radius:1px;" title="${y}.${m}: ${v.toFixed(1)}조"></div></div>`;
     }
@@ -514,28 +555,37 @@ function renderMonthlyChart(monthly){
 
 function renderYearlyChart(ya){
   const maxDiv=Math.max(...YEARS.map(y=>(ya[y]?.divT||0)/1e12),1);
-  const maxBB=Math.max(...YEARS.map(y=>(ya[y]?.bbT||0)/1e12),1);
-  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+  const maxBuy=Math.max(...YEARS.map(y=>(ya[y]?.buyT||0)/1e12),1);
+  const maxCan=Math.max(...YEARS.map(y=>(ya[y]?.cancelT||0)/1e12),1);
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
     <div class="stat-card" style="text-align:left;padding:16px;">
-      <div class="label" style="margin-bottom:8px;">배당 총액 추이 (조원)</div>
+      <div class="label" style="margin-bottom:8px;">배당 총액 (조원)</div>
       <div style="display:flex;align-items:end;gap:6px;height:80px;">`;
   for(const y of YEARS){
     const dv=(ya[y]?.divT||0)/1e12;
     const dh=Math.max(4,Math.round(dv/maxDiv*70));
     const isSel=y===F.aYear;
-    const col=isSel?'var(--accent)':'#334155';
-    html+=`<div style="flex:1;text-align:center;"><div style="height:${dh}px;background:${col};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${dv.toFixed(1)}</div></div>`;
+    html+=`<div style="flex:1;text-align:center;"><div style="height:${dh}px;background:${isSel?'var(--accent)':'#334155'};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${dv.toFixed(1)}</div></div>`;
   }
   html+=`</div></div>
     <div class="stat-card" style="text-align:left;padding:16px;">
-      <div class="label" style="margin-bottom:8px;">자사주 총액 추이 (조원)</div>
+      <div class="label" style="margin-bottom:8px;">자사주 매입 (조원)</div>
       <div style="display:flex;align-items:end;gap:6px;height:80px;">`;
   for(const y of YEARS){
-    const bv=(ya[y]?.bbT||0)/1e12;
-    const bh=Math.max(4,Math.round(bv/maxBB*70));
+    const bv=(ya[y]?.buyT||0)/1e12;
+    const bh=Math.max(4,Math.round(bv/maxBuy*70));
     const isSel=y===F.aYear;
-    const col=isSel?'var(--up)':'#334155';
-    html+=`<div style="flex:1;text-align:center;"><div style="height:${bh}px;background:${col};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${bv.toFixed(1)}</div></div>`;
+    html+=`<div style="flex:1;text-align:center;"><div style="height:${bh}px;background:${isSel?'var(--green)':'#334155'};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${bv.toFixed(1)}</div></div>`;
+  }
+  html+=`</div></div>
+    <div class="stat-card" style="text-align:left;padding:16px;">
+      <div class="label" style="margin-bottom:8px;">자사주 소각 (조원)</div>
+      <div style="display:flex;align-items:end;gap:6px;height:80px;">`;
+  for(const y of YEARS){
+    const cv=(ya[y]?.cancelT||0)/1e12;
+    const ch=Math.max(4,Math.round(cv/maxCan*70));
+    const isSel=y===F.aYear;
+    html+=`<div style="flex:1;text-align:center;"><div style="height:${ch}px;background:${isSel?'var(--up)':'#334155'};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${cv.toFixed(1)}</div></div>`;
   }
   html+=`</div></div></div>`;
   document.getElementById('annualCharts').innerHTML=html;
@@ -553,8 +603,8 @@ function renderCompany(){
   for(const [t,m] of Object.entries(tickerMeta)){
     if(mkt!=='all'&&m.market!==mkt)continue;
     if(q&&!m.name.toLowerCase().includes(q)&&!t.includes(q))continue;
-    const dv=m.yearDiv[sy]||0, bb=m.yearBB[sy]||0, dps=m.yearDPS[sy]||0, yld=m.yearYield[sy]||0;
-    if(onlyHas&&dv===0&&bb===0)continue;
+    const dv=m.yearDiv[sy]||0, buy=m.yearBuy[sy]||0, cancel=m.yearCancel[sy]||0, dps=m.yearDPS[sy]||0, yld=m.yearYield[sy]||0;
+    if(onlyHas&&dv===0&&buy===0&&cancel===0)continue;
     // DPS trend
     const trend=YEARS.map(y=>m.yearDPS[y]||0);
     // latest rceptNo for this year
@@ -562,18 +612,18 @@ function renderCompany(){
     for(const e of m.events){if((e.recordDate||'').startsWith(String(sy))&&e.rceptNo){rn=e.rceptNo;break;}}
     const cp=priceMap[t]||0;
     const curYield=cp>0&&dps>0?(dps/cp*100):0;
-    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBB:bb,dps,yield:yld,curYield,trend,rceptNo:rn,totalAll:dv+bb});
+    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBuy:buy,totalCancel:cancel,dps,yield:yld,curYield,trend,rceptNo:rn,totalAll:dv+buy});
   }
 
   if(sortMode==='totalDiv')rows.sort((a,b)=>b.totalDiv-a.totalDiv);
-  else if(sortMode==='totalBB')rows.sort((a,b)=>b.totalBB-a.totalBB);
+  else if(sortMode==='totalBB')rows.sort((a,b)=>b.totalBuy-a.totalBuy);
   else if(sortMode==='totalAll')rows.sort((a,b)=>b.totalAll-a.totalAll);
   else if(sortMode==='yield')rows.sort((a,b)=>b.yield-a.yield);
   else if(sortMode==='dps')rows.sort((a,b)=>b.dps-a.dps);
   else rows.sort((a,b)=>a.name.localeCompare(b.name));
 
   const tbody=document.getElementById('cmpBody');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
 
   // Top 200
   const show=rows.slice(0,200);
@@ -596,7 +646,8 @@ function renderCompany(){
       <td style="text-align:right;">${r.dps?r.dps.toLocaleString():'-'}</td>
       <td style="text-align:right;${r.yield>=3?'color:var(--up)':''}">${r.yield?r.yield.toFixed(1)+'%':'-'}</td>
       <td style="text-align:right;${r.curYield>=3?'color:var(--up)':''}">${r.curYield?r.curYield.toFixed(1)+'%':'-'}</td>
-      <td style="text-align:right;font-weight:600;color:var(--up);">${fmtAmt(r.totalBB)}</td>
+      <td style="text-align:right;font-weight:600;color:var(--green);">${fmtAmt(r.totalBuy)}</td>
+      <td style="text-align:right;color:var(--up);">${fmtAmt(r.totalCancel)}</td>
       <td style="text-align:right;font-weight:700;color:var(--gold);">${fmtAmt(r.totalAll)}</td>
       <td>${th}</td>
       <td>${dartL(r.rceptNo)}</td>
@@ -615,11 +666,11 @@ function showDetail(ticker,name){
   let html='';
   if(m&&m.events.length){
     // 연간 요약
-    html+='<div class="detail-section"><h3>연간 주주환원</h3><table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>연도</td><td style="text-align:right">배당총액</td><td style="text-align:right">DPS</td><td style="text-align:right">자사주</td><td style="text-align:right">합계</td></tr>';
+    html+='<div class="detail-section"><h3>연간 주주환원</h3><table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>연도</td><td style="text-align:right">배당총액</td><td style="text-align:right">DPS</td><td style="text-align:right">매입</td><td style="text-align:right">소각</td><td style="text-align:right">배당+매입</td></tr>';
     for(const y of YEARS.slice().reverse()){
-      const dv=m.yearDiv[y]||0,bb=m.yearBB[y]||0,dps=m.yearDPS[y]||0;
-      if(!dv&&!bb)continue;
-      html+=`<tr><td style="font-weight:600;">${y}</td><td style="text-align:right;">${fmtAmt(dv)}</td><td style="text-align:right;">${dps?dps.toLocaleString():'-'}</td><td style="text-align:right;color:var(--up);">${fmtAmt(bb)}</td><td style="text-align:right;font-weight:700;color:var(--gold);">${fmtAmt(dv+bb)}</td></tr>`;
+      const dv=m.yearDiv[y]||0,buy=m.yearBuy[y]||0,cancel=m.yearCancel[y]||0,dps=m.yearDPS[y]||0;
+      if(!dv&&!buy&&!cancel)continue;
+      html+=`<tr><td style="font-weight:600;">${y}</td><td style="text-align:right;">${fmtAmt(dv)}</td><td style="text-align:right;">${dps?dps.toLocaleString():'-'}</td><td style="text-align:right;color:var(--green);">${fmtAmt(buy)}</td><td style="text-align:right;color:var(--up);">${fmtAmt(cancel)}</td><td style="text-align:right;font-weight:700;color:var(--gold);">${fmtAmt(dv+buy)}</td></tr>`;
     }
     html+='</table></div>';
     // 배당 상세
