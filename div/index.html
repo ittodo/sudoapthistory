@@ -4,14 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>배당·소각 캘린더</title>
-<meta name="description" content="한국 주식 배당금 지급일정 및 자사주 소각 캘린더. DART 공시 기반 실시간 데이터.">
+<meta name="description" content="한국 주식 배당금 지급일정 및 자사주 소각 캘린더. DART 공시 기반 전체 KOSPI/KOSDAQ.">
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <style>
-:root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --gold: #f59e0b; --green: #10b981; }
+:root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --gold: #f59e0b; --green: #10b981; --purple: #a78bfa; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
-.fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; }
+.fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
 .fi:focus { outline: none; border-color: var(--accent); }
+select.fi { cursor: pointer; }
 table { width: 100%; border-collapse: collapse; }
 thead th { position: sticky; top: 0; background: #1a2332; padding: 8px 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; border-bottom: 1px solid var(--border); z-index: 2; }
 thead th:hover { color: #fff; }
@@ -31,20 +32,20 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .tab-btn { padding: 6px 16px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
 .tab-btn:hover { border-color: var(--muted); color: #fff; }
 .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pill { padding: 3px 10px; border: 1px solid var(--border); border-radius: 99px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; transition: all .15s; }
+.pill:hover { border-color: var(--muted); color: #fff; }
+.pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; text-align: center; }
 .stat-card .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
 .stat-card .value { font-size: 22px; font-weight: 700; margin-top: 2px; }
-.tc { max-height: calc(100vh - 260px); overflow-y: auto; }
+.stat-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.tc { max-height: calc(100vh - 290px); overflow-y: auto; }
 .tc::-webkit-scrollbar { width: 5px; }
 .tc::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
 #loading { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); z-index: 999; gap: 12px; }
 .sp { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .sa { font-size: 10px; opacity: .6; }
-.month-bar { display: flex; gap: 3px; flex-wrap: wrap; }
-.month-btn { padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; transition: all .15s; }
-.month-btn:hover { border-color: var(--muted); color: #fff; }
-.month-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
 .note-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
 .note-cell:hover { white-space: normal; overflow: visible; }
@@ -53,6 +54,11 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 .clickable-name { cursor: pointer; color: var(--text); transition: color .15s; }
 .clickable-name:hover { color: var(--accent); text-decoration: underline; }
+/* streak bar */
+.streak-bar { display: inline-block; height: 6px; border-radius: 3px; background: var(--accent); vertical-align: middle; }
+/* upcoming highlight */
+.row-upcoming { border-left: 2px solid var(--gold); }
+.row-past { opacity: .7; }
 /* Detail Panel */
 #detailPanel { display: none; position: fixed; top: 0; right: 0; width: 520px; height: 100vh; background: var(--bg); border-left: 1px solid var(--border); z-index: 100; overflow-y: auto; box-shadow: -4px 0 20px rgba(0,0,0,.5); }
 #detailPanel::-webkit-scrollbar { width: 5px; }
@@ -66,13 +72,17 @@ a:hover { text-decoration: underline; }
 .detail-table td { padding: 5px 6px; font-size: 12px; border-bottom: 1px solid #1e293b; }
 .detail-table tr:hover { background: rgba(59,130,246,.06); }
 #detailOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 99; }
+/* dps change indicator */
+.dps-up { color: var(--up); font-size: 10px; }
+.dps-dn { color: var(--dn); font-size: 10px; }
+.dps-same { color: var(--muted); font-size: 10px; }
 </style>
 </head>
 <body>
 
 <div id="loading"><div class="sp"></div><div class="sa">데이터 로딩 중...</div></div>
 
-<div style="max-width:1200px;margin:0 auto;padding:12px 16px;">
+<div style="max-width:1280px;margin:0 auto;padding:12px 16px;">
 
 <!-- Header -->
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
@@ -86,95 +96,130 @@ a:hover { text-decoration: underline; }
 </div>
 
 <!-- Stats -->
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:14px;" id="stats"></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;" id="stats"></div>
 
-<!-- Tabs: 배당 / 소각 -->
-<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-  <div style="display:flex;gap:4px;">
-    <button class="tab-btn active" data-tab="div" onclick="switchTab('div')">배당</button>
-    <button class="tab-btn" data-tab="bb" onclick="switchTab('bb')">자사주 소각·매입</button>
-  </div>
+<!-- Main Tabs -->
+<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+  <button class="tab-btn active" data-tab="now" onclick="switchTab('now')">올해 배당</button>
+  <button class="tab-btn" data-tab="history" onclick="switchTab('history')">배당 이력</button>
+  <button class="tab-btn" data-tab="bb" onclick="switchTab('bb')">자사주</button>
   <div style="flex:1;"></div>
-  <input type="text" class="fi" id="search" placeholder="종목명 또는 코드 검색..." style="width:200px;" oninput="render()">
+  <input type="text" class="fi" id="search" placeholder="종목명 / 코드 검색..." style="width:200px;" oninput="render()">
 </div>
 
-<!-- Filters (dividend tab) -->
-<div id="divFilters" style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-  <div class="month-bar" id="monthBar"></div>
-  <div style="display:flex;gap:4px;">
-    <button class="month-btn" data-type="all" onclick="setTypeFilter('all')">전체</button>
-    <button class="month-btn" data-type="선배당" onclick="setTypeFilter('선배당')">선배당</button>
-    <button class="month-btn" data-type="후배당" onclick="setTypeFilter('후배당')">후배당</button>
+<!-- ========== 올해 배당 ========== -->
+<div id="panelNow">
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+    <div id="monthBar" style="display:flex;gap:3px;flex-wrap:wrap;"></div>
+    <div style="display:flex;gap:3px;">
+      <button class="pill active" data-market="all" onclick="setFilter('market','all')">전체</button>
+      <button class="pill" data-market="KOSPI" onclick="setFilter('market','KOSPI')">KOSPI</button>
+      <button class="pill" data-market="KOSDAQ" onclick="setFilter('market','KOSDAQ')">KOSDAQ</button>
+    </div>
+    <div style="display:flex;gap:3px;">
+      <button class="pill active" data-dtype="all" onclick="setFilter('dtype','all')">전체</button>
+      <button class="pill" data-dtype="선배당" onclick="setFilter('dtype','선배당')">선배당</button>
+      <button class="pill" data-dtype="후배당" onclick="setFilter('dtype','후배당')">후배당</button>
+    </div>
+    <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
+      <input type="checkbox" id="chkUpcoming" onchange="render()"> 다가오는 일정만
+    </label>
   </div>
-  <div style="display:flex;gap:4px;">
-    <button class="month-btn" data-market="all" onclick="setMarketFilter('all')">전체</button>
-    <button class="month-btn" data-market="KOSPI" onclick="setMarketFilter('KOSPI')">KOSPI</button>
-    <button class="month-btn" data-market="KOSDAQ" onclick="setMarketFilter('KOSDAQ')">KOSDAQ</button>
-  </div>
-</div>
-
-<!-- Dividend Table -->
-<div id="divTable" class="tc">
-<table>
-  <thead>
-    <tr>
-      <th onclick="sortBy('ticker')">코드 <span class="sort-arrow" id="sa-ticker"></span></th>
-      <th onclick="sortBy('name')">종목명 <span class="sort-arrow" id="sa-name"></span></th>
-      <th onclick="sortBy('market')">시장 <span class="sort-arrow" id="sa-market"></span></th>
-      <th onclick="sortBy('type')">구분 <span class="sort-arrow" id="sa-type"></span></th>
-      <th onclick="sortBy('recordDate')">기준일 <span class="sort-arrow" id="sa-recordDate"></span></th>
-      <th onclick="sortBy('payDate')">지급일 <span class="sort-arrow" id="sa-payDate"></span></th>
-      <th onclick="sortBy('dps')" style="text-align:right">DPS(원) <span class="sort-arrow" id="sa-dps"></span></th>
-      <th onclick="sortBy('yield')" style="text-align:right">수익률(%) <span class="sort-arrow" id="sa-yield"></span></th>
-      <th onclick="sortBy('fiscalYear')">사업연도 <span class="sort-arrow" id="sa-fiscalYear"></span></th>
-      <th>비고</th>
-      <th>공시</th>
-    </tr>
-  </thead>
-  <tbody id="divBody"></tbody>
-</table>
-</div>
-
-<!-- Buyback Filters -->
-<div id="bbFilters" style="display:none;margin-bottom:10px;">
-  <div style="display:flex;gap:4px;">
-    <button class="month-btn active" data-bbtype="all" onclick="setBBTypeFilter('all')">전체</button>
-    <button class="month-btn" data-bbtype="소각" onclick="setBBTypeFilter('소각')">소각</button>
-    <button class="month-btn" data-bbtype="매입" onclick="setBBTypeFilter('매입')">매입</button>
-    <button class="month-btn" data-bbtype="처분" onclick="setBBTypeFilter('처분')">처분</button>
+  <div class="tc" id="nowScroll">
+    <table>
+      <thead><tr>
+        <th onclick="sortNow('name')">종목명 <span class="sort-arrow" id="sn-name"></span></th>
+        <th onclick="sortNow('market')">시장</th>
+        <th onclick="sortNow('type')">구분</th>
+        <th onclick="sortNow('recordDate')">기준일 <span class="sort-arrow" id="sn-recordDate"></span></th>
+        <th onclick="sortNow('payDate')">지급일 <span class="sort-arrow" id="sn-payDate"></span></th>
+        <th onclick="sortNow('dps')" style="text-align:right">DPS <span class="sort-arrow" id="sn-dps"></span></th>
+        <th onclick="sortNow('yield')" style="text-align:right">수익률 <span class="sort-arrow" id="sn-yield"></span></th>
+        <th>전년비</th>
+        <th>연속(년)</th>
+        <th>공시</th>
+      </tr></thead>
+      <tbody id="nowBody"></tbody>
+    </table>
   </div>
 </div>
 
-<!-- Buyback Table -->
-<div id="bbTable" class="tc" style="display:none;">
-<table>
-  <thead>
-    <tr>
-      <th onclick="sortByBB('ticker')">코드</th>
-      <th onclick="sortByBB('name')">종목명</th>
-      <th onclick="sortByBB('market')">시장</th>
-      <th onclick="sortByBB('type')">구분</th>
-      <th onclick="sortByBB('buybackDate')">일자</th>
-      <th onclick="sortByBB('shareCount')" style="text-align:right">주식수</th>
-      <th onclick="sortByBB('totalAmount')" style="text-align:right">총액</th>
-      <th onclick="sortByBB('method')">방법</th>
-      <th>비고</th>
-      <th>공시</th>
-    </tr>
-  </thead>
-  <tbody id="bbBody"></tbody>
-</table>
+<!-- ========== 배당 이력 ========== -->
+<div id="panelHistory" style="display:none;">
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+    <select class="fi" id="selYear" onchange="render()" style="width:100px;"></select>
+    <div style="display:flex;gap:3px;">
+      <button class="pill active" data-hmarket="all" onclick="setFilter('hmarket','all')">전체</button>
+      <button class="pill" data-hmarket="KOSPI" onclick="setFilter('hmarket','KOSPI')">KOSPI</button>
+      <button class="pill" data-hmarket="KOSDAQ" onclick="setFilter('hmarket','KOSDAQ')">KOSDAQ</button>
+    </div>
+    <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
+      <input type="checkbox" id="chkStreak" onchange="render()"> 3년+ 연속 배당만
+    </label>
+    <select class="fi" id="selSort" onchange="render()" style="width:130px;">
+      <option value="streak">연속배당순</option>
+      <option value="yield">수익률순</option>
+      <option value="dps">DPS순</option>
+      <option value="name">종목명순</option>
+    </select>
+  </div>
+  <div class="tc" id="histScroll">
+    <table>
+      <thead><tr>
+        <th>종목명</th>
+        <th>시장</th>
+        <th style="text-align:right">DPS</th>
+        <th style="text-align:right">수익률</th>
+        <th>연속(년)</th>
+        <th>DPS 추이</th>
+        <th>기준일</th>
+        <th>공시</th>
+      </tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== 자사주 ========== -->
+<div id="panelBB" style="display:none;">
+  <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+    <div style="display:flex;gap:3px;">
+      <button class="pill active" data-bbtype="all" onclick="setFilter('bbtype','all')">전체</button>
+      <button class="pill" data-bbtype="소각" onclick="setFilter('bbtype','소각')">소각</button>
+      <button class="pill" data-bbtype="매입" onclick="setFilter('bbtype','매입')">매입</button>
+      <button class="pill" data-bbtype="처분" onclick="setFilter('bbtype','처분')">처분</button>
+    </div>
+    <div style="display:flex;gap:3px;">
+      <button class="pill active" data-bbmarket="all" onclick="setFilter('bbmarket','all')">전체</button>
+      <button class="pill" data-bbmarket="KOSPI" onclick="setFilter('bbmarket','KOSPI')">KOSPI</button>
+      <button class="pill" data-bbmarket="KOSDAQ" onclick="setFilter('bbmarket','KOSDAQ')">KOSDAQ</button>
+    </div>
+  </div>
+  <div class="tc">
+    <table>
+      <thead><tr>
+        <th onclick="sortBB('name')">종목명 <span class="sort-arrow" id="sb-name"></span></th>
+        <th onclick="sortBB('market')">시장</th>
+        <th onclick="sortBB('type')">구분</th>
+        <th onclick="sortBB('buybackDate')">일자 <span class="sort-arrow" id="sb-buybackDate"></span></th>
+        <th onclick="sortBB('shareCount')" style="text-align:right">주식수 <span class="sort-arrow" id="sb-shareCount"></span></th>
+        <th onclick="sortBB('totalAmount')" style="text-align:right">총액 <span class="sort-arrow" id="sb-totalAmount"></span></th>
+        <th>방법</th>
+        <th>공시</th>
+      </tr></thead>
+      <tbody id="bbBody"></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- Footer -->
 <div id="countInfo" style="text-align:center;padding:8px;font-size:11px;color:var(--muted);"></div>
 <div class="footer-disclaimer">
-  DART 공시 기반 데이터 · 투자 판단의 책임은 본인에게 있습니다 · <a href="../">아파트 스크리너</a>
+  DART 공시 기반 · 전체 KOSPI/KOSDAQ · 투자 판단의 책임은 본인에게 있습니다 · <a href="../">아파트 스크리너</a>
+</div>
 </div>
 
-</div>
-
-<!-- Detail Panel (overlay) -->
+<!-- Detail Panel -->
 <div id="detailOverlay" onclick="closeDetail()"></div>
 <div id="detailPanel">
   <div class="detail-header">
@@ -188,11 +233,22 @@ a:hover { text-decoration: underline; }
 </div>
 
 <script>
+const NOW = new Date();
+const TODAY = NOW.toISOString().slice(0, 10);
+const THIS_YEAR = String(NOW.getFullYear());
+
 let divData = [], bbData = [];
-let currentTab = 'div';
-let sortKey = 'recordDate', sortAsc = false;
-let bbSortKey = 'buybackDate', bbSortAsc = false;
-let typeFilter = 'all', marketFilter = 'all', monthFilter = 'all', bbTypeFilter = 'all';
+let currentTab = 'now';
+
+// 필터 상태
+let F = { month: 'all', market: 'all', dtype: 'all', hmarket: 'all', bbtype: 'all', bbmarket: 'all' };
+
+// 정렬 상태
+let nowSort = { key: 'recordDate', asc: true };
+let bbSort_ = { key: 'buybackDate', asc: false };
+
+// 전처리 데이터
+let tickerMeta = {}; // ticker → { name, market, streak, years: Set, yearDPS: {year→dps}, latestDiv }
 
 async function init() {
   try {
@@ -203,340 +259,472 @@ async function init() {
     divData = divRes.events || [];
     bbData = bbRes.events || [];
 
-    // 후배당 보정: type이 비어있고 recordDate 연도 > fiscalYear이면 후배당
+    // 배당 유형 보정
     divData.forEach(e => {
       if (!e.type && e.recordDate && e.fiscalYear) {
-        const rdYear = parseInt(e.recordDate.substring(0, 4));
-        const fyYear = parseInt(e.fiscalYear);
-        if (rdYear > fyYear) {
-          e.type = '후배당';
-        } else if (rdYear === fyYear) {
-          const rdMonth = parseInt(e.recordDate.substring(5, 7));
-          if (rdMonth === 12) {
-            e.type = '후배당';
-          } else {
-            e.type = '선배당';
-          }
+        const rdY = parseInt(e.recordDate.substring(0, 4));
+        const fyY = parseInt(e.fiscalYear);
+        if (rdY > fyY) e.type = '후배당';
+        else {
+          const rdM = parseInt(e.recordDate.substring(5, 7));
+          e.type = rdM === 12 ? '후배당' : '선배당';
         }
       }
-      // recordDate가 올해이고 fiscalYear가 작년이면 확실히 후배당
-      if (e.type !== '후배당' && e.recordDate && e.fiscalYear) {
-        const rdYear = parseInt(e.recordDate.substring(0, 4));
-        const fyYear = parseInt(e.fiscalYear);
-        if (rdYear > fyYear) {
-          e.type = '후배당';
-        }
+      if (e.recordDate && e.fiscalYear) {
+        const rdY = parseInt(e.recordDate.substring(0, 4));
+        const fyY = parseInt(e.fiscalYear);
+        if (rdY > fyY && e.type !== '후배당') e.type = '후배당';
       }
     });
 
+    // 종목별 메타 빌드
+    buildTickerMeta();
+
     const updated = divRes.updated || bbRes.updated || '';
-    document.getElementById('updatedAt').textContent = updated ? `DART 공시 기준 · 최종 업데이트 ${updated}` : '';
+    document.getElementById('updatedAt').textContent = updated ? `DART 공시 기반 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · ${updated}` : '';
 
     buildMonthBar();
+    buildYearSelect();
     buildStats();
     render();
   } catch (e) {
     console.error('Data load error:', e);
-    document.getElementById('divBody').innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted);">데이터를 불러올 수 없습니다. companysearch --export-json 으로 데이터를 먼저 생성하세요.</td></tr>';
   }
   document.getElementById('loading').style.display = 'none';
 
-  // AdSense: 콘텐츠 로드 완료 후 광고 스크립트 삽입
   setTimeout(function(){
     var s=document.createElement('script');
     s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4171612672605986';
-    s.async=true;
-    s.crossOrigin='anonymous';
+    s.async=true; s.crossOrigin='anonymous';
     document.head.appendChild(s);
   }, 1000);
+}
+
+function buildTickerMeta() {
+  tickerMeta = {};
+  for (const e of divData) {
+    const t = e.ticker;
+    if (!tickerMeta[t]) tickerMeta[t] = { name: e.name, market: e.market, years: new Set(), yearDPS: {}, events: [] };
+    const m = tickerMeta[t];
+    m.events.push(e);
+    const y = e.recordDate ? e.recordDate.substring(0, 4) : '';
+    if (y && y !== '-') {
+      m.years.add(y);
+      // 같은 연도에 여러 배당이면 합산 (선배당+후배당)
+      if (e.dps) m.yearDPS[y] = (m.yearDPS[y] || 0) + e.dps;
+    }
+  }
+  // 연속 배당 계산
+  for (const t of Object.keys(tickerMeta)) {
+    const m = tickerMeta[t];
+    const years = [...m.years].map(Number).sort((a, b) => b - a);
+    let streak = 0;
+    const curY = parseInt(THIS_YEAR);
+    for (let y = curY; y >= 2006; y--) {
+      if (years.includes(y)) streak++;
+      else break;
+    }
+    // 올해 아직 없으면 작년부터
+    if (streak === 0) {
+      for (let y = curY - 1; y >= 2006; y--) {
+        if (years.includes(y)) streak++;
+        else break;
+      }
+    }
+    m.streak = streak;
+  }
 }
 
 function buildMonthBar() {
   const months = new Set();
   divData.forEach(e => {
-    if (e.recordDate) {
-      const m = e.recordDate.substring(0, 7);
-      months.add(m);
+    if (e.recordDate && e.recordDate.startsWith(THIS_YEAR)) {
+      months.add(e.recordDate.substring(0, 7));
     }
   });
-  // 최신 월이 앞으로 오도록 역순 정렬
-  const sorted = [...months].sort().reverse();
+  const sorted = [...months].sort();
   const bar = document.getElementById('monthBar');
 
-  // 최신 월을 기본 선택
-  if (sorted.length > 0) {
-    monthFilter = sorted[0];
+  // 현재 월 또는 가장 가까운 미래 월을 기본 선택
+  const curMonth = TODAY.substring(0, 7);
+  let defaultMonth = 'all';
+  if (sorted.includes(curMonth)) defaultMonth = curMonth;
+  else {
+    const future = sorted.filter(m => m >= curMonth);
+    if (future.length > 0) defaultMonth = future[0];
+    else if (sorted.length > 0) defaultMonth = sorted[sorted.length - 1];
   }
+  F.month = defaultMonth;
 
-  let html = '<button class="month-btn" data-month="all" onclick="setMonthFilter(\'all\')">전체</button>';
+  let html = `<button class="pill${F.month === 'all' ? ' active' : ''}" data-month="all" onclick="setFilter('month','all')">전체</button>`;
   sorted.forEach(m => {
-    const label = m.substring(5) + '월';
-    const isActive = m === monthFilter ? ' active' : '';
-    html += `<button class="month-btn${isActive}" data-month="${m}" onclick="setMonthFilter('${m}')">${m.substring(0,4)}.${label}</button>`;
+    const label = m.substring(2, 4) + '.' + m.substring(5) + '월';
+    html += `<button class="pill${m === F.month ? ' active' : ''}" data-month="${m}" onclick="setFilter('month','${m}')">${label}</button>`;
   });
   bar.innerHTML = html;
 }
 
-function buildStats() {
-  const totalDiv = divData.length;
-  const totalBB = bbData.length;
-  const preDivCount = divData.filter(e => e.type === '선배당').length;
-  const postDivCount = divData.filter(e => e.type === '후배당').length;
-  const tickers = new Set([...divData.map(e => e.ticker), ...bbData.map(e => e.ticker)]);
+function buildYearSelect() {
+  const years = new Set();
+  divData.forEach(e => {
+    const y = e.recordDate ? e.recordDate.substring(0, 4) : '';
+    if (y && y !== '-' && y !== THIS_YEAR) years.add(y);
+  });
+  const sorted = [...years].sort().reverse();
+  const sel = document.getElementById('selYear');
+  sel.innerHTML = sorted.map(y => `<option value="${y}">${y}년</option>`).join('');
+  if (sorted.length > 0) sel.value = sorted[0];
+}
 
-  const html = `
-    <div class="stat-card"><div class="label">총 배당 건수</div><div class="value">${totalDiv.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">선배당 (중간)</div><div class="value" style="color:var(--gold)">${preDivCount.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">후배당 (결산)</div><div class="value" style="color:var(--accent)">${postDivCount.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">자사주 소각·매입</div><div class="value" style="color:var(--up)">${totalBB.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="label">종목 수</div><div class="value">${tickers.size.toLocaleString()}</div></div>
+function buildStats() {
+  const thisYearDiv = divData.filter(e => e.recordDate && e.recordDate.startsWith(THIS_YEAR));
+  const thisYearBB = bbData.filter(e => e.buybackDate && e.buybackDate.startsWith(THIS_YEAR));
+  const upcomingDiv = thisYearDiv.filter(e => e.recordDate >= TODAY);
+  const tickers = new Set(thisYearDiv.map(e => e.ticker));
+  const avgYield = thisYearDiv.filter(e => e.yield > 0);
+  const avgY = avgYield.length > 0 ? avgYield.reduce((s, e) => s + e.yield, 0) / avgYield.length : 0;
+
+  // 연속 배당 3년+ 종목 수
+  let streak3 = 0;
+  for (const t of Object.keys(tickerMeta)) {
+    if (tickerMeta[t].streak >= 3) streak3++;
+  }
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="label">${THIS_YEAR} 배당</div><div class="value">${thisYearDiv.length.toLocaleString()}</div><div class="sub">${tickers.size}개 종목</div></div>
+    <div class="stat-card"><div class="label">다가오는 배당</div><div class="value" style="color:var(--gold)">${upcomingDiv.length}</div><div class="sub">기준일 ${TODAY}~</div></div>
+    <div class="stat-card"><div class="label">평균 수익률</div><div class="value" style="color:var(--green)">${avgY.toFixed(1)}%</div><div class="sub">${THIS_YEAR}년 배당</div></div>
+    <div class="stat-card"><div class="label">3년+ 연속배당</div><div class="value" style="color:var(--purple)">${streak3.toLocaleString()}</div><div class="sub">전체 종목 중</div></div>
+    <div class="stat-card"><div class="label">${THIS_YEAR} 자사주</div><div class="value" style="color:var(--up)">${thisYearBB.length}</div><div class="sub">소각·매입·처분</div></div>
   `;
-  document.getElementById('stats').innerHTML = html;
 }
 
 function switchTab(tab) {
   currentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.getElementById('divTable').style.display = tab === 'div' ? '' : 'none';
-  document.getElementById('bbTable').style.display = tab === 'bb' ? '' : 'none';
-  document.getElementById('divFilters').style.display = tab === 'div' ? '' : 'none';
-  document.getElementById('bbFilters').style.display = tab === 'bb' ? '' : 'none';
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('panelNow').style.display = tab === 'now' ? '' : 'none';
+  document.getElementById('panelHistory').style.display = tab === 'history' ? '' : 'none';
+  document.getElementById('panelBB').style.display = tab === 'bb' ? '' : 'none';
   render();
 }
 
-function setTypeFilter(t) {
-  typeFilter = t;
-  document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+function setFilter(group, val) {
+  F[group] = val;
+  document.querySelectorAll(`[data-${group}]`).forEach(b => b.classList.toggle('active', b.dataset[group] === val));
   render();
 }
 
-function setMarketFilter(m) {
-  marketFilter = m;
-  document.querySelectorAll('[data-market]').forEach(b => b.classList.toggle('active', b.dataset.market === m));
+function sortNow(key) {
+  if (nowSort.key === key) nowSort.asc = !nowSort.asc;
+  else { nowSort.key = key; nowSort.asc = key === 'name'; }
   render();
 }
 
-function setMonthFilter(m) {
-  monthFilter = m;
-  document.querySelectorAll('[data-month]').forEach(b => b.classList.toggle('active', b.dataset.month === m));
-  render();
-}
-
-function sortBy(key) {
-  if (sortKey === key) { sortAsc = !sortAsc; }
-  else { sortKey = key; sortAsc = true; }
-  render();
-}
-
-function sortByBB(key) {
-  if (bbSortKey === key) { bbSortAsc = !bbSortAsc; }
-  else { bbSortKey = key; bbSortAsc = true; }
-  render();
-}
-
-function setBBTypeFilter(t) {
-  bbTypeFilter = t;
-  document.querySelectorAll('[data-bbtype]').forEach(b => b.classList.toggle('active', b.dataset.bbtype === t));
+function sortBB(key) {
+  if (bbSort_.key === key) bbSort_.asc = !bbSort_.asc;
+  else { bbSort_.key = key; bbSort_.asc = key === 'name'; }
   render();
 }
 
 function render() {
-  if (currentTab === 'div') renderDiv();
-  else renderBB();
+  if (currentTab === 'now') renderNow();
+  else if (currentTab === 'history') renderHistory();
+  else renderBuyback();
 }
 
-function renderDiv() {
+// ========== 올해 배당 ==========
+function renderNow() {
   const q = (document.getElementById('search').value || '').trim().toLowerCase();
-  let filtered = divData.filter(e => {
+  const upcoming = document.getElementById('chkUpcoming').checked;
+
+  let list = divData.filter(e => {
+    if (!e.recordDate || !e.recordDate.startsWith(THIS_YEAR)) return false;
     if (q && !e.name.toLowerCase().includes(q) && !e.ticker.includes(q)) return false;
-    if (typeFilter !== 'all' && e.type !== typeFilter) return false;
-    if (marketFilter !== 'all' && e.market !== marketFilter) return false;
-    if (monthFilter !== 'all' && (!e.recordDate || !e.recordDate.startsWith(monthFilter))) return false;
+    if (F.month !== 'all' && !e.recordDate.startsWith(F.month)) return false;
+    if (F.market !== 'all' && e.market !== F.market) return false;
+    if (F.dtype !== 'all' && e.type !== F.dtype) return false;
+    if (upcoming && e.recordDate < TODAY) return false;
     return true;
   });
 
-  // Sort
-  filtered.sort((a, b) => {
-    let va = a[sortKey] ?? '', vb = b[sortKey] ?? '';
-    if (typeof va === 'number' && typeof vb === 'number') {
-      return sortAsc ? va - vb : vb - va;
-    }
-    va = String(va); vb = String(vb);
-    return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  // 정렬
+  const { key, asc } = nowSort;
+  list.sort((a, b) => {
+    let va = a[key] ?? '', vb = b[key] ?? '';
+    if (typeof va === 'number' && typeof vb === 'number') return asc ? va - vb : vb - va;
+    return asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
 
-  // Update sort arrows
-  document.querySelectorAll('.sort-arrow').forEach(el => el.textContent = '');
-  const arrow = document.getElementById('sa-' + sortKey);
-  if (arrow) arrow.textContent = sortAsc ? '\u25B2' : '\u25BC';
+  // 정렬 화살표
+  document.querySelectorAll('[id^="sn-"]').forEach(el => el.textContent = '');
+  const arrow = document.getElementById('sn-' + key);
+  if (arrow) arrow.textContent = asc ? '\u25B2' : '\u25BC';
 
-  const tbody = document.getElementById('divBody');
-  if (filtered.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
-    document.getElementById('countInfo').textContent = '';
-    return;
-  }
-
-  let html = '';
-  for (const e of filtered) {
-    const typeBadge = e.type === '선배당'
-      ? '<span class="badge b-pre">선배당</span>'
-      : e.type === '후배당'
-        ? '<span class="badge b-post">후배당</span>'
-        : '';
-    const mktBadge = e.market === 'KOSPI'
-      ? '<span class="badge b-kospi">KOSPI</span>'
-      : e.market === 'KOSDAQ'
-        ? '<span class="badge b-kosdaq">KOSDAQ</span>'
-        : e.market || '';
-    const yieldClass = e.yield >= 3 ? 'up' : '';
-
-    html += `<tr>
-      <td style="color:var(--muted);font-family:monospace;">${esc(e.ticker)}</td>
-      <td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td>
-      <td>${mktBadge}</td>
-      <td>${typeBadge}</td>
-      <td>${esc(e.recordDate)}</td>
-      <td>${esc(e.payDate)}</td>
-      <td style="text-align:right;font-weight:600;">${e.dps ? e.dps.toLocaleString() : '-'}</td>
-      <td style="text-align:right;" class="${yieldClass}">${e.yield ? e.yield.toFixed(1) : '-'}</td>
-      <td style="color:var(--muted);">${esc(e.fiscalYear)}</td>
-      <td class="note-cell" title="${esc(e.note || '')}">${esc(e.note || '')}</td>
-      <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener" style="color:var(--accent);">원문</a>` : ''}</td>
-    </tr>`;
-  }
-  tbody.innerHTML = html;
-  document.getElementById('countInfo').textContent = `${filtered.length.toLocaleString()}건 표시 (전체 ${divData.length.toLocaleString()}건)`;
-}
-
-function renderBB() {
-  const q = (document.getElementById('search').value || '').trim().toLowerCase();
-  let filtered = bbData.filter(e => {
-    if (q && !e.name.toLowerCase().includes(q) && !e.ticker.includes(q)) return false;
-    if (bbTypeFilter !== 'all' && e.type !== bbTypeFilter) return false;
-    return true;
-  });
-
-  filtered.sort((a, b) => {
-    let va = a[bbSortKey] ?? '', vb = b[bbSortKey] ?? '';
-    if (typeof va === 'number' && typeof vb === 'number') {
-      return bbSortAsc ? va - vb : vb - va;
-    }
-    va = String(va); vb = String(vb);
-    return bbSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
-  });
-
-  const tbody = document.getElementById('bbBody');
-  if (filtered.length === 0) {
+  const tbody = document.getElementById('nowBody');
+  if (!list.length) {
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
     document.getElementById('countInfo').textContent = '';
     return;
   }
 
   let html = '';
-  for (const e of filtered) {
-    const mktBadge = e.market === 'KOSPI'
-      ? '<span class="badge b-kospi">KOSPI</span>'
-      : e.market === 'KOSDAQ'
-        ? '<span class="badge b-kosdaq">KOSDAQ</span>'
-        : e.market || '';
-    const typeBadge = e.type === '소각'
-      ? '<span class="badge b-bb">소각</span>'
-      : e.type === '매입'
-        ? '<span class="badge b-buy">매입</span>'
-        : e.type === '처분'
-          ? '<span class="badge b-dispose">처분</span>'
-          : '';
+  for (const e of list) {
+    const meta = tickerMeta[e.ticker];
+    const isUpcoming = e.recordDate >= TODAY;
+    const rowCls = isUpcoming ? 'row-upcoming' : 'row-past';
 
-    html += `<tr>
-      <td style="color:var(--muted);font-family:monospace;">${esc(e.ticker)}</td>
-      <td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td>
-      <td>${mktBadge}</td>
-      <td>${typeBadge}</td>
-      <td>${esc(e.buybackDate)}</td>
-      <td style="text-align:right;font-weight:600;">${e.shareCount ? e.shareCount.toLocaleString() : '-'}</td>
-      <td style="text-align:right;font-weight:600;">${fmtAmount(e.totalAmount)}</td>
-      <td style="color:var(--muted);">${esc(e.method || '')}</td>
-      <td class="note-cell" title="${esc(e.note || '')}">${esc(e.note || '')}</td>
-      <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener" style="color:var(--accent);">원문</a>` : ''}</td>
+    // 전년 DPS 비교
+    const prevYear = String(parseInt(THIS_YEAR) - 1);
+    const prevDPS = meta?.yearDPS[prevYear] || 0;
+    let dpsChange = '';
+    if (prevDPS > 0 && e.dps > 0) {
+      const pct = ((e.dps - prevDPS) / prevDPS * 100).toFixed(0);
+      if (e.dps > prevDPS) dpsChange = `<span class="dps-up">+${pct}%</span>`;
+      else if (e.dps < prevDPS) dpsChange = `<span class="dps-dn">${pct}%</span>`;
+      else dpsChange = `<span class="dps-same">=</span>`;
+    }
+
+    const streak = meta?.streak || 0;
+    const streakTxt = streak >= 3 ? `<span style="color:var(--gold);font-weight:600;">${streak}</span>` : streak > 0 ? streak : '-';
+
+    html += `<tr class="${rowCls}">
+      <td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span> <span style="color:var(--muted);font-size:10px;">${esc(e.ticker)}</span></td>
+      <td>${mktBadge(e.market)}</td>
+      <td>${typeBadge(e.type)}</td>
+      <td${isUpcoming ? ' style="font-weight:600;"' : ''}>${esc(e.recordDate)}</td>
+      <td style="color:var(--muted);">${esc(e.payDate)}</td>
+      <td style="text-align:right;font-weight:600;">${e.dps ? e.dps.toLocaleString() : '-'}</td>
+      <td style="text-align:right;" class="${e.yield >= 3 ? 'up' : ''}">${e.yield ? e.yield.toFixed(1) + '%' : '-'}</td>
+      <td style="text-align:center;">${dpsChange}</td>
+      <td style="text-align:center;">${streakTxt}</td>
+      <td>${dartLink(e.rceptNo)}</td>
     </tr>`;
   }
   tbody.innerHTML = html;
-  document.getElementById('countInfo').textContent = `${filtered.length.toLocaleString()}건 표시 (전체 ${bbData.length.toLocaleString()}건)`;
+  document.getElementById('countInfo').textContent = `${list.length.toLocaleString()}건`;
 }
 
-// --- Detail Panel ---
+// ========== 배당 이력 ==========
+function renderHistory() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+  const selYear = document.getElementById('selYear').value;
+  const streakOnly = document.getElementById('chkStreak').checked;
+  const sortMode = document.getElementById('selSort').value;
+
+  // 선택 연도의 배당 이벤트 → 종목별 최신 1건
+  const yearEvents = {};
+  for (const e of divData) {
+    if (!e.recordDate || !e.recordDate.startsWith(selYear)) continue;
+    if (q && !e.name.toLowerCase().includes(q) && !e.ticker.includes(q)) continue;
+    if (F.hmarket !== 'all' && e.market !== F.hmarket) continue;
+    const t = e.ticker;
+    if (!yearEvents[t]) yearEvents[t] = [];
+    yearEvents[t].push(e);
+  }
+
+  // 종목별 집계
+  let rows = [];
+  for (const [t, evts] of Object.entries(yearEvents)) {
+    const meta = tickerMeta[t];
+    if (streakOnly && (meta?.streak || 0) < 3) continue;
+
+    const totalDPS = evts.reduce((s, e) => s + (e.dps || 0), 0);
+    const bestYield = Math.max(...evts.map(e => e.yield || 0));
+    const latest = evts.sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''))[0];
+
+    // DPS 추이 (최근 5년)
+    const dpsTrend = [];
+    const baseY = parseInt(selYear);
+    for (let y = baseY - 4; y <= baseY; y++) {
+      dpsTrend.push(meta?.yearDPS[String(y)] || 0);
+    }
+
+    rows.push({ ticker: t, name: latest.name, market: latest.market, dps: totalDPS, yield: bestYield, streak: meta?.streak || 0, recordDate: latest.recordDate, rceptNo: latest.rceptNo, dpsTrend });
+  }
+
+  // 정렬
+  if (sortMode === 'streak') rows.sort((a, b) => b.streak - a.streak || b.yield - a.yield);
+  else if (sortMode === 'yield') rows.sort((a, b) => b.yield - a.yield);
+  else if (sortMode === 'dps') rows.sort((a, b) => b.dps - a.dps);
+  else rows.sort((a, b) => a.name.localeCompare(b.name));
+
+  const tbody = document.getElementById('histBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
+    document.getElementById('countInfo').textContent = '';
+    return;
+  }
+
+  let html = '';
+  for (const r of rows) {
+    // 미니 DPS 추이 바
+    const maxDPS = Math.max(...r.dpsTrend, 1);
+    let trendHtml = '<div style="display:flex;gap:1px;align-items:end;height:20px;">';
+    for (let i = 0; i < r.dpsTrend.length; i++) {
+      const h = r.dpsTrend[i] > 0 ? Math.max(3, Math.round(r.dpsTrend[i] / maxDPS * 18)) : 0;
+      const isLast = i === r.dpsTrend.length - 1;
+      const color = h === 0 ? 'transparent' : isLast ? 'var(--accent)' : 'var(--border)';
+      trendHtml += `<div style="width:6px;height:${h}px;background:${color};border-radius:1px;" title="${r.dpsTrend[i].toLocaleString()}원"></div>`;
+    }
+    trendHtml += '</div>';
+
+    const streakTxt = r.streak >= 5 ? `<span style="color:var(--gold);font-weight:700;">${r.streak}</span>` :
+                      r.streak >= 3 ? `<span style="color:var(--green);">${r.streak}</span>` :
+                      r.streak > 0 ? r.streak : '-';
+
+    html += `<tr>
+      <td><span class="clickable-name" onclick="showDetail('${esc(r.ticker)}','${esc(r.name)}')">${esc(r.name)}</span> <span style="color:var(--muted);font-size:10px;">${esc(r.ticker)}</span></td>
+      <td>${mktBadge(r.market)}</td>
+      <td style="text-align:right;font-weight:600;">${r.dps ? r.dps.toLocaleString() : '-'}</td>
+      <td style="text-align:right;" class="${r.yield >= 3 ? 'up' : ''}">${r.yield ? r.yield.toFixed(1) + '%' : '-'}</td>
+      <td style="text-align:center;">${streakTxt}</td>
+      <td>${trendHtml}</td>
+      <td style="color:var(--muted);">${esc(r.recordDate)}</td>
+      <td>${dartLink(r.rceptNo)}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  document.getElementById('countInfo').textContent = `${rows.length.toLocaleString()}개 종목 (${selYear}년)`;
+}
+
+// ========== 자사주 ==========
+function renderBuyback() {
+  const q = (document.getElementById('search').value || '').trim().toLowerCase();
+
+  let list = bbData.filter(e => {
+    if (q && !e.name.toLowerCase().includes(q) && !e.ticker.includes(q)) return false;
+    if (F.bbtype !== 'all' && e.type !== F.bbtype) return false;
+    if (F.bbmarket !== 'all' && e.market !== F.bbmarket) return false;
+    return true;
+  });
+
+  const { key, asc } = bbSort_;
+  list.sort((a, b) => {
+    let va = a[key] ?? '', vb = b[key] ?? '';
+    if (typeof va === 'number' && typeof vb === 'number') return asc ? va - vb : vb - va;
+    return asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+
+  document.querySelectorAll('[id^="sb-"]').forEach(el => el.textContent = '');
+  const arrow = document.getElementById('sb-' + key);
+  if (arrow) arrow.textContent = asc ? '\u25B2' : '\u25BC';
+
+  const tbody = document.getElementById('bbBody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">데이터가 없습니다</td></tr>';
+    document.getElementById('countInfo').textContent = '';
+    return;
+  }
+
+  let html = '';
+  for (const e of list) {
+    const bbBadge = e.type === '소각' ? '<span class="badge b-bb">소각</span>'
+      : e.type === '매입' ? '<span class="badge b-buy">매입</span>'
+      : e.type === '처분' ? '<span class="badge b-dispose">처분</span>' : '';
+
+    html += `<tr>
+      <td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span> <span style="color:var(--muted);font-size:10px;">${esc(e.ticker)}</span></td>
+      <td>${mktBadge(e.market)}</td>
+      <td>${bbBadge}</td>
+      <td>${esc(e.buybackDate)}</td>
+      <td style="text-align:right;font-weight:600;">${e.shareCount ? e.shareCount.toLocaleString() : '-'}</td>
+      <td style="text-align:right;font-weight:600;">${fmtAmount(e.totalAmount)}</td>
+      <td style="color:var(--muted);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;" title="${esc(e.method || '')}">${esc(e.method || '')}</td>
+      <td>${dartLink(e.rceptNo)}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  document.getElementById('countInfo').textContent = `${list.length.toLocaleString()}건`;
+}
+
+// ========== Detail Panel ==========
 function showDetail(ticker, name) {
-  const panel = document.getElementById('detailPanel');
-  const overlay = document.getElementById('detailOverlay');
   document.getElementById('detailName').textContent = name;
-
-  // Find matching events
-  const tickerDivs = divData.filter(e => e.ticker === ticker).sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''));
+  const meta = tickerMeta[ticker];
   const tickerBBs = bbData.filter(e => e.ticker === ticker).sort((a, b) => (b.buybackDate || '').localeCompare(a.buybackDate || ''));
-
-  const market = tickerDivs[0]?.market || tickerBBs[0]?.market || '';
-  document.getElementById('detailMeta').textContent = `${ticker} · ${market}`;
+  const market = meta?.market || tickerBBs[0]?.market || '';
+  const streakInfo = meta?.streak ? ` · ${meta.streak}년 연속배당` : '';
+  document.getElementById('detailMeta').textContent = `${ticker} · ${market}${streakInfo}`;
 
   let html = '';
 
-  // 배당 이력
-  if (tickerDivs.length > 0) {
-    html += `<div class="detail-section"><h3>배당 이력 (${tickerDivs.length}건)</h3><table class="detail-table">
-      <tr style="color:var(--muted);font-size:11px;"><td>기준일</td><td>구분</td><td style="text-align:right">DPS</td><td style="text-align:right">수익률</td><td>지급일</td><td>사업연도</td><td></td></tr>`;
-    for (const e of tickerDivs) {
-      const typeBadge = e.type === '선배당' ? '<span class="badge b-pre">선배당</span>'
-        : e.type === '후배당' ? '<span class="badge b-post">후배당</span>' : '';
+  // 배당 이력 (연도별 그룹)
+  if (meta && meta.events.length > 0) {
+    const sorted = [...meta.events].sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''));
+    html += `<div class="detail-section"><h3>배당 이력 (${sorted.length}건)</h3><table class="detail-table">
+      <tr style="color:var(--muted);font-size:11px;"><td>기준일</td><td>구분</td><td style="text-align:right">DPS</td><td style="text-align:right">수익률</td><td>지급일</td><td></td></tr>`;
+    for (const e of sorted) {
       html += `<tr>
         <td>${esc(e.recordDate)}</td>
-        <td>${typeBadge}</td>
+        <td>${typeBadge(e.type)}</td>
         <td style="text-align:right;font-weight:600;">${e.dps ? e.dps.toLocaleString() : '-'}</td>
         <td style="text-align:right;${e.yield >= 3 ? 'color:var(--up)' : ''}">${e.yield ? e.yield.toFixed(1) + '%' : '-'}</td>
         <td style="color:var(--muted);">${esc(e.payDate)}</td>
-        <td style="color:var(--muted);">${esc(e.fiscalYear)}</td>
-        <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener">원문</a>` : ''}</td>
+        <td>${dartLink(e.rceptNo)}</td>
       </tr>`;
     }
     html += '</table></div>';
+
+    // DPS 연간 추이
+    const years = [...meta.years].sort();
+    if (years.length >= 2) {
+      const maxDPS = Math.max(...years.map(y => meta.yearDPS[y] || 0), 1);
+      html += `<div class="detail-section"><h3>연간 DPS 추이</h3><div style="display:flex;gap:4px;align-items:end;height:60px;padding-top:8px;">`;
+      for (const y of years) {
+        const dps = meta.yearDPS[y] || 0;
+        const h = dps > 0 ? Math.max(4, Math.round(dps / maxDPS * 50)) : 0;
+        const isThis = y === THIS_YEAR;
+        const color = isThis ? 'var(--gold)' : 'var(--accent)';
+        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:0;">
+          <div style="font-size:9px;color:var(--muted);">${dps > 0 ? dps.toLocaleString() : ''}</div>
+          <div style="width:100%;max-width:24px;height:${h}px;background:${color};border-radius:2px;"></div>
+          <div style="font-size:9px;color:var(--muted);">${y.slice(2)}</div>
+        </div>`;
+      }
+      html += '</div></div>';
+    }
   }
 
   // 자사주 이력
   if (tickerBBs.length > 0) {
-    html += `<div class="detail-section"><h3>자사주 소각·매입 이력 (${tickerBBs.length}건)</h3><table class="detail-table">
-      <tr style="color:var(--muted);font-size:11px;"><td>일자</td><td>구분</td><td style="text-align:right">주식수</td><td style="text-align:right">총액</td><td>방법</td><td></td></tr>`;
+    html += `<div class="detail-section"><h3>자사주 소각·매입 (${tickerBBs.length}건)</h3><table class="detail-table">
+      <tr style="color:var(--muted);font-size:11px;"><td>일자</td><td>구분</td><td style="text-align:right">주식수</td><td style="text-align:right">총액</td><td></td></tr>`;
     for (const e of tickerBBs) {
-      const typeBadge = e.type === '소각' ? '<span class="badge b-bb">소각</span>'
-        : e.type === '매입' ? '<span class="badge b-buy">매입</span>'
-        : e.type === '처분' ? '<span class="badge b-dispose">처분</span>' : '';
+      const badge = e.type === '소각' ? '<span class="badge b-bb">소각</span>' : e.type === '매입' ? '<span class="badge b-buy">매입</span>' : e.type === '처분' ? '<span class="badge b-dispose">처분</span>' : '';
       html += `<tr>
         <td>${esc(e.buybackDate)}</td>
-        <td>${typeBadge}</td>
+        <td>${badge}</td>
         <td style="text-align:right;font-weight:600;">${e.shareCount ? e.shareCount.toLocaleString() : '-'}</td>
         <td style="text-align:right;font-weight:600;">${fmtAmount(e.totalAmount)}</td>
-        <td style="color:var(--muted);font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;" title="${esc(e.method || '')}">${esc(e.method || '')}</td>
-        <td>${e.rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${e.rceptNo}" target="_blank" rel="noopener">원문</a>` : ''}</td>
+        <td>${dartLink(e.rceptNo)}</td>
       </tr>`;
     }
     html += '</table></div>';
   }
 
-  if (!tickerDivs.length && !tickerBBs.length) {
-    html = '<div class="detail-section" style="color:var(--muted);text-align:center;padding:40px;">데이터가 없습니다</div>';
-  }
+  if (!html) html = '<div class="detail-section" style="color:var(--muted);text-align:center;padding:40px;">데이터가 없습니다</div>';
 
   document.getElementById('detailContent').innerHTML = html;
-  panel.style.display = 'block';
-  overlay.style.display = 'block';
+  document.getElementById('detailPanel').style.display = 'block';
+  document.getElementById('detailOverlay').style.display = 'block';
 }
 
 function closeDetail() {
   document.getElementById('detailPanel').style.display = 'none';
   document.getElementById('detailOverlay').style.display = 'none';
 }
-
-// ESC key to close detail
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 
+// ========== Helpers ==========
+function mktBadge(m) {
+  return m === 'KOSPI' ? '<span class="badge b-kospi">KOSPI</span>' : m === 'KOSDAQ' ? '<span class="badge b-kosdaq">KOSDAQ</span>' : m || '';
+}
+function typeBadge(t) {
+  return t === '선배당' ? '<span class="badge b-pre">선배당</span>' : t === '후배당' ? '<span class="badge b-post">후배당</span>' : '';
+}
+function dartLink(rceptNo) {
+  return rceptNo ? `<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${rceptNo}" target="_blank" rel="noopener">원문</a>` : '';
+}
 function fmtAmount(v) {
   if (!v) return '-';
   if (v >= 1e12) return (v / 1e12).toFixed(1) + '조';
@@ -544,7 +732,6 @@ function fmtAmount(v) {
   if (v >= 1e4) return (v / 1e4).toFixed(0) + '만';
   return v.toLocaleString();
 }
-
 function esc(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
