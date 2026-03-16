@@ -227,7 +227,8 @@ async function init(){
     });
     buildMeta();
     dataUpdated=dR.updated||'';
-    document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · ${dataUpdated}`;
+    const priceCount=Object.keys(priceMap).length;
+    document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · 현재가 ${priceCount.toLocaleString()}종목 · ${dataUpdated}`;
     buildYearSelect();buildStats();render();
   }catch(e){console.error(e);}
   document.getElementById('loading').style.display='none';
@@ -352,7 +353,10 @@ function renderCal(){
     const ev=dateMap[calSelectedDate];
     let ehtml=`<div style="font-size:13px;font-weight:600;margin-bottom:8px;">${calSelectedDate} — 배당 ${ev.divs.length}건, 자사주 ${ev.bbs.length}건</div>`;
     if(ev.divs.length){
-      ehtml+='<table><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">DPS</th><th style="text-align:right">배당총액</th><th style="text-align:right">공시수익률</th><th style="text-align:right">현재가수익률</th><th>공시</th></tr></thead><tbody>';
+      const isPast=calSelectedDate<TODAY;
+      const yieldHdr1=isPast?'기준일수익률':'공시수익률';
+      const yieldHdr2=isPast?'현재가수익률':'현재가수익률';
+      ehtml+=`<table><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">DPS</th><th style="text-align:right">배당총액</th><th style="text-align:right">${yieldHdr1}</th><th style="text-align:right">${yieldHdr2}</th><th>공시</th></tr></thead><tbody>`;
       ev.divs.sort((a,b)=>(b.totalDividend||0)-(a.totalDividend||0));
       for(const e of ev.divs){
         const cp=priceMap[e.ticker]||0;
@@ -620,9 +624,15 @@ function showDetail(ticker,name){
     html+='</table></div>';
     // 배당 상세
     const sorted=[...m.events].sort((a,b)=>(b.recordDate||'').localeCompare(a.recordDate||''));
-    html+=`<div class="detail-section"><h3>배당 이력 (${sorted.length}건)</h3><table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>기준일</td><td>구분</td><td style="text-align:right">DPS</td><td style="text-align:right">배당총액</td><td style="text-align:right">수익률</td><td></td></tr>`;
+    const cp=priceMap[ticker]||0;
+    html+=`<div class="detail-section"><h3>배당 이력 (${sorted.length}건)</h3>`;
+    if(cp>0)html+=`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;">현재가: ${cp.toLocaleString()}원 (${dataUpdated} 기준)</div>`;
+    html+=`<table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>기준일</td><td>구분</td><td style="text-align:right">DPS</td><td style="text-align:right">배당총액</td><td style="text-align:right">공시수익률</td><td style="text-align:right">현재가수익률</td><td></td></tr>`;
     for(const e of sorted){
-      html+=`<tr><td>${esc(e.recordDate)}</td><td>${typeB(e.type)}</td><td style="text-align:right;font-weight:600;">${e.dps?e.dps.toLocaleString():'-'}</td><td style="text-align:right;">${fmtAmt(e.totalDividend)}</td><td style="text-align:right;${e.yield>=3?'color:var(--up)':''}">${e.yield?e.yield.toFixed(1)+'%':'-'}</td><td>${dartL(e.rceptNo)}</td></tr>`;
+      const cYld=cp>0&&e.dps>0?(e.dps/cp*100):0;
+      const cYldStr=cYld>0?cYld.toFixed(1)+'%':'-';
+      const isPastEv=(e.recordDate||'')<TODAY;
+      html+=`<tr><td>${esc(e.recordDate)}</td><td>${typeB(e.type)}</td><td style="text-align:right;font-weight:600;">${e.dps?e.dps.toLocaleString():'-'}</td><td style="text-align:right;">${fmtAmt(e.totalDividend)}</td><td style="text-align:right;${e.yield>=3?'color:var(--up)':''}">${e.yield?e.yield.toFixed(1)+'%':'-'}</td><td style="text-align:right;${cYld>=3?'color:var(--up)':''}">${cYldStr}</td><td>${dartL(e.rceptNo)}</td></tr>`;
     }
     html+='</table></div>';
   }
