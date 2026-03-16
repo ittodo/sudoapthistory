@@ -203,7 +203,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 const NOW=new Date(), TODAY=NOW.toISOString().slice(0,10), THIS_YEAR=NOW.getFullYear();
 const YEARS=[2022,2023,2024,2025,2026];
 let divData=[],bbData=[],priceMap={},currentTab='calendar';
-let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null;
+let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null, calSort={key:'totalDividend',asc:false};
 let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
 let dataUpdated='',priceDate='';
 
@@ -363,13 +363,25 @@ function renderCal(){
       const yieldHdr1=isPast?'기준일수익률':'공시수익률';
       const pdLabel=priceDate?` (${priceDate})`:'';
       const yieldHdr2=`현재가수익률${pdLabel}`;
-      ehtml+=`<table><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">DPS</th><th style="text-align:right">배당총액</th><th style="text-align:right">${yieldHdr1}</th><th style="text-align:right">${yieldHdr2}</th><th>공시</th></tr></thead><tbody>`;
-      ev.divs.sort((a,b)=>(b.totalDividend||0)-(a.totalDividend||0));
-      for(const e of ev.divs){
-        const cp=priceMap[e.ticker]||0;
-        const curYield=cp>0&&e.dps>0?(e.dps/cp*100):0;
-        const curYieldStr=curYield>0?curYield.toFixed(1)+'%':'-';
-        const curYieldCls=curYield>=3?'color:var(--up)':'';
+      const sa=k=>calSort.key===k?(calSort.asc?'▲':'▼'):'';
+      ehtml+=`<table><thead><tr>
+        <th onclick="calSortBy('name')" style="cursor:pointer;">종목 ${sa('name')}</th>
+        <th>시장</th><th>구분</th>
+        <th onclick="calSortBy('dps')" style="text-align:right;cursor:pointer;">DPS ${sa('dps')}</th>
+        <th onclick="calSortBy('totalDividend')" style="text-align:right;cursor:pointer;">배당총액 ${sa('totalDividend')}</th>
+        <th onclick="calSortBy('yield')" style="text-align:right;cursor:pointer;">${yieldHdr1} ${sa('yield')}</th>
+        <th onclick="calSortBy('curYield')" style="text-align:right;cursor:pointer;">${yieldHdr2} ${sa('curYield')}</th>
+        <th>공시</th></tr></thead><tbody>`;
+      // Enrich with curYield for sorting
+      const enriched=ev.divs.map(e=>{const cp=priceMap[e.ticker]||0;return{...e,curYield:cp>0&&e.dps>0?(e.dps/cp*100):0};});
+      enriched.sort((a,b)=>{
+        let va=a[calSort.key]??'',vb=b[calSort.key]??'';
+        if(typeof va==='number'&&typeof vb==='number')return calSort.asc?va-vb:vb-va;
+        return calSort.asc?String(va).localeCompare(String(vb)):String(vb).localeCompare(String(va));
+      });
+      for(const e of enriched){
+        const curYieldStr=e.curYield>0?e.curYield.toFixed(1)+'%':'-';
+        const curYieldCls=e.curYield>=3?'color:var(--up)':'';
         ehtml+=`<tr><td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td><td>${mktB(e.market)}</td><td>${typeB(e.type)}</td><td style="text-align:right;font-weight:600;">${e.dps?e.dps.toLocaleString():'-'}</td><td style="text-align:right;">${fmtAmt(e.totalDividend)}</td><td style="text-align:right;${e.yield>=3?'color:var(--up)':''}">${e.yield?e.yield.toFixed(1)+'%':'-'}</td><td style="text-align:right;${curYieldCls}">${curYieldStr}</td><td>${dartL(e.rceptNo)}</td></tr>`;
       }
       ehtml+='</tbody></table>';
@@ -390,6 +402,7 @@ function renderCal(){
 }
 
 function selectCalDate(ds){calSelectedDate=calSelectedDate===ds?null:ds;renderCal();}
+function calSortBy(key){if(calSort.key===key)calSort.asc=!calSort.asc;else{calSort.key=key;calSort.asc=key==='name';}renderCal();}
 
 // ===== ANNUAL =====
 function renderAnnual(){
