@@ -125,26 +125,22 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <!-- ===== 연간 분석 ===== -->
 <div id="panelAnnual" style="display:none;">
   <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-    <div style="display:flex;gap:3px;" id="yearBar"></div>
+    <div style="display:flex;gap:3px;">
+      <button class="pill active" data-aview="monthly" onclick="setF('aview','monthly')">월별 비교</button>
+      <button class="pill" data-aview="yearly" onclick="setF('aview','yearly')">연간 합계</button>
+    </div>
     <div style="display:flex;gap:3px;margin-left:12px;">
       <button class="pill active" data-amarket="all" onclick="setF('amarket','all')">전체</button>
       <button class="pill" data-amarket="KOSPI" onclick="setF('amarket','KOSPI')">KOSPI</button>
       <button class="pill" data-amarket="KOSDAQ" onclick="setF('amarket','KOSDAQ')">KOSDAQ</button>
     </div>
+    <div style="display:flex;gap:3px;margin-left:12px;" id="yearBar"></div>
+    <div style="font-size:10px;color:var(--muted);margin-left:auto;" id="buildDate"></div>
   </div>
-  <!-- 연간 집계 카드 -->
+  <!-- 집계 카드 -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:14px;" id="annualStats"></div>
-  <!-- 연간 추이 차트 -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-    <div class="stat-card" style="text-align:left;padding:16px;">
-      <div class="label" style="margin-bottom:8px;">배당 총액 추이 (조원)</div>
-      <div id="divChart" style="display:flex;align-items:end;gap:6px;height:80px;"></div>
-    </div>
-    <div class="stat-card" style="text-align:left;padding:16px;">
-      <div class="label" style="margin-bottom:8px;">자사주 총액 추이 (조원)</div>
-      <div id="bbChart" style="display:flex;align-items:end;gap:6px;height:80px;"></div>
-    </div>
-  </div>
+  <!-- 차트 영역 -->
+  <div id="annualCharts"></div>
 </div>
 
 <!-- ===== 기업별 ===== -->
@@ -206,7 +202,8 @@ const NOW=new Date(), TODAY=NOW.toISOString().slice(0,10), THIS_YEAR=NOW.getFull
 const YEARS=[2022,2023,2024,2025,2026];
 let divData=[],bbData=[],currentTab='calendar';
 let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null;
-let F={cmarket:'all',amarket:'all',cmpmarket:'all',aYear:THIS_YEAR};
+let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
+let dataUpdated='';
 
 // Precomputed
 let tickerMeta={}, yearAgg={};
@@ -228,7 +225,8 @@ async function init(){
       if(e.recordDate&&e.fiscalYear){const ry=+e.recordDate.substring(0,4),fy=+e.fiscalYear;if(ry>fy&&e.type!=='후배당')e.type='후배당';}
     });
     buildMeta();
-    document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · ${dR.updated||''}`;
+    dataUpdated=dR.updated||'';
+    document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · ${dataUpdated}`;
     buildYearSelect();buildStats();render();
   }catch(e){console.error(e);}
   document.getElementById('loading').style.display='none';
@@ -379,50 +377,159 @@ function selectCalDate(ds){calSelectedDate=calSelectedDate===ds?null:ds;renderCa
 
 // ===== ANNUAL =====
 function renderAnnual(){
-  const mkt=F.amarket;
-  // Rebuild per-market aggregation
-  const ya={};YEARS.forEach(y=>ya[y]={divT:0,bbT:0,divN:0,bbN:0});
+  const mkt=F.amarket, view=F.aview||'monthly';
+  document.getElementById('buildDate').textContent=`데이터 빌드: ${dataUpdated}`;
+
+  // Build monthly aggregation: year-month → {divT, bbT, divN, bbN}
+  const monthly={};
   for(const e of divData){
-    const y=+(e.recordDate||'').substring(0,4);if(!YEARS.includes(y))continue;
+    const rd=e.recordDate||'';if(rd.length<7)continue;
     if(mkt!=='all'&&e.market!==mkt)continue;
-    ya[y].divT+=(e.totalDividend||0);ya[y].divN++;
+    const ym=rd.substring(0,7);
+    if(!monthly[ym])monthly[ym]={divT:0,bbT:0,divN:0,bbN:0};
+    monthly[ym].divT+=(e.totalDividend||0);monthly[ym].divN++;
   }
   for(const e of bbData){
-    const y=+((e.buybackDate||'').replace(/\./g,'-').substring(0,4));if(!YEARS.includes(y))continue;
+    const bd=(e.buybackDate||'').replace(/\./g,'-');if(bd.length<7)continue;
     if(mkt!=='all'&&e.market!==mkt)continue;
-    ya[y].bbT+=(e.totalAmount||0);ya[y].bbN++;
+    const ym=bd.substring(0,7);
+    if(!monthly[ym])monthly[ym]={divT:0,bbT:0,divN:0,bbN:0};
+    monthly[ym].bbT+=(e.totalAmount||0);monthly[ym].bbN++;
   }
 
-  // Stats for selected year
-  const sy=F.aYear, a=ya[sy]||{divT:0,bbT:0};
+  // Build yearly aggregation from monthly
+  const ya={};YEARS.forEach(y=>ya[y]={divT:0,bbT:0,divN:0,bbN:0});
+  for(const [ym,d] of Object.entries(monthly)){
+    const y=+ym.substring(0,4);if(!YEARS.includes(y))continue;
+    ya[y].divT+=d.divT;ya[y].bbT+=d.bbT;ya[y].divN+=d.divN;ya[y].bbN+=d.bbN;
+  }
+
+  const sy=F.aYear, a=ya[sy]||{divT:0,bbT:0,divN:0,bbN:0};
   const dT=a.divT/1e12, bT=a.bbT/1e12;
-  const prev=ya[sy-1];
-  const dGrow=prev&&prev.divT>0?((a.divT-prev.divT)/prev.divT*100).toFixed(0)+'%':'-';
-  const bGrow=prev&&prev.bbT>0?((a.bbT-prev.bbT)/prev.bbT*100).toFixed(0)+'%':'-';
+
+  // YTD comparison: same months in previous year
+  const curMaxMonth=sy===THIS_YEAR?NOW.getMonth()+1:12;
+  let ytdCur=0,ytdPrev=0,ytdBBCur=0,ytdBBPrev=0;
+  for(let m=1;m<=curMaxMonth;m++){
+    const ymCur=`${sy}-${String(m).padStart(2,'0')}`;
+    const ymPrev=`${sy-1}-${String(m).padStart(2,'0')}`;
+    ytdCur+=(monthly[ymCur]?.divT||0);ytdPrev+=(monthly[ymPrev]?.divT||0);
+    ytdBBCur+=(monthly[ymCur]?.bbT||0);ytdBBPrev+=(monthly[ymPrev]?.bbT||0);
+  }
+  const ytdLabel=sy===THIS_YEAR?`1~${curMaxMonth}월 YTD`:`연간`;
+  const dGrow=ytdPrev>0?((ytdCur-ytdPrev)/ytdPrev*100).toFixed(0)+'%':'-';
+  const bGrow=ytdBBPrev>0?((ytdBBCur-ytdBBPrev)/ytdBBPrev*100).toFixed(0)+'%':'-';
 
   document.getElementById('annualStats').innerHTML=`
-    <div class="stat-card"><div class="label">${sy} 배당총액</div><div class="value">${dT.toFixed(1)}조</div><div class="sub">${a.divN}건</div></div>
+    <div class="stat-card"><div class="label">${sy} 배당총액</div><div class="value">${dT.toFixed(1)}조</div><div class="sub">${a.divN}건 ${sy===THIS_YEAR?'(진행중)':''}</div></div>
     <div class="stat-card"><div class="label">${sy} 자사주총액</div><div class="value" style="color:var(--up)">${bT.toFixed(1)}조</div><div class="sub">${a.bbN}건</div></div>
     <div class="stat-card"><div class="label">${sy} 주주환원</div><div class="value" style="color:var(--gold)">${(dT+bT).toFixed(1)}조</div></div>
-    <div class="stat-card"><div class="label">배당 전년비</div><div class="value" style="color:${dGrow.includes('-')?'var(--dn)':'var(--green)'}">${dGrow}</div></div>
-    <div class="stat-card"><div class="label">자사주 전년비</div><div class="value" style="color:${bGrow.includes('-')?'var(--dn)':'var(--green)'}">${bGrow}</div></div>
+    <div class="stat-card"><div class="label">배당 전년비 (${ytdLabel})</div><div class="value" style="color:${dGrow.includes('-')?'var(--dn)':'var(--green)'}">${dGrow}</div><div class="sub">${(ytdPrev/1e12).toFixed(1)}→${(ytdCur/1e12).toFixed(1)}조</div></div>
+    <div class="stat-card"><div class="label">자사주 전년비 (${ytdLabel})</div><div class="value" style="color:${bGrow.includes('-')?'var(--dn)':'var(--green)'}">${bGrow}</div><div class="sub">${(ytdBBPrev/1e12).toFixed(1)}→${(ytdBBCur/1e12).toFixed(1)}조</div></div>
   `;
 
-  // Charts
+  if(view==='monthly') renderMonthlyChart(monthly);
+  else renderYearlyChart(ya);
+  document.getElementById('countInfo').textContent='';
+}
+
+function renderMonthlyChart(monthly){
+  const MONTHS=['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const colors={2022:'#475569',2023:'#64748b',2024:'#94a3b8',2025:'var(--accent)',2026:'var(--gold)'};
+  const selYears=YEARS;
+
+  // 배당 월별 비교
+  let maxVal=0;
+  const grid={};
+  for(const y of selYears){
+    grid[y]={};
+    for(const m of MONTHS){
+      const ym=`${y}-${m}`;
+      const v=(monthly[ym]?.divT||0)/1e12;
+      grid[y][m]=v;if(v>maxVal)maxVal=v;
+    }
+  }
+  maxVal=maxVal||1;
+
+  let html=`<div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
+    <div class="label" style="margin-bottom:4px;">배당 총액 월별 비교 (조원)</div>
+    <div style="display:flex;gap:1px;font-size:9px;color:var(--muted);margin-bottom:2px;">${MONTHS.map(m=>`<div style="flex:1;text-align:center;">${+m}월</div>`).join('')}</div>`;
+  for(const y of selYears){
+    const isSel=y===F.aYear;
+    const col=colors[y]||'#475569';
+    html+=`<div style="display:flex;gap:1px;align-items:end;height:32px;margin-bottom:1px;" title="${y}">
+      <div style="width:30px;font-size:9px;color:${isSel?'#fff':'var(--muted)'};font-weight:${isSel?700:400};line-height:32px;">${y}</div>`;
+    for(const m of MONTHS){
+      const v=grid[y][m];
+      const h=v>0?Math.max(2,Math.round(v/maxVal*28)):0;
+      const opacity=isSel?1:0.5;
+      html+=`<div style="flex:1;display:flex;align-items:end;justify-content:center;height:100%;"><div style="width:100%;height:${h}px;background:${col};opacity:${opacity};border-radius:1px;" title="${y}.${m}: ${v.toFixed(1)}조"></div></div>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  // 자사주 월별
+  let maxBB=0;
+  const bbGrid={};
+  for(const y of selYears){
+    bbGrid[y]={};
+    for(const m of MONTHS){
+      const ym=`${y}-${m}`;
+      const v=(monthly[ym]?.bbT||0)/1e12;
+      bbGrid[y][m]=v;if(v>maxBB)maxBB=v;
+    }
+  }
+  maxBB=maxBB||1;
+
+  html+=`<div class="stat-card" style="text-align:left;padding:16px;">
+    <div class="label" style="margin-bottom:4px;">자사주 총액 월별 비교 (조원)</div>
+    <div style="display:flex;gap:1px;font-size:9px;color:var(--muted);margin-bottom:2px;"><div style="width:30px;"></div>${MONTHS.map(m=>`<div style="flex:1;text-align:center;">${+m}월</div>`).join('')}</div>`;
+  for(const y of selYears){
+    const isSel=y===F.aYear;
+    const col=y===2026?'var(--up)':colors[y]||'#475569';
+    html+=`<div style="display:flex;gap:1px;align-items:end;height:32px;margin-bottom:1px;">
+      <div style="width:30px;font-size:9px;color:${isSel?'#fff':'var(--muted)'};font-weight:${isSel?700:400};line-height:32px;">${y}</div>`;
+    for(const m of MONTHS){
+      const v=bbGrid[y][m];
+      const h=v>0?Math.max(2,Math.round(v/maxBB*28)):0;
+      const opacity=isSel?1:0.5;
+      html+=`<div style="flex:1;display:flex;align-items:end;justify-content:center;height:100%;"><div style="width:100%;height:${h}px;background:${col};opacity:${opacity};border-radius:1px;" title="${y}.${m}: ${v.toFixed(1)}조"></div></div>`;
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+
+  document.getElementById('annualCharts').innerHTML=html;
+}
+
+function renderYearlyChart(ya){
   const maxDiv=Math.max(...YEARS.map(y=>(ya[y]?.divT||0)/1e12),1);
   const maxBB=Math.max(...YEARS.map(y=>(ya[y]?.bbT||0)/1e12),1);
-  let dc='',bc='';
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div class="stat-card" style="text-align:left;padding:16px;">
+      <div class="label" style="margin-bottom:8px;">배당 총액 추이 (조원)</div>
+      <div style="display:flex;align-items:end;gap:6px;height:80px;">`;
   for(const y of YEARS){
-    const dv=(ya[y]?.divT||0)/1e12, bv=(ya[y]?.bbT||0)/1e12;
-    const dh=Math.max(4,Math.round(dv/maxDiv*70)),bh=Math.max(4,Math.round(bv/maxBB*70));
+    const dv=(ya[y]?.divT||0)/1e12;
+    const dh=Math.max(4,Math.round(dv/maxDiv*70));
     const isSel=y===F.aYear;
-    const dCol=isSel?'var(--accent)':'#334155', bCol=isSel?'var(--up)':'#334155';
-    dc+=`<div style="flex:1;text-align:center;"><div style="height:${dh}px;background:${dCol};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})" title="${dv.toFixed(1)}조"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}</div><div style="font-size:10px;font-weight:600;">${dv.toFixed(1)}</div></div>`;
-    bc+=`<div style="flex:1;text-align:center;"><div style="height:${bh}px;background:${bCol};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})" title="${bv.toFixed(1)}조"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}</div><div style="font-size:10px;font-weight:600;">${bv.toFixed(1)}</div></div>`;
+    const col=isSel?'var(--accent)':'#334155';
+    html+=`<div style="flex:1;text-align:center;"><div style="height:${dh}px;background:${col};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${dv.toFixed(1)}</div></div>`;
   }
-  document.getElementById('divChart').innerHTML=dc;
-  document.getElementById('bbChart').innerHTML=bc;
-  document.getElementById('countInfo').textContent='';
+  html+=`</div></div>
+    <div class="stat-card" style="text-align:left;padding:16px;">
+      <div class="label" style="margin-bottom:8px;">자사주 총액 추이 (조원)</div>
+      <div style="display:flex;align-items:end;gap:6px;height:80px;">`;
+  for(const y of YEARS){
+    const bv=(ya[y]?.bbT||0)/1e12;
+    const bh=Math.max(4,Math.round(bv/maxBB*70));
+    const isSel=y===F.aYear;
+    const col=isSel?'var(--up)':'#334155';
+    html+=`<div style="flex:1;text-align:center;"><div style="height:${bh}px;background:${col};border-radius:3px 3px 0 0;margin:0 auto;width:80%;cursor:pointer;" onclick="setF('aYear',${y})"></div><div style="font-size:9px;color:var(--muted);margin-top:4px;">${y}${y===THIS_YEAR?' *':''}</div><div style="font-size:10px;font-weight:600;">${bv.toFixed(1)}</div></div>`;
+  }
+  html+=`</div></div></div>`;
+  document.getElementById('annualCharts').innerHTML=html;
 }
 
 // ===== COMPANY =====
