@@ -790,59 +790,59 @@ function calcOpportunity() {
   const labelsYear = [];
   const dataA = [], dataB = [], dataC = [];
 
-  // y=0 초기값 (세 시나리오 모두 equity에서 출발)
+  // 월 단위 환산율
+  const monthlyInvest = Math.pow(1 + investReturn, 1/12) - 1;
+  const totalMonths = years * 12;
+
+  // m=0 초기값 (세 시나리오 모두 equity에서 출발)
   labelsYear.push('0년');
   dataA.push(Math.round(price - bLoan));
   dataB.push(Math.round(jDeposit + jPool - jLoan));
   dataC.push(Math.round(wDeposit + wPool));
 
-  for (let y = 1; y <= years; y++) {
-    labelsYear.push(`${y}년`);
+  // 월 단위 시뮬레이션
+  for (let m = 1; m <= totalMonths; m++) {
 
-    // A: 매매 — 집값 상승, 대출 잔액 감소 (원리금 상환으로 잔액 줄어듦)
-    const houseVal = price * Math.pow(1+priceGrowth, y);
-    let remLoan = 0;
-    if (bLoan > 0 && bLoanRate > 0) {
-      const paidN = y * 12;
-      if (paidN < bN) {
-        remLoan = bLoan * (Math.pow(1+bLoanRate,bN) - Math.pow(1+bLoanRate,paidN)) / (Math.pow(1+bLoanRate,bN)-1);
-      }
-    }
-    dataA.push(Math.round(houseVal - remLoan));
+    // B: 이달 투자풀 = 전달풀 × 월복리 + (매수월납입 - 전세월이자) 적립
+    jPool = jPool * (1 + monthlyInvest) + (bMonthly - jMonthlyInterest);
 
-    // B: 전세 시뮬레이션
-    // 핵심: 매수했으면 냈을 월납입금(bMonthly)과 전세이자(jMonthlyInterest)의 차액을
-    //       매달 투자풀에 추가 적립 → 절약한 돈이 복리로 불어남
-    const jSurplus = (bMonthly - jMonthlyInterest) * 12;
-    jPool = jPool * (1 + investReturn) + jSurplus;
-    // 2년마다 보증금 갱신 (당해 연도 이자는 갱신 전 대출 기준, 신규 금리는 다음 기간 적용)
-    if (y % 2 === 0) {
-      const newJeonse = jeonse * Math.pow(1 + priceGrowth, y);
-      const depIncrease = newJeonse - jDeposit;
-      const newJLoan = Math.max(0, newJeonse - equity);
-      const loanIncrease = Math.max(0, newJLoan - jLoan);
-      jPool -= Math.max(0, depIncrease - loanIncrease); // 추가 보증금(대출 초과분) 차감
+    // C: 이달 투자풀 = 전달풀 × 월복리 + (매수월납입 - 월세) 적립
+    wPool = wPool * (1 + monthlyInvest) + (bMonthly - curWRent);
+
+    // 24개월(2년)마다 보증금·월세 갱신
+    if (m % 24 === 0) {
+      const renewYrs = m / 12; // 2, 4, 6, ...
+
+      // B 갱신: 보증금·대출·월이자 업데이트
+      const newJeonse = jeonse * Math.pow(1 + priceGrowth, renewYrs);
+      const newJLoan  = Math.max(0, newJeonse - equity);
+      jPool -= Math.max(0, (newJeonse - jDeposit) - Math.max(0, newJLoan - jLoan));
       jDeposit = newJeonse;
-      jLoan = newJLoan;
-      jMonthlyInterest = jLoan * jLoanRate / 12; // 다음 기간 월 이자 갱신
-    }
-    // 순자산 = 보증금(만기 반환) + 투자풀 - 전세대출 잔액
-    dataB.push(Math.round(jDeposit + jPool - jLoan));
+      jLoan    = newJLoan;
+      jMonthlyInterest = jLoan * jLoanRate / 12;
 
-    // C: 월세 시뮬레이션
-    // 핵심: 매수했으면 냈을 월납입금(bMonthly)과 월세(curWRent)의 차액을
-    //       매달 투자풀에 추가 적립 → 절약한 돈이 복리로 불어남
-    const wSurplus = (bMonthly - curWRent) * 12;
-    wPool = wPool * (1 + investReturn) + wSurplus;
-    // 2년마다 보증금·월세 갱신
-    if (y % 2 === 0) {
-      const newWDep = wDep * Math.pow(1 + priceGrowth, y);
-      wPool -= Math.max(0, newWDep - wDeposit); // 추가 보증금 차감
+      // C 갱신: 보증금·월세 업데이트
+      const newWDep = wDep * Math.pow(1 + priceGrowth, renewYrs);
+      wPool -= Math.max(0, newWDep - wDeposit);
       wDeposit = newWDep;
-      curWRent = wRent * Math.pow(1 + priceGrowth, y); // 다음 기간 월세 갱신
+      curWRent = wRent * Math.pow(1 + priceGrowth, renewYrs);
     }
-    // 순자산 = 보증금(만기 반환) + 투자풀
-    dataC.push(Math.round(wDeposit + wPool));
+
+    // 매 12개월(연말)마다 차트 데이터 기록
+    if (m % 12 === 0) {
+      const yr = m / 12;
+      labelsYear.push(`${yr}년`);
+
+      // A: 집값(연 단위 공식) - 대출잔액(월 단위 원리금균등 정산)
+      const houseVal = price * Math.pow(1 + priceGrowth, yr);
+      let remLoan = 0;
+      if (bLoan > 0 && bLoanRate > 0 && m < bN) {
+        remLoan = bLoan * (Math.pow(1+bLoanRate,bN) - Math.pow(1+bLoanRate,m)) / (Math.pow(1+bLoanRate,bN) - 1);
+      }
+      dataA.push(Math.round(houseVal - remLoan));
+      dataB.push(Math.round(jDeposit + jPool - jLoan));
+      dataC.push(Math.round(wDeposit + wPool));
+    }
   }
 
   const finalA = dataA[years], finalB = dataB[years], finalC = dataC[years];
