@@ -765,27 +765,32 @@ function calcOpportunity() {
   // ── A: 매매 ──
   const bLoan = Math.max(0, price - equity);
   const bN = 30 * 12;
-  let bMonthly = bLoan;
-  if (bLoanRate > 0 && bLoan > 0) {
-    bMonthly = bLoan * bLoanRate * Math.pow(1+bLoanRate,bN) / (Math.pow(1+bLoanRate,bN)-1);
+  // 매수 월 납입금(원금+이자) — B·C의 "절약액" 기준이 되는 핵심 값
+  let bMonthly = 0;
+  if (bLoan > 0) {
+    bMonthly = bLoanRate > 0
+      ? bLoan * bLoanRate * Math.pow(1+bLoanRate,bN) / (Math.pow(1+bLoanRate,bN)-1)
+      : bLoan / bN;
   }
 
-  // ── B: 전세 — 2년마다 집값 상승률로 보증금 갱신 ──
-  // 매년 이자를 투자풀에서 직접 차감 → 이자 지출분은 복리 성장에서 제외 (공정 비교)
+  // ── B: 전세 ──
+  // 초기 투자풀 = 전세보증금 자기부담 후 남는 자기자본
   let jDeposit = jeonse;
   let jLoan = Math.max(0, jeonse - equity);
-  let jPool = Math.max(0, equity - jeonse); // 투자 가능 여유자본
+  let jPool = Math.max(0, equity - jeonse);
+  // 월 이자(기간별로 갱신)
+  let jMonthlyInterest = jLoan * jLoanRate / 12;
 
-  // ── C: 월세 — 2년마다 집값 상승률로 보증금·월세 갱신 ──
-  // 매년 월세를 투자풀에서 직접 차감 → 월세 지출분은 복리 성장에서 제외 (공정 비교)
+  // ── C: 월세 ──
+  // 초기 투자풀 = 월세보증금 지불 후 남는 자기자본
   let wDeposit = wDep;
   let wPool = Math.max(0, equity - wDep);
-  let curWRent = wRent;
+  let curWRent = wRent; // 월 납입액(기간별로 갱신)
 
   const labelsYear = [];
   const dataA = [], dataB = [], dataC = [];
 
-  // y=0 초기값 (모두 = equity)
+  // y=0 초기값 (세 시나리오 모두 equity에서 출발)
   labelsYear.push('0년');
   dataA.push(Math.round(price - bLoan));
   dataB.push(Math.round(jDeposit + jPool - jLoan));
@@ -794,7 +799,7 @@ function calcOpportunity() {
   for (let y = 1; y <= years; y++) {
     labelsYear.push(`${y}년`);
 
-    // A: 매매 — 집값 상승, 대출 잔액 감소
+    // A: 매매 — 집값 상승, 대출 잔액 감소 (원리금 상환으로 잔액 줄어듦)
     const houseVal = price * Math.pow(1+priceGrowth, y);
     let remLoan = 0;
     if (bLoan > 0 && bLoanRate > 0) {
@@ -806,32 +811,37 @@ function calcOpportunity() {
     dataA.push(Math.round(houseVal - remLoan));
 
     // B: 전세 시뮬레이션
-    // 1) 올해 이자를 풀에서 차감한 나머지가 복리 성장
-    jPool = jPool * (1 + investReturn) - jLoan * jLoanRate;
-    // 2) 2년마다 보증금 갱신 (당해 연도 이자는 갱신 전 대출 기준, 갱신은 다음 기간 적용)
+    // 핵심: 매수했으면 냈을 월납입금(bMonthly)과 전세이자(jMonthlyInterest)의 차액을
+    //       매달 투자풀에 추가 적립 → 절약한 돈이 복리로 불어남
+    const jSurplus = (bMonthly - jMonthlyInterest) * 12;
+    jPool = jPool * (1 + investReturn) + jSurplus;
+    // 2년마다 보증금 갱신 (당해 연도 이자는 갱신 전 대출 기준, 신규 금리는 다음 기간 적용)
     if (y % 2 === 0) {
       const newJeonse = jeonse * Math.pow(1 + priceGrowth, y);
       const depIncrease = newJeonse - jDeposit;
       const newJLoan = Math.max(0, newJeonse - equity);
       const loanIncrease = Math.max(0, newJLoan - jLoan);
-      jPool -= Math.max(0, depIncrease - loanIncrease); // 대출 초과분은 투자풀에서 차감
+      jPool -= Math.max(0, depIncrease - loanIncrease); // 추가 보증금(대출 초과분) 차감
       jDeposit = newJeonse;
       jLoan = newJLoan;
+      jMonthlyInterest = jLoan * jLoanRate / 12; // 다음 기간 월 이자 갱신
     }
-    // 순자산 = 보증금(반환 예정) + 투자풀 - 대출잔액
+    // 순자산 = 보증금(만기 반환) + 투자풀 - 전세대출 잔액
     dataB.push(Math.round(jDeposit + jPool - jLoan));
 
     // C: 월세 시뮬레이션
-    // 1) 올해 월세를 풀에서 차감한 나머지가 복리 성장
-    wPool = wPool * (1 + investReturn) - curWRent * 12;
-    // 2) 2년마다 보증금·월세 갱신
+    // 핵심: 매수했으면 냈을 월납입금(bMonthly)과 월세(curWRent)의 차액을
+    //       매달 투자풀에 추가 적립 → 절약한 돈이 복리로 불어남
+    const wSurplus = (bMonthly - curWRent) * 12;
+    wPool = wPool * (1 + investReturn) + wSurplus;
+    // 2년마다 보증금·월세 갱신
     if (y % 2 === 0) {
       const newWDep = wDep * Math.pow(1 + priceGrowth, y);
-      wPool -= Math.max(0, newWDep - wDeposit); // 추가 보증금은 투자풀에서 차감
+      wPool -= Math.max(0, newWDep - wDeposit); // 추가 보증금 차감
       wDeposit = newWDep;
-      curWRent = wRent * Math.pow(1 + priceGrowth, y); // 다음 기간부터 적용
+      curWRent = wRent * Math.pow(1 + priceGrowth, y); // 다음 기간 월세 갱신
     }
-    // 순자산 = 보증금(반환 예정) + 투자풀
+    // 순자산 = 보증금(만기 반환) + 투자풀
     dataC.push(Math.round(wDeposit + wPool));
   }
 
@@ -851,7 +861,7 @@ function calcOpportunity() {
   $('opp-scenarios').innerHTML = `
     <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:6px">시나리오 A: 매매</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(bMonthly)}만</div>
       <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalA)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
       ${finalA===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
