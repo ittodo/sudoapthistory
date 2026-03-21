@@ -26,6 +26,7 @@
   select.fi { cursor: pointer; }
 
   .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .amount-hint { font-size: 10px; color: #60a5fa; margin-top: 3px; min-height: 14px; letter-spacing: -0.2px; }
 
   .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .grid-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -118,23 +119,28 @@
     <div class="grid-inputs">
       <div>
         <label class="label">매매가 (만원)</label>
-        <input type="text" id="g_price" class="fi" placeholder="예: 80,000" value="80,000" oninput="fmtInput(this)" onblur="syncCommon()">
+        <input type="text" id="g_price" class="fi" placeholder="예: 80,000" value="80,000" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
       </div>
       <div>
         <label class="label">전세보증금 (만원)</label>
-        <input type="text" id="g_jeonse" class="fi" placeholder="예: 50,000" value="50,000" oninput="fmtInput(this)" onblur="syncCommon()">
+        <input type="text" id="g_jeonse" class="fi" placeholder="예: 50,000" value="50,000" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
       </div>
       <div>
         <label class="label">월세보증금 (만원)</label>
-        <input type="text" id="g_wolse_dep" class="fi" placeholder="예: 5,000" value="5,000" oninput="fmtInput(this)" onblur="syncCommon()">
+        <input type="text" id="g_wolse_dep" class="fi" placeholder="예: 5,000" value="5,000" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
       </div>
       <div>
         <label class="label">월세 (만원/월)</label>
-        <input type="text" id="g_wolse" class="fi" placeholder="예: 120" value="120" oninput="fmtInput(this)" onblur="syncCommon()">
+        <input type="text" id="g_wolse" class="fi" placeholder="예: 120" value="120" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
       </div>
       <div>
         <label class="label">자기자본 (만원)</label>
-        <input type="text" id="g_equity" class="fi" placeholder="예: 30,000" value="30,000" oninput="fmtInput(this)" onblur="syncCommon()">
+        <input type="text" id="g_equity" class="fi" placeholder="예: 30,000" value="30,000" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
       </div>
     </div>
   </div>
@@ -158,6 +164,7 @@
       <div>
         <label class="label">대출금액 (만원)</label>
         <input type="text" id="l_amount" class="fi" value="50,000" oninput="fmtInput(this)">
+        <div class="amount-hint"></div>
       </div>
       <div>
         <label class="label">금리 (%)</label>
@@ -210,6 +217,7 @@
           <div>
             <label class="label">중도상환금액 (만원)</label>
             <input type="text" id="pp_amount" class="fi" value="10,000" oninput="fmtInput(this)">
+            <div class="amount-hint"></div>
           </div>
           <div style="display:flex;align-items:flex-end">
             <button class="btn btn-secondary" style="width:100%" onclick="calcPrepay()">시뮬레이션</button>
@@ -239,11 +247,13 @@
       <div class="grid-inputs-3" style="margin-bottom:14px">
         <div>
           <label class="label">전세보증금 (만원)</label>
-          <input type="text" id="c1_jeonse" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c1_jeonse" class="fi" oninput="fmtInput(this)" data-sync="g_jeonse" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">전환 시 보증금 (만원)</label>
-          <input type="text" id="c1_new_dep" class="fi" oninput="fmtInput(this)" value="5,000">
+          <input type="text" id="c1_new_dep" class="fi" oninput="fmtInput(this)" data-sync="g_wolse_dep" value="5,000">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">전월세전환율 (%)</label>
@@ -267,11 +277,13 @@
       <div class="grid-inputs-3" style="margin-bottom:14px">
         <div>
           <label class="label">월세보증금 (만원)</label>
-          <input type="text" id="c2_dep" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c2_dep" class="fi" oninput="fmtInput(this)" data-sync="g_wolse_dep" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">월세 (만원/월)</label>
-          <input type="text" id="c2_rent" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c2_rent" class="fi" oninput="fmtInput(this)" data-sync="g_wolse" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">전월세전환율 (%)</label>
@@ -288,11 +300,13 @@
       <div class="grid-inputs" style="margin-bottom:14px">
         <div>
           <label class="label">전세보증금 (만원)</label>
-          <input type="text" id="c3_jeonse" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c3_jeonse" class="fi" oninput="fmtInput(this)" data-sync="g_jeonse" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">자기자본 (만원)</label>
-          <input type="text" id="c3_equity" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c3_equity" class="fi" oninput="fmtInput(this)" data-sync="g_equity" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">전세대출 금리 (%)</label>
@@ -300,11 +314,13 @@
         </div>
         <div>
           <label class="label">월세보증금 (만원)</label>
-          <input type="text" id="c3_w_dep" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c3_w_dep" class="fi" oninput="fmtInput(this)" data-sync="g_wolse_dep" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">월세 (만원/월)</label>
-          <input type="text" id="c3_w_rent" class="fi" oninput="fmtInput(this)" value="">
+          <input type="text" id="c3_w_rent" class="fi" oninput="fmtInput(this)" data-sync="g_wolse" value="">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">비교 기간 (년)</label>
@@ -327,7 +343,8 @@
     <div class="grid-inputs" style="margin-bottom:14px">
       <div>
         <label class="label">예상 집값상승률 (%/년)</label>
-        <input type="number" id="o_price_growth" class="fi" value="3.0" step="0.1">
+        <input type="number" id="o_price_growth" class="fi" value="5.5" step="0.1">
+        <div style="font-size:10px;color:#475569;margin-top:3px">서울 5.5% / 경기 3.3% / 인천 2.7% / 전국 2.4%<br><span style="color:#334155">10년 연평균 CAGR · KB부동산 2015–2025</span></div>
       </div>
       <div>
         <label class="label">투자수익률 (%/년)</label>
@@ -369,38 +386,100 @@ const fmtD = n => n.toFixed(1);
 const raw = id => parseInt($(id).value.replace(/,/g, '') || '0');
 const rawF = id => parseFloat($(id).value || '0');
 
+function toKoreanAmount(만원) {
+  if (!만원 || 만원 <= 0) return '';
+  const 억 = Math.floor(만원 / 10000);
+  const 나머지 = 만원 % 10000;
+  let result = '';
+  if (억 > 0) result += 억 + '억';
+  if (나머지 > 0) {
+    if (억 > 0) result += ' ';
+    result += 나머지.toLocaleString('ko-KR') + '만';
+  }
+  return result;
+}
+
+function updateHint(el, 만원) {
+  const hint = el.parentElement.querySelector('.amount-hint');
+  if (hint) hint.textContent = 만원 > 0 ? toKoreanAmount(만원) : '';
+}
+
 function fmtInput(el) {
-  const pos = el.selectionStart;
-  const raw = el.value.replace(/[^0-9]/g, '');
-  if (!raw) { el.value = ''; return; }
-  el.value = parseInt(raw).toLocaleString('ko-KR');
+  const rawVal = el.value.replace(/[^0-9]/g, '');
+  if (!rawVal) { el.value = ''; updateHint(el, 0); return; }
+  const num = parseInt(rawVal);
+  el.value = num.toLocaleString('ko-KR');
+  updateHint(el, num);
+
+  // 역방향 동기화: data-sync 속성이 있으면 공통 입력도 업데이트
+  const syncTarget = el.dataset.sync;
+  if (syncTarget) {
+    const target = $(syncTarget);
+    if (target) {
+      target.value = el.value;
+      updateHint(target, num);
+      saveCommon();
+    }
+  }
+}
+
+// ─── localStorage ────────────────────────────────────────
+const COMMON_KEYS = ['g_price', 'g_jeonse', 'g_wolse_dep', 'g_wolse', 'g_equity'];
+
+function saveCommon() {
+  const data = {};
+  COMMON_KEYS.forEach(k => { data[k] = $(k).value; });
+  localStorage.setItem('calc_common', JSON.stringify(data));
+}
+
+function loadCommon() {
+  try {
+    const data = JSON.parse(localStorage.getItem('calc_common') || '{}');
+    COMMON_KEYS.forEach(k => {
+      if (data[k]) {
+        $(k).value = data[k];
+        const num = parseInt(data[k].replace(/,/g, '') || '0');
+        updateHint($(k), num);
+      }
+    });
+  } catch(e) {}
 }
 
 function syncCommon() {
   const price = raw('g_price'), jeonse = raw('g_jeonse'), equity = raw('g_equity');
   const wDep = raw('g_wolse_dep'), wolse = raw('g_wolse');
 
+  saveCommon();
+
   // 대출기준 업데이트
   updateLoanBase();
-  // 전월세 입력 동기화
-  if ($('c1_jeonse').value === '') $('c1_jeonse').value = jeonse.toLocaleString('ko-KR');
-  if ($('c1_new_dep').value === '5,000' || !$('c1_new_dep').value) $('c1_new_dep').value = wDep.toLocaleString('ko-KR');
-  if ($('c2_dep').value === '') $('c2_dep').value = wDep.toLocaleString('ko-KR');
-  if ($('c2_rent').value === '') $('c2_rent').value = wolse.toLocaleString('ko-KR');
-  if ($('c3_jeonse').value === '') $('c3_jeonse').value = jeonse.toLocaleString('ko-KR');
-  if ($('c3_equity').value === '') $('c3_equity').value = equity.toLocaleString('ko-KR');
-  if ($('c3_w_dep').value === '') $('c3_w_dep').value = wDep.toLocaleString('ko-KR');
-  if ($('c3_w_rent').value === '') $('c3_w_rent').value = wolse.toLocaleString('ko-KR');
+
+  // 전월세 입력 동기화 (항상 업데이트)
+  const fields = {
+    'c1_jeonse': jeonse, 'c1_new_dep': wDep,
+    'c2_dep': wDep, 'c2_rent': wolse,
+    'c3_jeonse': jeonse, 'c3_equity': equity,
+    'c3_w_dep': wDep, 'c3_w_rent': wolse
+  };
+  Object.entries(fields).forEach(([id, val]) => {
+    const el = $(id);
+    el.value = val > 0 ? val.toLocaleString('ko-KR') : '';
+    updateHint(el, val);
+  });
 }
 
 function updateLoanBase() {
   const base = $('l_base').value;
   const price = raw('g_price'), jeonse = raw('g_jeonse'), equity = raw('g_equity');
   if (base === 'buy') {
-    $('l_amount').value = Math.max(0, price - equity).toLocaleString('ko-KR');
+    const amt = Math.max(0, price - equity);
+    $('l_amount').value = amt.toLocaleString('ko-KR');
+    updateHint($('l_amount'), amt);
     $('l_amount').readOnly = true;
   } else if (base === 'jeonse') {
-    $('l_amount').value = Math.max(0, jeonse - equity).toLocaleString('ko-KR');
+    const amt = Math.max(0, jeonse - equity);
+    $('l_amount').value = amt.toLocaleString('ko-KR');
+    updateHint($('l_amount'), amt);
     $('l_amount').readOnly = true;
   } else {
     $('l_amount').readOnly = false;
@@ -442,7 +521,6 @@ function calcLoan() {
   let schedule = [];
 
   if (type === 'equal_payment') {
-    // 원리금균등
     const monthly = r > 0 ? P * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1) : P/n;
     let bal = P;
     for (let i = 1; i <= n; i++) {
@@ -452,7 +530,6 @@ function calcLoan() {
       schedule.push({ m: i, principal, interest, payment: monthly, balance: Math.max(0, bal) });
     }
   } else if (type === 'equal_principal') {
-    // 원금균등
     const monthPrincipal = P / n;
     let bal = P;
     for (let i = 1; i <= n; i++) {
@@ -462,7 +539,6 @@ function calcLoan() {
       schedule.push({ m: i, principal: monthPrincipal, interest, payment, balance: Math.max(0, bal) });
     }
   } else {
-    // 만기일시
     const interest = P * r;
     for (let i = 1; i <= n; i++) {
       const principal = i === n ? P : 0;
@@ -474,7 +550,6 @@ function calcLoan() {
   const totalPayment = schedule.reduce((s, x) => s + x.payment, 0);
   const totalInterest = schedule.reduce((s, x) => s + x.interest, 0);
   const firstMonthly = schedule[0].payment;
-  const lastMonthly = schedule[n-1].payment;
 
   $('loan-stats').innerHTML = `
     <div class="stat-item"><div class="s-label">첫 달 납입액</div><div class="s-value highlight-blue">${fmt(firstMonthly)}만원</div></div>
@@ -485,7 +560,6 @@ function calcLoan() {
     <div class="stat-item"><div class="s-label">이자 비율</div><div class="s-value">${(totalInterest/P*100).toFixed(1)}%</div></div>
   `;
 
-  // 연도별 합산 차트
   const years = [];
   const yearPrincipal = [], yearInterest = [];
   for (let y = 1; y <= Math.ceil(n/12); y++) {
@@ -518,7 +592,6 @@ function calcLoan() {
     }
   });
 
-  // 상환 스케줄 테이블 (24개월)
   const tbody = $('repayBody');
   tbody.innerHTML = '';
   const show = Math.min(24, schedule.length);
@@ -529,7 +602,6 @@ function calcLoan() {
     tbody.appendChild(tr);
   }
 
-  // 스케줄 저장 (중도상환용)
   window._loanSchedule = schedule;
   window._loanP = P; window._loanR = r; window._loanN = n; window._loanType = type;
 
@@ -552,9 +624,7 @@ function calcPrepay() {
     return;
   }
 
-  // 원래 남은 이자
   const origRemaining = schedule.slice(ppMonth).reduce((s,x)=>s+x.interest,0);
-  // 중도상환 후 재계산
   const newPrincipal = balBeforePP - ppAmount;
   const r = window._loanR;
   const remainN = schedule.length - ppMonth;
@@ -646,7 +716,6 @@ function calcCompare() {
   const totalJCost = monthlyJInterest * 12 * years;
 
   const totalWCost = wRent * 12 * years;
-  const wDepDiff = wDep - equity; // 월세거주 시 추가 필요 보증금
 
   const diff = totalJCost - totalWCost;
   const cheaper = diff > 0 ? '월세' : '전세대출';
@@ -693,7 +762,6 @@ function calcOpportunity() {
 
   if (price <= 0 || equity <= 0) { alert('공통 입력의 매매가와 자기자본을 입력하세요.'); return; }
 
-  // 시나리오 A: 매매
   const bLoan = Math.max(0, price - equity);
   const bN = 30 * 12;
   let bMonthly = bLoan;
@@ -701,12 +769,10 @@ function calcOpportunity() {
     bMonthly = bLoan * bLoanRate * Math.pow(1+bLoanRate,bN) / (Math.pow(1+bLoanRate,bN)-1);
   }
 
-  // 시나리오 B: 전세
   const jLoan = Math.max(0, jeonse - equity);
   const jMonthlyInterest = jLoan * jLoanRate / 12;
   const jFreeCapital = Math.max(0, equity - (jeonse - jLoan));
 
-  // 시나리오 C: 월세
   const wFreeCapital = Math.max(0, equity - wDep);
 
   const labelsYear = [];
@@ -715,9 +781,7 @@ function calcOpportunity() {
   for (let y = 0; y <= years; y++) {
     labelsYear.push(`${y}년`);
 
-    // A: 순자산 = 집값 * (1+g)^y - 잔여대출
     const houseVal = price * Math.pow(1+priceGrowth, y);
-    // 잔여대출 (원리금균등 기준)
     let remLoan = 0;
     if (bLoan > 0 && bLoanRate > 0) {
       const paidN = y * 12;
@@ -727,24 +791,20 @@ function calcOpportunity() {
     }
     dataA.push(Math.round(houseVal - remLoan));
 
-    // B: 전세 순자산 = 전세보증금(돌려받음) + 여유자본 투자
     const jInvest = jFreeCapital * Math.pow(1+investReturn, y);
-    const totalJInvest = jInvest + jeonse; // 전세금 반환받음
-    const jCosts = jMonthlyInterest * 12 * y; // 누적 이자비용
+    const totalJInvest = jInvest + jeonse;
+    const jCosts = jMonthlyInterest * 12 * y;
     dataB.push(Math.round(totalJInvest - jCosts));
 
-    // C: 월세 순자산 = 보증금(반환) + 여유자본 투자 - 누적월세
     const wInvest = wFreeCapital * Math.pow(1+investReturn, y);
     const totalWInvest = wInvest + wDep;
     const wCosts = wRent * 12 * y;
     dataC.push(Math.round(totalWInvest - wCosts));
   }
 
-  // 최종 순자산
   const finalA = dataA[years], finalB = dataB[years], finalC = dataC[years];
   const maxFinal = Math.max(finalA, finalB, finalC);
 
-  // 손익분기점 (A vs C)
   let breakeven = null;
   for (let y = 1; y <= years; y++) {
     if (dataA[y] >= dataC[y] && dataA[y-1] < dataC[y-1]) { breakeven = y; break; }
@@ -808,17 +868,17 @@ function calcOpportunity() {
 
 // ─── 초기화 ────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  loadCommon();
   syncCommon();
-  // 전월세 입력 초기화
-  const g = { jeonse: raw('g_jeonse'), wDep: raw('g_wolse_dep'), wRent: raw('g_wolse'), equity: raw('g_equity') };
-  $('c1_jeonse').value = g.jeonse.toLocaleString('ko-KR');
-  $('c1_new_dep').value = g.wDep.toLocaleString('ko-KR');
-  $('c2_dep').value = g.wDep.toLocaleString('ko-KR');
-  $('c2_rent').value = g.wRent.toLocaleString('ko-KR');
-  $('c3_jeonse').value = g.jeonse.toLocaleString('ko-KR');
-  $('c3_equity').value = g.equity.toLocaleString('ko-KR');
-  $('c3_w_dep').value = g.wDep.toLocaleString('ko-KR');
-  $('c3_w_rent').value = g.wRent.toLocaleString('ko-KR');
+  // 공통 입력 힌트 초기화
+  COMMON_KEYS.forEach(k => {
+    const el = $(k);
+    const num = parseInt(el.value.replace(/,/g, '') || '0');
+    updateHint(el, num);
+  });
+  // l_amount 힌트 초기화
+  updateHint($('l_amount'), raw('l_amount'));
+  updateHint($('pp_amount'), raw('pp_amount'));
 });
 </script>
 </body>

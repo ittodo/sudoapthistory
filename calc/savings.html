@@ -25,6 +25,7 @@
   select.fi { cursor: pointer; }
 
   .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+  .amount-hint { font-size: 10px; color: #60a5fa; margin-top: 3px; min-height: 14px; letter-spacing: -0.2px; }
 
   .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .grid-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -111,6 +112,7 @@
         <div>
           <label class="label">월 납입액 (만원)</label>
           <input type="text" id="s_monthly" class="fi" value="50" oninput="fmtInput(this)">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">연 금리 (%)</label>
@@ -167,6 +169,7 @@
         <div>
           <label class="label">거치금액 (만원)</label>
           <input type="text" id="d_amount" class="fi" value="1,000" oninput="fmtInput(this)">
+          <div class="amount-hint"></div>
         </div>
         <div>
           <label class="label">연 금리 (%)</label>
@@ -220,10 +223,26 @@
 const $ = id => document.getElementById(id);
 const fmt = n => Math.round(n).toLocaleString('ko-KR');
 
+function toKoreanAmount(만원) {
+  if (!만원 || 만원 <= 0) return '';
+  const 억 = Math.floor(만원 / 10000);
+  const 나머지 = 만원 % 10000;
+  let result = '';
+  if (억 > 0) result += 억 + '억';
+  if (나머지 > 0) {
+    if (억 > 0) result += ' ';
+    result += 나머지.toLocaleString('ko-KR') + '만';
+  }
+  return result;
+}
+
 function fmtInput(el) {
   const raw = el.value.replace(/[^0-9]/g, '');
-  if (!raw) { el.value = ''; return; }
-  el.value = parseInt(raw).toLocaleString('ko-KR');
+  if (!raw) { el.value = ''; const h = el.parentElement.querySelector('.amount-hint'); if (h) h.textContent = ''; return; }
+  const num = parseInt(raw);
+  el.value = num.toLocaleString('ko-KR');
+  const hint = el.parentElement.querySelector('.amount-hint');
+  if (hint) hint.textContent = toKoreanAmount(num);
 }
 
 const rawN = id => parseInt($(id).value.replace(/,/g, '') || '0');
