@@ -762,6 +762,7 @@ function calcOpportunity() {
 
   if (price <= 0 || equity <= 0) { alert('공통 입력의 매매가와 자기자본을 입력하세요.'); return; }
 
+  // ── A: 매매 ──
   const bLoan = Math.max(0, price - equity);
   const bN = 30 * 12;
   let bMonthly = bLoan;
@@ -769,18 +770,32 @@ function calcOpportunity() {
     bMonthly = bLoan * bLoanRate * Math.pow(1+bLoanRate,bN) / (Math.pow(1+bLoanRate,bN)-1);
   }
 
-  const jLoan = Math.max(0, jeonse - equity);
-  const jMonthlyInterest = jLoan * jLoanRate / 12;
-  const jFreeCapital = Math.max(0, equity - (jeonse - jLoan));
+  // ── B: 전세 — 2년마다 집값 상승률로 보증금 갱신 ──
+  // 보증금 인상분 = 대출 증가분 + 여유자본 감소분
+  let jDeposit = jeonse;
+  let jLoan = Math.max(0, jeonse - equity);
+  let jPool = Math.max(0, equity - jeonse); // 투자 가능 여유자본
+  let jCumInterest = 0;
 
-  const wFreeCapital = Math.max(0, equity - wDep);
+  // ── C: 월세 — 2년마다 집값 상승률로 보증금·월세 갱신 ──
+  let wDeposit = wDep;
+  let wPool = Math.max(0, equity - wDep);
+  let wCumCost = 0;
+  let curWRent = wRent;
 
   const labelsYear = [];
   const dataA = [], dataB = [], dataC = [];
 
-  for (let y = 0; y <= years; y++) {
+  // y=0 초기값 (모두 = equity)
+  labelsYear.push('0년');
+  dataA.push(Math.round(price - bLoan));
+  dataB.push(Math.round(jDeposit + jPool - jLoan));
+  dataC.push(Math.round(wDeposit + wPool));
+
+  for (let y = 1; y <= years; y++) {
     labelsYear.push(`${y}년`);
 
+    // A: 매매 — 집값 상승, 대출 잔액 감소
     const houseVal = price * Math.pow(1+priceGrowth, y);
     let remLoan = 0;
     if (bLoan > 0 && bLoanRate > 0) {
@@ -791,15 +806,33 @@ function calcOpportunity() {
     }
     dataA.push(Math.round(houseVal - remLoan));
 
-    const jInvest = jFreeCapital * Math.pow(1+investReturn, y);
-    const totalJInvest = jInvest + jeonse;
-    const jCosts = jMonthlyInterest * 12 * y;
-    dataB.push(Math.round(totalJInvest - jCosts));
+    // B: 전세 시뮬레이션
+    jPool *= (1 + investReturn); // 여유자본 투자수익
+    if (y % 2 === 0) {
+      // 2년마다 보증금 갱신
+      const newJeonse = jeonse * Math.pow(1 + priceGrowth, y);
+      const depIncrease = newJeonse - jDeposit;
+      const newJLoan = Math.max(0, newJeonse - equity);
+      const loanIncrease = Math.max(0, newJLoan - jLoan);
+      // 대출 증가분으로 커버 안 되는 부분은 투자자본에서 차감
+      jPool -= Math.max(0, depIncrease - loanIncrease);
+      jDeposit = newJeonse;
+      jLoan = newJLoan;
+    }
+    jCumInterest += jLoan * jLoanRate; // 올해 이자 누적
+    dataB.push(Math.round(jDeposit + jPool - jLoan - jCumInterest));
 
-    const wInvest = wFreeCapital * Math.pow(1+investReturn, y);
-    const totalWInvest = wInvest + wDep;
-    const wCosts = wRent * 12 * y;
-    dataC.push(Math.round(totalWInvest - wCosts));
+    // C: 월세 시뮬레이션
+    wCumCost += curWRent * 12; // 올해 월세 누적
+    wPool *= (1 + investReturn); // 여유자본 투자수익
+    if (y % 2 === 0) {
+      // 2년마다 보증금·월세 갱신
+      const newWDep = wDep * Math.pow(1 + priceGrowth, y);
+      wPool -= Math.max(0, newWDep - wDeposit); // 추가 보증금은 투자자본에서 차감
+      wDeposit = newWDep;
+      curWRent = wRent * Math.pow(1 + priceGrowth, y);
+    }
+    dataC.push(Math.round(wDeposit + wPool - wCumCost));
   }
 
   const finalA = dataA[years], finalB = dataB[years], finalC = dataC[years];
@@ -809,6 +842,11 @@ function calcOpportunity() {
   for (let y = 1; y <= years; y++) {
     if (dataA[y] >= dataC[y] && dataA[y-1] < dataC[y-1]) { breakeven = y; break; }
   }
+
+  // 시나리오 카드용 최종 값
+  const finalJeonse = jDeposit; // 마지막 갱신 후 보증금
+  const finalWDep = wDeposit;
+  const finalWRent = curWRent;
 
   $('opp-scenarios').innerHTML = `
     <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
@@ -820,14 +858,14 @@ function calcOpportunity() {
     </div>
     <div class="scenario-card ${finalB === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px">시나리오 B: 전세</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">전세보증금 ${fmt(jeonse)}만 (대출 ${fmt(jLoan)}만)</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(jeonse)}만 → ${fmt(finalJeonse)}만 (2년 갱신)</div>
       <div style="font-size:18px;font-weight:700;color:${finalB===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalB)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
       ${finalB===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalC === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:6px">시나리오 C: 월세</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}만 + 월 ${fmt(wRent)}만</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}→${fmt(finalWDep)}만 / 월세 ${fmt(wRent)}→${fmt(finalWRent)}만 (2년 갱신)</div>
       <div style="font-size:18px;font-weight:700;color:${finalC===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalC)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
       ${finalC===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
@@ -859,9 +897,10 @@ function calcOpportunity() {
     }
   });
 
-  $('opp-breakeven').innerHTML = breakeven
+  $('opp-breakeven').innerHTML = (breakeven
     ? `<div class="info-box">💡 매매(A) 순자산이 월세(C)를 <strong>${breakeven}년차</strong>에 추월합니다.</div>`
-    : `<div class="info-box">💡 ${years}년 내 매매(A)가 월세(C)를 추월하지 않습니다. 집값상승률을 높이거나 거주기간을 늘려보세요.</div>`;
+    : `<div class="info-box">💡 ${years}년 내 매매(A)가 월세(C)를 추월하지 않습니다. 집값상승률을 높이거나 거주기간을 늘려보세요.</div>`)
+    + `<div style="font-size:11px;color:#475569;margin-top:8px;padding:8px 10px;background:rgba(71,85,105,.15);border-radius:6px;border-left:2px solid #475569">※ B·C 시나리오는 전세·월세 보증금 및 월세를 집값 상승률과 동일하게 2년마다 갱신 반영. 갱신 시 추가 보증금은 여유자본(투자풀)에서 차감, 대출 한도 초과분만 대출 증액 처리.</div>`;
 
   $('opp-result').style.display = 'block';
 }
