@@ -854,16 +854,18 @@ function calcOpportunity() {
   }
 
   // 시나리오 카드용 최종 값
-  const finalJeonse = jDeposit; // 마지막 갱신 후 보증금
+  const finalJeonse = jDeposit;
   const finalWDep = wDeposit;
   const finalWRent = curWRent;
+  const finalHouseVal = Math.round(price * Math.pow(1 + priceGrowth, years)); // 최종 집값
 
   $('opp-scenarios').innerHTML = `
     <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:6px">시나리오 A: 매매</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(bMonthly)}만</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:4px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(bMonthly)}만</div>
+      <div style="font-size:10px;color:#475569;margin-bottom:8px">집값 ${fmt(price)}만 → <span style="color:#60a5fa">${fmt(finalHouseVal)}만</span> (${years}년 후)</div>
       <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalA)}만원</div>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산 (집값 - 대출잔액)</div>
       ${finalA===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalB === maxFinal ? 'best' : ''}">
