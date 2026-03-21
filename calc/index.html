@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>부동산 금융 계산기 — 대출이자·전월세전환·기회비용</title>
+<meta name="description" content="부동산 대출이자 계산기, 전월세 전환율 계산기, 매매·전세·월세 기회비용 비교 계산기. 원리금균등·원금균등·만기일시 상환방식 지원.">
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --green: #10b981; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+  .pg-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; }
+  .pg-btn:hover { border-color: var(--muted); color: #fff; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+
+  .fi { background: #0f172a; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; width: 100%; }
+  .fi:focus { outline: none; border-color: var(--accent); }
+  select.fi { cursor: pointer; }
+
+  .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+
+  .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .grid-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-inputs-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  .result-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1e293b; font-size: 13px; }
+  .result-row:last-child { border-bottom: none; }
+  .result-row .lbl { color: var(--muted); }
+  .result-row .val { font-weight: 600; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .stat-item { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
+  .stat-item .s-label { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+  .stat-item .s-value { font-size: 17px; font-weight: 700; }
+
+  .btn { padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--muted); }
+  .btn-secondary:hover { border-color: var(--muted); color: #fff; }
+
+  .tab-row { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; margin-bottom: 14px; }
+  .tab-btn { padding: 5px 14px; border-radius: 6px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
+  .tab-btn:hover { color: #fff; }
+  .tab-btn.active { background: var(--accent); color: #fff; }
+
+  .section-header { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
+
+  .highlight { color: #fbbf24; font-weight: 700; }
+  .highlight-green { color: var(--green); font-weight: 700; }
+  .highlight-blue { color: #60a5fa; font-weight: 700; }
+  .highlight-red { color: #f87171; font-weight: 700; }
+
+  .canvas-wrap { position: relative; height: 260px; margin-top: 14px; }
+  .canvas-wrap-lg { position: relative; height: 320px; margin-top: 14px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+  .info-box { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #93c5fd; margin-bottom: 12px; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  .scenario-card { border: 2px solid var(--border); border-radius: 10px; padding: 14px; }
+  .scenario-card.best { border-color: var(--green); background: rgba(16,185,129,.05); }
+
+  .repay-table { width: 100%; border-collapse: collapse; font-size: 11px; max-height: 240px; overflow-y: auto; display: block; }
+  .repay-table thead th { position: sticky; top: 0; background: #1a2332; padding: 6px 8px; font-size: 10px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .repay-table tbody td { padding: 4px 8px; border-bottom: 1px solid #1e293b; white-space: nowrap; }
+  .repay-table tbody tr:hover { background: rgba(59,130,246,.06); }
+
+  .toggle-section { cursor: pointer; user-select: none; }
+  .toggle-section:hover { color: #fff; }
+
+  @media (max-width: 768px) {
+    .two-col, .three-col { grid-template-columns: 1fr; }
+    .grid-inputs-3 { grid-template-columns: 1fr 1fr; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .canvas-wrap { height: 200px; }
+    .canvas-wrap-lg { height: 250px; }
+  }
+  @media (max-width: 480px) {
+    .grid-inputs-2, .grid-inputs-3 { grid-template-columns: 1fr; }
+    .tab-btn { padding: 5px 10px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div style="max-width:1200px" class="mx-auto px-3 py-3">
+
+  <!-- 헤더 -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-lg font-bold text-white">부동산 금융 계산기</h1>
+      <p class="text-xs" style="color:#64748b">대출이자 · 전월세 전환 · 기회비용 비교</p>
+    </div>
+    <div class="flex gap-2 items-center">
+      <a href="/calc/savings.html" class="pg-btn">예적금 계산기</a>
+      <a href="/" class="pg-btn">← 메인으로</a>
+    </div>
+  </div>
+
+  <!-- 공통 입력 -->
+  <div class="card">
+    <div class="card-title">
+      공통 입력
+      <span style="font-size:11px;color:#64748b;font-weight:400">아래 섹션들에서 공통으로 사용됩니다</span>
+    </div>
+    <div class="grid-inputs">
+      <div>
+        <label class="label">매매가 (만원)</label>
+        <input type="text" id="g_price" class="fi" placeholder="예: 80,000" value="80,000" oninput="fmtInput(this)" onblur="syncCommon()">
+      </div>
+      <div>
+        <label class="label">전세보증금 (만원)</label>
+        <input type="text" id="g_jeonse" class="fi" placeholder="예: 50,000" value="50,000" oninput="fmtInput(this)" onblur="syncCommon()">
+      </div>
+      <div>
+        <label class="label">월세보증금 (만원)</label>
+        <input type="text" id="g_wolse_dep" class="fi" placeholder="예: 5,000" value="5,000" oninput="fmtInput(this)" onblur="syncCommon()">
+      </div>
+      <div>
+        <label class="label">월세 (만원/월)</label>
+        <input type="text" id="g_wolse" class="fi" placeholder="예: 120" value="120" oninput="fmtInput(this)" onblur="syncCommon()">
+      </div>
+      <div>
+        <label class="label">자기자본 (만원)</label>
+        <input type="text" id="g_equity" class="fi" placeholder="예: 30,000" value="30,000" oninput="fmtInput(this)" onblur="syncCommon()">
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 1: 대출이자 계산기 -->
+  <div class="card" id="sec-loan">
+    <div class="card-title">
+      <span style="background:rgba(59,130,246,.2);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px">1</span>
+      대출이자 계산기
+    </div>
+
+    <div class="grid-inputs" style="margin-bottom:14px">
+      <div>
+        <label class="label">대출 기준</label>
+        <select id="l_base" class="fi" onchange="updateLoanBase()">
+          <option value="buy">매매가 기준</option>
+          <option value="jeonse">전세가 기준</option>
+          <option value="custom">직접 입력</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">대출금액 (만원)</label>
+        <input type="text" id="l_amount" class="fi" value="50,000" oninput="fmtInput(this)">
+      </div>
+      <div>
+        <label class="label">금리 (%)</label>
+        <input type="number" id="l_rate" class="fi" value="3.5" step="0.1" min="0" max="30">
+      </div>
+      <div>
+        <label class="label">대출기간 (년)</label>
+        <input type="number" id="l_years" class="fi" value="30" min="1" max="50">
+      </div>
+      <div>
+        <label class="label">상환방식</label>
+        <select id="l_type" class="fi">
+          <option value="equal_payment">원리금균등</option>
+          <option value="equal_principal">원금균등</option>
+          <option value="bullet">만기일시</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="calcLoan()">계산하기</button>
+
+    <div id="loan-result" style="display:none;margin-top:16px">
+      <div class="stat-grid" id="loan-stats"></div>
+      <div class="two-col">
+        <div>
+          <div class="section-header">연도별 상환 요약</div>
+          <div class="canvas-wrap"><canvas id="loanChart"></canvas></div>
+        </div>
+        <div>
+          <div class="section-header">월별 상환 스케줄 <span style="font-size:11px;color:#64748b;font-weight:400">(처음 24개월)</span></div>
+          <table class="repay-table" id="repayTable">
+            <thead><tr>
+              <th>월차</th><th>납입원금</th><th>이자</th><th>월납입액</th><th>잔여원금</th>
+            </tr></thead>
+            <tbody id="repayBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 중도상환 시뮬레이션 -->
+      <hr class="divider">
+      <div class="section-header toggle-section" onclick="toggleEl('prepay-section')">중도상환 시뮬레이션 ▾</div>
+      <div id="prepay-section" style="margin-top:10px">
+        <div class="info-box">n년차에 목돈을 상환하면 이자가 얼마나 절감되는지 계산합니다.</div>
+        <div class="grid-inputs-3" style="margin-bottom:10px">
+          <div>
+            <label class="label">상환 시점 (n년차)</label>
+            <input type="number" id="pp_year" class="fi" value="5" min="1">
+          </div>
+          <div>
+            <label class="label">중도상환금액 (만원)</label>
+            <input type="text" id="pp_amount" class="fi" value="10,000" oninput="fmtInput(this)">
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button class="btn btn-secondary" style="width:100%" onclick="calcPrepay()">시뮬레이션</button>
+          </div>
+        </div>
+        <div id="prepay-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 섹션 2: 전월세 전환 -->
+  <div class="card" id="sec-conv">
+    <div class="card-title">
+      <span style="background:rgba(16,185,129,.2);color:#34d399;padding:2px 8px;border-radius:4px;font-size:12px">2</span>
+      전월세 전환 계산기
+    </div>
+
+    <div class="tab-row" id="conv-tabs">
+      <button class="tab-btn active" onclick="switchConvTab('j2w')">전세 → 월세</button>
+      <button class="tab-btn" onclick="switchConvTab('w2j')">월세 → 전세</button>
+      <button class="tab-btn" onclick="switchConvTab('compare')">전세대출 vs 월세</button>
+    </div>
+
+    <!-- 전세→월세 -->
+    <div id="conv-j2w">
+      <div class="info-box">전월세전환율 = (연간 임대료 / 보증금차액) × 100. 법정상한 = 기준금리 + 2%</div>
+      <div class="grid-inputs-3" style="margin-bottom:14px">
+        <div>
+          <label class="label">전세보증금 (만원)</label>
+          <input type="text" id="c1_jeonse" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">전환 시 보증금 (만원)</label>
+          <input type="text" id="c1_new_dep" class="fi" oninput="fmtInput(this)" value="5,000">
+        </div>
+        <div>
+          <label class="label">전월세전환율 (%)</label>
+          <input type="number" id="c1_rate" class="fi" value="5.0" step="0.1">
+        </div>
+      </div>
+      <div class="grid-inputs-3" style="margin-bottom:14px">
+        <div>
+          <label class="label">기준금리 (%)</label>
+          <input type="number" id="c1_base_rate" class="fi" value="3.0" step="0.1">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn btn-primary" style="width:100%" onclick="calcJ2W()">계산하기</button>
+        </div>
+      </div>
+      <div id="c1-result"></div>
+    </div>
+
+    <!-- 월세→전세 -->
+    <div id="conv-w2j" style="display:none">
+      <div class="grid-inputs-3" style="margin-bottom:14px">
+        <div>
+          <label class="label">월세보증금 (만원)</label>
+          <input type="text" id="c2_dep" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">월세 (만원/월)</label>
+          <input type="text" id="c2_rent" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">전월세전환율 (%)</label>
+          <input type="number" id="c2_rate" class="fi" value="5.0" step="0.1">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="calcW2J()">계산하기</button>
+      <div id="c2-result" style="margin-top:12px"></div>
+    </div>
+
+    <!-- 전세대출 vs 월세 -->
+    <div id="conv-compare" style="display:none">
+      <div class="info-box">전세대출로 전세에 거주하는 비용과 월세로 거주하는 비용을 비교합니다.</div>
+      <div class="grid-inputs" style="margin-bottom:14px">
+        <div>
+          <label class="label">전세보증금 (만원)</label>
+          <input type="text" id="c3_jeonse" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">자기자본 (만원)</label>
+          <input type="text" id="c3_equity" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">전세대출 금리 (%)</label>
+          <input type="number" id="c3_rate" class="fi" value="3.5" step="0.1">
+        </div>
+        <div>
+          <label class="label">월세보증금 (만원)</label>
+          <input type="text" id="c3_w_dep" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">월세 (만원/월)</label>
+          <input type="text" id="c3_w_rent" class="fi" oninput="fmtInput(this)" value="">
+        </div>
+        <div>
+          <label class="label">비교 기간 (년)</label>
+          <input type="number" id="c3_years" class="fi" value="2" min="1" max="10">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="calcCompare()">비교하기</button>
+      <div id="c3-result" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- 섹션 3: 기회비용 종합 비교 -->
+  <div class="card" id="sec-opp">
+    <div class="card-title">
+      <span style="background:rgba(251,191,36,.2);color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:12px">3</span>
+      기회비용 종합 비교
+    </div>
+    <div class="info-box">매매 / 전세 / 월세 시나리오별 n년 후 순자산을 비교합니다.</div>
+
+    <div class="grid-inputs" style="margin-bottom:14px">
+      <div>
+        <label class="label">예상 집값상승률 (%/년)</label>
+        <input type="number" id="o_price_growth" class="fi" value="3.0" step="0.1">
+      </div>
+      <div>
+        <label class="label">투자수익률 (%/년)</label>
+        <input type="number" id="o_invest_return" class="fi" value="5.0" step="0.1">
+      </div>
+      <div>
+        <label class="label">거주기간 (년)</label>
+        <input type="number" id="o_years" class="fi" value="10" min="1" max="30">
+      </div>
+      <div>
+        <label class="label">전세대출 금리 (%)</label>
+        <input type="number" id="o_jloan_rate" class="fi" value="3.5" step="0.1">
+      </div>
+      <div>
+        <label class="label">매매대출 금리 (%)</label>
+        <input type="number" id="o_bloan_rate" class="fi" value="4.0" step="0.1">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="calcOpportunity()">비교 계산</button>
+
+    <div id="opp-result" style="display:none;margin-top:16px">
+      <div class="three-col" id="opp-scenarios" style="margin-bottom:16px"></div>
+      <div class="canvas-wrap-lg"><canvas id="oppChart"></canvas></div>
+      <div id="opp-breakeven" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:12px;font-size:11px;color:#475569;border-top:1px solid var(--border);margin-top:8px">
+    본 계산기는 참고용이며 실제 금융 조건과 다를 수 있습니다. 투자 결정 전 전문가와 상담하세요.
+  </div>
+</div>
+
+<script>
+// ─── 유틸 ───────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = n => Math.round(n).toLocaleString('ko-KR');
+const fmtD = n => n.toFixed(1);
+const raw = id => parseInt($(id).value.replace(/,/g, '') || '0');
+const rawF = id => parseFloat($(id).value || '0');
+
+function fmtInput(el) {
+  const pos = el.selectionStart;
+  const raw = el.value.replace(/[^0-9]/g, '');
+  if (!raw) { el.value = ''; return; }
+  el.value = parseInt(raw).toLocaleString('ko-KR');
+}
+
+function syncCommon() {
+  const price = raw('g_price'), jeonse = raw('g_jeonse'), equity = raw('g_equity');
+  const wDep = raw('g_wolse_dep'), wolse = raw('g_wolse');
+
+  // 대출기준 업데이트
+  updateLoanBase();
+  // 전월세 입력 동기화
+  if ($('c1_jeonse').value === '') $('c1_jeonse').value = jeonse.toLocaleString('ko-KR');
+  if ($('c1_new_dep').value === '5,000' || !$('c1_new_dep').value) $('c1_new_dep').value = wDep.toLocaleString('ko-KR');
+  if ($('c2_dep').value === '') $('c2_dep').value = wDep.toLocaleString('ko-KR');
+  if ($('c2_rent').value === '') $('c2_rent').value = wolse.toLocaleString('ko-KR');
+  if ($('c3_jeonse').value === '') $('c3_jeonse').value = jeonse.toLocaleString('ko-KR');
+  if ($('c3_equity').value === '') $('c3_equity').value = equity.toLocaleString('ko-KR');
+  if ($('c3_w_dep').value === '') $('c3_w_dep').value = wDep.toLocaleString('ko-KR');
+  if ($('c3_w_rent').value === '') $('c3_w_rent').value = wolse.toLocaleString('ko-KR');
+}
+
+function updateLoanBase() {
+  const base = $('l_base').value;
+  const price = raw('g_price'), jeonse = raw('g_jeonse'), equity = raw('g_equity');
+  if (base === 'buy') {
+    $('l_amount').value = Math.max(0, price - equity).toLocaleString('ko-KR');
+    $('l_amount').readOnly = true;
+  } else if (base === 'jeonse') {
+    $('l_amount').value = Math.max(0, jeonse - equity).toLocaleString('ko-KR');
+    $('l_amount').readOnly = true;
+  } else {
+    $('l_amount').readOnly = false;
+  }
+}
+
+function toggleEl(id) {
+  const el = $(id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ─── 차트 관리 ────────────────────────────────────────────
+let charts = {};
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+const CHART_DEFAULTS = {
+  color: '#e2e8f0',
+  plugins: {
+    legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
+    tooltip: { backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1 }
+  },
+  scales: {
+    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
+    y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }
+  }
+};
+
+// ─── 섹션 1: 대출이자 ─────────────────────────────────────
+function calcLoan() {
+  const P = raw('l_amount');
+  const r = rawF('l_rate') / 100 / 12;
+  const n = Math.round(rawF('l_years') * 12);
+  const type = $('l_type').value;
+
+  if (P <= 0 || n <= 0) { alert('대출금액과 기간을 확인하세요.'); return; }
+
+  let schedule = [];
+
+  if (type === 'equal_payment') {
+    // 원리금균등
+    const monthly = r > 0 ? P * r * Math.pow(1+r,n) / (Math.pow(1+r,n)-1) : P/n;
+    let bal = P;
+    for (let i = 1; i <= n; i++) {
+      const interest = bal * r;
+      const principal = monthly - interest;
+      bal -= principal;
+      schedule.push({ m: i, principal, interest, payment: monthly, balance: Math.max(0, bal) });
+    }
+  } else if (type === 'equal_principal') {
+    // 원금균등
+    const monthPrincipal = P / n;
+    let bal = P;
+    for (let i = 1; i <= n; i++) {
+      const interest = bal * r;
+      const payment = monthPrincipal + interest;
+      bal -= monthPrincipal;
+      schedule.push({ m: i, principal: monthPrincipal, interest, payment, balance: Math.max(0, bal) });
+    }
+  } else {
+    // 만기일시
+    const interest = P * r;
+    for (let i = 1; i <= n; i++) {
+      const principal = i === n ? P : 0;
+      const payment = i === n ? P + interest : interest;
+      schedule.push({ m: i, principal, interest, payment, balance: i === n ? 0 : P });
+    }
+  }
+
+  const totalPayment = schedule.reduce((s, x) => s + x.payment, 0);
+  const totalInterest = schedule.reduce((s, x) => s + x.interest, 0);
+  const firstMonthly = schedule[0].payment;
+  const lastMonthly = schedule[n-1].payment;
+
+  $('loan-stats').innerHTML = `
+    <div class="stat-item"><div class="s-label">첫 달 납입액</div><div class="s-value highlight-blue">${fmt(firstMonthly)}만원</div></div>
+    <div class="stat-item"><div class="s-label">${type==='equal_payment'?'월 납입액':type==='equal_principal'?'첫 달 납입':'이자 납입'}</div><div class="s-value">${fmt(type==='bullet'?schedule[0].interest:firstMonthly)}만원</div></div>
+    <div class="stat-item"><div class="s-label">총 이자</div><div class="s-value highlight-red">${fmt(totalInterest)}만원</div></div>
+    <div class="stat-item"><div class="s-label">총 납입액</div><div class="s-value">${fmt(totalPayment)}만원</div></div>
+    <div class="stat-item"><div class="s-label">대출원금</div><div class="s-value">${fmt(P)}만원</div></div>
+    <div class="stat-item"><div class="s-label">이자 비율</div><div class="s-value">${(totalInterest/P*100).toFixed(1)}%</div></div>
+  `;
+
+  // 연도별 합산 차트
+  const years = [];
+  const yearPrincipal = [], yearInterest = [];
+  for (let y = 1; y <= Math.ceil(n/12); y++) {
+    const monthStart = (y-1)*12, monthEnd = Math.min(y*12, n);
+    const slice = schedule.slice(monthStart, monthEnd);
+    years.push(`${y}년`);
+    yearPrincipal.push(slice.reduce((s,x)=>s+x.principal,0));
+    yearInterest.push(slice.reduce((s,x)=>s+x.interest,0));
+  }
+
+  destroyChart('loanChart');
+  const ctx = $('loanChart').getContext('2d');
+  charts['loanChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [
+        { label: '원금', data: yearPrincipal, backgroundColor: 'rgba(59,130,246,.7)', stack: 'a' },
+        { label: '이자', data: yearInterest, backgroundColor: 'rgba(239,68,68,.5)', stack: 'a' }
+      ]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins },
+      scales: {
+        x: { ...CHART_DEFAULTS.scales.x, stacked: true },
+        y: { ...CHART_DEFAULTS.scales.y, stacked: true, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => fmt(v)+'만' } }
+      },
+      responsive: true, maintainAspectRatio: false
+    }
+  });
+
+  // 상환 스케줄 테이블 (24개월)
+  const tbody = $('repayBody');
+  tbody.innerHTML = '';
+  const show = Math.min(24, schedule.length);
+  for (let i = 0; i < show; i++) {
+    const s = schedule[i];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${s.m}월</td><td>${fmt(s.principal)}</td><td>${fmt(s.interest)}</td><td>${fmt(s.payment)}</td><td>${fmt(s.balance)}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  // 스케줄 저장 (중도상환용)
+  window._loanSchedule = schedule;
+  window._loanP = P; window._loanR = r; window._loanN = n; window._loanType = type;
+
+  $('loan-result').style.display = 'block';
+}
+
+function calcPrepay() {
+  const schedule = window._loanSchedule;
+  if (!schedule) { alert('먼저 대출이자를 계산하세요.'); return; }
+
+  const ppYear = Math.round(rawF('pp_year'));
+  const ppAmount = raw('pp_amount');
+  const ppMonth = ppYear * 12;
+
+  if (ppMonth >= schedule.length) { alert('상환 시점이 대출 기간을 초과합니다.'); return; }
+
+  const balBeforePP = schedule[ppMonth - 1].balance;
+  if (ppAmount >= balBeforePP) {
+    $('prepay-result').innerHTML = `<div class="result-box"><div class="result-row"><span class="lbl">중도상환금액이 잔여원금(${fmt(balBeforePP)}만원)을 초과합니다.</span></div></div>`;
+    return;
+  }
+
+  // 원래 남은 이자
+  const origRemaining = schedule.slice(ppMonth).reduce((s,x)=>s+x.interest,0);
+  // 중도상환 후 재계산
+  const newPrincipal = balBeforePP - ppAmount;
+  const r = window._loanR;
+  const remainN = schedule.length - ppMonth;
+  const type = window._loanType;
+  let newInterest = 0;
+  if (type === 'equal_payment') {
+    if (r > 0) {
+      const m = newPrincipal * r * Math.pow(1+r,remainN) / (Math.pow(1+r,remainN)-1);
+      newInterest = m * remainN - newPrincipal;
+    }
+  } else if (type === 'equal_principal') {
+    let bal = newPrincipal;
+    for (let i = 0; i < remainN; i++) { newInterest += bal * r; bal -= newPrincipal/remainN; }
+  } else {
+    newInterest = newPrincipal * r * remainN;
+  }
+
+  const saving = origRemaining - newInterest;
+  $('prepay-result').innerHTML = `
+    <div class="result-box">
+      <div class="result-row"><span class="lbl">${ppYear}년차 잔여원금</span><span class="val">${fmt(balBeforePP)}만원</span></div>
+      <div class="result-row"><span class="lbl">중도상환 후 잔여원금</span><span class="val">${fmt(newPrincipal)}만원</span></div>
+      <div class="result-row"><span class="lbl">원래 남은 이자 합계</span><span class="val">${fmt(origRemaining)}만원</span></div>
+      <div class="result-row"><span class="lbl">중도상환 후 이자 합계</span><span class="val">${fmt(newInterest)}만원</span></div>
+      <div class="result-row"><span class="lbl">이자 절감액</span><span class="val highlight-green">${fmt(saving)}만원 절감</span></div>
+      <div class="result-row"><span class="lbl">절감 비율</span><span class="val highlight-green">${(saving/origRemaining*100).toFixed(1)}%</span></div>
+    </div>
+  `;
+}
+
+// ─── 섹션 2: 전월세 전환 ──────────────────────────────────
+const convTabs = ['j2w','w2j','compare'];
+function switchConvTab(tab) {
+  convTabs.forEach(t => { $(t==='j2w'?'conv-j2w':t==='w2j'?'conv-w2j':'conv-compare').style.display = t===tab ? 'block' : 'none'; });
+  document.querySelectorAll('#conv-tabs .tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', convTabs[i] === tab);
+  });
+}
+
+function calcJ2W() {
+  const jeonse = raw('c1_jeonse') || raw('g_jeonse');
+  const newDep = raw('c1_new_dep');
+  const rate = rawF('c1_rate');
+  const baseRate = rawF('c1_base_rate');
+  const legalMax = baseRate + 2;
+  const depDiff = jeonse - newDep;
+  if (depDiff <= 0) { alert('전세보증금이 전환 보증금보다 커야 합니다.'); return; }
+  const monthlyRent = depDiff * rate / 100 / 12;
+  const monthlyLegal = depDiff * legalMax / 100 / 12;
+  $('c1-result').innerHTML = `
+    <div class="result-box" style="margin-top:10px">
+      <div class="result-row"><span class="lbl">보증금 차액</span><span class="val">${fmt(depDiff)}만원</span></div>
+      <div class="result-row"><span class="lbl">전월세전환율 적용 월세</span><span class="val highlight-blue">${fmt(monthlyRent)}만원/월</span></div>
+      <div class="result-row"><span class="lbl">법정상한(${legalMax.toFixed(1)}%) 적용 월세</span><span class="val">${fmt(monthlyLegal)}만원/월</span></div>
+      <div class="result-row"><span class="lbl">적용 전환율</span><span class="val">${rate}%</span></div>
+      <div class="result-row"><span class="lbl">법정 상한</span><span class="val">${legalMax.toFixed(1)}% (기준금리 ${baseRate}% + 2%)</span></div>
+      ${rate > legalMax ? '<div class="result-row"><span style="color:#f87171;font-size:11px">⚠ 전월세전환율이 법정 상한을 초과합니다</span></div>' : ''}
+    </div>
+  `;
+}
+
+function calcW2J() {
+  const dep = raw('c2_dep') || raw('g_wolse_dep');
+  const rent = raw('c2_rent') || raw('g_wolse');
+  const rate = rawF('c2_rate');
+  if (rent <= 0) { alert('월세를 입력하세요.'); return; }
+  const annualRent = rent * 12;
+  const equivalentJeonse = dep + (annualRent / (rate / 100));
+  $('c2-result').innerHTML = `
+    <div class="result-box">
+      <div class="result-row"><span class="lbl">연간 월세</span><span class="val">${fmt(annualRent)}만원</span></div>
+      <div class="result-row"><span class="lbl">전세 전환 시 보증금 합계</span><span class="val highlight-blue">${fmt(equivalentJeonse)}만원</span></div>
+      <div class="result-row"><span class="lbl">추가 필요 보증금</span><span class="val">${fmt(equivalentJeonse - dep)}만원</span></div>
+      <div class="result-row"><span class="lbl">전월세전환율</span><span class="val">${rate}%</span></div>
+    </div>
+  `;
+}
+
+function calcCompare() {
+  const jeonse = raw('c3_jeonse') || raw('g_jeonse');
+  const equity = raw('c3_equity') || raw('g_equity');
+  const loanRate = rawF('c3_rate') / 100 / 12;
+  const wDep = raw('c3_w_dep') || raw('g_wolse_dep');
+  const wRent = raw('c3_w_rent') || raw('g_wolse');
+  const years = Math.round(rawF('c3_years'));
+
+  const jLoan = Math.max(0, jeonse - equity);
+  const monthlyJInterest = jLoan * loanRate;
+  const totalJCost = monthlyJInterest * 12 * years;
+
+  const totalWCost = wRent * 12 * years;
+  const wDepDiff = wDep - equity; // 월세거주 시 추가 필요 보증금
+
+  const diff = totalJCost - totalWCost;
+  const cheaper = diff > 0 ? '월세' : '전세대출';
+
+  $('c3-result').innerHTML = `
+    <div class="two-col">
+      <div class="scenario-card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#60a5fa">전세대출 거주</div>
+        <div class="result-box">
+          <div class="result-row"><span class="lbl">전세대출금</span><span class="val">${fmt(jLoan)}만원</span></div>
+          <div class="result-row"><span class="lbl">월 이자</span><span class="val">${fmt(monthlyJInterest)}만원</span></div>
+          <div class="result-row"><span class="lbl">${years}년 총 이자</span><span class="val highlight-red">${fmt(totalJCost)}만원</span></div>
+        </div>
+      </div>
+      <div class="scenario-card">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#34d399">월세 거주</div>
+        <div class="result-box">
+          <div class="result-row"><span class="lbl">월세 보증금</span><span class="val">${fmt(wDep)}만원</span></div>
+          <div class="result-row"><span class="lbl">월 월세</span><span class="val">${fmt(wRent)}만원</span></div>
+          <div class="result-row"><span class="lbl">${years}년 총 월세</span><span class="val highlight-red">${fmt(totalWCost)}만원</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="result-box" style="margin-top:10px">
+      <div class="result-row"><span class="lbl">비용 차이</span><span class="val highlight">${fmt(Math.abs(diff))}만원</span></div>
+      <div class="result-row"><span class="lbl">더 저렴한 선택</span><span class="val highlight-green">${cheaper}</span></div>
+      <div class="result-row"><span class="lbl" style="font-size:11px;color:#64748b">※ 전세보증금 미회수 리스크, 전세자금 기회비용 미반영</span></div>
+    </div>
+  `;
+}
+
+// ─── 섹션 3: 기회비용 ─────────────────────────────────────
+function calcOpportunity() {
+  const price = raw('g_price');
+  const jeonse = raw('g_jeonse');
+  const wDep = raw('g_wolse_dep');
+  const wRent = raw('g_wolse');
+  const equity = raw('g_equity');
+  const priceGrowth = rawF('o_price_growth') / 100;
+  const investReturn = rawF('o_invest_return') / 100;
+  const years = Math.round(rawF('o_years'));
+  const jLoanRate = rawF('o_jloan_rate') / 100;
+  const bLoanRate = rawF('o_bloan_rate') / 100 / 12;
+
+  if (price <= 0 || equity <= 0) { alert('공통 입력의 매매가와 자기자본을 입력하세요.'); return; }
+
+  // 시나리오 A: 매매
+  const bLoan = Math.max(0, price - equity);
+  const bN = 30 * 12;
+  let bMonthly = bLoan;
+  if (bLoanRate > 0 && bLoan > 0) {
+    bMonthly = bLoan * bLoanRate * Math.pow(1+bLoanRate,bN) / (Math.pow(1+bLoanRate,bN)-1);
+  }
+
+  // 시나리오 B: 전세
+  const jLoan = Math.max(0, jeonse - equity);
+  const jMonthlyInterest = jLoan * jLoanRate / 12;
+  const jFreeCapital = Math.max(0, equity - (jeonse - jLoan));
+
+  // 시나리오 C: 월세
+  const wFreeCapital = Math.max(0, equity - wDep);
+
+  const labelsYear = [];
+  const dataA = [], dataB = [], dataC = [];
+
+  for (let y = 0; y <= years; y++) {
+    labelsYear.push(`${y}년`);
+
+    // A: 순자산 = 집값 * (1+g)^y - 잔여대출
+    const houseVal = price * Math.pow(1+priceGrowth, y);
+    // 잔여대출 (원리금균등 기준)
+    let remLoan = 0;
+    if (bLoan > 0 && bLoanRate > 0) {
+      const paidN = y * 12;
+      if (paidN < bN) {
+        remLoan = bLoan * (Math.pow(1+bLoanRate,bN) - Math.pow(1+bLoanRate,paidN)) / (Math.pow(1+bLoanRate,bN)-1);
+      }
+    }
+    dataA.push(Math.round(houseVal - remLoan));
+
+    // B: 전세 순자산 = 전세보증금(돌려받음) + 여유자본 투자
+    const jInvest = jFreeCapital * Math.pow(1+investReturn, y);
+    const totalJInvest = jInvest + jeonse; // 전세금 반환받음
+    const jCosts = jMonthlyInterest * 12 * y; // 누적 이자비용
+    dataB.push(Math.round(totalJInvest - jCosts));
+
+    // C: 월세 순자산 = 보증금(반환) + 여유자본 투자 - 누적월세
+    const wInvest = wFreeCapital * Math.pow(1+investReturn, y);
+    const totalWInvest = wInvest + wDep;
+    const wCosts = wRent * 12 * y;
+    dataC.push(Math.round(totalWInvest - wCosts));
+  }
+
+  // 최종 순자산
+  const finalA = dataA[years], finalB = dataB[years], finalC = dataC[years];
+  const maxFinal = Math.max(finalA, finalB, finalC);
+
+  // 손익분기점 (A vs C)
+  let breakeven = null;
+  for (let y = 1; y <= years; y++) {
+    if (dataA[y] >= dataC[y] && dataA[y-1] < dataC[y-1]) { breakeven = y; break; }
+  }
+
+  $('opp-scenarios').innerHTML = `
+    <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
+      <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:6px">시나리오 A: 매매</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만</div>
+      <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalA)}만원</div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${finalA===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
+    </div>
+    <div class="scenario-card ${finalB === maxFinal ? 'best' : ''}">
+      <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px">시나리오 B: 전세</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">전세보증금 ${fmt(jeonse)}만 (대출 ${fmt(jLoan)}만)</div>
+      <div style="font-size:18px;font-weight:700;color:${finalB===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalB)}만원</div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${finalB===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
+    </div>
+    <div class="scenario-card ${finalC === maxFinal ? 'best' : ''}">
+      <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:6px">시나리오 C: 월세</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}만 + 월 ${fmt(wRent)}만</div>
+      <div style="font-size:18px;font-weight:700;color:${finalC===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalC)}만원</div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${finalC===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
+    </div>
+  `;
+
+  destroyChart('oppChart');
+  const ctx = $('oppChart').getContext('2d');
+  charts['oppChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labelsYear,
+      datasets: [
+        { label: 'A: 매매', data: dataA, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.1)', tension: .3, pointRadius: 3 },
+        { label: 'B: 전세', data: dataB, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.1)', tension: .3, pointRadius: 3 },
+        { label: 'C: 월세', data: dataC, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,.1)', tension: .3, pointRadius: 3 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        ...CHART_DEFAULTS.plugins,
+        tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}만원` } }
+      },
+      scales: {
+        x: CHART_DEFAULTS.scales.x,
+        y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => fmt(v)+'만' } }
+      }
+    }
+  });
+
+  $('opp-breakeven').innerHTML = breakeven
+    ? `<div class="info-box">💡 매매(A) 순자산이 월세(C)를 <strong>${breakeven}년차</strong>에 추월합니다.</div>`
+    : `<div class="info-box">💡 ${years}년 내 매매(A)가 월세(C)를 추월하지 않습니다. 집값상승률을 높이거나 거주기간을 늘려보세요.</div>`;
+
+  $('opp-result').style.display = 'block';
+}
+
+// ─── 초기화 ────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  syncCommon();
+  // 전월세 입력 초기화
+  const g = { jeonse: raw('g_jeonse'), wDep: raw('g_wolse_dep'), wRent: raw('g_wolse'), equity: raw('g_equity') };
+  $('c1_jeonse').value = g.jeonse.toLocaleString('ko-KR');
+  $('c1_new_dep').value = g.wDep.toLocaleString('ko-KR');
+  $('c2_dep').value = g.wDep.toLocaleString('ko-KR');
+  $('c2_rent').value = g.wRent.toLocaleString('ko-KR');
+  $('c3_jeonse').value = g.jeonse.toLocaleString('ko-KR');
+  $('c3_equity').value = g.equity.toLocaleString('ko-KR');
+  $('c3_w_dep').value = g.wDep.toLocaleString('ko-KR');
+  $('c3_w_rent').value = g.wRent.toLocaleString('ko-KR');
+});
+</script>
+</body>
+</html>

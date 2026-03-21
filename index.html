@@ -4,17 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="naver-site-verification" content="7bf6e7549b1b7c6597d67ac5a149e92342b83e3e" />
-<title>서울·경기 아파트 투자 스크리너</title>
-<meta name="description" content="국토교통부 실거래가 데이터 기반 서울·경기 아파트 50,056개 단지+평형의 CAGR, MDD, 샤프비율 등 투자 지표 분석. 2006~2026년 실거래 데이터 무료 제공.">
+<title>서울·경기·인천 아파트 투자 스크리너</title>
+<meta name="description" content="국토교통부 실거래가 데이터 기반 서울·경기·인천 아파트 단지+평형의 CAGR, MDD, 샤프비율 등 투자 지표 분석. 2006~2026년 실거래 데이터 무료 제공.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="서울·경기 아파트 투자 스크리너">
-<meta property="og:description" content="국토교통부 실거래가 2006~2026년 데이터 기반. 50,056개 단지의 CAGR, MDD, 샤프비율, 수익률 분석. 무료.">
+<meta property="og:title" content="서울·경기·인천 아파트 투자 스크리너">
+<meta property="og:description" content="국토교통부 실거래가 2006~2026년 데이터 기반. 서울·경기·인천 단지의 CAGR, MDD, 샤프비율, 수익률 분석. 무료.">
 <meta property="og:url" content="https://nodostream.com">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="아파트 투자 스크리너">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="서울·경기 아파트 투자 스크리너">
-<meta name="twitter:description" content="50,056개 단지 실거래가 투자 지표 분석. CAGR, MDD, 샤프비율. 무료.">
+<meta name="twitter:title" content="서울·경기·인천 아파트 투자 스크리너">
+<meta name="twitter:description" content="서울·경기·인천 아파트 실거래가 투자 지표 분석. CAGR, MDD, 샤프비율. 무료.">
 <link rel="canonical" href="https://nodostream.com">
 <!-- AdSense: 콘텐츠 로드 완료 후 동적 삽입 (정책 준수) -->
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -52,6 +52,7 @@
   .badge { display: inline-block; padding: 1px 6px; border-radius: 99px; font-size: 10px; font-weight: 600; margin-right: 4px; }
   .b-s { background: #7c3aed22; color: #a78bfa; }
   .b-g { background: #05966922; color: #6ee7b7; }
+  .b-i { background: #0369a122; color: #38bdf8; }
   .mc { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; }
   .mc .l { font-size: 10px; color: var(--muted); }
   .mc .v { font-size: 18px; font-weight: 700; margin-top: 2px; }
@@ -227,12 +228,13 @@
 <div id="app" style="display:none;max-width:1600px" class="mx-auto px-3 py-3">
   <div class="flex items-center justify-between mb-3">
     <div>
-      <h1 class="text-lg font-bold text-white">서울·경기 아파트 투자 스크리너</h1>
+      <h1 class="text-lg font-bold text-white">서울·경기·인천 아파트 투자 스크리너</h1>
       <p class="text-xs" style="color:#64748b">국토교통부 실거래가 <span id="yearRange">2015-2026</span> | <span id="tc">0</span>개 단지 | <a href="policy.html" style="color:#93c5fd">정책 현황</a></p>
     </div>
     <div class="flex gap-2 items-center">
       <a href="market/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">시장 동향</a>
       <a href="div/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">배당·소각</a>
+      <a href="calc/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">금융계산기</a>
       <span id="fc" class="text-xs" style="color:#64748b">0건</span>
       <button onclick="toggleMerged()" class="pg-btn" id="mgBtn" title="같은 단지의 모든 평형을 하나로 합쳐서 봅니다">평형별</button>
       <button onclick="resetF()" class="pg-btn">초기화</button>
@@ -247,7 +249,7 @@
   <div id="complexView">
   <div style="background:rgba(30,41,59,.5);border:1px solid rgba(51,65,85,.5);border-radius:10px;padding:12px;margin-bottom:12px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
-      <div><label class="text-xs" style="color:#64748b">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select></div>
+      <div><label class="text-xs" style="color:#64748b">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select></div>
       <div><label class="text-xs" style="color:#64748b">시/구</label><select id="fG" class="fi" onchange="onGAdd()"><option value="">선택</option></select><div id="fGChips" class="chip-wrap"></div></div>
       <div><label class="text-xs" style="color:#64748b">동</label><select id="fD" class="fi" onchange="af()"><option value="">전체</option></select></div>
       <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명, 평형..." oninput="af()"></div>
@@ -326,7 +328,7 @@
         <button class="level-tab" id="lvDong" onclick="setAreaLevel('dong')">동</button>
       </div>
       <div style="margin-bottom:8px">
-        <select id="aR" class="fi" onchange="onAreaRegion()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option></select>
+        <select id="aR" class="fi" onchange="onAreaRegion()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select>
       </div>
       <div id="aGuFilter" style="margin-bottom:8px">
         <select id="aGu" class="fi" onchange="renderAreaList()"><option value="">전체 시/구</option></select>
@@ -2041,7 +2043,7 @@ function rt(){
   const frags=[];
   for(let i=s;i<e;i++){
     const x=F[i];
-    const bg=x.r?'b-s':'b-g';
+    const bg=['b-g','b-s','b-i'][x.r];
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
     const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
     const retObj=calcReturnObj(x);
@@ -2076,7 +2078,7 @@ function rt(){
     const cfrags=[];
     for(let i=s;i<e;i++){
       const x=F[i];
-      const bg=x.r?'b-s':'b-g';
+      const bg=['b-g','b-s','b-i'][x.r];
       const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
       const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
       const cv=x.c!==null?(x.c>0?'+':'')+x.c+'%':'-';
@@ -2525,7 +2527,7 @@ function vworldJsonp(url){
 async function getCoordAsync(x){
   const aptKey=x.g+'|'+(x.d||'')+'|'+x.n;
   if(GEO_CACHE[aptKey]) return GEO_CACHE[aptKey];
-  const region=x.r?'서울특별시':'경기도';
+  const region=['경기도','서울특별시','인천광역시'][x.r];
   const gu=x.g.includes(' ')?x.g.split(' ').pop():x.g;
   if(x.j && x.d){
     const jibunQ=region+' '+x.g+' '+(x.d||'')+' '+x.j;
@@ -2547,7 +2549,7 @@ async function getCoordAsync(x){
       return coord;
     }
   }
-  const regionShort=x.r?'서울':'경기';
+  const regionShort=['경기','서울','인천'][x.r];
   const queries=[
     `${regionShort} ${x.g} ${x.d||''} ${x.n}`,
     `${regionShort} ${x.g} ${x.n}`
