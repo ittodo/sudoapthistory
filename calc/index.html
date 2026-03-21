@@ -771,16 +771,15 @@ function calcOpportunity() {
   }
 
   // ── B: 전세 — 2년마다 집값 상승률로 보증금 갱신 ──
-  // 보증금 인상분 = 대출 증가분 + 여유자본 감소분
+  // 매년 이자를 투자풀에서 직접 차감 → 이자 지출분은 복리 성장에서 제외 (공정 비교)
   let jDeposit = jeonse;
   let jLoan = Math.max(0, jeonse - equity);
   let jPool = Math.max(0, equity - jeonse); // 투자 가능 여유자본
-  let jCumInterest = 0;
 
   // ── C: 월세 — 2년마다 집값 상승률로 보증금·월세 갱신 ──
+  // 매년 월세를 투자풀에서 직접 차감 → 월세 지출분은 복리 성장에서 제외 (공정 비교)
   let wDeposit = wDep;
   let wPool = Math.max(0, equity - wDep);
-  let wCumCost = 0;
   let curWRent = wRent;
 
   const labelsYear = [];
@@ -807,32 +806,33 @@ function calcOpportunity() {
     dataA.push(Math.round(houseVal - remLoan));
 
     // B: 전세 시뮬레이션
-    jPool *= (1 + investReturn); // 여유자본 투자수익
+    // 1) 올해 이자를 풀에서 차감한 나머지가 복리 성장
+    jPool = jPool * (1 + investReturn) - jLoan * jLoanRate;
+    // 2) 2년마다 보증금 갱신 (당해 연도 이자는 갱신 전 대출 기준, 갱신은 다음 기간 적용)
     if (y % 2 === 0) {
-      // 2년마다 보증금 갱신
       const newJeonse = jeonse * Math.pow(1 + priceGrowth, y);
       const depIncrease = newJeonse - jDeposit;
       const newJLoan = Math.max(0, newJeonse - equity);
       const loanIncrease = Math.max(0, newJLoan - jLoan);
-      // 대출 증가분으로 커버 안 되는 부분은 투자자본에서 차감
-      jPool -= Math.max(0, depIncrease - loanIncrease);
+      jPool -= Math.max(0, depIncrease - loanIncrease); // 대출 초과분은 투자풀에서 차감
       jDeposit = newJeonse;
       jLoan = newJLoan;
     }
-    jCumInterest += jLoan * jLoanRate; // 올해 이자 누적
-    dataB.push(Math.round(jDeposit + jPool - jLoan - jCumInterest));
+    // 순자산 = 보증금(반환 예정) + 투자풀 - 대출잔액
+    dataB.push(Math.round(jDeposit + jPool - jLoan));
 
     // C: 월세 시뮬레이션
-    wCumCost += curWRent * 12; // 올해 월세 누적
-    wPool *= (1 + investReturn); // 여유자본 투자수익
+    // 1) 올해 월세를 풀에서 차감한 나머지가 복리 성장
+    wPool = wPool * (1 + investReturn) - curWRent * 12;
+    // 2) 2년마다 보증금·월세 갱신
     if (y % 2 === 0) {
-      // 2년마다 보증금·월세 갱신
       const newWDep = wDep * Math.pow(1 + priceGrowth, y);
-      wPool -= Math.max(0, newWDep - wDeposit); // 추가 보증금은 투자자본에서 차감
+      wPool -= Math.max(0, newWDep - wDeposit); // 추가 보증금은 투자풀에서 차감
       wDeposit = newWDep;
-      curWRent = wRent * Math.pow(1 + priceGrowth, y);
+      curWRent = wRent * Math.pow(1 + priceGrowth, y); // 다음 기간부터 적용
     }
-    dataC.push(Math.round(wDeposit + wPool - wCumCost));
+    // 순자산 = 보증금(반환 예정) + 투자풀
+    dataC.push(Math.round(wDeposit + wPool));
   }
 
   const finalA = dataA[years], finalB = dataB[years], finalC = dataC[years];
