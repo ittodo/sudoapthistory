@@ -223,6 +223,47 @@
 const $ = id => document.getElementById(id);
 const fmt = n => Math.round(n).toLocaleString('ko-KR');
 
+// ─── localStorage ─────────────────────────────────────────
+const SAVINGS_KEYS = ['s_monthly', 's_rate', 's_months', 's_tax'];
+const DEPOSIT_KEYS = ['d_amount', 'd_rate', 'd_months', 'd_tax'];
+
+function saveGroup(lsKey, ids) {
+  const data = {};
+  ids.forEach(k => { const el = $(k); if (el) data[k] = el.value; });
+  localStorage.setItem(lsKey, JSON.stringify(data));
+}
+
+function loadGroup(lsKey, ids) {
+  try {
+    const data = JSON.parse(localStorage.getItem(lsKey) || '{}');
+    ids.forEach(k => {
+      if (!data[k]) return;
+      const el = $(k); if (!el) return;
+      el.value = data[k];
+      if (el.tagName === 'INPUT' && el.type === 'text') {
+        const hint = el.parentElement.querySelector('.amount-hint');
+        const num = parseInt(data[k].replace(/,/g, '') || '0');
+        if (hint) hint.textContent = toKoreanAmount(num);
+      }
+    });
+  } catch(e) {}
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadGroup('sv_savings', SAVINGS_KEYS);
+  loadGroup('sv_deposit', DEPOSIT_KEYS);
+  SAVINGS_KEYS.forEach(k => {
+    const el = $(k); if (!el) return;
+    el.addEventListener('input',  () => saveGroup('sv_savings', SAVINGS_KEYS));
+    el.addEventListener('change', () => saveGroup('sv_savings', SAVINGS_KEYS));
+  });
+  DEPOSIT_KEYS.forEach(k => {
+    const el = $(k); if (!el) return;
+    el.addEventListener('input',  () => saveGroup('sv_deposit', DEPOSIT_KEYS));
+    el.addEventListener('change', () => saveGroup('sv_deposit', DEPOSIT_KEYS));
+  });
+});
+
 function toKoreanAmount(만원) {
   if (!만원 || 만원 <= 0) return '';
   const 억 = Math.floor(만원 / 10000);

@@ -23,6 +23,7 @@
 
   .fi { background: #0f172a; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; width: 100%; }
   .fi:focus { outline: none; border-color: var(--accent); }
+  .fi[readonly] { opacity: 0.5; cursor: not-allowed; }
   select.fi { cursor: pointer; }
 
   .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
@@ -425,6 +426,31 @@ function fmtInput(el) {
 
 // ─── localStorage ────────────────────────────────────────
 const COMMON_KEYS = ['g_price', 'g_jeonse', 'g_wolse_dep', 'g_wolse', 'g_equity'];
+const LOAN_KEYS   = ['l_base', 'l_amount', 'l_rate', 'l_years', 'l_type'];
+const CONV_KEYS   = ['c1_rate', 'c1_base_rate', 'c2_rate', 'c3_rate', 'c3_years'];
+const OPP_KEYS    = ['o_price_growth', 'o_invest_return', 'o_years', 'o_jloan_rate', 'o_bloan_rate'];
+
+function saveGroup(lsKey, ids) {
+  const data = {};
+  ids.forEach(k => { const el = $(k); if (el) data[k] = el.value; });
+  localStorage.setItem(lsKey, JSON.stringify(data));
+}
+
+function loadGroup(lsKey, ids) {
+  try {
+    const data = JSON.parse(localStorage.getItem(lsKey) || '{}');
+    ids.forEach(k => {
+      if (!data[k]) return;
+      const el = $(k);
+      if (!el) return;
+      el.value = data[k];
+      if (el.type !== 'number' && el.tagName !== 'SELECT') {
+        const num = parseInt(data[k].replace(/,/g, '') || '0');
+        updateHint(el, num);
+      }
+    });
+  } catch(e) {}
+}
 
 function saveCommon() {
   const data = {};
@@ -920,6 +946,9 @@ function calcOpportunity() {
 // ─── 초기화 ────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   loadCommon();
+  loadGroup('calc_loan', LOAN_KEYS);
+  loadGroup('calc_conv', CONV_KEYS);
+  loadGroup('calc_opp',  OPP_KEYS);
   syncCommon();
   // 공통 입력 힌트 초기화
   COMMON_KEYS.forEach(k => {
@@ -930,6 +959,23 @@ window.addEventListener('DOMContentLoaded', () => {
   // l_amount 힌트 초기화
   updateHint($('l_amount'), raw('l_amount'));
   updateHint($('pp_amount'), raw('pp_amount'));
+
+  // 각 계산기 그룹 자동저장
+  LOAN_KEYS.forEach(k => {
+    const el = $(k); if (!el) return;
+    el.addEventListener('input', () => saveGroup('calc_loan', LOAN_KEYS));
+    el.addEventListener('change', () => saveGroup('calc_loan', LOAN_KEYS));
+  });
+  CONV_KEYS.forEach(k => {
+    const el = $(k); if (!el) return;
+    el.addEventListener('input', () => saveGroup('calc_conv', CONV_KEYS));
+    el.addEventListener('change', () => saveGroup('calc_conv', CONV_KEYS));
+  });
+  OPP_KEYS.forEach(k => {
+    const el = $(k); if (!el) return;
+    el.addEventListener('input', () => saveGroup('calc_opp', OPP_KEYS));
+    el.addEventListener('change', () => saveGroup('calc_opp', OPP_KEYS));
+  });
 });
 </script>
 </body>
