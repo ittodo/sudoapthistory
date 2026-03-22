@@ -383,6 +383,33 @@
       </div>
     </div>
 
+    <!-- 세금 설정 -->
+    <div style="margin-bottom:12px;padding:12px;background:rgba(251,191,36,.05);border:1px solid rgba(251,191,36,.2);border-radius:8px">
+      <div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">세금 설정</div>
+      <div class="grid-inputs" style="margin-bottom:10px">
+        <div>
+          <label class="label">공시가격현실화율 (%)</label>
+          <input type="number" id="o_official_ratio" class="fi" value="60" step="1" min="30" max="100">
+          <div style="font-size:10px;color:#475569;margin-top:3px">기본 60% (2024 기준)</div>
+        </div>
+        <div>
+          <label class="label">실거주 기간 (년, 양도세용)</label>
+          <input type="number" id="o_residency_years" class="fi" value="10" min="0" max="30">
+          <div style="font-size:10px;color:#475569;margin-top:3px">장기보유특별공제 거주분 산정</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
+          <input type="checkbox" id="o_apply_tax" checked style="width:14px;height:14px;cursor:pointer">
+          세금 반영 (취득세·재산세·양도세)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
+          <input type="checkbox" id="o_invest_tax" style="width:14px;height:14px;cursor:pointer">
+          투자수익 과세 15.4% (전세·월세)
+        </label>
+      </div>
+    </div>
+
     <div style="margin-bottom:12px">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
         <input type="checkbox" id="o_extra_invest" style="width:14px;height:14px;cursor:pointer">
@@ -458,7 +485,7 @@ function fmtInput(el) {
 const COMMON_KEYS = ['g_price', 'g_jeonse', 'g_wolse_dep', 'g_wolse', 'g_equity', 'g_income', 'g_income_growth', 'g_consume', 'g_consume_growth'];
 const LOAN_KEYS   = ['l_base', 'l_amount', 'l_rate', 'l_years', 'l_type'];
 const CONV_KEYS   = ['c1_rate', 'c1_base_rate', 'c2_rate', 'c3_rate', 'c3_years'];
-const OPP_KEYS    = ['o_price_growth', 'o_invest_return', 'o_years', 'o_jloan_rate', 'o_bloan_rate'];
+const OPP_KEYS    = ['o_price_growth', 'o_invest_return', 'o_years', 'o_jloan_rate', 'o_bloan_rate', 'o_official_ratio', 'o_residency_years'];
 
 function saveGroup(lsKey, ids) {
   const data = {};
@@ -803,6 +830,72 @@ function calcCompare() {
   `;
 }
 
+// ─── 세금 계산 함수 ───────────────────────────────────────
+
+// 취득세 (만원 단위)
+function calcAcquisitionTax(price) {
+  if (price <= 60000) {
+    return price * 0.011; // 1% + 지방교육세 0.1%
+  } else if (price <= 90000) {
+    const priceEok = price / 10000;
+    const acqRate = (priceEok * 2 / 3 - 3) / 100;
+    return price * (acqRate + acqRate * 0.1); // + 지방교육세 10%
+  } else {
+    return price * 0.033; // 3% + 지방교육세 0.3%
+  }
+}
+
+// 재산세 연간 (만원 단위, 지방교육세 20% 포함)
+function calcPropertyTaxAnnual(houseVal, officialRatio) {
+  const taxBase = houseVal * (officialRatio / 100) * 0.6; // 과세표준
+  let tax;
+  if (taxBase <= 6000) {
+    tax = taxBase * 0.001;
+  } else if (taxBase <= 15000) {
+    tax = 6 + (taxBase - 6000) * 0.0015;
+  } else if (taxBase <= 30000) {
+    tax = 19.5 + (taxBase - 15000) * 0.0025;
+  } else {
+    tax = 57 + (taxBase - 30000) * 0.004;
+  }
+  return tax * 1.2; // 지방교육세 20% 포함
+}
+
+// 종합소득세율 (만원 단위)
+function calcIncomeTax(income) {
+  if (income <= 0) return 0;
+  const brackets = [
+    [1400, 0.06, 0], [5000, 0.15, 126], [8800, 0.24, 576],
+    [15000, 0.35, 1544], [30000, 0.38, 1994], [50000, 0.40, 2594],
+    [100000, 0.42, 3594], [Infinity, 0.45, 6594]
+  ];
+  for (const [limit, rate, deduct] of brackets) {
+    if (income <= limit) return Math.max(0, income * rate - deduct);
+  }
+  return income * 0.45 - 6594;
+}
+
+// 양도소득세 (만원 단위)
+function calcCapitalGainTax(price, finalHouseVal, holdingYears, residencyYears) {
+  const gain = finalHouseVal - price;
+  if (gain <= 0 || finalHouseVal <= 120000) return 0; // 12억 이하 비과세
+
+  // 과세 대상 비율 (초과분/양도가)
+  const taxableRatio = (finalHouseVal - 120000) / finalHouseVal;
+  let taxableGain = gain * taxableRatio;
+
+  // 장기보유특별공제 (보유 연4% 최대40% + 거주 연4% 최대40% = 최대80%)
+  if (holdingYears >= 3) {
+    const holdDeduct = Math.min(holdingYears * 0.04, 0.40);
+    const resDeduct  = Math.min(residencyYears * 0.04, 0.40);
+    taxableGain *= (1 - Math.min(holdDeduct + resDeduct, 0.80));
+  }
+
+  // 기본공제 250만원, 지방소득세 10% 포함
+  const 과세표준 = Math.max(0, taxableGain - 250);
+  return calcIncomeTax(과세표준) * 1.1;
+}
+
 // ─── 섹션 3: 기회비용 ─────────────────────────────────────
 function calcOpportunity() {
   const price    = raw('g_price');
@@ -820,11 +913,16 @@ function calcOpportunity() {
   const jLoanRate     = rawF('o_jloan_rate') / 100;
   const bLoanRate     = rawF('o_bloan_rate') / 100 / 12;
   const extraInvest   = !!($('o_extra_invest') && $('o_extra_invest').checked);
+  const applyTax      = !!($('o_apply_tax')    && $('o_apply_tax').checked);
+  const investTax     = !!($('o_invest_tax')   && $('o_invest_tax').checked);
+  const officialRatio = rawF('o_official_ratio') || 60;
+  const residencyYrs  = Math.min(Math.round(rawF('o_residency_years') || years), years);
 
   if (price <= 0 || equity <= 0) { alert('공통 입력의 매매가와 자기자본을 입력하세요.'); return; }
 
   // ── A: 매매 ──
-  const bLoan = Math.max(0, price - equity);
+  const acquisitionTax = applyTax ? calcAcquisitionTax(price) : 0;
+  const bLoan = Math.max(0, price - (equity - acquisitionTax));
   const bN    = 30 * 12;
   let bMonthly = 0;
   if (bLoan > 0) {
@@ -851,8 +949,9 @@ function calcOpportunity() {
   const dataA = [], dataB = [], dataC = [];
   const dataRatioA = [], dataRatioB = [], dataRatioC = [];
 
-  const monthlyInvest = Math.pow(1 + investReturn, 1/12) - 1;
-  const totalMonths   = years * 12;
+  const monthlyInvest   = Math.pow(1 + investReturn, 1/12) - 1;
+  const monthlyInvestBC = investTax ? Math.pow(1 + investReturn * (1 - 0.154), 1/12) - 1 : monthlyInvest;
+  const totalMonths     = years * 12;
 
   // 연 단위 소득/소비 → 연말 시점에 갱신 (0년은 초기값)
   let curIncome  = income;
@@ -861,17 +960,24 @@ function calcOpportunity() {
   const ratioOrDash = (cost, inc) => inc > 0 ? (cost / inc * 100).toFixed(1) + '%' : '-';
   const disposable  = (inc, con, housing) => inc - con - housing; // 가처분소득
 
+  let totalPropTax = 0; // 재산세 누적 추적
+
   // m=0 초기값
+  const initMonthlyPropTax = applyTax ? calcPropertyTaxAnnual(price, officialRatio) / 12 : 0;
   labelsYear.push('0년');
   dataA.push(Math.round(price - bLoan));
   dataB.push(Math.round(jDeposit + jPool - jLoan));
   dataC.push(Math.round(wDeposit + wPool));
-  dataRatioA.push(income > 0 ? parseFloat((bMonthly / income * 100).toFixed(1)) : 0);
+  dataRatioA.push(income > 0 ? parseFloat(((bMonthly + initMonthlyPropTax) / income * 100).toFixed(1)) : 0);
   dataRatioB.push(income > 0 ? parseFloat((jMonthlyInterest / income * 100).toFixed(1)) : 0);
   dataRatioC.push(income > 0 ? parseFloat((curWRent / income * 100).toFixed(1)) : 0);
 
   // 월 단위 시뮬레이션
   for (let m = 1; m <= totalMonths; m++) {
+
+    // A 시나리오 월 재산세 (집값 성장 반영)
+    const mPropTax = applyTax ? calcPropertyTaxAnnual(price * Math.pow(1 + priceGrowth, (m - 1) / 12), officialRatio) / 12 : 0;
+    totalPropTax += mPropTax;
 
     // B/C 매달 투자 적립금 결정
     let bAdd, cAdd, aAdd;
@@ -879,7 +985,7 @@ function calcOpportunity() {
       // 여유자금 투자 ON: 가처분소득(소득 - 소비 - 주거비) 전액 적립
       bAdd = disposable(curIncome, curConsume, jMonthlyInterest);
       cAdd = disposable(curIncome, curConsume, curWRent);
-      aAdd = Math.max(0, disposable(curIncome, curConsume, bMonthly));
+      aAdd = Math.max(0, disposable(curIncome, curConsume, bMonthly + mPropTax));
     } else {
       // 기본: A 대비 절약분만 적립
       bAdd = bMonthly - jMonthlyInterest;
@@ -887,8 +993,8 @@ function calcOpportunity() {
       aAdd = 0;
     }
 
-    jPool = jPool * (1 + monthlyInvest) + bAdd;
-    wPool = wPool * (1 + monthlyInvest) + cAdd;
+    jPool = jPool * (1 + monthlyInvestBC) + bAdd;
+    wPool = wPool * (1 + monthlyInvestBC) + cAdd;
     if (extraInvest) aPool = aPool * (1 + monthlyInvest) + aAdd;
 
     // 24개월(2년)마다 보증금·월세 갱신
@@ -918,17 +1024,25 @@ function calcOpportunity() {
       if (bLoan > 0 && bLoanRate > 0 && m < bN) {
         remLoan = bLoan * (Math.pow(1+bLoanRate,bN) - Math.pow(1+bLoanRate,m)) / (Math.pow(1+bLoanRate,bN) - 1);
       }
-      dataA.push(Math.round(houseVal - remLoan + aPool));
+      // 재산세 누적 차감: extraInvest OFF일 때는 aPool=0이므로 별도 차감
+      const propTaxDeduct = (!extraInvest && applyTax) ? totalPropTax : 0;
+      dataA.push(Math.round(houseVal - remLoan + aPool - propTaxDeduct));
       dataB.push(Math.round(jDeposit + jPool - jLoan));
       dataC.push(Math.round(wDeposit + wPool));
 
-      dataRatioA.push(curIncome > 0 ? parseFloat((bMonthly / curIncome * 100).toFixed(1)) : 0);
+      const yrPropTaxMonthly = applyTax ? calcPropertyTaxAnnual(houseVal, officialRatio) / 12 : 0;
+      dataRatioA.push(curIncome > 0 ? parseFloat(((bMonthly + yrPropTaxMonthly) / curIncome * 100).toFixed(1)) : 0);
       dataRatioB.push(curIncome > 0 ? parseFloat((jMonthlyInterest / curIncome * 100).toFixed(1)) : 0);
       dataRatioC.push(curIncome > 0 ? parseFloat((curWRent / curIncome * 100).toFixed(1)) : 0);
     }
   }
 
-  const finalA = dataA[years], finalB = dataB[years], finalC = dataC[years];
+  // 양도소득세
+  const capitalGainsTax = applyTax ? calcCapitalGainTax(price, Math.round(price * Math.pow(1 + priceGrowth, years)), years, residencyYrs) : 0;
+  const totalPropTaxFinal = Math.round(totalPropTax);
+
+  const finalA = dataA[years] - Math.round(capitalGainsTax);
+  const finalB = dataB[years], finalC = dataC[years];
   const maxFinal = Math.max(finalA, finalB, finalC);
 
   let breakeven = null;
@@ -944,7 +1058,7 @@ function calcOpportunity() {
   const finalConsume  = Math.round(consume * Math.pow(1 + consumeGrowth, years));
 
   // 시나리오 카드용 부담률
-  const initRatioA = income > 0 ? (bMonthly / income * 100).toFixed(1) : null;
+  const initRatioA = income > 0 ? ((bMonthly + initMonthlyPropTax) / income * 100).toFixed(1) : null;
   const initRatioB = income > 0 ? (dataRatioB[0]).toFixed(1) : null;
   const initRatioC = income > 0 ? (dataRatioC[0]).toFixed(1) : null;
   const endRatioA  = income > 0 ? dataRatioA[years].toFixed(1) : null;
@@ -965,28 +1079,31 @@ function calcOpportunity() {
   $('opp-scenarios').innerHTML = `
     <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:6px">시나리오 A: 매매</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:4px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(bMonthly)}만</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:4px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(Math.round(bMonthly))}만${applyTax ? ` + 재산세 ${fmt(Math.round(initMonthlyPropTax))}만` : ''}</div>
       <div style="font-size:10px;color:#475569;margin-bottom:8px">집값 ${fmt(price)}만 → <span style="color:#60a5fa">${fmt(finalHouseVal)}만</span> (${years}년 후)</div>
       <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalA)}만원</div>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산${extraInvest ? ' + 투자풀' : ''}</div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 ${applyTax ? '세후 ' : ''}순자산${extraInvest ? ' + 투자풀' : ''}</div>
+      ${applyTax ? `<div style="font-size:10px;color:#f87171;margin-top:3px">취득세 ${fmt(Math.round(acquisitionTax))}만 · 재산세↗ ${fmt(totalPropTaxFinal)}만 · 양도세 ${fmt(Math.round(capitalGainsTax))}만</div>` : ''}
       ${burdenBadge(initRatioA, endRatioA)}
       ${dispBadge(finalIncome, finalConsume, bMonthly, `${years}년 후`)}
       ${finalA===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalB === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px">시나리오 B: 전세</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(jeonse)}만 → ${fmt(finalJeonse)}만 (2년 갱신)</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(jeonse)}만 → ${fmt(Math.round(finalJeonse))}만 (2년 갱신)</div>
       <div style="font-size:18px;font-weight:700;color:${finalB===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalB)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${investTax ? '<div style="font-size:10px;color:#94a3b8;margin-top:2px">투자수익 과세(15.4%) 반영</div>' : ''}
       ${burdenBadge(initRatioB, endRatioB)}
       ${dispBadge(finalIncome, finalConsume, finalJeonse * jLoanRate / 12, `${years}년 후`)}
       ${finalB===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalC === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:6px">시나리오 C: 월세</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}→${fmt(finalWDep)}만 / 월세 ${fmt(wRent)}→${fmt(finalWRent)}만 (2년 갱신)</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}→${fmt(Math.round(finalWDep))}만 / 월세 ${fmt(wRent)}→${fmt(Math.round(finalWRent))}만 (2년 갱신)</div>
       <div style="font-size:18px;font-weight:700;color:${finalC===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalC)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${investTax ? '<div style="font-size:10px;color:#94a3b8;margin-top:2px">투자수익 과세(15.4%) 반영</div>' : ''}
       ${burdenBadge(initRatioC, endRatioC)}
       ${dispBadge(finalIncome, finalConsume, finalWRent, `${years}년 후`)}
       ${finalC===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
