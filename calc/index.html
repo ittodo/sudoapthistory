@@ -143,6 +143,24 @@
         <input type="text" id="g_equity" class="fi" placeholder="예: 30,000" value="30,000" oninput="fmtInput(this);syncCommon()">
         <div class="amount-hint"></div>
       </div>
+      <div>
+        <label class="label">월 소득 (만원)</label>
+        <input type="text" id="g_income" class="fi" placeholder="예: 400" value="400" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
+      </div>
+      <div>
+        <label class="label">소득 증가율 (%/년)</label>
+        <input type="number" id="g_income_growth" class="fi" value="3.0" step="0.1" oninput="syncCommon()">
+      </div>
+      <div>
+        <label class="label">월 소비·생활비 (만원)</label>
+        <input type="text" id="g_consume" class="fi" placeholder="예: 200" value="200" oninput="fmtInput(this);syncCommon()">
+        <div class="amount-hint"></div>
+      </div>
+      <div>
+        <label class="label">소비 증가율 (%/년)</label>
+        <input type="number" id="g_consume_growth" class="fi" value="3.0" step="0.1" oninput="syncCommon()">
+      </div>
     </div>
   </div>
 
@@ -365,11 +383,23 @@
       </div>
     </div>
 
+    <div style="margin-bottom:12px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
+        <input type="checkbox" id="o_extra_invest" style="width:14px;height:14px;cursor:pointer">
+        여유자금 투자 반영
+        <span style="color:#64748b;font-size:11px">(가처분소득 = 소득 - 소비 - 주거비를 매달 투자풀에 적립)</span>
+      </label>
+    </div>
+
     <button class="btn btn-primary" onclick="calcOpportunity()">비교 계산</button>
 
     <div id="opp-result" style="display:none;margin-top:16px">
       <div class="three-col" id="opp-scenarios" style="margin-bottom:16px"></div>
       <div class="canvas-wrap-lg"><canvas id="oppChart"></canvas></div>
+      <div id="opp-burden" style="margin-top:16px">
+        <div class="section-header">소득 대비 주거비 부담률 (%)</div>
+        <div class="canvas-wrap"><canvas id="oppBurdenChart"></canvas></div>
+      </div>
       <div id="opp-breakeven" style="margin-top:12px"></div>
     </div>
   </div>
@@ -425,7 +455,7 @@ function fmtInput(el) {
 }
 
 // ─── localStorage ────────────────────────────────────────
-const COMMON_KEYS = ['g_price', 'g_jeonse', 'g_wolse_dep', 'g_wolse', 'g_equity'];
+const COMMON_KEYS = ['g_price', 'g_jeonse', 'g_wolse_dep', 'g_wolse', 'g_equity', 'g_income', 'g_income_growth', 'g_consume', 'g_consume_growth'];
 const LOAN_KEYS   = ['l_base', 'l_amount', 'l_rate', 'l_years', 'l_type'];
 const CONV_KEYS   = ['c1_rate', 'c1_base_rate', 'c2_rate', 'c3_rate', 'c3_years'];
 const OPP_KEYS    = ['o_price_growth', 'o_invest_return', 'o_years', 'o_jloan_rate', 'o_bloan_rate'];
@@ -775,23 +805,27 @@ function calcCompare() {
 
 // ─── 섹션 3: 기회비용 ─────────────────────────────────────
 function calcOpportunity() {
-  const price = raw('g_price');
-  const jeonse = raw('g_jeonse');
-  const wDep = raw('g_wolse_dep');
-  const wRent = raw('g_wolse');
-  const equity = raw('g_equity');
-  const priceGrowth = rawF('o_price_growth') / 100;
-  const investReturn = rawF('o_invest_return') / 100;
-  const years = Math.round(rawF('o_years'));
-  const jLoanRate = rawF('o_jloan_rate') / 100;
-  const bLoanRate = rawF('o_bloan_rate') / 100 / 12;
+  const price    = raw('g_price');
+  const jeonse   = raw('g_jeonse');
+  const wDep     = raw('g_wolse_dep');
+  const wRent    = raw('g_wolse');
+  const equity   = raw('g_equity');
+  const income   = raw('g_income');
+  const incomeGrowth  = rawF('g_income_growth') / 100;
+  const consume  = raw('g_consume');
+  const consumeGrowth = rawF('g_consume_growth') / 100;
+  const priceGrowth   = rawF('o_price_growth') / 100;
+  const investReturn  = rawF('o_invest_return') / 100;
+  const years         = Math.round(rawF('o_years'));
+  const jLoanRate     = rawF('o_jloan_rate') / 100;
+  const bLoanRate     = rawF('o_bloan_rate') / 100 / 12;
+  const extraInvest   = !!($('o_extra_invest') && $('o_extra_invest').checked);
 
   if (price <= 0 || equity <= 0) { alert('공통 입력의 매매가와 자기자본을 입력하세요.'); return; }
 
   // ── A: 매매 ──
   const bLoan = Math.max(0, price - equity);
-  const bN = 30 * 12;
-  // 매수 월 납입금(원금+이자) — B·C의 "절약액" 기준이 되는 핵심 값
+  const bN    = 30 * 12;
   let bMonthly = 0;
   if (bLoan > 0) {
     bMonthly = bLoanRate > 0
@@ -800,74 +834,97 @@ function calcOpportunity() {
   }
 
   // ── B: 전세 ──
-  // 초기 투자풀 = 전세보증금 자기부담 후 남는 자기자본
   let jDeposit = jeonse;
-  let jLoan = Math.max(0, jeonse - equity);
-  let jPool = Math.max(0, equity - jeonse);
-  // 월 이자(기간별로 갱신)
+  let jLoan    = Math.max(0, jeonse - equity);
+  let jPool    = Math.max(0, equity - jeonse);
   let jMonthlyInterest = jLoan * jLoanRate / 12;
 
   // ── C: 월세 ──
-  // 초기 투자풀 = 월세보증금 지불 후 남는 자기자본
   let wDeposit = wDep;
-  let wPool = Math.max(0, equity - wDep);
-  let curWRent = wRent; // 월 납입액(기간별로 갱신)
+  let wPool    = Math.max(0, equity - wDep);
+  let curWRent = wRent;
 
-  const labelsYear = [];
+  // ── A 투자풀 (여유자금 투자 ON 시) ──
+  let aPool = 0;
+
+  const labelsYear  = [];
   const dataA = [], dataB = [], dataC = [];
+  const dataRatioA = [], dataRatioB = [], dataRatioC = [];
 
-  // 월 단위 환산율
   const monthlyInvest = Math.pow(1 + investReturn, 1/12) - 1;
-  const totalMonths = years * 12;
+  const totalMonths   = years * 12;
 
-  // m=0 초기값 (세 시나리오 모두 equity에서 출발)
+  // 연 단위 소득/소비 → 연말 시점에 갱신 (0년은 초기값)
+  let curIncome  = income;
+  let curConsume = consume;
+
+  const ratioOrDash = (cost, inc) => inc > 0 ? (cost / inc * 100).toFixed(1) + '%' : '-';
+  const disposable  = (inc, con, housing) => inc - con - housing; // 가처분소득
+
+  // m=0 초기값
   labelsYear.push('0년');
   dataA.push(Math.round(price - bLoan));
   dataB.push(Math.round(jDeposit + jPool - jLoan));
   dataC.push(Math.round(wDeposit + wPool));
+  dataRatioA.push(income > 0 ? parseFloat((bMonthly / income * 100).toFixed(1)) : 0);
+  dataRatioB.push(income > 0 ? parseFloat((jMonthlyInterest / income * 100).toFixed(1)) : 0);
+  dataRatioC.push(income > 0 ? parseFloat((curWRent / income * 100).toFixed(1)) : 0);
 
   // 월 단위 시뮬레이션
   for (let m = 1; m <= totalMonths; m++) {
 
-    // B: 이달 투자풀 = 전달풀 × 월복리 + (매수월납입 - 전세월이자) 적립
-    jPool = jPool * (1 + monthlyInvest) + (bMonthly - jMonthlyInterest);
+    // B/C 매달 투자 적립금 결정
+    let bAdd, cAdd, aAdd;
+    if (extraInvest && income > 0) {
+      // 여유자금 투자 ON: 가처분소득(소득 - 소비 - 주거비) 전액 적립
+      bAdd = disposable(curIncome, curConsume, jMonthlyInterest);
+      cAdd = disposable(curIncome, curConsume, curWRent);
+      aAdd = Math.max(0, disposable(curIncome, curConsume, bMonthly));
+    } else {
+      // 기본: A 대비 절약분만 적립
+      bAdd = bMonthly - jMonthlyInterest;
+      cAdd = bMonthly - curWRent;
+      aAdd = 0;
+    }
 
-    // C: 이달 투자풀 = 전달풀 × 월복리 + (매수월납입 - 월세) 적립
-    wPool = wPool * (1 + monthlyInvest) + (bMonthly - curWRent);
+    jPool = jPool * (1 + monthlyInvest) + bAdd;
+    wPool = wPool * (1 + monthlyInvest) + cAdd;
+    if (extraInvest) aPool = aPool * (1 + monthlyInvest) + aAdd;
 
     // 24개월(2년)마다 보증금·월세 갱신
     if (m % 24 === 0) {
-      const renewYrs = m / 12; // 2, 4, 6, ...
-
-      // B 갱신: 보증금·대출·월이자 업데이트
+      const renewYrs = m / 12;
       const newJeonse = jeonse * Math.pow(1 + priceGrowth, renewYrs);
       const newJLoan  = Math.max(0, newJeonse - equity);
       jPool -= Math.max(0, (newJeonse - jDeposit) - Math.max(0, newJLoan - jLoan));
-      jDeposit = newJeonse;
-      jLoan    = newJLoan;
+      jDeposit = newJeonse; jLoan = newJLoan;
       jMonthlyInterest = jLoan * jLoanRate / 12;
 
-      // C 갱신: 보증금·월세 업데이트
       const newWDep = wDep * Math.pow(1 + priceGrowth, renewYrs);
       wPool -= Math.max(0, newWDep - wDeposit);
       wDeposit = newWDep;
       curWRent = wRent * Math.pow(1 + priceGrowth, renewYrs);
     }
 
-    // 매 12개월(연말)마다 차트 데이터 기록
+    // 연말 기록
     if (m % 12 === 0) {
       const yr = m / 12;
-      labelsYear.push(`${yr}년`);
+      curIncome  = income  > 0 ? income  * Math.pow(1 + incomeGrowth,  yr) : 0;
+      curConsume = consume > 0 ? consume * Math.pow(1 + consumeGrowth, yr) : 0;
 
-      // A: 집값(연 단위 공식) - 대출잔액(월 단위 원리금균등 정산)
+      labelsYear.push(`${yr}년`);
       const houseVal = price * Math.pow(1 + priceGrowth, yr);
       let remLoan = 0;
       if (bLoan > 0 && bLoanRate > 0 && m < bN) {
         remLoan = bLoan * (Math.pow(1+bLoanRate,bN) - Math.pow(1+bLoanRate,m)) / (Math.pow(1+bLoanRate,bN) - 1);
       }
-      dataA.push(Math.round(houseVal - remLoan));
+      dataA.push(Math.round(houseVal - remLoan + aPool));
       dataB.push(Math.round(jDeposit + jPool - jLoan));
       dataC.push(Math.round(wDeposit + wPool));
+
+      dataRatioA.push(curIncome > 0 ? parseFloat((bMonthly / curIncome * 100).toFixed(1)) : 0);
+      dataRatioB.push(curIncome > 0 ? parseFloat((jMonthlyInterest / curIncome * 100).toFixed(1)) : 0);
+      dataRatioC.push(curIncome > 0 ? parseFloat((curWRent / curIncome * 100).toFixed(1)) : 0);
     }
   }
 
@@ -879,11 +936,31 @@ function calcOpportunity() {
     if (dataA[y] >= dataC[y] && dataA[y-1] < dataC[y-1]) { breakeven = y; break; }
   }
 
-  // 시나리오 카드용 최종 값
-  const finalJeonse = jDeposit;
-  const finalWDep = wDeposit;
-  const finalWRent = curWRent;
-  const finalHouseVal = Math.round(price * Math.pow(1 + priceGrowth, years)); // 최종 집값
+  const finalJeonse  = jDeposit;
+  const finalWDep    = wDeposit;
+  const finalWRent   = curWRent;
+  const finalHouseVal = Math.round(price * Math.pow(1 + priceGrowth, years));
+  const finalIncome   = Math.round(income  * Math.pow(1 + incomeGrowth,  years));
+  const finalConsume  = Math.round(consume * Math.pow(1 + consumeGrowth, years));
+
+  // 시나리오 카드용 부담률
+  const initRatioA = income > 0 ? (bMonthly / income * 100).toFixed(1) : null;
+  const initRatioB = income > 0 ? (dataRatioB[0]).toFixed(1) : null;
+  const initRatioC = income > 0 ? (dataRatioC[0]).toFixed(1) : null;
+  const endRatioA  = income > 0 ? dataRatioA[years].toFixed(1) : null;
+  const endRatioB  = income > 0 ? dataRatioB[years].toFixed(1) : null;
+  const endRatioC  = income > 0 ? dataRatioC[years].toFixed(1) : null;
+
+  const burdenBadge = (init, end) => init !== null
+    ? `<div style="font-size:10px;color:#64748b;margin-top:5px">주거비 부담률 <span style="color:#fbbf24">${init}%</span> → <span style="color:#fbbf24">${end}%</span></div>`
+    : '';
+
+  const dispBadge = (inc, con, housing, label) => {
+    if (!income) return '';
+    const d = inc - con - housing;
+    const color = d >= 0 ? '#10b981' : '#f87171';
+    return `<div style="font-size:10px;color:#64748b;margin-top:4px">${label}: 소득 ${fmt(Math.round(inc))} - 소비 ${fmt(Math.round(con))} - 주거비 ${fmt(Math.round(housing))} = <span style="color:${color}">${fmt(Math.round(d))}만</span></div>`;
+  };
 
   $('opp-scenarios').innerHTML = `
     <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
@@ -891,7 +968,9 @@ function calcOpportunity() {
       <div style="font-size:10px;color:#64748b;margin-bottom:4px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(bMonthly)}만</div>
       <div style="font-size:10px;color:#475569;margin-bottom:8px">집값 ${fmt(price)}만 → <span style="color:#60a5fa">${fmt(finalHouseVal)}만</span> (${years}년 후)</div>
       <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalA)}만원</div>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산 (집값 - 대출잔액)</div>
+      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산${extraInvest ? ' + 투자풀' : ''}</div>
+      ${burdenBadge(initRatioA, endRatioA)}
+      ${dispBadge(finalIncome, finalConsume, bMonthly, `${years}년 후`)}
       ${finalA===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalB === maxFinal ? 'best' : ''}">
@@ -899,6 +978,8 @@ function calcOpportunity() {
       <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(jeonse)}만 → ${fmt(finalJeonse)}만 (2년 갱신)</div>
       <div style="font-size:18px;font-weight:700;color:${finalB===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalB)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${burdenBadge(initRatioB, endRatioB)}
+      ${dispBadge(finalIncome, finalConsume, finalJeonse * jLoanRate / 12, `${years}년 후`)}
       ${finalB===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalC === maxFinal ? 'best' : ''}">
@@ -906,13 +987,15 @@ function calcOpportunity() {
       <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}→${fmt(finalWDep)}만 / 월세 ${fmt(wRent)}→${fmt(finalWRent)}만 (2년 갱신)</div>
       <div style="font-size:18px;font-weight:700;color:${finalC===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalC)}만원</div>
       <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
+      ${burdenBadge(initRatioC, endRatioC)}
+      ${dispBadge(finalIncome, finalConsume, finalWRent, `${years}년 후`)}
       ${finalC===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
   `;
 
+  // ── 순자산 차트 ──
   destroyChart('oppChart');
-  const ctx = $('oppChart').getContext('2d');
-  charts['oppChart'] = new Chart(ctx, {
+  charts['oppChart'] = new Chart($('oppChart').getContext('2d'), {
     type: 'line',
     data: {
       labels: labelsYear,
@@ -926,7 +1009,7 @@ function calcOpportunity() {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         ...CHART_DEFAULTS.plugins,
-        tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}만원` } }
+        tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: c => `${c.dataset.label}: ${fmt(c.parsed.y)}만원` } }
       },
       scales: {
         x: CHART_DEFAULTS.scales.x,
@@ -935,9 +1018,48 @@ function calcOpportunity() {
     }
   });
 
+  // ── 부담률 차트 ──
+  destroyChart('oppBurdenChart');
+  if (income > 0) {
+    $('opp-burden').style.display = 'block';
+    charts['oppBurdenChart'] = new Chart($('oppBurdenChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labelsYear,
+        datasets: [
+          { label: 'A: 매매', data: dataRatioA, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.08)', tension: .3, pointRadius: 3 },
+          { label: 'B: 전세', data: dataRatioB, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.08)', tension: .3, pointRadius: 3 },
+          { label: 'C: 월세', data: dataRatioC, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,.08)', tension: .3, pointRadius: 3 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          ...CHART_DEFAULTS.plugins,
+          tooltip: { ...CHART_DEFAULTS.plugins.tooltip, callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y}%` } }
+        },
+        scales: {
+          x: CHART_DEFAULTS.scales.x,
+          y: { ...CHART_DEFAULTS.scales.y, ticks: { ...CHART_DEFAULTS.scales.y.ticks, callback: v => v + '%' } }
+        }
+      }
+    });
+  } else {
+    $('opp-burden').style.display = 'none';
+  }
+
+  // ── 소득 요약 + 손익분기 ──
+  const incomeNote = income > 0
+    ? `<div style="font-size:11px;color:#94a3b8;margin-top:8px;padding:8px 10px;background:rgba(16,185,129,.07);border-radius:6px;border-left:2px solid #10b981">`
+      + `${years}년 후 월 소득 <strong style="color:#fff">${fmt(finalIncome)}만원</strong> · `
+      + `소비 <strong style="color:#fff">${fmt(finalConsume)}만원</strong>`
+      + ` (초기 소득 ${fmt(income)}만 / 소비 ${fmt(consume)}만)</div>`
+    : '';
+
   $('opp-breakeven').innerHTML = (breakeven
     ? `<div class="info-box">💡 매매(A) 순자산이 월세(C)를 <strong>${breakeven}년차</strong>에 추월합니다.</div>`
     : `<div class="info-box">💡 ${years}년 내 매매(A)가 월세(C)를 추월하지 않습니다. 집값상승률을 높이거나 거주기간을 늘려보세요.</div>`)
+    + incomeNote
     + `<div style="font-size:11px;color:#475569;margin-top:8px;padding:8px 10px;background:rgba(71,85,105,.15);border-radius:6px;border-left:2px solid #475569">※ B·C 시나리오는 전세·월세 보증금 및 월세를 집값 상승률과 동일하게 2년마다 갱신 반영. 갱신 시 추가 보증금은 여유자본(투자풀)에서 차감, 대출 한도 초과분만 대출 증액 처리.</div>`;
 
   $('opp-result').style.display = 'block';
@@ -950,9 +1072,10 @@ window.addEventListener('DOMContentLoaded', () => {
   loadGroup('calc_conv', CONV_KEYS);
   loadGroup('calc_opp',  OPP_KEYS);
   syncCommon();
-  // 공통 입력 힌트 초기화
+  // 공통 입력 힌트 초기화 (text type만)
   COMMON_KEYS.forEach(k => {
     const el = $(k);
+    if (!el || el.type === 'number') return;
     const num = parseInt(el.value.replace(/,/g, '') || '0');
     updateHint(el, num);
   });
