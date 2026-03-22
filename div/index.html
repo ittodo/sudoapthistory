@@ -156,6 +156,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
       <option value="totalDiv">배당총액순</option>
       <option value="totalBB">자사주매입순</option>
       <option value="totalAll">배당+매입순</option>
+      <option value="sratio">주주환원율순</option>
       <option value="yield">수익률순</option>
       <option value="dps">DPS순</option>
       <option value="name">종목명순</option>
@@ -176,6 +177,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
         <th style="text-align:right">자사주매입</th>
         <th style="text-align:right">자사주소각</th>
         <th style="text-align:right">배당+매입</th>
+        <th style="text-align:right">주주환원율</th>
         <th>배당추이</th>
         <th>공시</th>
       </tr></thead>
@@ -230,7 +232,9 @@ async function init(){
     dataUpdated=dR.updated||'';
     const priceCount=Object.keys(priceMap).length;
     document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · 현재가 ${priceCount.toLocaleString()}종목 · ${dataUpdated}`;
-    buildYearSelect();buildStats();render();
+    buildYearSelect();buildStats();
+    const initHash=location.hash.slice(1);const validTabs={calendar:1,annual:1,company:1};
+    switchTab(validTabs[initHash]?initHash:'calendar',true);
   }catch(e){console.error(e);}
   document.getElementById('loading').style.display='none';
   setTimeout(()=>{var s=document.createElement('script');s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4171612672605986';s.async=true;s.crossOrigin='anonymous';document.head.appendChild(s);},1000);
@@ -288,10 +292,13 @@ function buildStats(){
   `;
 }
 
-function switchTab(t){currentTab=t;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
+function switchTab(t,replace){currentTab=t;document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));
   document.getElementById('panelCalendar').style.display=t==='calendar'?'':'none';
   document.getElementById('panelAnnual').style.display=t==='annual'?'':'none';
   document.getElementById('panelCompany').style.display=t==='company'?'':'none';
+  const h='#'+t;
+  if(replace)history.replaceState({tab:t},'',h);
+  else if(location.hash!==h)history.pushState({tab:t},'',h);
   render();
 }
 function setF(k,v){F[k]=v;document.querySelectorAll(`[data-${k.toLowerCase()}]`).forEach(b=>b.classList.toggle('active',b.dataset[k.toLowerCase()]==String(v)));render();}
@@ -626,18 +633,22 @@ function renderCompany(){
     for(const e of m.events){if((e.recordDate||'').startsWith(String(sy))&&e.rceptNo){rn=e.rceptNo;break;}}
     const cp=priceMap[t]||0;
     const curYield=cp>0&&dps>0?(dps/cp*100):0;
-    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBuy:buy,totalCancel:cancel,dps,yield:yld,curYield,trend,rceptNo:rn,totalAll:dv+buy});
+    const shares=(dps>0&&dv>0)?(dv/dps):0;
+    const marketCap=(cp>0&&shares>0)?(cp*shares):0;
+    const shareholderReturn=marketCap>0?((dv+buy)/marketCap*100):0;
+    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBuy:buy,totalCancel:cancel,dps,yield:yld,curYield,shareholderReturn,trend,rceptNo:rn,totalAll:dv+buy});
   }
 
   if(sortMode==='totalDiv')rows.sort((a,b)=>b.totalDiv-a.totalDiv);
   else if(sortMode==='totalBB')rows.sort((a,b)=>b.totalBuy-a.totalBuy);
   else if(sortMode==='totalAll')rows.sort((a,b)=>b.totalAll-a.totalAll);
+  else if(sortMode==='sratio')rows.sort((a,b)=>b.shareholderReturn-a.shareholderReturn);
   else if(sortMode==='yield')rows.sort((a,b)=>b.yield-a.yield);
   else if(sortMode==='dps')rows.sort((a,b)=>b.dps-a.dps);
   else rows.sort((a,b)=>a.name.localeCompare(b.name));
 
   const tbody=document.getElementById('cmpBody');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
 
   // Top 200
   const show=rows.slice(0,200);
@@ -663,6 +674,7 @@ function renderCompany(){
       <td style="text-align:right;font-weight:600;color:var(--green);">${fmtAmt(r.totalBuy)}</td>
       <td style="text-align:right;color:var(--up);">${fmtAmt(r.totalCancel)}</td>
       <td style="text-align:right;font-weight:700;color:var(--gold);">${fmtAmt(r.totalAll)}</td>
+      <td style="text-align:right;${r.shareholderReturn>=5?'color:var(--gold)':r.shareholderReturn>=3?'color:var(--up)':''}">${r.shareholderReturn>0?r.shareholderReturn.toFixed(1)+'%':'-'}</td>
       <td>${th}</td>
       <td>${dartL(r.rceptNo)}</td>
     </tr>`;
@@ -716,6 +728,7 @@ function showDetail(ticker,name){
 }
 function closeDetail(){document.getElementById('detailPanel').style.display='none';document.getElementById('detailOverlay').style.display='none';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail();});
+window.addEventListener('popstate',e=>{const t=e.state?.tab||'calendar';switchTab(t,true);});
 
 // ===== HELPERS =====
 function mktB(m){return m==='KOSPI'?'<span class="badge b-kospi">KOSPI</span>':m==='KOSDAQ'?'<span class="badge b-kosdaq">KOSDAQ</span>':m||'';}
