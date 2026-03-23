@@ -280,6 +280,7 @@
             <th onclick="sb('c')" title="연평균성장률: 첫 거래연도~2025년 기준. 신축일수록 기간이 짧아 높게 나올 수 있음">CAGR <span class="sa" data-c="c">▼</span></th>
             <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
             <th onclick="sb('s')">샤프 <span class="sa" data-c="s">▼</span></th>
+            <th onclick="sb('ld')" title="가장 최근 실거래 날짜">최근거래 <span class="sa" data-c="ld">▼</span></th>
             <th onclick="sb('v')">거래 <span class="sa" data-c="v">▼</span></th>
             <th onclick="sb('u')">세대 <span class="sa" data-c="u">▼</span></th>
             <th onclick="sb('ls')" title="세대당 대지지분 (대지면적÷세대수)">대지지분 <span class="sa" data-c="ls">▼</span></th>
@@ -406,7 +407,7 @@
 </div>
 
 <script>
-let D=[],F=[],cp=1,ps=100,sc='v',sa=false,si=-1,ch=null;
+let D=[],F=[],cp=1,ps=100,sc='ld',sa=false,si=-1,ch=null;
 let retYearFrom=2024, retYearTo=2025; // 수익률 기간 슬라이더
 let dataLastMonth=12; // 마지막 연도의 데이터 월수 (meta.updated에서 파싱)
 let chartTab='year'; // 'year' | 'month'
@@ -1787,6 +1788,7 @@ async function loadGeo(){
 }
 
 function calcLandShare(x){ return x.ls||null; }
+function fmtDate(d){if(!d)return'-';const s=String(d).padStart(8,'0');return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);}
 function fmtLs(ls){
   if(!ls) return '-';
   if(typeof ls==='number') return ls.toFixed(1)+'㎡('+(ls/3.3058).toFixed(1)+'평)';
@@ -2065,6 +2067,7 @@ function rt(){
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${x.m}%</td>
       <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
+      <td style="text-align:center;color:#94a3b8;font-size:11px">${fmtDate(x.ld)}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
       <td style="text-align:center;color:#94a3b8">${fmtLs(x.ls)}</td>
@@ -2686,7 +2689,7 @@ function saveHash(){
   const bHv=gv('bH');if(bHv)p.bH=bHv;
   if(retYearFrom!==2024)p.ryL=retYearFrom;
   if(retYearTo!==2025)p.ryH=retYearTo;
-  if(sc!=='c')p.sc=sc;
+  if(sc!=='ld')p.sc=sc;
   if(sa)p.sa=1;
   if(cp>1)p.p=cp;
   if(ps!==100)p.ps=ps;
