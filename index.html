@@ -1878,6 +1878,7 @@ function buildMerged(){
       t:totalT,
       lp:mlp!==null?parseFloat(mlp.toFixed(2)):null,
       y25:my25!==null?parseFloat(my25.toFixed(1)):null,
+      ld:Math.max(...siblings.map(x=>x.ld||0))||null,
       si:siblings.map(x=>x.i),
       j:rep.j, rd:rep.rd,
       pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
