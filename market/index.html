@@ -172,7 +172,7 @@ const GU_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6'];
 
 async function init() {
   try {
-    const res = await fetch('../data/market.json');
+    const res = await fetch('../data/market.json?v=' + Date.now());
     MKT = await res.json();
   } catch(e) {
     console.error(e);
