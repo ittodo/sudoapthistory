@@ -155,6 +155,48 @@ a:hover { text-decoration: underline; }
   </div>
 </div>
 
+<!-- Trade History Section -->
+<div style="margin-top:20px;" id="tradesSection">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+    <h3 style="font-size:13px;font-weight:600;color:var(--muted);">
+      월별 거래 내역
+      <span id="tradesMonthBadge" style="margin-left:6px;font-size:12px;color:var(--text);font-weight:700;"></span>
+    </h3>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select class="fi" id="txMonthSel" style="width:110px;" onchange="onTxMonthChange()"></select>
+      <span id="tradesCnt" style="font-size:11px;color:var(--muted);"></span>
+    </div>
+  </div>
+  <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+    <div style="overflow-x:auto;max-height:520px;overflow-y:auto;" id="tradesScrollBox">
+      <table id="tradesTable" style="position:relative;">
+        <thead>
+          <tr>
+            <th style="text-align:left;min-width:70px;">구/시</th>
+            <th style="text-align:left;min-width:130px;">단지명</th>
+            <th style="text-align:right;min-width:65px;">면적(㎡)</th>
+            <th style="text-align:right;min-width:45px;">층</th>
+            <th style="text-align:right;min-width:110px;">가격</th>
+            <th style="text-align:right;min-width:85px;">거래일</th>
+          </tr>
+        </thead>
+        <tbody id="tradesBody"></tbody>
+      </table>
+    </div>
+    <div id="tradesLoader" style="display:none;text-align:center;padding:16px;">
+      <div class="sp" style="margin:0 auto;width:22px;height:22px;border-width:2px;"></div>
+    </div>
+    <div id="tradesEmpty" style="display:none;text-align:center;padding:28px;color:var(--muted);font-size:12px;">
+      거래 내역이 없거나 데이터 파일이 준비되지 않았습니다.
+    </div>
+    <div id="tradesEnd" style="display:none;text-align:center;padding:12px;font-size:11px;color:var(--muted);">
+      — 더 이상 거래 내역이 없습니다 —
+    </div>
+  </div>
+  <!-- Infinite scroll sentinel -->
+  <div id="tradesSentinel" style="height:1px;margin-top:-1px;"></div>
+</div>
+
 <div class="footer-disclaimer">
   국토교통부 실거래가 데이터 기반 · 투자 판단의 책임은 본인에게 있습니다 · <a href="../">아파트 스크리너</a>
 </div>
@@ -199,6 +241,9 @@ async function init() {
   parseHash();
   updateAll();
   document.getElementById('loading').style.display = 'none';
+
+  // 거래 내역 초기화
+  initTrades();
 
   // AdSense: 콘텐츠 로드 완료 후 광고 스크립트 삽입
   setTimeout(function(){
@@ -251,6 +296,8 @@ function setRegion(r) {
   renderChips();
   updateAll();
   saveHash();
+  // 지역 바뀌면 거래 내역 재로드 (필터 변경)
+  if (typeof resetTrades === 'function' && txState.month) resetTrades(txState.month);
 }
 
 // ---- Gu Selector ----
@@ -844,6 +891,8 @@ function updateAll() {
   updateStats();
   updateCharts();
   updateGuTable();
+  // 거래 내역: refSlot이 바뀌었으면 월 동기화
+  if (typeof syncTxMonth === 'function') syncTxMonth();
 }
 
 // ---- Hash state ----
@@ -881,6 +930,186 @@ function parseHash() {
     const m = parseInt(params.m);
     if (m >= 0 && m < MKT.meta.months) refSlot = m;
   }
+}
+
+// =====================================================
+// ---- Trade History (무한 스크롤) ----
+// =====================================================
+let txState = {
+  month: null,   // 'YYYY-MM'
+  page: 1,
+  loading: false,
+  hasNext: false,
+  totalLoaded: 0,
+};
+let txObserver = null;
+
+function slotToYYYYMM(slot) {
+  const y = MKT.meta.startYear + Math.floor(slot / 12);
+  const m = (slot % 12) + 1;
+  return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+function fmtPrice(v) {
+  // v: 만원 단위
+  if (v == null || isNaN(v)) return '-';
+  v = Math.round(v);
+  if (v >= 10000) {
+    const eok = Math.floor(v / 10000);
+    const man = v % 10000;
+    return man > 0 ? `${eok}억 ${man.toLocaleString()}만` : `${eok}억`;
+  }
+  return v.toLocaleString() + '만';
+}
+
+function regionCodeFromTab() {
+  if (region === 'seoul')    return 1;
+  if (region === 'gyeonggi') return 0;
+  if (region === 'incheon')  return 2;
+  return null; // all
+}
+
+function regionBadgeHtml(gu) {
+  const gd = MKT.gu[gu];
+  if (!gd) return '';
+  if (gd.r === 1) return '<span style="color:#a78bfa;font-size:10px;margin-right:3px;">서울</span>';
+  if (gd.r === 2) return '<span style="color:#38bdf8;font-size:10px;margin-right:3px;">인천</span>';
+  return '<span style="color:#6ee7b7;font-size:10px;margin-right:3px;">경기</span>';
+}
+
+function buildTxMonthSelect() {
+  const sel = document.getElementById('txMonthSel');
+  if (!sel) return;
+  const allC = MKT.all.c;
+  const months = [];
+  for (let s = MKT.meta.months - 1; s >= 0; s--) {
+    if (allC[s] > 0) months.push(s);
+    if (months.length >= 36) break;
+  }
+  sel.innerHTML = months.map(s => {
+    const val = slotToYYYYMM(s);
+    const lbl = slotLabel(s);
+    return `<option value="${val}">${lbl}</option>`;
+  }).join('');
+}
+
+function onTxMonthChange() {
+  const sel = document.getElementById('txMonthSel');
+  if (sel) resetTrades(sel.value);
+}
+
+function resetTrades(month) {
+  txState.month   = month;
+  txState.page    = 1;
+  txState.loading = false;
+  txState.hasNext = false;
+  txState.totalLoaded = 0;
+  document.getElementById('tradesBody').innerHTML = '';
+  document.getElementById('tradesEnd').style.display   = 'none';
+  document.getElementById('tradesEmpty').style.display = 'none';
+  document.getElementById('tradesMonthBadge').textContent = month || '';
+  document.getElementById('tradesCnt').textContent = '';
+  loadNextTrades();
+}
+
+async function loadNextTrades() {
+  if (txState.loading) return;
+  if (txState.page > 1 && !txState.hasNext) return;
+
+  txState.loading = true;
+  document.getElementById('tradesLoader').style.display = '';
+
+  const url = `../data/market/${txState.month}/${txState.page}.json`;
+  let data;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('not found');
+    data = await res.json();
+  } catch (e) {
+    document.getElementById('tradesLoader').style.display = 'none';
+    if (txState.page === 1) {
+      document.getElementById('tradesEmpty').style.display = '';
+    } else {
+      document.getElementById('tradesEnd').style.display = '';
+    }
+    txState.loading = false;
+    return;
+  }
+
+  document.getElementById('tradesLoader').style.display = 'none';
+  txState.hasNext = data.meta.page < data.meta.pages;
+  txState.loading = false;
+
+  const trades = data.data || [];
+
+  // 지역 탭 기준 필터링
+  const rc = regionCodeFromTab();
+  const filtered = rc !== null
+    ? trades.filter(t => { const gd = MKT.gu[t.g]; return gd && gd.r === rc; })
+    : trades;
+
+  txState.page++;
+  txState.totalLoaded += filtered.length;
+
+  // 현재 페이지에 결과 없고 다음 페이지 있으면 자동으로 다음 페이지 로드
+  if (filtered.length === 0 && txState.hasNext) {
+    loadNextTrades();
+    return;
+  }
+
+  const tbody = document.getElementById('tradesBody');
+
+  if (filtered.length > 0) {
+    let html = '';
+    const showRegion = rc === null; // 전체 탭일 때만 지역 배지 표시
+    for (const t of filtered) {
+      const badge = showRegion ? regionBadgeHtml(t.g) : '';
+      const area  = t.a != null ? Number(t.a).toFixed(1) : '-';
+      const floor = t.f != null ? t.f + '층' : '-';
+      html += `<tr>
+        <td>${badge}${t.g || '-'}</td>
+        <td>${t.n || '-'}</td>
+        <td style="text-align:right;">${area}</td>
+        <td style="text-align:right;">${floor}</td>
+        <td style="text-align:right;font-weight:600;">${fmtPrice(t.p)}</td>
+        <td style="text-align:right;color:var(--muted);">${t.d || '-'}</td>
+      </tr>`;
+    }
+    tbody.innerHTML += html;
+    document.getElementById('tradesCnt').textContent = `${txState.totalLoaded.toLocaleString()}건 로드됨`;
+  }
+
+  if (txState.totalLoaded === 0 && !txState.hasNext) {
+    document.getElementById('tradesEmpty').style.display = '';
+  } else if (!txState.hasNext) {
+    document.getElementById('tradesEnd').style.display = '';
+  }
+}
+
+function setupTxObserver() {
+  if (txObserver) txObserver.disconnect();
+  txObserver = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && txState.hasNext && !txState.loading) {
+      loadNextTrades();
+    }
+  }, { rootMargin: '300px' });
+  const sentinel = document.getElementById('tradesSentinel');
+  if (sentinel) txObserver.observe(sentinel);
+}
+
+function syncTxMonth() {
+  const newMonth = slotToYYYYMM(refSlot);
+  const sel = document.getElementById('txMonthSel');
+  if (sel) sel.value = newMonth;
+  if (newMonth !== txState.month) {
+    resetTrades(newMonth);
+  }
+}
+
+function initTrades() {
+  buildTxMonthSelect();
+  setupTxObserver();
+  resetTrades(slotToYYYYMM(refSlot));
 }
 
 init();
