@@ -560,10 +560,10 @@ const densityBandPlugin = {
       const xR = i < n - 1 ? x.getPixelForValue(i + 1) : xC;
       const left = (xC + xL) / 2;
       const right = (xC + xR) / 2;
-      const priceStep = (high - low) / 10;
-      for (let j = 0; j < 10; j++) {
-        const bLow = low + j * priceStep;
-        const bHigh = bLow + priceStep;
+      // 1억 고정구간 (band[j] = j억~(j+1)억, 1억 = 10000만원)
+      for (let j = 0; j < band.length; j++) {
+        const bLow = j * 10000 / 10000;    // j억
+        const bHigh = bLow + 1;
         const yTop = y.getPixelForValue(bHigh);
         const yBot = y.getPixelForValue(bLow);
         if (yBot <= chartArea.top || yTop >= chartArea.bottom) continue;
