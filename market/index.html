@@ -540,44 +540,44 @@ function getMainData() {
 // ---- Density Band Plugin ----
 const densityBandPlugin = {
   id: 'densityBand',
-  beforeDatasetsDraw(chart) {
+  afterDraw(chart) {
     const opts = chart.options.plugins?.densityBand;
-    if (!opts || !opts.bandData || !opts.highData || !opts.lowData) return;
-    const { bandData, highData, lowData } = opts;
-    const { ctx, chartArea, scales: { x, y } } = chart;
+    if (!opts || !opts.bandData) return;
+    const { bandData } = opts;
+    const { ctx, chartArea } = chart;
+    const x = chart.scales.x;
+    const y = chart.scales.y;
+    if (!x || !y || !chartArea) return;
     const n = bandData.length;
     ctx.save();
-    ctx.beginPath();
-    ctx.rect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
-    ctx.clip();
     for (let i = 0; i < n; i++) {
       const band = bandData[i];
-      const high = highData[i];
-      const low = lowData[i];
-      if (!band || !high || !low || high <= low) continue;
+      if (!band || !Array.isArray(band)) continue;
       const xC = x.getPixelForValue(i);
+      if (isNaN(xC)) continue;
       const xL = i > 0 ? x.getPixelForValue(i - 1) : xC;
       const xR = i < n - 1 ? x.getPixelForValue(i + 1) : xC;
-      const left = (xC + xL) / 2;
-      const right = (xC + xR) / 2;
-      // 1억 고정구간 (band[j] = j억~(j+1)억, 1억 = 10000만원)
+      const rawLeft  = (xC + (isNaN(xL) ? xC : xL)) / 2;
+      const rawRight = (xC + (isNaN(xR) ? xC : xR)) / 2;
+      // chartArea 경계 내에서 클리핑
+      const left  = Math.max(rawLeft,  chartArea.left);
+      const right = Math.min(rawRight, chartArea.right);
+      if (right <= left) continue;
+      // 1억 고정구간 (band[j] = j억~(j+1)억)
       const maxDensity = Math.max(...band.map(v => v || 0));
       if (maxDensity === 0) continue;
       for (let j = 0; j < band.length; j++) {
-        const bLow = j;    // j억
-        const bHigh = j + 1;
-        const yTop = y.getPixelForValue(bHigh);
-        const yBot = y.getPixelForValue(bLow);
-        if (yBot <= chartArea.top || yTop >= chartArea.bottom) continue;
         const opacity = ((band[j] || 0) / maxDensity) * 0.7;
         if (opacity < 0.005) continue;
+        const yTop = y.getPixelForValue(j + 1); // j+1억 (위쪽)
+        const yBot = y.getPixelForValue(j);     // j억   (아래쪽)
+        // chartArea 경계 밖이면 건너뜀
+        if (yBot <= chartArea.top || yTop >= chartArea.bottom) continue;
+        const drawTop = Math.max(yTop, chartArea.top);
+        const drawBot = Math.min(yBot, chartArea.bottom);
+        if (drawBot <= drawTop) continue;
         ctx.fillStyle = `rgba(96,165,250,${opacity.toFixed(3)})`;
-        ctx.fillRect(
-          left,
-          Math.max(yTop, chartArea.top),
-          right - left,
-          Math.min(yBot, chartArea.bottom) - Math.max(yTop, chartArea.top)
-        );
+        ctx.fillRect(left, drawTop, right - left, drawBot - drawTop);
       }
     }
     ctx.restore();
@@ -599,7 +599,7 @@ function updateCharts() {
   // Datasets
   const priceSets = [];
   const volSets = [];
-  let _bandData = null, _highData = null, _lowData = null;
+  let _bandData = null;
 
   if (selectedGus.length === 0) {
     const data = getMainData();
@@ -609,10 +609,8 @@ function updateCharts() {
 
     // 거래 밀도 밴드 데이터 수집
     const regionSrc = MKT[region] || MKT.all;
-    if (regionSrc.band && regionSrc.high && regionSrc.low) {
+    if (regionSrc.band) {
       _bandData = regionSrc.band.slice(from, to);
-      _highData = regionSrc.high.slice(from, to);
-      _lowData = regionSrc.low.slice(from, to);
     }
 
     priceSets.push({
@@ -699,6 +697,7 @@ function updateCharts() {
     type: 'line',
     data: { labels, datasets: priceSets },
     options: {
+      animation: false,
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
@@ -709,7 +708,7 @@ function updateCharts() {
             label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) ?? '-'}억`,
           }
         },
-        densityBand: _bandData ? { bandData: _bandData, highData: _highData, lowData: _lowData } : null,
+        densityBand: _bandData ? { bandData: _bandData } : null,
       },
       scales: {
         x: commonScaleX,
