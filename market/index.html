@@ -714,6 +714,8 @@ function updateCharts() {
       scales: {
         x: commonScaleX,
         y: {
+          min: 0,
+          max: _bandData ? Math.max(..._bandData.map(b => b ? b.length : 0)) : undefined,
           ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '억' },
           grid: { color: 'rgba(51,65,85,.3)' },
         },
