@@ -561,15 +561,17 @@ const densityBandPlugin = {
       const left = (xC + xL) / 2;
       const right = (xC + xR) / 2;
       // 1억 고정구간 (band[j] = j억~(j+1)억, 1억 = 10000만원)
+      const maxDensity = Math.max(...band.map(v => v || 0));
+      if (maxDensity === 0) continue;
       for (let j = 0; j < band.length; j++) {
         const bLow = j;    // j억
         const bHigh = j + 1;
         const yTop = y.getPixelForValue(bHigh);
         const yBot = y.getPixelForValue(bLow);
         if (yBot <= chartArea.top || yTop >= chartArea.bottom) continue;
-        const opacity = (band[j] || 0) * 0.65;
+        const opacity = ((band[j] || 0) / maxDensity) * 0.7;
         if (opacity < 0.005) continue;
-        ctx.fillStyle = `rgba(59,130,246,${opacity.toFixed(3)})`;
+        ctx.fillStyle = `rgba(96,165,250,${opacity.toFixed(3)})`;
         ctx.fillRect(
           left,
           Math.max(yTop, chartArea.top),
