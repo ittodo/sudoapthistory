@@ -562,8 +562,8 @@ const densityBandPlugin = {
       const right = (xC + xR) / 2;
       // 1억 고정구간 (band[j] = j억~(j+1)억, 1억 = 10000만원)
       for (let j = 0; j < band.length; j++) {
-        const bLow = j * 10000 / 10000;    // j억
-        const bHigh = bLow + 1;
+        const bLow = j;    // j억
+        const bHigh = j + 1;
         const yTop = y.getPixelForValue(bHigh);
         const yBot = y.getPixelForValue(bLow);
         if (yBot <= chartArea.top || yTop >= chartArea.bottom) continue;
