@@ -713,12 +713,22 @@ function updateCharts() {
       },
       scales: {
         x: commonScaleX,
-        y: {
-          min: 0,
-          max: _bandData ? Math.max(..._bandData.map(b => b ? b.length : 0)) : undefined,
-          ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '억' },
-          grid: { color: 'rgba(51,65,85,.3)' },
-        },
+        y: (() => {
+          const bandMaxIdx = _bandData
+            ? Math.max(..._bandData.map(b => b ? b.reduce((m, v, i) => v > 0 ? i + 1 : m, 0) : 0))
+            : 0;
+          const priceMax = priceSets.length > 0
+            ? Math.max(...priceSets.flatMap(ds => ds.data.filter(v => v != null && v > 0)))
+            : 0;
+          const rawMax = Math.max(bandMaxIdx, isFinite(priceMax) ? priceMax : 0);
+          const yMax = rawMax > 0 ? Math.ceil(rawMax * 1.15 / 5) * 5 : undefined;
+          return {
+            min: 0,
+            max: yMax,
+            ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '억' },
+            grid: { color: 'rgba(51,65,85,.3)' },
+          };
+        })(),
       },
     },
   });
