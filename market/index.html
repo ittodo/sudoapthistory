@@ -537,6 +537,52 @@ function getMainData() {
   return { p, c: Array.from(sum_c), v: Array.from(sum_v) };
 }
 
+// ---- Density Band Plugin ----
+const densityBandPlugin = {
+  id: 'densityBand',
+  beforeDatasetsDraw(chart) {
+    const opts = chart.options.plugins?.densityBand;
+    if (!opts || !opts.bandData || !opts.highData || !opts.lowData) return;
+    const { bandData, highData, lowData } = opts;
+    const { ctx, chartArea, scales: { x, y } } = chart;
+    const n = bandData.length;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(chartArea.left, chartArea.top, chartArea.width, chartArea.height);
+    ctx.clip();
+    for (let i = 0; i < n; i++) {
+      const band = bandData[i];
+      const high = highData[i];
+      const low = lowData[i];
+      if (!band || !high || !low || high <= low) continue;
+      const xC = x.getPixelForValue(i);
+      const xL = i > 0 ? x.getPixelForValue(i - 1) : xC;
+      const xR = i < n - 1 ? x.getPixelForValue(i + 1) : xC;
+      const left = (xC + xL) / 2;
+      const right = (xC + xR) / 2;
+      const priceStep = (high - low) / 10;
+      for (let j = 0; j < 10; j++) {
+        const bLow = low + j * priceStep;
+        const bHigh = bLow + priceStep;
+        const yTop = y.getPixelForValue(bHigh);
+        const yBot = y.getPixelForValue(bLow);
+        if (yBot <= chartArea.top || yTop >= chartArea.bottom) continue;
+        const opacity = (band[j] || 0) * 0.65;
+        if (opacity < 0.005) continue;
+        ctx.fillStyle = `rgba(59,130,246,${opacity.toFixed(3)})`;
+        ctx.fillRect(
+          left,
+          Math.max(yTop, chartArea.top),
+          right - left,
+          Math.min(yBot, chartArea.bottom) - Math.max(yTop, chartArea.top)
+        );
+      }
+    }
+    ctx.restore();
+  }
+};
+Chart.register(densityBandPlugin);
+
 // ---- Charts ----
 let priceChart = null, volumeChart = null, amountChart = null;
 
@@ -551,12 +597,21 @@ function updateCharts() {
   // Datasets
   const priceSets = [];
   const volSets = [];
+  let _bandData = null, _highData = null, _lowData = null;
 
   if (selectedGus.length === 0) {
     const data = getMainData();
     const pSlice = data.p.slice(from, to);
     const cSlice = data.c.slice(from, to);
     const regionLabel = region === 'seoul' ? '서울' : region === 'gyeonggi' ? '경기' : region === 'incheon' ? '인천' : '전체';
+
+    // 거래 밀도 밴드 데이터 수집
+    const regionSrc = MKT[region] || MKT.all;
+    if (regionSrc.band && regionSrc.high && regionSrc.low) {
+      _bandData = regionSrc.band.slice(from, to);
+      _highData = regionSrc.high.slice(from, to);
+      _lowData = regionSrc.low.slice(from, to);
+    }
 
     priceSets.push({
       label: regionLabel,
@@ -652,6 +707,7 @@ function updateCharts() {
             label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) ?? '-'}억`,
           }
         },
+        densityBand: _bandData ? { bandData: _bandData, highData: _highData, lowData: _lowData } : null,
       },
       scales: {
         x: commonScaleX,
