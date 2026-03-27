@@ -714,14 +714,11 @@ function updateCharts() {
       scales: {
         x: commonScaleX,
         y: (() => {
-          const bandMaxIdx = _bandData
-            ? Math.max(..._bandData.map(b => b ? b.reduce((m, v, i) => v > 0 ? i + 1 : m, 0) : 0))
+          const priceVals = priceSets.flatMap(ds => ds.data.filter(v => v != null && v > 0));
+          const priceAvg = priceVals.length > 0
+            ? priceVals.reduce((s, v) => s + v, 0) / priceVals.length
             : 0;
-          const priceMax = priceSets.length > 0
-            ? Math.max(...priceSets.flatMap(ds => ds.data.filter(v => v != null && v > 0)))
-            : 0;
-          const rawMax = Math.max(bandMaxIdx, isFinite(priceMax) ? priceMax : 0);
-          const yMax = rawMax > 0 ? Math.ceil(rawMax * 1.15 / 5) * 5 : undefined;
+          const yMax = priceAvg > 0 ? Math.ceil(priceAvg * 2 / 5) * 5 : undefined;
           return {
             min: 0,
             max: yMax,
