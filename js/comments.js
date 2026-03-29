@@ -442,8 +442,8 @@
     // 인증 바
     _container.appendChild(renderAuthBar());
 
-    // 닉네임 미설정 시 폼
-    if (_session && _profile && !_profile.nickname) {
+    // 닉네임 미설정 시 폼 (프로필 없는 신규 유저 포함)
+    if (_session && (!_profile || !_profile.nickname)) {
       _container.appendChild(renderNickForm());
     }
 
@@ -834,9 +834,9 @@
       _profile = await api.getProfile(_session.user.id);
     }
 
-    // OAuth 리다이렉트 후 hash 처리
+    // OAuth 리다이렉트 후 auth 상태 변화 처리
     _supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && !_session) {
+      if (event === 'SIGNED_IN') {
         _session = session;
         _profile = await api.getProfile(session.user.id);
         render();
