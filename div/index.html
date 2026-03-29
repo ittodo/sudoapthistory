@@ -152,13 +152,16 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
       <button class="pill" data-cmpmarket="KOSPI" onclick="setF('cmpmarket','KOSPI')">KOSPI</button>
       <button class="pill" data-cmpmarket="KOSDAQ" onclick="setF('cmpmarket','KOSDAQ')">KOSDAQ</button>
     </div>
-    <select class="fi" id="selCmpSort" onchange="render()" style="width:140px;">
+    <select class="fi" id="selCmpSort" onchange="onCmpSortChange()" style="width:140px;">
       <option value="totalDiv">배당총액순</option>
       <option value="totalBB">자사주매입순</option>
       <option value="totalAll">배당+매입순</option>
       <option value="sratio">주주환원율순</option>
       <option value="yield">수익률순</option>
+      <option value="curYield">현재가수익률순</option>
       <option value="dps">DPS순</option>
+      <option value="cap">시가총액순</option>
+      <option value="price">현재가순</option>
       <option value="name">종목명순</option>
     </select>
     <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer;">
@@ -167,17 +170,19 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   </div>
   <div class="tc">
     <table>
-      <thead><tr>
-        <th>종목명</th>
+      <thead id="cmpThead"><tr>
+        <th onclick="cmpSortBy('name')">종목명 <span id="cs-name"></span></th>
         <th>시장</th>
-        <th style="text-align:right">배당총액</th>
-        <th style="text-align:right">DPS</th>
-        <th style="text-align:right">공시수익률</th>
-        <th style="text-align:right">현재가수익률</th>
-        <th style="text-align:right">자사주매입</th>
-        <th style="text-align:right">자사주소각</th>
-        <th style="text-align:right">배당+매입</th>
-        <th style="text-align:right">주주환원율</th>
+        <th style="text-align:right" onclick="cmpSortBy('cap')">시가총액 <span id="cs-cap"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('price')">현재가 <span id="cs-price"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('totalDiv')">배당총액 <span id="cs-totalDiv"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('dps')">DPS <span id="cs-dps"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('yield')">공시수익률 <span id="cs-yield"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('curYield')">현재가수익률 <span id="cs-curYield"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('totalBuy')">자사주매입 <span id="cs-totalBuy"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('totalCancel')">자사주소각 <span id="cs-totalCancel"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('totalAll')">배당+매입 <span id="cs-totalAll"></span></th>
+        <th style="text-align:right" onclick="cmpSortBy('shareholderReturn')">주주환원율 <span id="cs-shareholderReturn"></span></th>
         <th>배당추이</th>
         <th>공시</th>
       </tr></thead>
@@ -204,8 +209,9 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <script>
 const NOW=new Date(), TODAY=NOW.toISOString().slice(0,10), THIS_YEAR=NOW.getFullYear();
 const YEARS=[2022,2023,2024,2025,2026];
-let divData=[],bbData=[],priceMap={},currentTab='calendar';
+let divData=[],bbData=[],priceMap={},capsMap={},currentTab='calendar';
 let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null, calSort={key:'totalDividend',asc:false};
+let cmpSort={key:'totalDiv',asc:false};
 let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
 let dataUpdated='',priceDate='';
 
@@ -218,7 +224,7 @@ async function init(){
       fetch('data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
       fetch('data/buybacks.json').then(r=>r.ok?r.json():{events:[]})
     ]);
-    divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};priceDate=dR.priceDate||'';
+    divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};capsMap=dR.caps||{};priceDate=dR.priceDate||'';
     // Fix dividend types
     divData.forEach(e=>{
       if(!e.type&&e.recordDate&&e.fiscalYear){
@@ -270,6 +276,12 @@ function buildMeta(){
         if(yearAgg[y]){yearAgg[y].buyTotal+=amt;yearAgg[y].buyCount++;yearAgg[y].buyTickers.add(t);}
       }
     }
+  }
+  // ticker별 최적 주식수 사전계산 (시가총액 추산용): 최신 이벤트 우선
+  for(const m of Object.values(tickerMeta)){
+    m.shares=0;
+    const sorted=[...m.events].sort((a,b)=>(b.recordDate||'').localeCompare(a.recordDate||''));
+    for(const e of sorted){if(e.totalDividend>0&&e.dps>0){m.shares=e.totalDividend/e.dps;break;}}
   }
 }
 
@@ -613,11 +625,34 @@ function renderYearlyChart(ya){
 }
 
 // ===== COMPANY =====
+function cmpSortBy(key){
+  if(cmpSort.key===key)cmpSort.asc=!cmpSort.asc;
+  else{cmpSort.key=key;cmpSort.asc=key==='name';}
+  // sync dropdown
+  const keyMap={totalDiv:'totalDiv',totalBuy:'totalBB',totalAll:'totalAll',shareholderReturn:'sratio',yield:'yield',curYield:'curYield',dps:'dps',cap:'cap',price:'price',name:'name'};
+  const sel=document.getElementById('selCmpSort');
+  if(keyMap[key]){sel.value=keyMap[key];}
+  renderCompany();
+}
+function onCmpSortChange(){
+  const v=document.getElementById('selCmpSort').value;
+  const keyMap={totalDiv:'totalDiv',totalBB:'totalBuy',totalAll:'totalAll',sratio:'shareholderReturn',yield:'yield',curYield:'curYield',dps:'dps',cap:'cap',price:'price',name:'name'};
+  const k=keyMap[v]||'totalDiv';
+  if(cmpSort.key!==k){cmpSort.key=k;cmpSort.asc=k==='name';}
+  render();
+}
+function updateCmpSortArrows(){
+  const keys=['name','cap','price','totalDiv','dps','yield','curYield','totalBuy','totalCancel','totalAll','shareholderReturn'];
+  for(const k of keys){
+    const el=document.getElementById('cs-'+k);
+    if(el)el.textContent=cmpSort.key===k?(cmpSort.asc?'▲':'▼'):'';
+  }
+}
+
 function renderCompany(){
   const q=(document.getElementById('search').value||'').trim().toLowerCase();
   const sy=+document.getElementById('selYear').value;
   const mkt=F.cmpmarket;
-  const sortMode=document.getElementById('selCmpSort').value;
   const onlyHas=document.getElementById('chkHasDivBB').checked;
 
   let rows=[];
@@ -626,36 +661,37 @@ function renderCompany(){
     if(q&&!m.name.toLowerCase().includes(q)&&!t.includes(q))continue;
     const dv=m.yearDiv[sy]||0, buy=m.yearBuy[sy]||0, cancel=m.yearCancel[sy]||0, dps=m.yearDPS[sy]||0, yld=m.yearYield[sy]||0;
     if(onlyHas&&dv===0&&buy===0&&cancel===0)continue;
-    // DPS trend
     const trend=YEARS.map(y=>m.yearDPS[y]||0);
-    // latest rceptNo for this year
     let rn='';
     for(const e of m.events){if((e.recordDate||'').startsWith(String(sy))&&e.rceptNo){rn=e.rceptNo;break;}}
     const cp=priceMap[t]||0;
     const curYield=cp>0&&dps>0?(dps/cp*100):0;
-    const shares=(dps>0&&dv>0)?(dv/dps):0;
-    const marketCap=(cp>0&&shares>0)?(cp*shares):0;
-    const shareholderReturn=marketCap>0?((dv+buy)/marketCap*100):0;
-    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBuy:buy,totalCancel:cancel,dps,yield:yld,curYield,shareholderReturn,trend,rceptNo:rn,totalAll:dv+buy});
+    // 시가총액: caps 맵(빌드 시점 KIS) 우선, 없으면 현재가×추산주식수
+    let mc=capsMap[t]||0;
+    if(!mc&&cp>0&&m.shares>0)mc=cp*m.shares;
+    const shareholderReturn=mc>0?((dv+buy)/mc*100):0;
+    rows.push({ticker:t,name:m.name,market:m.market,totalDiv:dv,totalBuy:buy,totalCancel:cancel,dps,yield:yld,curYield,cap:mc,price:cp,shareholderReturn,trend,rceptNo:rn,totalAll:dv+buy});
   }
 
-  if(sortMode==='totalDiv')rows.sort((a,b)=>b.totalDiv-a.totalDiv);
-  else if(sortMode==='totalBB')rows.sort((a,b)=>b.totalBuy-a.totalBuy);
-  else if(sortMode==='totalAll')rows.sort((a,b)=>b.totalAll-a.totalAll);
-  else if(sortMode==='sratio')rows.sort((a,b)=>b.shareholderReturn-a.shareholderReturn);
-  else if(sortMode==='yield')rows.sort((a,b)=>b.yield-a.yield);
-  else if(sortMode==='dps')rows.sort((a,b)=>b.dps-a.dps);
-  else rows.sort((a,b)=>a.name.localeCompare(b.name));
+  // sort
+  const sk=cmpSort.key, asc=cmpSort.asc;
+  rows.sort((a,b)=>{
+    const va=a[sk]??'', vb=b[sk]??'';
+    if(typeof va==='number'&&typeof vb==='number'){
+      const d=va-vb; return asc?d:-d;
+    }
+    const r=String(va).localeCompare(String(vb),'ko'); return asc?r:-r;
+  });
+
+  updateCmpSortArrows();
 
   const tbody=document.getElementById('cmpBody');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
 
-  // Top 200
   const show=rows.slice(0,200);
   const maxTrend=Math.max(...show.flatMap(r=>r.trend),1);
   let html='';
   for(const r of show){
-    // mini trend
     let th='<div style="display:flex;gap:1px;align-items:end;height:18px;">';
     for(let i=0;i<r.trend.length;i++){
       const v=r.trend[i],h=v>0?Math.max(2,Math.round(v/maxTrend*16)):0;
@@ -667,6 +703,8 @@ function renderCompany(){
     html+=`<tr>
       <td><span class="clickable-name" onclick="showDetail('${esc(r.ticker)}','${esc(r.name)}')">${esc(r.name)}</span> <span style="color:var(--muted);font-size:10px;">${esc(r.ticker)}</span></td>
       <td>${mktB(r.market)}</td>
+      <td style="text-align:right;color:var(--muted);">${fmtAmt(r.cap)}</td>
+      <td style="text-align:right;">${r.price?r.price.toLocaleString():'-'}</td>
       <td style="text-align:right;font-weight:600;">${fmtAmt(r.totalDiv)}</td>
       <td style="text-align:right;">${r.dps?r.dps.toLocaleString():'-'}</td>
       <td style="text-align:right;${r.yield>=3?'color:var(--up)':''}">${r.yield?r.yield.toFixed(1)+'%':'-'}</td>
