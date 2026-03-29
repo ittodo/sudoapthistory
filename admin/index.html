@@ -617,10 +617,10 @@ body {
       return;
     }
 
-    document.getElementById('s-total').textContent     = s.total_comments     ?? '—';
-    document.getElementById('s-normal').textContent    = s.normal_comments    ?? '—';
-    document.getElementById('s-moderated').textContent = s.moderated_comments ?? '—';
-    document.getElementById('s-deleted').textContent   = s.deleted_comments   ?? '—';
+    document.getElementById('s-total').textContent     = s.total     ?? '—';
+    document.getElementById('s-normal').textContent    = s.active    ?? '—';
+    document.getElementById('s-moderated').textContent = s.moderated ?? '—';
+    document.getElementById('s-deleted').textContent   = s.deleted   ?? '—';
   }
 
   async function loadStatsFallback() {
