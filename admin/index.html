@@ -595,13 +595,55 @@ body {
 
   // ── 데이터 로드 ───────────────────────────────────────────────────────────
   async function loadStats() {
+    console.log('[admin] loadStats: admin_get_stats 호출 중...');
     const { data, error } = await sb.rpc('admin_get_stats');
-    if (error) { toast(error.message, true); return; }
-    const s = data?.[0] || {};
+    console.log('[admin] loadStats 결과:', { data, error });
+
+    if (error) {
+      console.error('[admin] admin_get_stats 오류:', error);
+      toast('통계 로드 실패: ' + error.message, true);
+      // 실패 시 admin_list_comments fallback으로 카운트 계산
+      await loadStatsFallback();
+      return;
+    }
+
+    // RETURNS TABLE은 배열, 혹시 단일 객체로 올 경우도 대비
+    const s = (Array.isArray(data) ? data[0] : data) || {};
+    console.log('[admin] 통계 파싱:', s);
+
+    if (!s || Object.keys(s).length === 0) {
+      console.warn('[admin] admin_get_stats: 빈 응답', data);
+      await loadStatsFallback();
+      return;
+    }
+
     document.getElementById('s-total').textContent     = s.total_comments     ?? '—';
     document.getElementById('s-normal').textContent    = s.normal_comments    ?? '—';
     document.getElementById('s-moderated').textContent = s.moderated_comments ?? '—';
     document.getElementById('s-deleted').textContent   = s.deleted_comments   ?? '—';
+  }
+
+  async function loadStatsFallback() {
+    console.log('[admin] loadStatsFallback: admin_list_comments 4회 호출로 집계');
+    try {
+      const [rAll, rNormal, rMod, rDel] = await Promise.all([
+        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'all',       p_page_id: null }),
+        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'normal',    p_page_id: null }),
+        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'moderated', p_page_id: null }),
+        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'deleted',   p_page_id: null }),
+      ]);
+      console.log('[admin] fallback 결과:', { rAll, rNormal, rMod, rDel });
+      const cnt = r => parseInt(r.data?.[0]?.total_count ?? 0, 10);
+      document.getElementById('s-total').textContent     = cnt(rAll);
+      document.getElementById('s-normal').textContent    = cnt(rNormal);
+      document.getElementById('s-moderated').textContent = cnt(rMod);
+      document.getElementById('s-deleted').textContent   = cnt(rDel);
+    } catch (e) {
+      console.error('[admin] loadStatsFallback 오류:', e);
+      ['s-total','s-normal','s-moderated','s-deleted'].forEach(id => {
+        document.getElementById(id).textContent = 'ERR';
+      });
+    }
   }
 
   async function loadComments() {
