@@ -611,16 +611,24 @@ body {
     const s = (Array.isArray(data) ? data[0] : data) || {};
     console.log('[admin] 통계 파싱:', s);
 
+    console.log('[admin] s keys:', Object.keys(s), 'len:', Object.keys(s).length);
     if (!s || Object.keys(s).length === 0) {
       console.warn('[admin] admin_get_stats: 빈 응답', data);
       await loadStatsFallback();
       return;
     }
 
-    document.getElementById('s-total').textContent     = s.total     ?? '—';
-    document.getElementById('s-normal').textContent    = s.active    ?? '—';
-    document.getElementById('s-moderated').textContent = s.moderated ?? '—';
-    document.getElementById('s-deleted').textContent   = s.deleted   ?? '—';
+    console.log('[admin] DOM 업데이트 시작 — total:', s.total, 'active:', s.active, 'moderated:', s.moderated, 'deleted:', s.deleted);
+    const elTotal = document.getElementById('s-total');
+    const elNormal = document.getElementById('s-normal');
+    const elMod = document.getElementById('s-moderated');
+    const elDel = document.getElementById('s-deleted');
+    console.log('[admin] 요소 조회:', { elTotal, elNormal, elMod, elDel });
+    if (elTotal) elTotal.textContent = s.total ?? '—';
+    if (elNormal) elNormal.textContent = s.active ?? '—';
+    if (elMod) elMod.textContent = s.moderated ?? '—';
+    if (elDel) elDel.textContent = s.deleted ?? '—';
+    console.log('[admin] DOM 업데이트 완료');
   }
 
   async function loadStatsFallback() {
