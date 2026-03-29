@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계정 설정 - 아파트 투자 스크리너</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* 헤더 */
+  .header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color .15s;
+  }
+  .header a:hover { color: var(--text); }
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    flex: 1;
+  }
+
+  /* 메인 컨테이너 */
+  .container {
+    max-width: 520px;
+    margin: 40px auto;
+    padding: 0 16px;
+  }
+
+  /* 카드 */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* 유저 정보 */
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #334155;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .avatar-placeholder {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: #334155;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .user-meta { flex: 1; min-width: 0; }
+  .user-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .user-email {
+    font-size: 12px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 폼 요소 */
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+  .form-row {
+    display: flex;
+    gap: 8px;
+  }
+  .form-input {
+    flex: 1;
+    background: #0f172a;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color .15s;
+    font-family: inherit;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-input::placeholder { color: #475569; }
+  .form-hint {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 5px;
+  }
+
+  /* 버튼 */
+  .btn {
+    padding: 8px 18px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .15s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn:hover { border-color: var(--muted); color: var(--text); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+  .btn-danger {
+    color: #f87171;
+    border-color: #7f1d1d33;
+  }
+  .btn-danger:hover {
+    border-color: #f87171;
+    background: #7f1d1d33;
+    color: #fca5a5;
+  }
+  .btn-danger-solid {
+    background: #991b1b;
+    border-color: #991b1b;
+    color: #fecaca;
+  }
+  .btn-danger-solid:hover { background: #7f1d1b; border-color: #7f1d1b; }
+
+  /* 탈퇴 경고 박스 */
+  .danger-zone {
+    border-color: #7f1d1d44;
+  }
+  .danger-zone .card-title {
+    color: #f87171;
+    border-color: #7f1d1d44;
+  }
+  .warn-box {
+    background: #450a0a33;
+    border: 1px solid #7f1d1d44;
+    border-radius: 7px;
+    padding: 12px 14px;
+    font-size: 12px;
+    color: #fca5a5;
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+
+  /* 로그인 유도 */
+  .login-gate {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .login-gate p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  .btn-google {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    border-radius: 7px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s;
+    font-family: inherit;
+  }
+  .btn-google:hover { background: #f9fafb; }
+
+  /* 로딩 */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* 확인 모달 */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    max-width: 380px;
+    width: 90%;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f87171;
+    margin-bottom: 10px;
+  }
+  .modal-body {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .modal-body strong { color: var(--text); }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* 토스트 */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { border-color: #f87171; color: #fca5a5; }
+  .toast.success { border-color: #34d399; color: #6ee7b7; }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <a href="/">← 메인으로</a>
+  <div class="header-title">계정 설정</div>
+</div>
+
+<!-- 로딩 상태 -->
+<div id="loading" class="loading">불러오는 중...</div>
+
+<!-- 로그인 유도 -->
+<div id="login-gate" class="container" style="display:none;">
+  <div class="login-gate">
+    <p>계정 설정을 이용하려면 로그인이 필요합니다.</p>
+    <button class="btn-google" id="btn-google-login">
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Google로 로그인
+    </button>
+  </div>
+</div>
+
+<!-- 메인 컨텐츠 -->
+<div id="main-content" class="container" style="display:none;">
+
+  <!-- 프로필 카드 -->
+  <div class="card">
+    <div class="card-title">프로필</div>
+    <div class="user-info">
+      <div id="avatar-wrap"></div>
+      <div class="user-meta">
+        <div class="user-name" id="display-nickname">-</div>
+        <div class="user-email" id="display-email">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 닉네임 변경 -->
+  <div class="card">
+    <div class="card-title">닉네임 변경</div>
+    <div class="form-group">
+      <label class="form-label" for="nick-input">새 닉네임</label>
+      <div class="form-row">
+        <input type="text" id="nick-input" class="form-input"
+          placeholder="닉네임 (2~30자)" maxlength="30" autocomplete="off">
+        <button class="btn btn-primary" id="btn-nick-save">저장</button>
+      </div>
+      <div class="form-hint">영문, 한글, 숫자, _, - 사용 가능 / 2~30자</div>
+    </div>
+  </div>
+
+  <!-- 로그아웃 -->
+  <div class="card">
+    <div class="card-title">로그인 상태</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+      현재 <strong id="logout-nick" style="color:var(--text);"></strong>으로 로그인되어 있습니다.
+    </p>
+    <button class="btn" id="btn-logout">로그아웃</button>
+  </div>
+
+  <!-- 회원 탈퇴 -->
+  <div class="card danger-zone">
+    <div class="card-title">위험 구역</div>
+    <div class="warn-box">
+      탈퇴 시 <strong>계정 및 모든 작성 댓글이 영구적으로 삭제</strong>되며 복구할 수 없습니다.
+    </div>
+    <button class="btn btn-danger" id="btn-delete-account">회원 탈퇴</button>
+  </div>
+
+</div>
+
+<!-- 탈퇴 확인 모달 -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <div class="modal-title">회원 탈퇴 확인</div>
+    <div class="modal-body">
+      정말로 탈퇴하시겠습니까?<br>
+      <strong>모든 댓글과 계정 정보가 영구 삭제</strong>되며, 이 작업은 되돌릴 수 없습니다.
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="btn-cancel-delete">취소</button>
+      <button class="btn btn-danger-solid" id="btn-confirm-delete">탈퇴하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const SUPABASE_URL = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ── 토스트 ──────────────────────────────────────────────────────────────
+  let _toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast' + (type ? ' ' + type : '');
+    clearTimeout(_toastTimer);
+    requestAnimationFrame(() => {
+      el.classList.add('show');
+      _toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    });
+  }
+
+  // ── 상태 ────────────────────────────────────────────────────────────────
+  let _session = null;
+  let _profile = null;
+
+  // ── 초기화 ──────────────────────────────────────────────────────────────
+  async function init() {
+    const { data } = await sb.auth.getSession();
+    _session = data.session;
+
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN') {
+        _session = session;
+        _profile = await fetchProfile(session.user.id);
+        showMain();
+      } else if (event === 'SIGNED_OUT') {
+        _session = null;
+        _profile = null;
+        showLoginGate();
+      }
+    });
+
+    if (_session) {
+      _profile = await fetchProfile(_session.user.id);
+      showMain();
+    } else {
+      showLoginGate();
+    }
+  }
+
+  async function fetchProfile(userId) {
+    const { data, error } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    if (error && error.code !== 'PGRST116') console.error(error);
+    return data;
+  }
+
+  // ── 화면 전환 ────────────────────────────────────────────────────────────
+  function showLoginGate() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('login-gate').style.display = '';
+    document.getElementById('main-content').style.display = 'none';
+  }
+
+  function showMain() {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('main-content').style.display = '';
+    renderProfile();
+  }
+
+  function renderProfile() {
+    const nick = _profile?.nickname || '닉네임 미설정';
+    const email = _session?.user?.email || '';
+    const avatarUrl = _profile?.avatar_url || '';
+
+    document.getElementById('display-nickname').textContent = nick;
+    document.getElementById('display-email').textContent = email;
+    document.getElementById('logout-nick').textContent = nick;
+
+    // 닉네임 인풋 기본값
+    const nickInput = document.getElementById('nick-input');
+    if (_profile?.nickname) nickInput.value = _profile.nickname;
+
+    // 아바타
+    const avatarWrap = document.getElementById('avatar-wrap');
+    if (avatarUrl) {
+      avatarWrap.innerHTML = `<img class="avatar" src="${escHtml(avatarUrl)}" alt="avatar">`;
+    } else {
+      avatarWrap.innerHTML = `<div class="avatar-placeholder">👤</div>`;
+    }
+  }
+
+  function escHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── 닉네임 변경 ─────────────────────────────────────────────────────────
+  async function handleNickSave() {
+    const input = document.getElementById('nick-input');
+    const btn = document.getElementById('btn-nick-save');
+    const val = input.value.trim();
+
+    if (val.length < 2) { showToast('닉네임은 2자 이상이어야 합니다.', 'error'); return; }
+    if (!/^[가-힣a-zA-Z0-9_\-]+$/.test(val)) {
+      showToast('사용할 수 없는 문자가 포함되어 있습니다.', 'error'); return;
+    }
+    if (val === _profile?.nickname) {
+      showToast('현재 닉네임과 동일합니다.', 'error'); return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '확인 중...';
+
+    try {
+      // 중복 체크
+      const { data: avail, error: rpcErr } = await sb.rpc('is_nickname_available', { p_nickname: val });
+      if (rpcErr) throw rpcErr;
+      if (!avail) { showToast('이미 사용 중인 닉네임입니다.', 'error'); return; }
+
+      // 저장
+      const { data, error } = await sb
+        .from('profiles')
+        .upsert({ user_id: _session.user.id, nickname: val }, { onConflict: 'user_id' })
+        .select()
+        .single();
+      if (error) throw error;
+
+      _profile = data;
+      renderProfile();
+      showToast('닉네임이 변경되었습니다.', 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '저장';
+    }
+  }
+
+  // ── 로그아웃 ────────────────────────────────────────────────────────────
+  async function handleLogout() {
+    const btn = document.getElementById('btn-logout');
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+    try {
+      const { error } = await sb.auth.signOut();
+      if (error) throw error;
+      // onAuthStateChange에서 showLoginGate 호출됨
+    } catch (e) {
+      showToast(e.message, 'error');
+      btn.disabled = false;
+      btn.textContent = '로그아웃';
+    }
+  }
+
+  // ── 회원 탈퇴 ────────────────────────────────────────────────────────────
+  function openDeleteModal() {
+    document.getElementById('modal-delete').classList.add('show');
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('modal-delete').classList.remove('show');
+  }
+
+  async function handleDeleteAccount() {
+    const btn = document.getElementById('btn-confirm-delete');
+    btn.disabled = true;
+    btn.textContent = '처리 중...';
+    try {
+      const { error } = await sb.rpc('delete_account');
+      if (error) throw error;
+      closeDeleteModal();
+      showToast('계정이 삭제되었습니다.', 'success');
+      // 로그아웃 후 메인으로
+      await sb.auth.signOut();
+      setTimeout(() => { location.href = '/'; }, 1500);
+    } catch (e) {
+      showToast(e.message || '탈퇴 처리 중 오류가 발생했습니다.', 'error');
+      btn.disabled = false;
+      btn.textContent = '탈퇴하기';
+    }
+  }
+
+  // ── 이벤트 바인딩 ────────────────────────────────────────────────────────
+  document.getElementById('btn-google-login').onclick = async () => {
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.origin + location.pathname }
+    });
+    if (error) showToast(error.message, 'error');
+  };
+
+  document.getElementById('btn-nick-save').onclick = handleNickSave;
+  document.getElementById('nick-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleNickSave();
+  });
+
+  document.getElementById('btn-logout').onclick = handleLogout;
+  document.getElementById('btn-delete-account').onclick = openDeleteModal;
+  document.getElementById('btn-cancel-delete').onclick = closeDeleteModal;
+  document.getElementById('btn-confirm-delete').onclick = handleDeleteAccount;
+
+  // 모달 배경 클릭 닫기
+  document.getElementById('modal-delete').onclick = (e) => {
+    if (e.target === document.getElementById('modal-delete')) closeDeleteModal();
+  };
+
+  // 시작
+  init();
+})();
+</script>
+</body>
+</html>
