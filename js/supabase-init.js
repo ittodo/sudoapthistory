@@ -9,82 +9,10 @@
 (function () {
   'use strict';
 
-  // ─── navigator.locks polyfill (Safari 불안정 대응) ───────────────────────
-  // Supabase v2는 request(name, {mode:'exclusive'}, callback) 3-arg 형식으로 호출
-  if (typeof navigator !== 'undefined' && !navigator.locks) {
-    navigator.locks = {
-      request: function(name, options, cb) {
-        if (typeof options === 'function') { cb = options; }
-        return Promise.resolve(cb({ name: name }));
-      }
-    };
-  }
-
-  if (window.__supabaseClient) return; // 이미 초기화된 경우 스킵
-
-  const SUPABASE_URL      = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
-
-  // ─── Safari ITP: PKCE code verifier sessionStorage 백업 커스텀 스토리지 ──
-  // Safari ITP가 redirect 후 localStorage를 파티셔닝할 수 있으므로
-  // localStorage에 쓸 때 sessionStorage에도 동시에 백업하고,
-  // localStorage에서 못 읽으면 sessionStorage에서 복구 시도
-  const safariFallbackStorage = {
-    getItem: function(key) {
-      try {
-        var val = window.localStorage.getItem(key);
-        if (val !== null) return val;
-        // localStorage에 없으면 sessionStorage에서 복구 시도
-        return window.sessionStorage.getItem(key);
-      } catch(e) {
-        try { return window.sessionStorage.getItem(key); } catch(e2) { return null; }
-      }
-    },
-    setItem: function(key, value) {
-      try { window.localStorage.setItem(key, value); } catch(e) {}
-      // code verifier 관련 키는 sessionStorage에도 백업
-      try { window.sessionStorage.setItem(key, value); } catch(e) {}
-    },
-    removeItem: function(key) {
-      try { window.localStorage.removeItem(key); } catch(e) {}
-      try { window.sessionStorage.removeItem(key); } catch(e) {}
-    }
-  };
-
-  window.__supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      flowType:          'pkce',
-      detectSessionInUrl: true,
-      persistSession:    true,
-      storage:           safariFallbackStorage,
-      autoRefreshToken:  true,
-    }
-  });
-
-  // ─── Safari에서 ?code= redirect 후 수동 code exchange ────────────────────
-  // detectSessionInUrl이 Safari에서 제대로 동작 안 할 수 있으므로 명시적 처리
-  (function handlePkceRedirect() {
-    var params = new URLSearchParams(window.location.search);
-    var code   = params.get('code');
-    if (!code) return;
-
-    window.__supabaseClient.auth.exchangeCodeForSession(code)
-      .then(function(result) {
-        if (result.error) {
-          _dbg('exchangeCodeForSession error: ' + result.error.message);
-          return;
-        }
-        _dbg('exchangeCodeForSession 성공: ' + (result.data.session ? result.data.session.user.email : 'no session'));
-        // URL에서 code 파라미터 제거 (뒤로가기 시 재실행 방지)
-        var clean = window.location.pathname + window.location.hash;
-        window.history.replaceState(null, '', clean);
-      })
-      .catch(function(e) { _dbg('exchangeCodeForSession exception: ' + e); });
-  })();
-
-  // ─── 디버그 패널 ─────────────────────────────────────────────────────────
+  // ─── Step 1: 디버그 유틸리티 (최우선 정의) ───────────────────────────────
   var _debugLines = [];
   var _debugPanel = null;
+  var _isDebugMode = new URLSearchParams(window.location.search).get('debug') === '1';
 
   function _dbg(msg) {
     var ts = new Date().toISOString().substr(11, 12);
@@ -96,11 +24,11 @@
       _debugPanel.appendChild(p);
       _debugPanel.scrollTop = _debugPanel.scrollHeight;
     }
-    // console도 같이 출력 (지원하는 환경에서)
     try { console.log('[supabase-debug]', msg); } catch(e) {}
   }
 
   function _buildDebugPanel() {
+    if (document.getElementById('__sb_debug_panel')) return; // 이미 있으면 스킵
     var panel = document.createElement('div');
     panel.id = '__sb_debug_panel';
     panel.style.cssText = [
@@ -115,6 +43,7 @@
     title.textContent = '── Supabase Debug Panel ──';
     panel.appendChild(title);
 
+    // 이미 쌓인 로그 표시
     _debugLines.forEach(function(l) {
       var d = document.createElement('div');
       d.textContent = l;
@@ -124,15 +53,118 @@
     var closeBtn = document.createElement('button');
     closeBtn.textContent = '✕ 닫기';
     closeBtn.style.cssText = 'margin-top:6px;padding:2px 8px;background:#333;color:#fff;border:1px solid #666;cursor:pointer';
-    closeBtn.onclick = function() { panel.remove(); };
+    closeBtn.onclick = function() { panel.remove(); _debugPanel = null; };
     panel.appendChild(closeBtn);
 
     document.body.appendChild(panel);
     _debugPanel = panel;
   }
 
+  // ?debug=1 이면 DOM 준비되는 즉시 패널 생성 (createClient 실패해도 패널은 표시)
+  if (_isDebugMode) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', _buildDebugPanel);
+    } else {
+      _buildDebugPanel();
+    }
+  }
+
+  // ─── Step 2: navigator.locks polyfill (Safari 불안정 대응) ───────────────
+  // Supabase v2는 request(name, {mode:'exclusive'}, callback) 3-arg 형식으로 호출
+  if (typeof navigator !== 'undefined' && !navigator.locks) {
+    navigator.locks = {
+      request: function(name, options, cb) {
+        if (typeof options === 'function') { cb = options; }
+        return Promise.resolve(cb({ name: name }));
+      }
+    };
+    window.__sbLocksPolyfilled = true;
+    _dbg('navigator.locks polyfill 적용됨');
+  }
+
+  // ─── Step 3: 중복 초기화 방지 ────────────────────────────────────────────
+  if (window.__supabaseClient) {
+    _dbg('이미 초기화됨 — 스킵');
+    return;
+  }
+
+  // ─── Step 4: CDN 로드 확인 ───────────────────────────────────────────────
+  if (!window.supabase || !window.supabase.createClient) {
+    _dbg('ERROR: window.supabase 없음 — CDN 스크립트 로드 실패');
+    return;
+  }
+
+  const SUPABASE_URL      = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
+
+  // ─── Step 5: Safari ITP 대응 커스텀 스토리지 ─────────────────────────────
+  // Safari ITP가 cross-site redirect 후 localStorage를 파티셔닝할 수 있음.
+  // localStorage 실패 시 sessionStorage(탭 유지)에서 복구. 두 곳 모두에 백업.
+  const safariFallbackStorage = {
+    getItem: function(key) {
+      try {
+        var val = window.localStorage.getItem(key);
+        if (val !== null) return val;
+        return window.sessionStorage.getItem(key);
+      } catch(e) {
+        try { return window.sessionStorage.getItem(key); } catch(e2) { return null; }
+      }
+    },
+    setItem: function(key, value) {
+      try { window.localStorage.setItem(key, value); } catch(e) {}
+      try { window.sessionStorage.setItem(key, value); } catch(e) {}
+    },
+    removeItem: function(key) {
+      try { window.localStorage.removeItem(key); } catch(e) {}
+      try { window.sessionStorage.removeItem(key); } catch(e) {}
+    }
+  };
+
+  // ─── Step 6: Supabase 클라이언트 생성 ────────────────────────────────────
+  // detectSessionInUrl: false — URL ?code= 처리는 아래 handlePkceRedirect에서만.
+  // detectSessionInUrl: true + 수동 exchangeCodeForSession이 동시에 실행되면
+  // 두 번째 호출이 "invalid grant"를 내고 Supabase가 세션을 삭제하여
+  // Safari에서 로그인이 풀리는 원인이 됨.
+  window.__supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      flowType:           'pkce',
+      detectSessionInUrl: false,   // ← 핵심: 수동 교환만 사용
+      persistSession:     true,
+      storage:            safariFallbackStorage,
+      autoRefreshToken:   true,
+    }
+  });
+  _dbg('Supabase 클라이언트 생성 완료');
+
+  // ─── Step 7: PKCE redirect 수동 처리 ─────────────────────────────────────
+  // detectSessionInUrl: false 이므로 반드시 여기서 수동으로 code 교환해야 함.
+  // code 파라미터만 URL에서 제거하고 debug=1 등 나머지 파라미터와 hash는 유지.
+  (function handlePkceRedirect() {
+    var params = new URLSearchParams(window.location.search);
+    var code   = params.get('code');
+    if (!code) return;
+
+    _dbg('PKCE code 발견, 교환 시작 (' + code.substr(0, 12) + '...)');
+
+    window.__supabaseClient.auth.exchangeCodeForSession(code)
+      .then(function(result) {
+        if (result.error) {
+          _dbg('exchangeCodeForSession error: ' + result.error.message);
+          return;
+        }
+        _dbg('exchangeCodeForSession 성공: ' + (result.data.session ? result.data.session.user.email : 'no session'));
+        // URL에서 code만 제거 (debug=1, hash 등은 유지)
+        var cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('code');
+        var newSearch = cleanParams.toString() ? '?' + cleanParams.toString() : '';
+        window.history.replaceState(null, '', window.location.pathname + newSearch + window.location.hash);
+      })
+      .catch(function(e) { _dbg('exchangeCodeForSession exception: ' + e); });
+  })();
+
+  // ─── Step 8: 디버그 체크 실행 ────────────────────────────────────────────
   function _runDebugChecks() {
-    _dbg('=== 디버그 시작 ===');
+    _dbg('=== 디버그 체크 시작 ===');
 
     // 1. navigator.locks 지원 여부
     _dbg('navigator.locks: ' + (
@@ -161,6 +193,7 @@
     // 4. URL ?code= 파라미터
     var params = new URLSearchParams(window.location.search);
     _dbg('URL ?code=: ' + (params.get('code') ? '있음 (' + params.get('code').substr(0,12) + '...)' : '없음'));
+    _dbg('URL hash: ' + (window.location.hash || '없음'));
 
     // 5. PKCE code verifier (localStorage/sessionStorage)
     var cvKey = null;
@@ -213,15 +246,13 @@
     _dbg('=== 체크 완료 (getSession 비동기 대기중) ===');
   }
 
-  // ?debug=1 파라미터가 있으면 디버그 패널 활성화
-  if (new URLSearchParams(window.location.search).get('debug') === '1') {
+  if (_isDebugMode) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
-        _buildDebugPanel();
+        _buildDebugPanel(); // 패널이 아직 없으면 재시도
         _runDebugChecks();
       });
     } else {
-      _buildDebugPanel();
       _runDebugChecks();
     }
   }
