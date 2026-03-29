@@ -8,10 +8,13 @@
   'use strict';
 
   // Safari는 navigator.locks API 지원이 불안정 → polyfill로 방어
+  // Supabase v2는 request(name, {mode:'exclusive'}, callback) 3-arg 형식으로 호출하므로
+  // options와 callback을 모두 처리해야 함
   if (typeof navigator !== 'undefined' && !navigator.locks) {
     navigator.locks = {
-      request: function(name, callback) {
-        return Promise.resolve(callback());
+      request: function(name, options, cb) {
+        if (typeof options === 'function') { cb = options; }
+        return Promise.resolve(cb({ name: name }));
       }
     };
   }
