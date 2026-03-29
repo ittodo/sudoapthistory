@@ -1,6 +1,6 @@
 /**
  * nodostream.com 공통 댓글 모듈
- * Supabase 기반 / api 래퍼 패턴으로 백엔드 교체 용이
+ * 대댓글(parent_id), 추천(comment_likes) 지원
  *
  * 사용법:
  *   initComments('page-id', '#container-selector')
@@ -15,18 +15,18 @@
   const PAGE_SIZE = 20;
 
   // ─── 상태 ────────────────────────────────────────────────────────────────
-  let _supabase = null;
-  let _session  = null;
-  let _profile  = null;
-  let _isAdmin  = false;
-  let _pageId   = null;
+  let _supabase  = null;
+  let _session   = null;
+  let _profile   = null;
+  let _isAdmin   = false;
+  let _pageId    = null;
   let _container = null;
-  let _offset   = 0;
-  let _totalCount = 0;
+  let _offset    = 0;   // 최상위 댓글 기준 offset
+  let _totalCount = 0;  // 최상위 댓글 수
   let _editingId  = null;
+  let _likedSet   = new Set(); // 로그인 유저가 좋아요한 댓글 ID Set
 
   // ─── Supabase API 래퍼 ──────────────────────────────────────────────────
-  // 이 섹션만 교체하면 자체 백엔드로 마이그레이션 가능
   const api = {
     async getSession() {
       const { data } = await _supabase.auth.getSession();
@@ -72,28 +72,68 @@
       return data;
     },
 
+    /**
+     * 최상위 댓글(parent_id IS NULL)을 페이지네이션으로 가져오고,
+     * 해당 댓글들의 대댓글을 한 번에 fetch해 인터리브 반환.
+     * 반환: { data: Comment[], count: number(최상위 댓글 수) }
+     */
     async listComments(pageId, offset, limit) {
-      const { data, error, count } = await _supabase
+      const SELECT_FIELDS = `
+        id, content, created_at, updated_at, parent_id, user_id,
+        profiles!inner(nickname, avatar_url),
+        comment_likes(count)
+      `;
+
+      // 1. 최상위 댓글
+      const { data: topLevel, error, count } = await _supabase
         .from('comments')
-        .select(`
-          id, content, created_at, updated_at,
-          profiles!inner(nickname, avatar_url),
-          user_id
-        `, { count: 'exact' })
+        .select(SELECT_FIELDS, { count: 'exact' })
         .eq('page_id', pageId)
+        .is('parent_id', null)
         .is('deleted_at', null)
         .is('moderated_at', null)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
       if (error) throw error;
-      return { data, count };
+
+      if (!topLevel || !topLevel.length) return { data: [], count: count || 0 };
+
+      // 2. 대댓글
+      const topIds = topLevel.map(c => c.id);
+      const { data: replies, error: rErr } = await _supabase
+        .from('comments')
+        .select(SELECT_FIELDS)
+        .in('parent_id', topIds)
+        .is('deleted_at', null)
+        .is('moderated_at', null)
+        .order('created_at', { ascending: true });
+      if (rErr) throw rErr;
+
+      // 3. 부모 댓글 뒤에 대댓글 삽입
+      const replyMap = {};
+      (replies || []).forEach(r => {
+        if (!replyMap[r.parent_id]) replyMap[r.parent_id] = [];
+        replyMap[r.parent_id].push(r);
+      });
+
+      const merged = [];
+      topLevel.forEach(c => {
+        merged.push(c);
+        if (replyMap[c.id]) merged.push(...replyMap[c.id]);
+      });
+
+      return { data: merged, count: count || 0 };
     },
 
-    async insertComment(pageId, userId, content) {
+    async insertComment(pageId, userId, content, parentId = null) {
       const { data, error } = await _supabase
         .from('comments')
-        .insert({ page_id: pageId, user_id: userId, content })
-        .select(`id, content, created_at, updated_at, user_id, profiles!inner(nickname, avatar_url)`)
+        .insert({ page_id: pageId, user_id: userId, content, parent_id: parentId })
+        .select(`
+          id, content, created_at, updated_at, parent_id, user_id,
+          profiles!inner(nickname, avatar_url),
+          comment_likes(count)
+        `)
         .single();
       if (error) throw error;
       return data;
@@ -104,7 +144,11 @@
         .from('comments')
         .update({ content, updated_at: new Date().toISOString() })
         .eq('id', id)
-        .select(`id, content, created_at, updated_at, user_id, profiles!inner(nickname, avatar_url)`)
+        .select(`
+          id, content, created_at, updated_at, parent_id, user_id,
+          profiles!inner(nickname, avatar_url),
+          comment_likes(count)
+        `)
         .single();
       if (error) throw error;
       return data;
@@ -113,6 +157,36 @@
     async softDeleteComment(id) {
       const { error } = await _supabase.rpc('soft_delete_comment', { comment_id: id });
       if (error) throw error;
+    },
+
+    /** 로그인 유저가 좋아요한 댓글 ID Set 반환 */
+    async getUserLikes(commentIds) {
+      if (!_session || !commentIds.length) return new Set();
+      const { data, error } = await _supabase
+        .from('comment_likes')
+        .select('comment_id')
+        .eq('user_id', _session.user.id)
+        .in('comment_id', commentIds);
+      if (error) return new Set();
+      return new Set((data || []).map(r => r.comment_id));
+    },
+
+    /** 추천 토글: isLiked=true → 취소, false → 추천 */
+    async toggleLike(commentId, isLiked) {
+      if (!_session) throw new Error('로그인이 필요합니다.');
+      if (isLiked) {
+        const { error } = await _supabase
+          .from('comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', _session.user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await _supabase
+          .from('comment_likes')
+          .insert({ comment_id: commentId, user_id: _session.user.id });
+        if (error) throw error;
+      }
     }
   };
 
@@ -184,8 +258,10 @@
         font-weight: 500;
         transition: all .15s;
         white-space: nowrap;
+        font-family: inherit;
       }
       .nds-btn:hover { border-color: #94a3b8; color: #e2e8f0; }
+      .nds-btn:disabled { opacity: .4; cursor: not-allowed; }
       .nds-btn-primary {
         background: #3b82f6;
         border-color: #3b82f6;
@@ -244,6 +320,7 @@
         padding: 7px 10px;
         outline: none;
         transition: border-color .15s;
+        font-family: inherit;
       }
       .nds-input:focus { border-color: #3b82f6; }
       .nds-input::placeholder { color: #475569; }
@@ -295,6 +372,16 @@
       }
       .nds-comment:hover { border-color: #334155; }
 
+      /* 대댓글 */
+      .nds-reply {
+        margin-top: 0;
+        margin-left: 28px;
+        background: #172033;
+        border-left: 2px solid #334155 !important;
+        border-radius: 0 8px 8px 0;
+      }
+      .nds-reply:hover { border-color: #334155 !important; border-left-color: #475569 !important; }
+
       .nds-comment-header {
         display: flex;
         align-items: center;
@@ -328,6 +415,38 @@
         word-break: break-word;
       }
 
+      /* 댓글 하단 (좋아요 + 답글 버튼) */
+      .nds-comment-footer {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      /* 추천 버튼 */
+      .nds-like-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 9px;
+        border-radius: 99px;
+        border: 1px solid #334155;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+        font-size: 11px;
+        font-family: inherit;
+        transition: all .15s;
+        line-height: 1;
+      }
+      .nds-like-btn:hover:not(:disabled) { border-color: #94a3b8; color: #e2e8f0; }
+      .nds-like-btn.liked {
+        border-color: rgba(59,130,246,.5);
+        background: rgba(59,130,246,.1);
+        color: #60a5fa;
+      }
+      .nds-like-btn:disabled { opacity: .45; cursor: default; }
+
       /* 인라인 수정 폼 */
       .nds-edit-form { margin-top: 8px; }
       .nds-edit-footer {
@@ -336,6 +455,23 @@
         justify-content: flex-end;
         gap: 6px;
         margin-top: 6px;
+      }
+
+      /* 답글 작성 폼 */
+      .nds-reply-form {
+        margin-left: 28px;
+        border-left: 2px solid #334155;
+        padding: 6px 0 6px 12px;
+      }
+      .nds-reply-form-inner {
+        background: #172033;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+      .nds-reply-form .nds-textarea {
+        min-height: 60px;
+        background: #1e293b;
       }
 
       /* 더보기 */
@@ -448,7 +584,7 @@
     // 인증 바
     _container.appendChild(renderAuthBar());
 
-    // 닉네임 미설정 시 폼 (프로필 없는 신규 유저 포함)
+    // 닉네임 미설정 시 폼
     if (_session && (!_profile || !_profile.nickname)) {
       _container.appendChild(renderNickForm());
     }
@@ -622,7 +758,6 @@
           _offset = 0;
           await refreshList();
           showToast('댓글이 등록되었습니다.');
-          // 타이틀 카운트 업데이트
           const titleEl = _container.querySelector('.nds-c-title');
           if (titleEl) titleEl.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
         } catch (e) {
@@ -639,16 +774,30 @@
 
   function renderComment(c, isOwn) {
     const el = document.createElement('div');
-    el.className = 'nds-comment';
+    const isReply = !!c.parent_id;
+    el.className = 'nds-comment' + (isReply ? ' nds-reply' : '');
     el.dataset.id = c.id;
+    if (isReply) el.dataset.parentId = c.parent_id;
 
     const nick = c.profiles?.nickname || '(알 수 없음)';
     const editedMark = c.updated_at ? '<span class="nds-comment-edited">(수정됨)</span>' : '';
+
     const actionsHtml = isOwn ? `
       <div class="nds-comment-actions">
         <button class="nds-btn nds-btn-sm nds-edit-btn" data-id="${c.id}">수정</button>
         <button class="nds-btn nds-btn-sm nds-btn-danger nds-del-btn" data-id="${c.id}">삭제</button>
       </div>` : '';
+
+    // 좋아요
+    const likeCount = c.comment_likes?.[0]?.count ?? 0;
+    const isLiked = _likedSet.has(c.id);
+    const likeDisabled = !_session ? 'disabled title="로그인 후 추천 가능"' : '';
+    const likeSvgFill = isLiked ? 'currentColor' : 'none';
+
+    // 답글 버튼: 최상위 댓글 + 로그인 + 닉네임 있을 때만
+    const replyBtnHtml = (!isReply && _session && _profile?.nickname)
+      ? `<button class="nds-btn nds-btn-sm nds-reply-btn" data-id="${c.id}">답글</button>`
+      : '';
 
     el.innerHTML = `
       <div class="nds-comment-header">
@@ -658,11 +807,33 @@
         ${actionsHtml}
       </div>
       <div class="nds-comment-body" id="nds-body-${c.id}">${esc(c.content)}</div>
+      <div class="nds-comment-footer">
+        <button class="nds-like-btn${isLiked ? ' liked' : ''}" data-id="${c.id}" ${likeDisabled}>
+          <svg width="12" height="12" viewBox="0 0 24 24"
+               fill="${likeSvgFill}" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/>
+            <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+          </svg>
+          <span class="nds-like-count">${likeCount > 0 ? likeCount : ''}</span>
+        </button>
+        ${replyBtnHtml}
+      </div>
     `;
 
     if (isOwn) {
       el.querySelector('.nds-edit-btn').onclick = () => showEditForm(el, c);
       el.querySelector('.nds-del-btn').onclick = () => handleDelete(c.id);
+    }
+
+    const likeBtn = el.querySelector('.nds-like-btn');
+    if (likeBtn && _session) {
+      likeBtn.onclick = () => handleLike(likeBtn, c.id);
+    }
+
+    const replyBtn = el.querySelector('.nds-reply-btn');
+    if (replyBtn) {
+      replyBtn.onclick = () => showReplyForm(el, c.id);
     }
 
     return el;
@@ -716,7 +887,6 @@
         bodyEl.textContent = updated.content;
         bodyEl.style.display = '';
         _editingId = null;
-        // 수정됨 표시
         const header = el.querySelector('.nds-comment-header');
         if (!header.querySelector('.nds-comment-edited')) {
           header.insertAdjacentHTML('beforeend', '<span class="nds-comment-edited">(수정됨)</span>');
@@ -726,6 +896,117 @@
         showToast(e.message, true);
         saveBtn.disabled = false;
         saveBtn.textContent = '저장';
+      }
+    };
+  }
+
+  /** 추천 토글 핸들러 */
+  async function handleLike(btn, commentId) {
+    if (!_session) return;
+    const isLiked = _likedSet.has(commentId);
+    btn.disabled = true;
+    try {
+      await api.toggleLike(commentId, isLiked);
+      const countEl = btn.querySelector('.nds-like-count');
+      let count = parseInt(countEl.textContent || '0', 10);
+      const svg = btn.querySelector('svg');
+      if (isLiked) {
+        _likedSet.delete(commentId);
+        btn.classList.remove('liked');
+        count = Math.max(0, count - 1);
+        if (svg) svg.setAttribute('fill', 'none');
+      } else {
+        _likedSet.add(commentId);
+        btn.classList.add('liked');
+        count += 1;
+        if (svg) svg.setAttribute('fill', 'currentColor');
+      }
+      countEl.textContent = count > 0 ? count : '';
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /** 답글 폼 토글 */
+  function showReplyForm(parentEl, parentId) {
+    // 이미 열려있으면 닫기
+    const existingForm = document.getElementById(`nds-reply-form-${parentId}`);
+    if (existingForm) {
+      existingForm.remove();
+      return;
+    }
+
+    const formWrap = document.createElement('div');
+    formWrap.className = 'nds-reply-form';
+    formWrap.id = `nds-reply-form-${parentId}`;
+    formWrap.innerHTML = `
+      <div class="nds-reply-form-inner">
+        <textarea class="nds-textarea" id="nds-reply-ta-${parentId}"
+          placeholder="답글을 입력하세요... (최대 1000자)" maxlength="1000" rows="2"></textarea>
+        <div class="nds-write-footer">
+          <span class="nds-char-count" id="nds-reply-count-${parentId}">0 / 1000</span>
+          <div style="display:flex;gap:6px">
+            <button class="nds-btn nds-btn-sm" id="nds-reply-cancel-${parentId}">취소</button>
+            <button class="nds-btn nds-btn-sm nds-btn-primary" id="nds-reply-submit-${parentId}">답글 작성</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // 부모 댓글 뒤, 기존 대댓글들 뒤에 삽입
+    const list = document.getElementById('nds-comment-list');
+    let insertAfter = parentEl;
+    let next = insertAfter.nextElementSibling;
+    while (next && next.dataset.parentId == parentId) {
+      insertAfter = next;
+      next = next.nextElementSibling;
+    }
+    insertAfter.insertAdjacentElement('afterend', formWrap);
+
+    const ta = document.getElementById(`nds-reply-ta-${parentId}`);
+    const countEl = document.getElementById(`nds-reply-count-${parentId}`);
+    const cancelBtn = document.getElementById(`nds-reply-cancel-${parentId}`);
+    const submitBtn = document.getElementById(`nds-reply-submit-${parentId}`);
+
+    ta.focus();
+
+    ta.addEventListener('input', () => {
+      const len = ta.value.length;
+      countEl.textContent = `${len} / 1000`;
+      countEl.classList.toggle('over', len > 1000);
+    });
+
+    cancelBtn.onclick = () => formWrap.remove();
+
+    submitBtn.onclick = async () => {
+      const content = ta.value.trim();
+      if (!content) { showToast('답글 내용을 입력하세요.', true); return; }
+      if (content.length > 1000) { showToast('1000자 이하로 입력하세요.', true); return; }
+      submitBtn.disabled = true;
+      submitBtn.textContent = '저장 중...';
+      try {
+        const newReply = await api.insertComment(_pageId, _session.user.id, content, parentId);
+        formWrap.remove();
+
+        // 대댓글 DOM 삽입 (기존 대댓글 뒤)
+        const parentElInList = list.querySelector(`[data-id="${parentId}"]`);
+        let ins = parentElInList;
+        let nx = ins.nextElementSibling;
+        while (nx && nx.dataset.parentId == parentId) { ins = nx; nx = nx.nextElementSibling; }
+
+        const replyEl = renderComment(newReply, true);
+        ins.insertAdjacentElement('afterend', replyEl);
+
+        _totalCount++;
+        const titleEl = _container.querySelector('.nds-c-title');
+        if (titleEl) titleEl.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
+        showToast('답글이 등록되었습니다.');
+      } catch (e) {
+        showToast(e.message, true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = '답글 작성';
       }
     };
   }
@@ -749,10 +1030,18 @@
     listWrap.innerHTML = '<div class="nds-loading-inline">불러오는 중...</div>';
     try {
       const { data, count } = await api.listComments(_pageId, 0, PAGE_SIZE);
-      _offset = data.length;
+
+      // 최상위 댓글 수 기준 offset
+      _offset = data.filter(c => !c.parent_id).length;
       _totalCount = count || 0;
 
-      // 타이틀 업데이트
+      // 좋아요 Set 로드
+      if (_session && data.length) {
+        _likedSet = await api.getUserLikes(data.map(c => c.id));
+      } else {
+        _likedSet = new Set();
+      }
+
       const titleEl = _container.querySelector('.nds-c-title');
       if (titleEl) titleEl.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
 
@@ -797,7 +1086,14 @@
       btn.textContent = '불러오는 중...';
       try {
         const { data } = await api.listComments(_pageId, _offset, PAGE_SIZE);
-        _offset += data.length;
+        const newTopCount = data.filter(c => !c.parent_id).length;
+        _offset += newTopCount;
+
+        // 좋아요 Set 업데이트
+        if (_session && data.length) {
+          const newLikes = await api.getUserLikes(data.map(c => c.id));
+          newLikes.forEach(id => _likedSet.add(id));
+        }
 
         const list = document.getElementById('nds-comment-list');
         data.forEach(c => {
@@ -828,6 +1124,7 @@
       await api.signOut();
       _session = null;
       _profile = null;
+      _likedSet = new Set();
       render();
       showToast('로그아웃되었습니다.');
     } catch (e) {
@@ -847,7 +1144,6 @@
 
     injectStyles();
 
-    // Supabase SDK 로드 대기
     if (typeof window.supabase === 'undefined') {
       console.error('[comments.js] Supabase SDK가 로드되지 않았습니다.');
       return;
@@ -855,7 +1151,6 @@
 
     _supabase = window.__supabaseClient;
 
-    // 세션 확인
     _session = await api.getSession();
     if (_session) {
       _profile = await api.getProfile(_session.user.id);
@@ -863,7 +1158,6 @@
       _isAdmin = !!adminFlag;
     }
 
-    // OAuth 리다이렉트 후 auth 상태 변화 처리
     _supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN') {
         _session = session;
@@ -875,6 +1169,7 @@
         _session = null;
         _profile = null;
         _isAdmin = false;
+        _likedSet = new Set();
         render();
       }
     });

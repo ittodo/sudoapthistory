@@ -751,13 +751,25 @@ body {
       ? esc(c.content.slice(0, 300)) + '<span style="color:#475569">…</span>'
       : esc(c.content);
 
+    // 대댓글 배지
+    const replyBadge = c.parent_id
+      ? `<span class="badge" style="background:rgba(148,163,184,.1);color:#94a3b8;">↪ #${c.parent_id}</span>`
+      : '';
+
+    // 좋아요 수
+    const likeHtml = (c.like_count > 0)
+      ? `<span style="font-size:11px;color:#60a5fa;margin-left:4px">♥ ${c.like_count}</span>`
+      : '';
+
     card.innerHTML = `
       <div class="adm-card-top">
         <span class="badge ${badgeClass}">${badgeLabel}</span>
+        ${replyBadge}
         <span class="adm-card-id">#${c.id}</span>
         <span class="adm-card-page" title="${esc(c.page_id)}">${esc(c.page_id)}</span>
         <span class="adm-card-nick">${esc(c.nickname || '(알 수 없음)')}</span>
         <span class="adm-card-time">${fmtDate(c.created_at)}</span>
+        ${likeHtml}
         <div class="adm-card-actions">${actionHtml}</div>
       </div>
       <div class="adm-card-body">${contentPreview}</div>

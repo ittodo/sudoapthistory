@@ -317,3 +317,113 @@ $$;
 UPDATE public.profiles
 SET role = 'admin'
 WHERE user_id = 'd9f762d8-3578-4211-9367-fdaad05a820c';
+
+
+-- =============================================
+-- 6. 대댓글 지원 (parent_id)
+-- =============================================
+ALTER TABLE public.comments
+  ADD COLUMN IF NOT EXISTS parent_id BIGINT
+    REFERENCES public.comments(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS comments_parent_id_idx
+  ON public.comments(parent_id);
+
+
+-- =============================================
+-- 7. comment_likes 테이블 (추천/좋아요)
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.comment_likes (
+  comment_id  BIGINT      NOT NULL REFERENCES public.comments(id) ON DELETE CASCADE,
+  user_id     UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (comment_id, user_id)
+);
+
+ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
+
+-- 전체 공개 읽기
+CREATE POLICY "comment_likes_select_public"
+  ON public.comment_likes FOR SELECT
+  USING (TRUE);
+
+-- 본인만 INSERT
+CREATE POLICY "comment_likes_insert_own"
+  ON public.comment_likes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+-- 본인만 DELETE
+CREATE POLICY "comment_likes_delete_own"
+  ON public.comment_likes FOR DELETE
+  USING (auth.uid() = user_id);
+
+
+-- =============================================
+-- 8. admin_list_comments RPC 재정의
+--    parent_id, like_count 컬럼 추가
+-- =============================================
+CREATE OR REPLACE FUNCTION public.admin_list_comments(
+  p_limit   INT  DEFAULT 50,
+  p_offset  INT  DEFAULT 0,
+  p_status  TEXT DEFAULT 'all',
+  p_page_id TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  id                BIGINT,
+  page_id           VARCHAR(100),
+  user_id           UUID,
+  content           TEXT,
+  parent_id         BIGINT,
+  created_at        TIMESTAMPTZ,
+  updated_at        TIMESTAMPTZ,
+  deleted_at        TIMESTAMPTZ,
+  moderated_at      TIMESTAMPTZ,
+  moderated_by      UUID,
+  moderation_reason JSONB,
+  nickname          VARCHAR(30),
+  avatar_url        TEXT,
+  like_count        BIGINT,
+  total_count       BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: admin only';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.page_id,
+    c.user_id,
+    c.content,
+    c.parent_id,
+    c.created_at,
+    c.updated_at,
+    c.deleted_at,
+    c.moderated_at,
+    c.moderated_by,
+    c.moderation_reason,
+    p.nickname,
+    p.avatar_url,
+    (SELECT COUNT(*)::BIGINT FROM public.comment_likes cl
+     WHERE cl.comment_id = c.id)        AS like_count,
+    COUNT(*) OVER()::BIGINT             AS total_count
+  FROM public.comments c
+  LEFT JOIN public.profiles p ON p.user_id = c.user_id
+  WHERE
+    CASE p_status
+      WHEN 'normal'    THEN c.deleted_at IS NULL AND c.moderated_at IS NULL
+      WHEN 'deleted'   THEN c.deleted_at IS NOT NULL
+      WHEN 'moderated' THEN c.moderated_at IS NOT NULL AND c.deleted_at IS NULL
+      ELSE TRUE
+    END
+    AND (p_page_id IS NULL OR c.page_id = p_page_id)
+  ORDER BY c.created_at DESC
+  LIMIT p_limit
+  OFFSET p_offset;
+END;
+$$;
