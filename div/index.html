@@ -204,6 +204,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
     <button class="detail-close" onclick="closeDetail()">닫기</button>
   </div>
   <div id="detailContent"></div>
+  <div id="detail-comments" style="border-top:1px solid #334155;margin-top:24px;padding:16px 16px 32px;"></div>
 </div>
 
 <script>
@@ -763,6 +764,10 @@ function showDetail(ticker,name){
   document.getElementById('detailContent').innerHTML=html;
   document.getElementById('detailPanel').style.display='block';
   document.getElementById('detailOverlay').style.display='block';
+  // 기업별 댓글 연동
+  const cpid='company_'+ticker;
+  if(window._divCommentsReady){changePageId(cpid);}
+  else{initComments(cpid,'#detail-comments');window._divCommentsReady=true;}
 }
 function closeDetail(){document.getElementById('detailPanel').style.display='none';document.getElementById('detailOverlay').style.display='none';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail();});
@@ -778,13 +783,8 @@ function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/<
 init();
 </script>
 
-<!-- 댓글 섹션 -->
-<div id="comments-section" style="border-top:1px solid #334155;margin-top:32px;"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-init.js"></script>
 <script src="../js/comments.js"></script>
-<script>
-  initComments('div', '#comments-section');
-</script>
 </body>
 </html>

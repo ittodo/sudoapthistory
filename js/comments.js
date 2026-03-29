@@ -1177,7 +1177,18 @@
     render();
   }
 
+  // ─── 페이지 ID 변경 (SPA 상세 패널용) ──────────────────────────────────────
+  async function changePageId(newPageId) {
+    if (!_supabase) return;
+    _pageId = newPageId;
+    _offset = 0;
+    _totalCount = 0;
+    _editingId = null;
+    await render();
+  }
+
   // ─── 공개 API ────────────────────────────────────────────────────────────
   global.initComments = initComments;
+  global.changePageId = changePageId;
 
 })(window);

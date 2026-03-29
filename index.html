@@ -315,6 +315,7 @@
         <div style="height:220px;margin-bottom:12px"><canvas id="chart"></canvas></div>
         <div id="mapWrap"><div id="vmap"></div><button class="map-expand-btn" onclick="openMapModal()" title="지도 크게 보기">&#x26F6;</button></div>
         <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
+        <div id="apt-comments" style="border-top:1px solid var(--border);margin-top:24px;padding-top:8px;padding-bottom:16px;"></div>
       </div>
     </div>
   </div>
@@ -2401,6 +2402,10 @@ async function renderDetail(x){
 
   document.getElementById('dp').scrollTop=0;
   showOnMap(x);
+  // 아파트별 댓글 연동
+  const apid='apt_'+x.i;
+  if(window._aptCommentsReady){changePageId(apid);}
+  else{initComments(apid,'#apt-comments');window._aptCommentsReady=true;}
 }
 
 // --- 거래 드릴다운 모달 ---
@@ -2802,5 +2807,8 @@ window.addEventListener('resize',function(){
 init();
 initMobileFilters();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-init.js"></script>
+<script src="js/comments.js"></script>
 </body>
 </html>
