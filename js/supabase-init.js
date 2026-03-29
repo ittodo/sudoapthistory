@@ -7,6 +7,15 @@
 (function () {
   'use strict';
 
+  // Safari는 navigator.locks API 지원이 불안정 → polyfill로 방어
+  if (typeof navigator !== 'undefined' && !navigator.locks) {
+    navigator.locks = {
+      request: function(name, callback) {
+        return Promise.resolve(callback());
+      }
+    };
+  }
+
   if (window.__supabaseClient) return; // 이미 초기화된 경우 스킵
 
   const SUPABASE_URL     = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
@@ -17,7 +26,8 @@
       persistSession:    true,
       autoRefreshToken:  true,
       detectSessionInUrl: true,
-      flowType:          'pkce'
+      flowType:          'pkce',
+      storage:           window.localStorage
     }
   });
 })();
