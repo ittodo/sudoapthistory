@@ -23,25 +23,25 @@
       p.textContent = line;
       _debugPanel.appendChild(p);
       _debugPanel.scrollTop = _debugPanel.scrollHeight;
+      // 패널 높이 변동 시 header 위치 보정
+      var hdr = document.querySelector('#__sb_debug_wrapper + div');
+      if (hdr && _debugExpanded) hdr.style.bottom = _debugPanel.offsetHeight + 'px';
     }
     try { console.log('[supabase-debug]', msg); } catch(e) {}
   }
 
+  var _debugExpanded = true;
+
   function _buildDebugPanel() {
-    if (document.getElementById('__sb_debug_panel')) return; // 이미 있으면 스킵
+    if (document.getElementById('__sb_debug_wrapper')) return; // 이미 있으면 스킵
+
+    // 로그 영역 (접기/펼치기 대상)
     var panel = document.createElement('div');
     panel.id = '__sb_debug_panel';
     panel.style.cssText = [
-      'position:fixed', 'bottom:0', 'left:0', 'right:0', 'z-index:99999',
       'background:rgba(0,0,0,0.85)', 'color:#0f0', 'font:12px/1.4 monospace',
-      'padding:8px', 'max-height:40vh', 'overflow-y:auto',
-      'border-top:2px solid #0f0'
+      'padding:8px', 'max-height:150px', 'overflow-y:auto'
     ].join(';');
-
-    var title = document.createElement('div');
-    title.style.cssText = 'color:#ff0;font-weight:bold;margin-bottom:4px';
-    title.textContent = '── Supabase Debug Panel ──';
-    panel.appendChild(title);
 
     // 이미 쌓인 로그 표시
     _debugLines.forEach(function(l) {
@@ -50,13 +50,51 @@
       panel.appendChild(d);
     });
 
-    var closeBtn = document.createElement('button');
-    closeBtn.textContent = '✕ 닫기';
-    closeBtn.style.cssText = 'margin-top:6px;padding:2px 8px;background:#333;color:#fff;border:1px solid #666;cursor:pointer';
-    closeBtn.onclick = function() { panel.remove(); _debugPanel = null; };
-    panel.appendChild(closeBtn);
+    // 헤더 바 (항상 표시)
+    var header = document.createElement('div');
+    header.style.cssText = [
+      'position:fixed', 'bottom:0', 'left:0', 'right:0', 'z-index:99999',
+      'background:#111', 'border-top:2px solid #0f0',
+      'display:flex', 'align-items:center', 'padding:4px 8px', 'gap:8px'
+    ].join(';');
 
-    document.body.appendChild(panel);
+    var title = document.createElement('span');
+    title.style.cssText = 'color:#ff0;font:bold 12px monospace;flex:1';
+    title.textContent = '── Supabase Debug ──';
+
+    var toggleBtn = document.createElement('button');
+    toggleBtn.textContent = '▲ 접기';
+    toggleBtn.style.cssText = 'padding:2px 8px;background:#333;color:#fff;border:1px solid #666;cursor:pointer;font:12px monospace';
+    toggleBtn.onclick = function() {
+      _debugExpanded = !_debugExpanded;
+      if (_debugExpanded) {
+        panel.style.display = 'block';
+        toggleBtn.textContent = '▲ 접기';
+        header.style.bottom = panel.offsetHeight + 'px';
+      } else {
+        panel.style.display = 'none';
+        toggleBtn.textContent = '▼ Debug';
+        header.style.bottom = '0';
+      }
+    };
+
+    header.appendChild(title);
+    header.appendChild(toggleBtn);
+
+    // 래퍼: 패널(로그)을 header 위에 붙임
+    var wrapper = document.createElement('div');
+    wrapper.id = '__sb_debug_wrapper';
+    wrapper.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99998';
+
+    wrapper.appendChild(panel);
+    document.body.appendChild(wrapper);
+    document.body.appendChild(header);
+
+    // 초기 header 위치 보정
+    setTimeout(function() {
+      header.style.bottom = panel.offsetHeight + 'px';
+    }, 0);
+
     _debugPanel = panel;
   }
 
