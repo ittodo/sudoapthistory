@@ -18,6 +18,7 @@
   let _supabase = null;
   let _session  = null;
   let _profile  = null;
+  let _isAdmin  = false;
   let _pageId   = null;
   let _container = null;
   let _offset   = 0;
@@ -492,6 +493,15 @@
       settingsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>계정 설정`;
       actions.appendChild(settingsBtn);
 
+      if (_isAdmin) {
+        const adminBtn = document.createElement('a');
+        adminBtn.className = 'nds-btn nds-btn-sm nds-btn-settings';
+        adminBtn.href = '/admin/';
+        adminBtn.title = '관리자';
+        adminBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>관리자`;
+        actions.appendChild(adminBtn);
+      }
+
       const logoutBtn = document.createElement('button');
       logoutBtn.className = 'nds-btn nds-btn-sm';
       logoutBtn.textContent = '로그아웃';
@@ -849,6 +859,8 @@
     _session = await api.getSession();
     if (_session) {
       _profile = await api.getProfile(_session.user.id);
+      const { data: adminFlag } = await _supabase.rpc('is_admin');
+      _isAdmin = !!adminFlag;
     }
 
     // OAuth 리다이렉트 후 auth 상태 변화 처리
@@ -856,10 +868,13 @@
       if (event === 'SIGNED_IN') {
         _session = session;
         _profile = await api.getProfile(session.user.id);
+        const { data: adminFlag } = await _supabase.rpc('is_admin');
+        _isAdmin = !!adminFlag;
         render();
       } else if (event === 'SIGNED_OUT') {
         _session = null;
         _profile = null;
+        _isAdmin = false;
         render();
       }
     });

@@ -580,7 +580,8 @@ body {
         showScreen('screen-noaccess');
         return;
       }
-      await Promise.all([loadStats(), loadComments()]);
+      await loadStats();
+      await loadComments();
       renderCommentList();
       showScreen('screen-app');
     } catch (e) {
@@ -761,7 +762,8 @@ body {
 
       closeModModal();
       toast('댓글이 숨김 처리되었습니다.');
-      await Promise.all([loadStats(), loadComments()]);
+      await loadStats();
+      await loadComments();
       renderCommentList();
     } catch (e) {
       toast(e.message, true);
@@ -777,7 +779,8 @@ body {
       const { error } = await sb.rpc('admin_restore_comment', { p_comment_id: id });
       if (error) throw error;
       toast('댓글이 복원되었습니다.');
-      await Promise.all([loadStats(), loadComments()]);
+      await loadStats();
+      await loadComments();
       renderCommentList();
     } catch (e) {
       toast(e.message, true);
