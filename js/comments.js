@@ -109,10 +109,7 @@
     },
 
     async softDeleteComment(id) {
-      const { error } = await _supabase
-        .from('comments')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+      const { error } = await _supabase.rpc('soft_delete_comment', { comment_id: id });
       if (error) throw error;
     }
   };
