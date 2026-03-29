@@ -494,13 +494,12 @@ body {
 <div class="adm-toast" id="adm-toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/js/supabase-init.js"></script>
 <script>
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
-  const ANON_KEY     = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
-  const PAGE_SIZE    = 20;
+  const PAGE_SIZE = 20;
 
   let sb, session;
   let filterStatus  = 'all';
@@ -549,11 +548,16 @@ body {
 
   // ── 초기화 ────────────────────────────────────────────────────────────────
   async function init() {
-    sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+    sb = window.__supabaseClient;
 
-    // OAuth 리다이렉트 처리
+    // getSession() 완료 후 리스너 등록 → SIGNED_IN 이중 호출 방지
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+
     sb.auth.onAuthStateChange(async (event, sess) => {
-      if (event === 'SIGNED_IN' && !session) {
+      if (event === 'SIGNED_IN') {
+        // 이미 앱 화면이 표시된 경우 중복 실행 방지
+        if (!document.getElementById('screen-app').classList.contains('hidden')) return;
         session = sess;
         await checkAdminAndLoad();
       } else if (event === 'SIGNED_OUT') {
@@ -561,9 +565,6 @@ body {
         showScreen('screen-login');
       }
     });
-
-    const { data } = await sb.auth.getSession();
-    session = data.session;
 
     if (!session) {
       showScreen('screen-login');

@@ -385,15 +385,13 @@
 <!-- 토스트 -->
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/js/supabase-init.js"></script>
 <script>
 (function () {
   'use strict';
 
-  const SUPABASE_URL = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
-
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const sb = window.__supabaseClient;
 
   // ── 토스트 ──────────────────────────────────────────────────────────────
   let _toastTimer = null;
