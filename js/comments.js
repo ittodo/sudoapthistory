@@ -206,6 +206,13 @@
       }
       .nds-btn-danger { color: #f87171; border-color: #7f1d1d22; }
       .nds-btn-danger:hover { border-color: #f87171; background: #7f1d1d33; color: #fca5a5; }
+      .nds-btn-settings {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        text-decoration: none;
+      }
+      .nds-auth-actions { display: flex; align-items: center; gap: 6px; }
 
       /* 닉네임 설정 폼 */
       .nds-nick-form {
@@ -474,11 +481,23 @@
       info.innerHTML += `<strong>${esc(nick)}</strong><span>으로 로그인됨</span>`;
       bar.appendChild(info);
 
+      const actions = document.createElement('div');
+      actions.className = 'nds-auth-actions';
+
+      const settingsBtn = document.createElement('a');
+      settingsBtn.className = 'nds-btn nds-btn-sm nds-btn-settings';
+      settingsBtn.href = '/account/';
+      settingsBtn.title = '계정 설정';
+      settingsBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>계정 설정`;
+      actions.appendChild(settingsBtn);
+
       const logoutBtn = document.createElement('button');
       logoutBtn.className = 'nds-btn nds-btn-sm';
       logoutBtn.textContent = '로그아웃';
       logoutBtn.onclick = handleSignOut;
-      bar.appendChild(logoutBtn);
+      actions.appendChild(logoutBtn);
+
+      bar.appendChild(actions);
     } else {
       const msg = document.createElement('span');
       msg.style.cssText = 'color:#94a3b8;font-size:12px;';
