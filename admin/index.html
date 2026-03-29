@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>댓글 관리 — 관리자</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.adm-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px 60px;
+}
+
+/* ── Header ── */
+.adm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 14px;
+  border-bottom: 1px solid #334155;
+  margin-bottom: 24px;
+}
+.adm-header h1 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin: 0;
+}
+.adm-header h1 span {
+  font-size: 11px;
+  font-weight: 400;
+  color: #64748b;
+  margin-left: 8px;
+}
+
+/* ── Buttons ── */
+.btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all .15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.btn:hover { border-color: #94a3b8; color: #e2e8f0; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+.btn-orange { color: #fb923c; border-color: rgba(251,146,60,.25); }
+.btn-orange:hover { border-color: #fb923c; background: rgba(251,146,60,.1); color: #fdba74; }
+.btn-green { color: #4ade80; border-color: rgba(74,222,128,.25); }
+.btn-green:hover { border-color: #4ade80; background: rgba(74,222,128,.1); color: #86efac; }
+.btn-danger { color: #f87171; border-color: rgba(248,113,113,.2); }
+.btn-danger:hover { border-color: #f87171; background: rgba(248,113,113,.1); color: #fca5a5; }
+.btn-google {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+.btn-google:hover { background: #f9fafb; }
+
+/* ── Stats ── */
+.adm-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.stat-card .label {
+  font-size: 11px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.stat-card .value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+.stat-card.s-normal .value { color: #4ade80; }
+.stat-card.s-moderated .value { color: #fb923c; }
+.stat-card.s-deleted .value { color: #f87171; }
+
+/* ── Filters ── */
+.adm-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.tab-group {
+  display: flex;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-family: inherit;
+  transition: all .15s;
+}
+.tab:hover { color: #e2e8f0; }
+.tab.active { background: #334155; color: #e2e8f0; font-weight: 600; }
+.page-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+.page-filter input {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+  width: 200px;
+  font-family: inherit;
+}
+.page-filter input:focus { border-color: #3b82f6; }
+.page-filter input::placeholder { color: #475569; }
+
+/* ── Comment count bar ── */
+.adm-count-bar {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+/* ── Comment List ── */
+.adm-list { display: flex; flex-direction: column; gap: 6px; }
+.adm-empty {
+  text-align: center;
+  color: #475569;
+  padding: 40px 0;
+  font-size: 13px;
+}
+
+/* ── Comment Card ── */
+.adm-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: border-color .15s;
+}
+.adm-card:hover { border-color: #475569; }
+.adm-card.status-moderated { border-left: 3px solid #fb923c; }
+.adm-card.status-deleted { border-left: 3px solid #f87171; opacity: .65; }
+
+.adm-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .3px;
+}
+.badge-normal    { background: rgba(74,222,128,.15);  color: #4ade80; }
+.badge-moderated { background: rgba(251,146,60,.15);  color: #fb923c; }
+.badge-deleted   { background: rgba(248,113,113,.15); color: #f87171; }
+
+.adm-card-id { font-size: 11px; color: #475569; }
+.adm-card-page {
+  font-size: 11px;
+  color: #94a3b8;
+  background: #0f172a;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm-card-nick { font-size: 12px; font-weight: 600; color: #cbd5e1; }
+.adm-card-time { font-size: 11px; color: #64748b; }
+.adm-card-actions { margin-left: auto; display: flex; gap: 4px; }
+
+.adm-card-body {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.adm-card-reason {
+  margin-top: 8px;
+  padding: 7px 10px;
+  background: rgba(251,146,60,.08);
+  border: 1px solid rgba(251,146,60,.2);
+  border-radius: 6px;
+  font-size: 11px;
+  color: #fdba74;
+}
+.adm-card-reason .r-label { color: #fb923c; font-weight: 600; margin-right: 4px; }
+
+/* ── Pagination ── */
+.adm-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+.adm-pagination .page-info {
+  font-size: 12px;
+  color: #64748b;
+  min-width: 80px;
+  text-align: center;
+}
+
+/* ── Loading skeleton ── */
+.adm-loading {
+  text-align: center;
+  color: #64748b;
+  padding: 40px 0;
+  font-size: 13px;
+}
+
+/* ── Screen states ── */
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+  text-align: center;
+}
+.screen .title { font-size: 16px; font-weight: 700; color: #e2e8f0; }
+.screen .sub   { font-size: 13px; color: #64748b; }
+
+/* ── Moderation Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+}
+.modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #e2e8f0;
+}
+.modal-label {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+.modal-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.modal-radio-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+.modal-radio-item input[type="radio"] {
+  accent-color: #3b82f6;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+.modal-detail-input {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  margin-bottom: 18px;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+.modal-detail-input:focus { border-color: #3b82f6; }
+.modal-detail-input::placeholder { color: #475569; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Toast ── */
+.adm-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: #e2e8f0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s;
+  white-space: nowrap;
+}
+.adm-toast.show { opacity: 1; }
+.adm-toast.error { border-color: #f87171; color: #fca5a5; }
+
+@media (max-width: 600px) {
+  .adm-stats { grid-template-columns: repeat(2, 1fr); }
+  .page-filter input { width: 140px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 상태별 화면 -->
+<div id="screen-loading" class="screen">
+  <div class="sub">로딩 중...</div>
+</div>
+
+<div id="screen-login" class="screen hidden">
+  <div class="title">관리자 로그인</div>
+  <div class="sub">Google 계정으로 로그인하세요.</div>
+  <button class="btn btn-google" id="login-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+    Google로 로그인
+  </button>
+</div>
+
+<div id="screen-noaccess" class="screen hidden">
+  <div class="title">접근 권한 없음</div>
+  <div class="sub">이 페이지는 관리자만 접근할 수 있습니다.</div>
+  <button class="btn" id="logout-noaccess-btn">로그아웃</button>
+</div>
+
+<!-- 메인 관리 UI -->
+<div id="screen-app" class="adm-wrap hidden">
+  <div class="adm-header">
+    <h1>댓글 관리 <span>nodostream.com admin</span></h1>
+    <button class="btn btn-sm" id="logout-btn">로그아웃</button>
+  </div>
+
+  <!-- 통계 -->
+  <div class="adm-stats" id="stats-area">
+    <div class="stat-card">
+      <div class="label">총 댓글</div>
+      <div class="value" id="s-total">—</div>
+    </div>
+    <div class="stat-card s-normal">
+      <div class="label">정상</div>
+      <div class="value" id="s-normal">—</div>
+    </div>
+    <div class="stat-card s-moderated">
+      <div class="label">숨김 (관리)</div>
+      <div class="value" id="s-moderated">—</div>
+    </div>
+    <div class="stat-card s-deleted">
+      <div class="label">삭제됨 (유저)</div>
+      <div class="value" id="s-deleted">—</div>
+    </div>
+  </div>
+
+  <!-- 필터 -->
+  <div class="adm-filters">
+    <div class="tab-group">
+      <button class="tab active" data-status="all">전체</button>
+      <button class="tab" data-status="normal">정상</button>
+      <button class="tab" data-status="moderated">숨김</button>
+      <button class="tab" data-status="deleted">삭제됨</button>
+    </div>
+    <div class="page-filter">
+      <input type="text" id="page-filter-input" placeholder="페이지 ID 필터 (예: /market/)">
+      <button class="btn btn-sm btn-primary" id="page-filter-btn">검색</button>
+      <button class="btn btn-sm" id="page-filter-clear" style="display:none">초기화</button>
+    </div>
+  </div>
+
+  <!-- 목록 헤더 -->
+  <div class="adm-count-bar" id="count-bar"></div>
+
+  <!-- 댓글 목록 -->
+  <div id="list-area"><div class="adm-loading">불러오는 중...</div></div>
+
+  <!-- 페이지네이션 -->
+  <div class="adm-pagination" id="pagination" style="display:none">
+    <button class="btn btn-sm" id="pg-prev">← 이전</button>
+    <span class="page-info" id="pg-info"></span>
+    <button class="btn btn-sm" id="pg-next">다음 →</button>
+  </div>
+</div>
+
+<!-- 숨김 처리 모달 -->
+<div class="modal-overlay hidden" id="mod-modal">
+  <div class="modal-box">
+    <div class="modal-title">댓글 숨김 처리</div>
+    <div class="modal-label">사유를 선택하세요:</div>
+    <div class="modal-radio-list">
+      <label class="modal-radio-item">
+        <input type="radio" name="mod-cat" value="광고/스팸" checked> 광고/스팸
+      </label>
+      <label class="modal-radio-item">
+        <input type="radio" name="mod-cat" value="욕설/비방"> 욕설/비방
+      </label>
+      <label class="modal-radio-item">
+        <input type="radio" name="mod-cat" value="개인정보 노출"> 개인정보 노출
+      </label>
+      <label class="modal-radio-item">
+        <input type="radio" name="mod-cat" value="도배"> 도배
+      </label>
+      <label class="modal-radio-item">
+        <input type="radio" name="mod-cat" value="기타"> 기타 (직접 입력)
+      </label>
+    </div>
+    <input
+      type="text"
+      id="mod-detail-input"
+      class="modal-detail-input"
+      placeholder="추가 사유 (선택 입력)"
+      maxlength="200"
+      style="display:none"
+    >
+    <div class="modal-footer">
+      <button class="btn" id="mod-cancel-btn">취소</button>
+      <button class="btn btn-orange" id="mod-confirm-btn">숨기기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="adm-toast" id="adm-toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  const SUPABASE_URL = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
+  const ANON_KEY     = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
+  const PAGE_SIZE    = 20;
+
+  let sb, session;
+  let filterStatus  = 'all';
+  let filterPageId  = '';
+  let currentPage   = 0;
+  let totalCount    = 0;
+  let comments      = [];
+  let moderatingId  = null;
+  let toastTimer    = null;
+
+  // ── 화면 전환 ──────────────────────────────────────────────────────────────
+  function showScreen(id) {
+    ['screen-loading','screen-login','screen-noaccess','screen-app'].forEach(s => {
+      document.getElementById(s).classList.toggle('hidden', s !== id);
+    });
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function toast(msg, isError = false) {
+    const el = document.getElementById('adm-toast');
+    el.textContent = msg;
+    el.className = 'adm-toast' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    requestAnimationFrame(() => {
+      el.classList.add('show');
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    });
+  }
+
+  // ── 유틸 ──────────────────────────────────────────────────────────────────
+  function esc(s) {
+    if (!s) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('ko-KR', {
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit'
+    });
+  }
+
+  // ── 초기화 ────────────────────────────────────────────────────────────────
+  async function init() {
+    sb = supabase.createClient(SUPABASE_URL, ANON_KEY);
+
+    // OAuth 리다이렉트 처리
+    sb.auth.onAuthStateChange(async (event, sess) => {
+      if (event === 'SIGNED_IN' && !session) {
+        session = sess;
+        await checkAdminAndLoad();
+      } else if (event === 'SIGNED_OUT') {
+        session = null;
+        showScreen('screen-login');
+      }
+    });
+
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+
+    if (!session) {
+      showScreen('screen-login');
+      return;
+    }
+    await checkAdminAndLoad();
+  }
+
+  async function checkAdminAndLoad() {
+    try {
+      const { data: isAdmin, error } = await sb.rpc('is_admin');
+      if (error) throw error;
+      if (!isAdmin) {
+        showScreen('screen-noaccess');
+        return;
+      }
+      await Promise.all([loadStats(), loadComments()]);
+      renderCommentList();
+      showScreen('screen-app');
+    } catch (e) {
+      toast(e.message, true);
+      showScreen('screen-noaccess');
+    }
+  }
+
+  // ── 데이터 로드 ───────────────────────────────────────────────────────────
+  async function loadStats() {
+    const { data, error } = await sb.rpc('admin_get_stats');
+    if (error) { toast(error.message, true); return; }
+    const s = data?.[0] || {};
+    document.getElementById('s-total').textContent     = s.total_comments     ?? '—';
+    document.getElementById('s-normal').textContent    = s.normal_comments    ?? '—';
+    document.getElementById('s-moderated').textContent = s.moderated_comments ?? '—';
+    document.getElementById('s-deleted').textContent   = s.deleted_comments   ?? '—';
+  }
+
+  async function loadComments() {
+    const { data, error } = await sb.rpc('admin_list_comments', {
+      p_limit:   PAGE_SIZE,
+      p_offset:  currentPage * PAGE_SIZE,
+      p_status:  filterStatus,
+      p_page_id: filterPageId || null
+    });
+    if (error) { toast(error.message, true); comments = []; totalCount = 0; return; }
+    comments   = data || [];
+    totalCount = parseInt(comments[0]?.total_count ?? 0, 10);
+  }
+
+  // ── 댓글 목록 렌더링 ──────────────────────────────────────────────────────
+  function renderCommentList() {
+    const listArea = document.getElementById('list-area');
+    const countBar = document.getElementById('count-bar');
+    const pgArea   = document.getElementById('pagination');
+    const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+    // 카운트 바
+    if (totalCount > 0) {
+      const start = currentPage * PAGE_SIZE + 1;
+      const end   = Math.min((currentPage + 1) * PAGE_SIZE, totalCount);
+      countBar.textContent = `전체 ${totalCount}개 중 ${start}–${end}번째`;
+    } else {
+      countBar.textContent = '';
+    }
+
+    // 빈 목록
+    if (!comments.length) {
+      listArea.innerHTML = '<div class="adm-empty">해당하는 댓글이 없습니다.</div>';
+      pgArea.style.display = 'none';
+      return;
+    }
+
+    // 카드 목록
+    const frag = document.createDocumentFragment();
+    const list = document.createElement('div');
+    list.className = 'adm-list';
+
+    comments.forEach(c => {
+      list.appendChild(buildCard(c));
+    });
+
+    frag.appendChild(list);
+    listArea.innerHTML = '';
+    listArea.appendChild(frag);
+
+    // 페이지네이션
+    if (totalPages > 1) {
+      pgArea.style.display = 'flex';
+      document.getElementById('pg-info').textContent = `${currentPage + 1} / ${totalPages}`;
+      document.getElementById('pg-prev').disabled = currentPage === 0;
+      document.getElementById('pg-next').disabled = currentPage >= totalPages - 1;
+    } else {
+      pgArea.style.display = 'none';
+    }
+  }
+
+  function buildCard(c) {
+    const card = document.createElement('div');
+
+    // 상태 결정
+    let status = 'normal';
+    if (c.deleted_at)   status = 'deleted';
+    if (c.moderated_at) status = 'moderated';
+
+    const badgeClass = { normal:'badge-normal', moderated:'badge-moderated', deleted:'badge-deleted' }[status];
+    const badgeLabel = { normal:'정상', moderated:'숨김', deleted:'삭제됨' }[status];
+
+    card.className = `adm-card status-${status}`;
+    card.dataset.id = c.id;
+
+    // 숨김 사유
+    let reasonHtml = '';
+    if (c.moderation_reason) {
+      const cat    = esc(c.moderation_reason.category || '');
+      const detail = c.moderation_reason.detail ? ` — ${esc(c.moderation_reason.detail)}` : '';
+      reasonHtml = `
+        <div class="adm-card-reason">
+          <span class="r-label">숨김 사유:</span>${cat}${detail}
+          <span style="color:#64748b;margin-left:8px;font-size:10px">(${fmtDate(c.moderated_at)})</span>
+        </div>`;
+    }
+
+    // 액션 버튼
+    let actionHtml = '';
+    if (status === 'normal') {
+      actionHtml = `<button class="btn btn-sm btn-orange js-moderate" data-id="${c.id}">숨기기</button>`;
+    } else if (status === 'moderated') {
+      actionHtml = `<button class="btn btn-sm btn-green js-restore" data-id="${c.id}">복원</button>`;
+    }
+
+    const contentPreview = c.content.length > 300
+      ? esc(c.content.slice(0, 300)) + '<span style="color:#475569">…</span>'
+      : esc(c.content);
+
+    card.innerHTML = `
+      <div class="adm-card-top">
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+        <span class="adm-card-id">#${c.id}</span>
+        <span class="adm-card-page" title="${esc(c.page_id)}">${esc(c.page_id)}</span>
+        <span class="adm-card-nick">${esc(c.nickname || '(알 수 없음)')}</span>
+        <span class="adm-card-time">${fmtDate(c.created_at)}</span>
+        <div class="adm-card-actions">${actionHtml}</div>
+      </div>
+      <div class="adm-card-body">${contentPreview}</div>
+      ${reasonHtml}
+    `;
+
+    // 이벤트
+    const modBtn     = card.querySelector('.js-moderate');
+    const restoreBtn = card.querySelector('.js-restore');
+    if (modBtn)     modBtn.addEventListener('click', () => openModModal(c.id));
+    if (restoreBtn) restoreBtn.addEventListener('click', () => handleRestore(c.id));
+
+    return card;
+  }
+
+  // ── 숨김 모달 ─────────────────────────────────────────────────────────────
+  function openModModal(id) {
+    moderatingId = id;
+    // radio 초기화
+    const radios = document.querySelectorAll('input[name="mod-cat"]');
+    radios[0].checked = true;
+    const detailInput = document.getElementById('mod-detail-input');
+    detailInput.value = '';
+    detailInput.style.display = 'none';
+    document.getElementById('mod-modal').classList.remove('hidden');
+  }
+
+  function closeModModal() {
+    moderatingId = null;
+    document.getElementById('mod-modal').classList.add('hidden');
+  }
+
+  async function handleModerate() {
+    const selectedRadio = document.querySelector('input[name="mod-cat"]:checked');
+    if (!selectedRadio) { toast('사유를 선택하세요.', true); return; }
+
+    const category = selectedRadio.value;
+    const detail   = document.getElementById('mod-detail-input').value.trim();
+
+    if (category === '기타' && !detail) {
+      toast('"기타" 선택 시 직접 입력이 필요합니다.', true); return;
+    }
+
+    const confirmBtn = document.getElementById('mod-confirm-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '처리 중...';
+
+    try {
+      const { error } = await sb.rpc('admin_moderate_comment', {
+        p_comment_id: moderatingId,
+        p_category:   category,
+        p_detail:     detail
+      });
+      if (error) throw error;
+
+      closeModModal();
+      toast('댓글이 숨김 처리되었습니다.');
+      await Promise.all([loadStats(), loadComments()]);
+      renderCommentList();
+    } catch (e) {
+      toast(e.message, true);
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '숨기기';
+    }
+  }
+
+  async function handleRestore(id) {
+    if (!confirm('이 댓글의 숨김을 해제하고 복원하시겠습니까?')) return;
+    try {
+      const { error } = await sb.rpc('admin_restore_comment', { p_comment_id: id });
+      if (error) throw error;
+      toast('댓글이 복원되었습니다.');
+      await Promise.all([loadStats(), loadComments()]);
+      renderCommentList();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  // ── 필터 / 탭 ─────────────────────────────────────────────────────────────
+  async function applyFilter() {
+    currentPage = 0;
+    await loadComments();
+    renderCommentList();
+  }
+
+  // ── 이벤트 바인딩 ─────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    init();
+
+    // 로그인
+    document.getElementById('login-btn').onclick = () => {
+      sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: location.origin + location.pathname }
+      });
+    };
+
+    // 로그아웃
+    document.getElementById('logout-btn').onclick = () => sb.auth.signOut();
+    document.getElementById('logout-noaccess-btn').onclick = () => sb.auth.signOut();
+
+    // 탭 클릭
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', async () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        filterStatus = tab.dataset.status;
+        await applyFilter();
+      });
+    });
+
+    // 페이지 필터
+    document.getElementById('page-filter-btn').onclick = async () => {
+      const val = document.getElementById('page-filter-input').value.trim();
+      filterPageId = val;
+      document.getElementById('page-filter-clear').style.display = val ? '' : 'none';
+      await applyFilter();
+    };
+    document.getElementById('page-filter-clear').onclick = async () => {
+      filterPageId = '';
+      document.getElementById('page-filter-input').value = '';
+      document.getElementById('page-filter-clear').style.display = 'none';
+      await applyFilter();
+    };
+    document.getElementById('page-filter-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('page-filter-btn').click();
+    });
+
+    // 페이지네이션
+    document.getElementById('pg-prev').onclick = async () => {
+      if (currentPage > 0) {
+        currentPage--;
+        await loadComments();
+        renderCommentList();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    document.getElementById('pg-next').onclick = async () => {
+      const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+      if (currentPage < totalPages - 1) {
+        currentPage++;
+        await loadComments();
+        renderCommentList();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    // 모달
+    document.getElementById('mod-cancel-btn').onclick = closeModModal;
+    document.getElementById('mod-confirm-btn').onclick = handleModerate;
+    document.getElementById('mod-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('mod-modal')) closeModModal();
+    });
+
+    // "기타" 선택 시 직접 입력 표시
+    document.querySelectorAll('input[name="mod-cat"]').forEach(r => {
+      r.addEventListener('change', () => {
+        const detailInput = document.getElementById('mod-detail-input');
+        const isOther     = document.querySelector('input[name="mod-cat"]:checked')?.value === '기타';
+        detailInput.style.display = isOther ? '' : 'none';
+        if (isOther) detailInput.focus();
+      });
+    });
+  });
+
+})();
+</script>
+</body>
+</html>

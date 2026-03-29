@@ -81,6 +81,7 @@
         `, { count: 'exact' })
         .eq('page_id', pageId)
         .is('deleted_at', null)
+        .is('moderated_at', null)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
       if (error) throw error;

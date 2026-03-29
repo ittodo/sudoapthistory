@@ -111,3 +111,209 @@ AS $$
     WHERE nickname = p_nickname
   );
 $$;
+
+
+-- =============================================
+-- 5. Admin 시스템
+-- =============================================
+
+-- profiles에 role 컬럼 추가 (default: 'user', admin은 'admin')
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user';
+
+-- comments에 moderation 컬럼 추가
+-- moderation_reason 구조: {"category": "광고/스팸", "detail": "추가 사유"}
+ALTER TABLE public.comments
+  ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMPTZ;
+ALTER TABLE public.comments
+  ADD COLUMN IF NOT EXISTS moderated_by UUID REFERENCES auth.users(id);
+ALTER TABLE public.comments
+  ADD COLUMN IF NOT EXISTS moderation_reason JSONB;
+
+
+-- =============================================
+-- 5-1. is_admin(): 현재 유저 admin 여부 확인
+-- =============================================
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE user_id = auth.uid() AND role = 'admin'
+  );
+$$;
+
+
+-- =============================================
+-- 5-2. comments 읽기 정책 재설정
+--      일반 유저: deleted + moderated 모두 숨김
+--      admin:    전체 열람 가능
+-- =============================================
+DROP POLICY IF EXISTS "comments_select_public" ON public.comments;
+CREATE POLICY "comments_select_public"
+  ON public.comments FOR SELECT
+  USING (
+    (deleted_at IS NULL AND moderated_at IS NULL)
+    OR public.is_admin()
+  );
+
+
+-- =============================================
+-- 5-3. admin_list_comments(): 전체 댓글 조회 (admin 전용)
+-- =============================================
+CREATE OR REPLACE FUNCTION public.admin_list_comments(
+  p_limit   INT  DEFAULT 50,
+  p_offset  INT  DEFAULT 0,
+  p_status  TEXT DEFAULT 'all',   -- 'all' | 'normal' | 'deleted' | 'moderated'
+  p_page_id TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  id                BIGINT,
+  page_id           VARCHAR(100),
+  user_id           UUID,
+  content           TEXT,
+  created_at        TIMESTAMPTZ,
+  updated_at        TIMESTAMPTZ,
+  deleted_at        TIMESTAMPTZ,
+  moderated_at      TIMESTAMPTZ,
+  moderated_by      UUID,
+  moderation_reason JSONB,
+  nickname          VARCHAR(30),
+  avatar_url        TEXT,
+  total_count       BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: admin only';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.page_id,
+    c.user_id,
+    c.content,
+    c.created_at,
+    c.updated_at,
+    c.deleted_at,
+    c.moderated_at,
+    c.moderated_by,
+    c.moderation_reason,
+    p.nickname,
+    p.avatar_url,
+    COUNT(*) OVER()::BIGINT AS total_count
+  FROM public.comments c
+  LEFT JOIN public.profiles p ON p.user_id = c.user_id
+  WHERE
+    CASE p_status
+      WHEN 'normal'    THEN c.deleted_at IS NULL AND c.moderated_at IS NULL
+      WHEN 'deleted'   THEN c.deleted_at IS NOT NULL
+      WHEN 'moderated' THEN c.moderated_at IS NOT NULL AND c.deleted_at IS NULL
+      ELSE TRUE
+    END
+    AND (p_page_id IS NULL OR c.page_id = p_page_id)
+  ORDER BY c.created_at DESC
+  LIMIT p_limit
+  OFFSET p_offset;
+END;
+$$;
+
+
+-- =============================================
+-- 5-4. admin_moderate_comment(): 댓글 숨김 처리 (admin 전용)
+-- =============================================
+CREATE OR REPLACE FUNCTION public.admin_moderate_comment(
+  p_comment_id BIGINT,
+  p_category   TEXT,
+  p_detail     TEXT DEFAULT ''
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: admin only';
+  END IF;
+
+  UPDATE public.comments
+  SET
+    moderated_at      = NOW(),
+    moderated_by      = auth.uid(),
+    moderation_reason = jsonb_build_object('category', p_category, 'detail', p_detail)
+  WHERE id = p_comment_id;
+END;
+$$;
+
+
+-- =============================================
+-- 5-5. admin_restore_comment(): 숨김 복원 (admin 전용)
+-- =============================================
+CREATE OR REPLACE FUNCTION public.admin_restore_comment(
+  p_comment_id BIGINT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: admin only';
+  END IF;
+
+  UPDATE public.comments
+  SET
+    moderated_at      = NULL,
+    moderated_by      = NULL,
+    moderation_reason = NULL
+  WHERE id = p_comment_id;
+END;
+$$;
+
+
+-- =============================================
+-- 5-6. admin_get_stats(): 댓글 통계 (admin 전용)
+-- =============================================
+CREATE OR REPLACE FUNCTION public.admin_get_stats()
+RETURNS TABLE (
+  total_comments     BIGINT,
+  normal_comments    BIGINT,
+  deleted_comments   BIGINT,
+  moderated_comments BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Access denied: admin only';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    COUNT(*)::BIGINT                                                              AS total_comments,
+    COUNT(*) FILTER (WHERE deleted_at IS NULL AND moderated_at IS NULL)::BIGINT  AS normal_comments,
+    COUNT(*) FILTER (WHERE deleted_at IS NOT NULL)::BIGINT                       AS deleted_comments,
+    COUNT(*) FILTER (WHERE moderated_at IS NOT NULL AND deleted_at IS NULL)::BIGINT AS moderated_comments
+  FROM public.comments;
+END;
+$$;
+
+
+-- =============================================
+-- 5-7. 관리자 계정 설정
+-- =============================================
+UPDATE public.profiles
+SET role = 'admin'
+WHERE user_id = 'd9f762d8-3578-4211-9367-fdaad05a820c';
