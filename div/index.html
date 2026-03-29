@@ -766,10 +766,14 @@ function showDetail(ticker,name){
   document.getElementById('detailOverlay').style.display='block';
   // 기업별 댓글 연동
   const cpid='company_'+ticker;
-  if(window._divCommentsReady){changePageId(cpid);}
+  if(window._divCommentsReady){changeContainer('#detail-comments',cpid);}
   else{initComments(cpid,'#detail-comments');window._divCommentsReady=true;}
 }
-function closeDetail(){document.getElementById('detailPanel').style.display='none';document.getElementById('detailOverlay').style.display='none';}
+function closeDetail(){
+  document.getElementById('detailPanel').style.display='none';
+  document.getElementById('detailOverlay').style.display='none';
+  if(window._divCommentsReady) changeContainer('#comments-section','div');
+}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetail();});
 window.addEventListener('popstate',e=>{const t=e.state?.tab||'calendar';switchTab(t,true);});
 
@@ -783,8 +787,15 @@ function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/<
 init();
 </script>
 
+<!-- 전역 댓글 섹션 -->
+<div id="comments-section" style="border-top:1px solid #334155;max-width:1280px;margin:32px auto 0;padding:0 16px 32px;"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-init.js"></script>
 <script src="../js/comments.js"></script>
+<script>
+  initComments('div','#comments-section');
+  window._divCommentsReady=true;
+</script>
 </body>
 </html>

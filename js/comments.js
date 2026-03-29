@@ -1187,8 +1187,30 @@
     await render();
   }
 
+  // ─── 컨테이너 변경 (전역↔상세 패널 전환용) ──────────────────────────────────
+  async function changeContainer(containerSelector, newPageId) {
+    if (!_supabase) return;
+    const newContainer = document.querySelector(containerSelector);
+    if (!newContainer) {
+      console.error('[comments.js] 컨테이너를 찾을 수 없습니다:', containerSelector);
+      return;
+    }
+    _container = newContainer;
+    if (!_container.classList.contains('nds-comments')) {
+      _container.classList.add('nds-comments');
+    }
+    if (newPageId !== undefined) {
+      _pageId = newPageId;
+      _offset = 0;
+      _totalCount = 0;
+      _editingId = null;
+    }
+    await render();
+  }
+
   // ─── 공개 API ────────────────────────────────────────────────────────────
   global.initComments = initComments;
   global.changePageId = changePageId;
+  global.changeContainer = changeContainer;
 
 })(window);
