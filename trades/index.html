@@ -488,6 +488,38 @@ async function loadAllPagesBackground(ym) {
     updateAvailableGus(json.data || []);
   }
   state.loadedPages = state.totalPages;
+
+  // 로드된 건수와 meta.total이 다를 경우 page1 재확인 후 누락 페이지 추가 로드
+  if (state.allData.length < state.totalRecords) {
+    setLoadStatus('데이터 검증 중...');
+    try {
+      const res = await fetch(`${DATA_BASE}/${ym}/1.json`);
+      if (res.ok && state.month === ym) {
+        const fresh = await res.json();
+        const freshPages = fresh.meta.pages;
+        if (freshPages > state.totalPages) {
+          const extra = [];
+          for (let p = state.totalPages + 1; p <= freshPages; p++) extra.push(p);
+          const extraResults = await Promise.all(
+            extra.map(p =>
+              fetch(`${DATA_BASE}/${ym}/${p}.json`).then(r => r.ok ? r.json() : null).catch(() => null)
+            )
+          );
+          if (state.month === ym) {
+            for (const json of extraResults) {
+              if (!json) continue;
+              state.allData = state.allData.concat(json.data || []);
+              updateAvailableGus(json.data || []);
+            }
+            state.totalPages = freshPages;
+            state.totalRecords = fresh.meta.total;
+            state.loadedPages = freshPages;
+          }
+        }
+      }
+    } catch(e) { /* 검증 실패는 무시 */ }
+  }
+
   state.allPagesLoaded = true;
   setLoadStatus('');
   updateLoadMoreBtn();
