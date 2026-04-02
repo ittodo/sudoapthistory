@@ -558,7 +558,17 @@ function render() {
 
 function updateSummary(data) {
   const s = computeSummary(data);
-  document.getElementById('sumTotal').textContent   = s.count.toLocaleString() + '건';
+
+  // 총 거래건수: 필터 없고 미로드 페이지가 있으면 서버 전체 건수(meta.total) 사용
+  const f = state.filters;
+  const hasFilters = f.region !== 'all' || f.gus.size > 0 || f.name ||
+    (f.minPrice != null && f.minPrice !== '') || (f.maxPrice != null && f.maxPrice !== '') ||
+    (f.minArea != null && f.minArea !== '') || (f.maxArea != null && f.maxArea !== '');
+  const displayCount = (!hasFilters && state.loadedPages < state.totalPages && state.totalRecords > 0)
+    ? state.totalRecords
+    : s.count;
+
+  document.getElementById('sumTotal').textContent   = displayCount.toLocaleString() + '건';
   document.getElementById('sumAvg').textContent     = s.avg    != null ? formatPrice(Math.round(s.avg))    : '—';
   document.getElementById('sumMedian').textContent  = s.median != null ? formatPrice(Math.round(s.median)) : '—';
   document.getElementById('sumMax').textContent     = s.max    != null ? formatPrice(s.max)                : '—';
