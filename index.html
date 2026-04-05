@@ -84,6 +84,7 @@
   .tx-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .tx-table th { padding: 6px 8px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; border-bottom: 1px solid var(--border); }
   .tx-table td { padding: 5px 8px; border-bottom: 1px solid #1e293b; }
+  .badge-direct { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(234,179,8,.15); color:#fbbf24; border:1px solid rgba(234,179,8,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
   .tx-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
   .tx-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; }
   .tx-stat .label { font-size: 10px; color: var(--muted); }
@@ -2479,8 +2480,9 @@ function renderTxModal(x){
           diff=`<span class="${cls}">${d>0?'+':''}${pct}%</span>`;
         }
       }
+      const directBadge=t[4]===1?'<span class="badge-direct">직거래</span>':'';
       rows+=`<tr>
-        <td>${t[0]}\uC6D4 ${t[1]}\uC77C</td>
+        <td>${t[0]}\uC6D4 ${t[1]}\uC77C${directBadge}</td>
         <td style="font-weight:600">${price}\uC5B5</td>
         <td>${t[3]?t[3]+'\uCE35':'-'}</td>
         <td>${diff}</td>
