@@ -140,6 +140,11 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .tx-card-date { font-size: 10px; color: var(--muted); text-align: right; margin-top: 2px; }
 .tx-card-meta { display: flex; gap: 12px; font-size: 11px; color: var(--muted); }
 
+/* Prev price */
+.prev-price { font-size: 10px; color: var(--muted); font-weight: normal; margin-top: 2px; white-space: nowrap; }
+.prev-up { color: var(--up); }
+.prev-dn { color: var(--dn); }
+
 /* No data */
 .no-data { text-align: center; padding: 40px 16px; color: var(--muted); font-size: 13px; }
 
@@ -331,7 +336,9 @@ const state = {
   },
   availableGus: [],
   filterTimer: null,
-  firstPageCache: null  // 최초 fetch 캐시
+  firstPageCache: null,  // 최초 fetch 캐시
+  prevPriceMap: null,
+  prevMapDataLen: -1
 };
 
 // ==================== UTILS ====================
@@ -342,6 +349,15 @@ function formatPrice(manwon) {
     const r = Math.round(eok * 10) / 10;
     return r + '억';
   }
+  return manwon.toLocaleString() + '만';
+}
+
+function formatPriceFull(manwon) {
+  if (manwon == null) return '—';
+  const eok = Math.floor(manwon / 10000);
+  const man = manwon % 10000;
+  if (eok > 0 && man > 0) return eok + '억 ' + man.toLocaleString() + '만';
+  if (eok > 0) return eok + '억';
   return manwon.toLocaleString() + '만';
 }
 
@@ -400,6 +416,8 @@ async function loadMonth(ym) {
   state.allPagesLoaded = false;
   state.month = ym;
   state.availableGus = [];
+  state.prevPriceMap = null;
+  state.prevMapDataLen = -1;
 
   document.getElementById('monthLabel').textContent = monthToLabel(ym);
   document.getElementById('prevMonth').disabled = false;
@@ -580,8 +598,43 @@ function computeSummary(data) {
   return { count: data.length, avg, median, max: prices[n-1], min: prices[0] };
 }
 
+// ==================== PREV PRICE ====================
+function buildPrevPriceMap() {
+  if (state.prevMapDataLen === state.allData.length && state.prevPriceMap) return;
+  const sorted = [...state.allData].sort((a, b) => {
+    if (!a.d && !b.d) return 0;
+    if (!a.d) return -1;
+    if (!b.d) return 1;
+    return a.d < b.d ? -1 : a.d > b.d ? 1 : 0;
+  });
+  const latestByKey = new Map();
+  const map = new Map();
+  for (const r of sorted) {
+    const key = (r.n || '') + '|' + (r.a != null ? r.a : '');
+    if (latestByKey.has(key)) {
+      map.set(r, latestByKey.get(key));
+    }
+    latestByKey.set(key, r);
+  }
+  state.prevPriceMap = map;
+  state.prevMapDataLen = state.allData.length;
+}
+
+function renderPrevPrice(r) {
+  if (!state.prevPriceMap) return '';
+  const prev = state.prevPriceMap.get(r);
+  if (!prev || prev.p == null || r.p == null) return '';
+  const dateStr = prev.d ? prev.d.slice(0, 7) : '';
+  const pct = Math.round((r.p - prev.p) / prev.p * 1000) / 10; // 소수점 1자리
+  const sign = pct >= 0 ? '+' : '';
+  const cls = pct > 0 ? 'prev-up' : pct < 0 ? 'prev-dn' : '';
+  const pctHtml = '<span class="' + cls + '">' + sign + pct + '%</span>';
+  return '<div class="prev-price">이전 ' + formatPriceFull(prev.p) + ' (' + dateStr + ', ' + pctHtml + ')</div>';
+}
+
 // ==================== RENDERING ====================
 function render() {
+  buildPrevPriceMap();
   const filtered = getFilteredData();
   const sorted = getSortedData(filtered);
 
@@ -636,7 +689,7 @@ function renderTable(data) {
       '<td>' + (r.g || '—') + '</td>' +
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + (r.n || '—') + '</td>' +
       '<td style="text-align:right;">' + (r.a != null ? r.a + '㎡' : '—') + '</td>' +
-      '<td style="text-align:right;font-weight:600;color:var(--up);">' + priceStr + '</td>' +
+      '<td style="text-align:right;font-weight:600;color:var(--up);">' + priceStr + renderPrevPrice(r) + '</td>' +
       '<td style="text-align:right;color:var(--muted);">' + (r.f != null ? r.f + '층' : '—') + '</td>' +
       '</tr>';
   }).join('');
@@ -674,6 +727,7 @@ function renderCards(data) {
         '<span>면적 ' + (r.a != null ? r.a + '㎡' : '—') + '</span>' +
         '<span>' + (r.f != null ? r.f + '층' : '—') + '</span>' +
       '</div>' +
+      (renderPrevPrice(r) ? '<div style="margin-top:5px;">' + renderPrevPrice(r) + '</div>' : '') +
     '</div>'
   ).join('');
 
