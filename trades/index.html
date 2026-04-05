@@ -399,7 +399,6 @@ async function loadMonth(ym) {
   state.totalRecords = 0;
   state.allPagesLoaded = false;
   state.month = ym;
-  state.filters.gus = new Set();
   state.availableGus = [];
 
   document.getElementById('monthLabel').textContent = monthToLabel(ym);
