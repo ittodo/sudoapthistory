@@ -140,6 +140,41 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .tx-card-date { font-size: 10px; color: var(--muted); text-align: right; margin-top: 2px; }
 .tx-card-meta { display: flex; gap: 12px; font-size: 11px; color: var(--muted); }
 
+/* Prev price */
+.prev-price { font-size: 10px; color: var(--muted); font-weight: normal; margin-top: 2px; white-space: nowrap; }
+.prev-up { color: var(--up); }
+.prev-dn { color: var(--dn); }
+
+/* Direct badge */
+.badge-direct { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(234,179,8,.15); color:#fbbf24; border:1px solid rgba(234,179,8,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
+
+/* Detail Panel */
+#detailOverlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:200; display:none; }
+#detailPanel {
+  position:fixed; right:0; top:0; bottom:0; width:440px; max-width:100vw;
+  background:var(--bg); border-left:1px solid var(--border);
+  z-index:201; overflow-y:auto; display:none;
+  box-shadow:-8px 0 32px rgba(0,0,0,.5);
+  transition: transform .2s ease;
+}
+#detailPanel::-webkit-scrollbar { width:4px; }
+#detailPanel::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
+.dp-header { padding:14px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:1; }
+.dp-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:20px; line-height:1; float:right; padding:0 2px; }
+.dp-close:hover { color:#fff; }
+.dp-name { font-size:15px; font-weight:700; padding-right:24px; line-height:1.3; }
+.dp-meta { font-size:11px; color:var(--muted); margin-top:3px; }
+.dp-price { font-size:19px; font-weight:700; color:var(--up); margin-top:6px; }
+.dp-prev { font-size:10px; color:var(--muted); margin-top:2px; }
+.dp-section { padding:12px 16px; border-bottom:1px solid var(--border); }
+.dp-stitle { font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+.dp-yr-label { font-size:11px; color:var(--muted); font-weight:700; margin:8px 0 3px; }
+.dp-tx-row { display:flex; gap:8px; padding:3px 0; border-bottom:1px solid #1e293b; font-size:12px; align-items:center; }
+.dp-tx-date { color:var(--muted); min-width:64px; flex-shrink:0; }
+.dp-tx-price { font-weight:600; color:var(--up); flex:1; }
+.dp-tx-floor { color:var(--muted); min-width:28px; flex-shrink:0; }
+@media (max-width:480px) { #detailPanel { width:100vw; } }
+
 /* No data */
 .no-data { text-align: center; padding: 40px 16px; color: var(--muted); font-size: 13px; }
 
@@ -293,6 +328,30 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 
 </div>
 
+<!-- Detail Panel -->
+<div id="detailOverlay" onclick="closeDetail()"></div>
+<div id="detailPanel">
+  <div class="dp-header">
+    <button class="dp-close" onclick="closeDetail()">&#xD7;</button>
+    <div class="dp-name" id="dpName">—</div>
+    <div class="dp-meta" id="dpMeta">—</div>
+    <div class="dp-price" id="dpPrice">—</div>
+    <div class="dp-prev" id="dpPrev"></div>
+  </div>
+  <div class="dp-section">
+    <div class="dp-stitle">가격 추이 (최근 36개월)</div>
+    <canvas id="dpChart" style="width:100%;height:90px;display:block;"></canvas>
+    <div id="dpChartMsg" style="display:none;color:var(--muted);font-size:11px;text-align:center;padding:8px;"></div>
+  </div>
+  <div class="dp-section">
+    <div class="dp-stitle" id="dpTxTitle">거래 내역</div>
+    <div id="dpTxList"><div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">로딩 중...</div></div>
+  </div>
+  <div style="padding:10px 16px;">
+    <a id="dpScreenerLink" href="../" target="_blank" style="font-size:11px;color:var(--accent);">스크리너에서 전체 분석 보기 ↗</a>
+  </div>
+</div>
+
 <script>
 // ==================== CONFIG ====================
 const DATA_BASE = '../data/market';
@@ -331,7 +390,9 @@ const state = {
   },
   availableGus: [],
   filterTimer: null,
-  firstPageCache: null  // 최초 fetch 캐시
+  firstPageCache: null,  // 최초 fetch 캐시
+  prevPriceMap: null,
+  prevMapDataLen: -1
 };
 
 // ==================== UTILS ====================
@@ -342,6 +403,15 @@ function formatPrice(manwon) {
     const r = Math.round(eok * 10) / 10;
     return r + '억';
   }
+  return manwon.toLocaleString() + '만';
+}
+
+function formatPriceFull(manwon) {
+  if (manwon == null) return '—';
+  const eok = Math.floor(manwon / 10000);
+  const man = manwon % 10000;
+  if (eok > 0 && man > 0) return eok + '억 ' + man.toLocaleString() + '만';
+  if (eok > 0) return eok + '억';
   return manwon.toLocaleString() + '만';
 }
 
@@ -400,6 +470,9 @@ async function loadMonth(ym) {
   state.allPagesLoaded = false;
   state.month = ym;
   state.availableGus = [];
+  state.prevPriceMap = null;
+  state.prevMapDataLen = -1;
+
   document.getElementById('monthLabel').textContent = monthToLabel(ym);
   document.getElementById('prevMonth').disabled = false;
   document.getElementById('nextMonth').disabled = false;
@@ -579,8 +652,185 @@ function computeSummary(data) {
   return { count: data.length, avg, median, max: prices[n-1], min: prices[0] };
 }
 
+// ==================== PREV PRICE ====================
+function buildPrevPriceMap() {
+  if (state.prevMapDataLen === state.allData.length && state.prevPriceMap) return;
+  const sorted = [...state.allData].sort((a, b) => {
+    if (!a.d && !b.d) return 0;
+    if (!a.d) return -1;
+    if (!b.d) return 1;
+    return a.d < b.d ? -1 : a.d > b.d ? 1 : 0;
+  });
+  const latestMid = new Map(); // 직거래 제외한 최근 거래만 "이전가" 기준으로 사용
+  const map = new Map();
+  for (const r of sorted) {
+    const key = (r.n || '') + '|' + (r.a != null ? r.a : '');
+    if (latestMid.has(key)) map.set(r, latestMid.get(key));
+    if (!r.dt) latestMid.set(key, r); // 직거래 아닌 것만 등록
+  }
+  state.prevPriceMap = map;
+  state.prevMapDataLen = state.allData.length;
+}
+
+function renderPrevPrice(r) {
+  if (!state.prevPriceMap || r.dt) return ''; // 직거래는 직전가 표시 안 함
+  const prev = state.prevPriceMap.get(r);
+  if (!prev || prev.p == null || r.p == null) return '';
+  const dateStr = prev.d ? prev.d.slice(0, 7) : '';
+  const pct = Math.round((r.p - prev.p) / prev.p * 1000) / 10;
+  const sign = pct >= 0 ? '+' : '';
+  const cls = pct > 0 ? 'prev-up' : pct < 0 ? 'prev-dn' : '';
+  return '<div class="prev-price">이전 ' + formatPriceFull(prev.p) + ' (' + dateStr +
+    ', <span class="' + cls + '">' + sign + pct + '%</span>)</div>';
+}
+
+// ==================== DETAIL PANEL ====================
+let _detailItems = [];
+const _dpCache = { monthly: {}, tx: {} };
+
+function openDetailByIdx(idx) {
+  const r = _detailItems[idx];
+  if (r) openDetail(r);
+}
+
+function openDetail(r) {
+  if (r.i == null) return;
+  document.getElementById('dpName').textContent = r.n || '—';
+  document.getElementById('dpMeta').textContent =
+    [r.g, r.a != null ? r.a + '㎡' : null, r.f != null ? r.f + '층' : null, r.d].filter(Boolean).join(' · ');
+  document.getElementById('dpPrice').textContent = formatPriceFull(r.p);
+  const prevHtml = renderPrevPrice(r);
+  document.getElementById('dpPrev').innerHTML = prevHtml;
+  document.getElementById('dpTxTitle').textContent = '거래 내역' + (r.a != null ? ' (' + r.a + '㎡)' : '');
+  document.getElementById('dpTxList').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">로딩 중...</div>';
+  document.getElementById('dpScreenerLink').href = '../#i=' + r.i;
+  // 차트 초기화
+  const canvas = document.getElementById('dpChart');
+  canvas.style.display = 'none';
+  document.getElementById('dpChartMsg').style.display = 'none';
+  document.getElementById('detailOverlay').style.display = 'block';
+  document.getElementById('detailPanel').style.display = 'block';
+  loadDetailData(r);
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').style.display = 'none';
+  document.getElementById('detailPanel').style.display = 'none';
+}
+
+async function loadDetailData(r) {
+  const gu = r.g;
+  if (!gu) return;
+  await Promise.all([
+    loadDetailMonthly(r),
+    loadDetailTx(r)
+  ]);
+}
+
+async function loadDetailMonthly(r) {
+  if (!r.g || r.i == null) return;
+  if (!_dpCache.monthly[r.g]) {
+    try {
+      const res = await fetch('../data/monthly/' + encodeURIComponent(r.g) + '.json');
+      if (res.ok) _dpCache.monthly[r.g] = await res.json();
+    } catch(e) {}
+  }
+  const monthly = _dpCache.monthly[r.g];
+  const entry = monthly && monthly[String(r.i)];
+  const canvas = document.getElementById('dpChart');
+  const msg = document.getElementById('dpChartMsg');
+  if (entry && entry.p) {
+    canvas.style.display = 'block';
+    drawDetailSparkline(canvas, entry.p);
+    msg.style.display = 'none';
+  } else {
+    canvas.style.display = 'none';
+    msg.style.display = 'block';
+    msg.textContent = '차트 데이터 없음';
+  }
+}
+
+async function loadDetailTx(r) {
+  if (!r.g || r.i == null) return;
+  if (!_dpCache.tx[r.g]) {
+    try {
+      const res = await fetch('../data/tx/' + encodeURIComponent(r.g) + '.json');
+      if (res.ok) _dpCache.tx[r.g] = await res.json();
+    } catch(e) {}
+  }
+  const txData = _dpCache.tx[r.g];
+  const entries = txData && (txData.entries || txData);
+  const entryTx = entries && entries[String(r.i)];
+  const listEl = document.getElementById('dpTxList');
+  if (!entryTx) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">거래 내역 없음</div>';
+    return;
+  }
+  const years = Object.keys(entryTx).map(Number).sort((a, b) => b - a);
+  let html = '';
+  for (const yr of years) {
+    const trades = [...(entryTx[String(yr)] || [])].sort((a, b) => (b[0]*100+b[1]) - (a[0]*100+a[1]));
+    if (!trades.length) continue;
+    html += '<div class="dp-yr-label">' + yr + '년</div>';
+    for (const t of trades) {
+      const isDirect = t[4] === 1;
+      html += '<div class="dp-tx-row">' +
+        '<span class="dp-tx-date">' + t[0] + '월 ' + t[1] + '일</span>' +
+        '<span class="dp-tx-price">' + formatPriceFull(t[2]) + '</span>' +
+        '<span class="dp-tx-floor">' + (t[3] ? t[3] + '층' : '—') + '</span>' +
+        (isDirect ? '<span class="badge-direct">직거래</span>' : '') +
+        '</div>';
+    }
+  }
+  listEl.innerHTML = html || '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">거래 내역 없음</div>';
+}
+
+function drawDetailSparkline(canvas, priceData) {
+  // priceData: 252 monthly prices (2006-01 ~ 2026-12), 0=없음
+  const pts = [];
+  const startIdx = Math.max(0, priceData.length - 36);
+  for (let i = startIdx; i < priceData.length; i++) {
+    if (priceData[i] > 0) pts.push(priceData[i]);
+  }
+  const W = canvas.offsetWidth || 400;
+  const H = 90;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  if (pts.length < 2) { return; }
+  const mn = Math.min(...pts), mx = Math.max(...pts), range = mx - mn || 1;
+  const pad = { t: 14, b: 14, l: 4, r: 4 };
+  const toX = i => pad.l + i / (pts.length - 1) * (W - pad.l - pad.r);
+  const toY = v => pad.t + (1 - (v - mn) / range) * (H - pad.t - pad.b);
+  const xs = pts.map((_, i) => toX(i)), ys = pts.map(v => toY(v));
+  // Fill
+  ctx.beginPath();
+  ctx.moveTo(xs[0], H);
+  xs.forEach((x, i) => ctx.lineTo(x, ys[i]));
+  ctx.lineTo(xs[xs.length-1], H);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(59,130,246,.1)';
+  ctx.fill();
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 1.5;
+  xs.forEach((x, i) => i === 0 ? ctx.moveTo(x, ys[i]) : ctx.lineTo(x, ys[i]));
+  ctx.stroke();
+  // Last dot
+  ctx.beginPath();
+  ctx.fillStyle = '#ef4444';
+  ctx.arc(xs[xs.length-1], ys[ys.length-1], 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Min/Max labels
+  ctx.font = '9px sans-serif'; ctx.fillStyle = '#64748b';
+  ctx.textAlign = 'left'; ctx.fillText(formatPriceFull(Math.round(mn * 10000)), pad.l, H - 2);
+  ctx.textAlign = 'right'; ctx.fillText(formatPriceFull(Math.round(mx * 10000)), W - pad.r, 10);
+}
+
 // ==================== RENDERING ====================
 function render() {
+  buildPrevPriceMap();
   const filtered = getFilteredData();
   const sorted = getSortedData(filtered);
 
@@ -627,17 +877,21 @@ function renderTable(data) {
 
   const display = data.slice(0, MAX_DISPLAY_ROWS);
   const truncated = data.length > MAX_DISPLAY_ROWS;
+  _detailItems = display;
 
-  let html = display.map(r => {
+  let html = display.map((r, idx) => {
     const priceStr = formatPrice(r.p);
+    const canOpen = r.i != null;
+    const nameCell = canOpen
+      ? '<a href="javascript:void(0)" onclick="openDetailByIdx(' + idx + ')" style="color:var(--text);cursor:pointer;" title="단지 상세">' + (r.n || '—') + '</a>'
+      : (r.n || '—');
+    const directBadge = r.dt ? '<span class="badge-direct" style="margin-left:4px;">직거래</span>' : '';
     return '<tr>' +
       '<td style="color:var(--muted);">' + formatDate(r.d) + '</td>' +
       '<td>' + (r.g || '—') + '</td>' +
-      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' +
-        (r.i != null ? '<a href="../#i=' + r.i + '" style="color:var(--text);" title="단지 상세 보기">' + (r.n || '—') + '</a>' : (r.n || '—')) +
-      '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + nameCell + '</td>' +
       '<td style="text-align:right;">' + (r.a != null ? r.a + '㎡' : '—') + '</td>' +
-      '<td style="text-align:right;font-weight:600;color:var(--up);">' + priceStr + '</td>' +
+      '<td style="text-align:right;font-weight:600;color:var(--up);">' + priceStr + directBadge + renderPrevPrice(r) + '</td>' +
       '<td style="text-align:right;color:var(--muted);">' + (r.f != null ? r.f + '층' : '—') + '</td>' +
       '</tr>';
   }).join('');
@@ -658,18 +912,23 @@ function renderCards(data) {
 
   const display = data.slice(0, MAX_DISPLAY_ROWS);
   const truncated = data.length > MAX_DISPLAY_ROWS;
+  _detailItems = display;
 
-  let html = display.map(r =>
-    '<div class="tx-card">' +
+  let html = display.map((r, idx) => {
+    const canOpen = r.i != null;
+    const namePart = canOpen
+      ? '<a href="javascript:void(0)" onclick="openDetailByIdx(' + idx + ')" style="color:var(--text);">' + (r.n || '—') + '</a>'
+      : (r.n || '—');
+    const directBadge = r.dt ? ' <span class="badge-direct">직거래</span>' : '';
+    const prevHtml = renderPrevPrice(r);
+    return '<div class="tx-card">' +
       '<div class="tx-card-top">' +
         '<div>' +
-          '<div class="tx-card-name">' +
-            (r.i != null ? '<a href="../#i=' + r.i + '" style="color:var(--text);">' + (r.n || '—') + '</a>' : (r.n || '—')) +
-          '</div>' +
+          '<div class="tx-card-name">' + namePart + '</div>' +
           '<div class="tx-card-loc">' + (r.g || '') + '</div>' +
         '</div>' +
         '<div>' +
-          '<div class="tx-card-price">' + formatPrice(r.p) + '</div>' +
+          '<div class="tx-card-price">' + formatPrice(r.p) + directBadge + '</div>' +
           '<div class="tx-card-date">' + (r.d || '') + '</div>' +
         '</div>' +
       '</div>' +
@@ -677,8 +936,9 @@ function renderCards(data) {
         '<span>면적 ' + (r.a != null ? r.a + '㎡' : '—') + '</span>' +
         '<span>' + (r.f != null ? r.f + '층' : '—') + '</span>' +
       '</div>' +
-    '</div>'
-  ).join('');
+      (prevHtml ? '<div style="margin-top:5px;">' + prevHtml + '</div>' : '') +
+    '</div>';
+  }).join('');
 
   if (truncated) {
     html += '<div class="trunc-notice">상위 ' + MAX_DISPLAY_ROWS.toLocaleString() + '건만 표시됩니다. 필터를 사용해 범위를 좁혀보세요.</div>';
