@@ -3,6 +3,18 @@
   "name": "한화엔진",
   "quarterly": [
     {
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "revenue": 13711,
+      "operating_profit": 1208,
+      "net_income": 1738,
+      "op_margin": 8.81044416891547,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
       "period": "2025Q3",
       "stac_yymm": "202509",
       "revenue": 0,
@@ -365,6 +377,13 @@
   ],
   "annual": [
     {
+      "year": "2025",
+      "revenue": 13711,
+      "operating_profit": 1208,
+      "net_income": 1738,
+      "op_margin": 8.81044416891547
+    },
+    {
       "year": "2024",
       "revenue": 0,
       "operating_profit": 0,
@@ -511,5 +530,10 @@
       "net_income": 31,
       "op_margin": 0.4928619986403807
     }
-  ]
+  ],
+  "ratios": {
+    "eps": 2082,
+    "bps": 6666,
+    "debt_ratio": 204.92
+  }
 }
