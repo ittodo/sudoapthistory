@@ -237,9 +237,10 @@ let tickerMeta={}, yearAgg={};
 
 async function init(){
   try{
-    const [dR,bR]=await Promise.all([
+    const [dR,bR,eIdx]=await Promise.all([
       fetch('data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
-      fetch('data/buybacks.json').then(r=>r.ok?r.json():{events:[]})
+      fetch('data/buybacks.json').then(r=>r.ok?r.json():{events:[]}),
+      fetch('data/earnings_index.json').then(r=>r.ok?r.json():{})
     ]);
     divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};capsMap=dR.caps||{};priceDate=dR.priceDate||'';
     // Fix dividend types
@@ -252,6 +253,10 @@ async function init(){
       if(e.recordDate&&e.fiscalYear){const ry=+e.recordDate.substring(0,4),fy=+e.fiscalYear;if(ry>fy&&e.type!=='후배당')e.type='후배당';}
     });
     buildMeta();
+    // earnings_index에 있지만 tickerMeta에 없는 종목 추가 (배당/자사주 없이 실적만 있는 종목)
+    for(const [t,m] of Object.entries(eIdx)){
+      if(!tickerMeta[t])tickerMeta[t]={name:m.name,market:m.market,yearDiv:{},yearBuy:{},yearCancel:{},yearDPS:{},yearYield:{},events:[],shares:0};
+    }
     dataUpdated=dR.updated||'';
     const priceCount=Object.keys(priceMap).length;
     document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · 현재가 ${priceCount.toLocaleString()}종목 · ${dataUpdated}`;
