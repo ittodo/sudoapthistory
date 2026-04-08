@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시가총액 기업 목록 | 배당·소각 캘린더</title>
+<meta name="description" content="KOSPI/KOSDAQ 전체 기업 목록. 종목코드·종목명·시장구분 검색 및 배당 페이지 연동.">
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--up:#ef4444;--dn:#3b82f6;--accent:#3b82f6;--gold:#f59e0b;--green:#10b981;--purple:#a78bfa;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+.fi{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;}
+.fi:focus{outline:none;border-color:var(--accent);}
+table{width:100%;border-collapse:collapse;}
+thead th{position:sticky;top:0;background:#1a2332;padding:8px 6px;font-size:11px;font-weight:600;color:var(--muted);user-select:none;white-space:nowrap;border-bottom:1px solid var(--border);z-index:2;}
+thead th.sortable{cursor:pointer;}
+thead th.sortable:hover{color:#fff;}
+thead th .sort-icon{margin-left:3px;opacity:.4;font-size:10px;}
+thead th.sort-asc .sort-icon::after{content:'▲';opacity:1;}
+thead th.sort-desc .sort-icon::after{content:'▼';opacity:1;}
+thead th:not(.sort-asc):not(.sort-desc) .sort-icon::after{content:'⇅';}
+tbody td{padding:6px;border-bottom:1px solid #1e293b;white-space:nowrap;font-size:12px;}
+tbody tr{transition:background .1s;cursor:pointer;}
+tbody tr:hover{background:rgba(59,130,246,.08);}
+.badge{display:inline-block;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;}
+.b-kospi{background:#7c3aed22;color:#a78bfa;}.b-kosdaq{background:#05966922;color:#6ee7b7;}
+.tab-btn{padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;}
+.tab-btn:hover{border-color:var(--muted);color:#fff;}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.pill{padding:3px 10px;border:1px solid var(--border);border-radius:99px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;transition:all .15s;}
+.pill:hover{border-color:var(--muted);color:#fff;}
+.pill.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 16px;text-align:center;}
+.stat-card .label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.stat-card .value{font-size:22px;font-weight:700;margin-top:2px;}
+.stat-card .sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.tc{max-height:calc(100vh - 260px);overflow-y:auto;}
+.tc::-webkit-scrollbar{width:5px;}
+.tc::-webkit-scrollbar-thumb{background:#475569;border-radius:3px;}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:999;gap:12px;}
+.sp{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sa{font-size:10px;opacity:.6;}
+a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
+.footer-disclaimer{text-align:center;padding:12px;font-size:11px;color:#475569;border-top:1px solid var(--border);margin-top:16px;}
+.pg-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;transition:all .15s;}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.pg-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.pg-btn:disabled{opacity:.3;cursor:default;}
+.pg-info{font-size:11px;color:var(--muted);}
+.cap-pending{color:#475569;font-size:11px;}
+.name-link{color:var(--text);transition:color .15s;}
+.name-link:hover{color:var(--accent);}
+@media(max-width:600px){
+  .hide-mobile{display:none;}
+  .stat-card .value{font-size:17px;}
+}
+</style>
+</head>
+<body>
+<div id="loading"><div class="sp"></div><div class="sa">데이터 로딩 중...</div></div>
+<div style="max-width:1280px;margin:0 auto;padding:12px 16px;">
+
+<!-- Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+  <div>
+    <h1 style="font-size:18px;font-weight:700;">기업 목록</h1>
+    <div class="sa">KOSPI/KOSDAQ 전체 종목 · DART 기반</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <a href="../" class="tab-btn" style="text-decoration:none;font-size:11px;">배당·소각 캘린더</a>
+    <a href="../../" class="tab-btn" style="text-decoration:none;font-size:11px;">아파트 스크리너</a>
+    <a href="../../trades/" class="tab-btn" style="text-decoration:none;font-size:11px;">실거래가</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;" id="statsBar"></div>
+
+<!-- Filters -->
+<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+  <button class="pill active" data-market="all" onclick="setMarket('all')">전체</button>
+  <button class="pill" data-market="KOSPI" onclick="setMarket('KOSPI')">KOSPI</button>
+  <button class="pill" data-market="KOSDAQ" onclick="setMarket('KOSDAQ')">KOSDAQ</button>
+  <div style="flex:1;min-width:8px;"></div>
+  <input type="text" class="fi" id="search" placeholder="종목명 / 코드 검색..." style="width:200px;" oninput="onSearch()">
+  <span class="pg-info" id="resultCount"></span>
+</div>
+
+<!-- Table -->
+<div class="tc" id="tableWrap">
+  <table id="stockTable">
+    <thead>
+      <tr>
+        <th class="sortable" data-col="ticker" onclick="sortBy('ticker')" style="width:90px;">종목코드 <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="name" onclick="sortBy('name')" style="min-width:160px;">종목명 <span class="sort-icon"></span></th>
+        <th class="sortable" data-col="market" onclick="sortBy('market')" style="width:100px;">시장 <span class="sort-icon"></span></th>
+        <th style="width:140px;text-align:right;">시가총액 <span style="font-size:9px;color:#475569;">(추후 연동)</span></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap;" id="pagination"></div>
+
+<div class="footer-disclaimer">데이터 출처: DART 공시 기반 · 시가총액은 추후 연동 예정 · 투자 참고용으로만 활용하세요</div>
+</div>
+
+<script>
+const PAGE_SIZE = 50;
+let allStocks = [];
+let filtered = [];
+let currentPage = 1;
+let sortCol = 'name';
+let sortDir = 'asc';
+let marketFilter = 'all';
+let searchQ = '';
+
+async function loadData() {
+  try {
+    const res = await fetch('../data/earnings_index.json');
+    const raw = await res.json();
+    allStocks = Object.entries(raw).map(([ticker, info]) => ({
+      ticker,
+      name: info.name || '',
+      market: info.market || ''
+    }));
+    init();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div style="color:#ef4444;font-size:14px;">데이터 로딩 실패</div>';
+  }
+}
+
+function init() {
+  renderStats();
+  applyFilter();
+  document.getElementById('loading').style.display = 'none';
+}
+
+function renderStats() {
+  const kospi = allStocks.filter(s => s.market === 'KOSPI').length;
+  const kosdaq = allStocks.filter(s => s.market === 'KOSDAQ').length;
+  const cards = [
+    { label: '전체 종목', value: allStocks.length.toLocaleString(), sub: 'KOSPI + KOSDAQ', color: 'var(--accent)' },
+    { label: 'KOSPI', value: kospi.toLocaleString(), sub: '코스피 상장', color: 'var(--purple)' },
+    { label: 'KOSDAQ', value: kosdaq.toLocaleString(), sub: '코스닥 상장', color: 'var(--green)' },
+  ];
+  document.getElementById('statsBar').innerHTML = cards.map(c =>
+    `<div class="stat-card"><div class="label">${c.label}</div><div class="value" style="color:${c.color}">${c.value}</div><div class="sub">${c.sub}</div></div>`
+  ).join('');
+}
+
+function setMarket(m) {
+  marketFilter = m;
+  document.querySelectorAll('[data-market]').forEach(el => {
+    el.classList.toggle('active', el.dataset.market === m);
+  });
+  currentPage = 1;
+  applyFilter();
+}
+
+function onSearch() {
+  searchQ = document.getElementById('search').value.trim();
+  currentPage = 1;
+  applyFilter();
+}
+
+function applyFilter() {
+  const q = searchQ.toLowerCase();
+  filtered = allStocks.filter(s => {
+    if (marketFilter !== 'all' && s.market !== marketFilter) return false;
+    if (q && !s.name.toLowerCase().includes(q) && !s.ticker.includes(q)) return false;
+    return true;
+  });
+  sortFiltered();
+  renderCount();
+  renderTable();
+  renderPagination();
+}
+
+function sortBy(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortCol = col;
+    sortDir = 'asc';
+  }
+  document.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.col === sortCol) {
+      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    }
+  });
+  currentPage = 1;
+  sortFiltered();
+  renderTable();
+  renderPagination();
+}
+
+function sortFiltered() {
+  filtered.sort((a, b) => {
+    let va = a[sortCol] || '', vb = b[sortCol] || '';
+    const cmp = va.localeCompare(vb, 'ko');
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function renderCount() {
+  document.getElementById('resultCount').textContent =
+    filtered.length !== allStocks.length
+      ? `${filtered.length.toLocaleString()} / ${allStocks.length.toLocaleString()}개`
+      : `${allStocks.length.toLocaleString()}개`;
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = filtered.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('tbody');
+  if (slice.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">검색 결과가 없습니다</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = slice.map(s => {
+    const mktBadge = s.market === 'KOSPI'
+      ? `<span class="badge b-kospi">KOSPI</span>`
+      : `<span class="badge b-kosdaq">KOSDAQ</span>`;
+    return `<tr onclick="goDividend('${s.ticker}')">
+      <td style="font-family:monospace;color:var(--muted);">${s.ticker}</td>
+      <td><span class="name-link">${escHtml(s.name)}</span></td>
+      <td>${mktBadge}</td>
+      <td style="text-align:right;"><span class="cap-pending">—</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination() {
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pg = document.getElementById('pagination');
+  if (totalPages <= 1) { pg.innerHTML = ''; return; }
+
+  let html = '';
+  html += `<button class="pg-btn" onclick="goPage(1)" ${currentPage===1?'disabled':''}>«</button>`;
+  html += `<button class="pg-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+
+  const delta = 2;
+  let pages = new Set();
+  pages.add(1);
+  pages.add(totalPages);
+  for (let i = Math.max(1, currentPage-delta); i <= Math.min(totalPages, currentPage+delta); i++) pages.add(i);
+  const sorted = [...pages].sort((a,b)=>a-b);
+
+  let prev = 0;
+  for (const p of sorted) {
+    if (prev && p - prev > 1) html += `<span style="color:var(--muted);font-size:11px;padding:0 2px;">…</span>`;
+    html += `<button class="pg-btn${p===currentPage?' active':''}" onclick="goPage(${p})">${p}</button>`;
+    prev = p;
+  }
+
+  html += `<button class="pg-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  html += `<button class="pg-btn" onclick="goPage(${totalPages})" ${currentPage===totalPages?'disabled':''}>»</button>`;
+  html += `<span class="pg-info">${currentPage} / ${totalPages} 페이지 · 총 ${total.toLocaleString()}개</span>`;
+
+  pg.innerHTML = html;
+}
+
+function goPage(p) {
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  currentPage = Math.max(1, Math.min(totalPages, p));
+  renderTable();
+  renderPagination();
+  document.getElementById('tableWrap').scrollTop = 0;
+}
+
+function goDividend(ticker) {
+  window.location.href = `../?ticker=${ticker}`;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// init sort header state
+document.querySelector(`thead th[data-col="${sortCol}"]`).classList.add('sort-asc');
+
+loadData();
+</script>
+</body>
+</html>
