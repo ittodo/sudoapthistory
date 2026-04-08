@@ -240,7 +240,7 @@ function renderTable() {
     const mktBadge = s.market === 'KOSPI'
       ? `<span class="badge b-kospi">KOSPI</span>`
       : `<span class="badge b-kosdaq">KOSDAQ</span>`;
-    return `<tr onclick="goDividend('${s.ticker}')">
+    return `<tr onclick="goDetail('${s.ticker}')">
       <td style="font-family:monospace;color:var(--muted);">${s.ticker}</td>
       <td><span class="name-link">${escHtml(s.name)}</span></td>
       <td>${mktBadge}</td>
@@ -288,8 +288,8 @@ function goPage(p) {
   document.getElementById('tableWrap').scrollTop = 0;
 }
 
-function goDividend(ticker) {
-  window.location.href = `../?ticker=${ticker}`;
+function goDetail(ticker) {
+  window.location.href = `detail.html?code=${ticker}`;
 }
 
 function formatCap(cap) {

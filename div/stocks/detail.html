@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>기업 상세 | 배당·소각 캘린더</title>
+<meta name="description" content="기업 상세 정보 — 배당 내역, 태그, 시가총액">
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--up:#ef4444;--dn:#3b82f6;--accent:#3b82f6;--gold:#f59e0b;--green:#10b981;--purple:#a78bfa;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+.fi{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;}
+.fi:focus{outline:none;border-color:var(--accent);}
+.tab-btn{padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;text-decoration:none;display:inline-block;}
+.tab-btn:hover{border-color:var(--muted);color:#fff;text-decoration:none;}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.badge{display:inline-block;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;}
+.b-kospi{background:#7c3aed22;color:#a78bfa;}.b-kosdaq{background:#05966922;color:#6ee7b7;}
+.b-pre{background:#f59e0b22;color:#fbbf24;}.b-post{background:#3b82f622;color:#93c5fd;}
+.b-bb{background:#ef444422;color:#fca5a5;}.b-buy{background:#10b98122;color:#6ee7b7;}
+.section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.section-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);}
+.info-row:last-child{border-bottom:none;}
+.info-label{font-size:12px;color:var(--muted);}
+.info-value{font-size:12px;font-weight:600;}
+table{width:100%;border-collapse:collapse;}
+thead th{background:#1a2332;padding:7px 6px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);}
+tbody td{padding:6px;border-bottom:1px solid #1e293b;white-space:nowrap;font-size:12px;}
+tbody tr:hover{background:rgba(59,130,246,.06);}
+#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:999;gap:12px;}
+.sp{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sa{font-size:10px;opacity:.6;}
+a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
+.footer-disclaimer{text-align:center;padding:12px;font-size:11px;color:#475569;border-top:1px solid var(--border);margin-top:16px;}
+
+/* Tag styles */
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--border);background:rgba(59,130,246,.08);color:#93c5fd;margin:3px;}
+.tag-chip.candidate{background:rgba(245,158,11,.08);border-color:#78350f;color:#fbbf24;}
+.vote-btn{background:none;border:none;cursor:pointer;padding:1px 3px;font-size:11px;color:var(--muted);line-height:1;border-radius:3px;transition:all .15s;}
+.vote-btn:hover{color:#fff;background:rgba(255,255,255,.1);}
+.vote-btn.voted-up{color:#10b981;}
+.vote-btn.voted-dn{color:#ef4444;}
+.tag-add-row{display:flex;gap:6px;margin-top:10px;}
+.tag-input{flex:1;background:#0f172a;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;}
+.tag-input:focus{outline:none;border-color:var(--accent);}
+.btn-sm{padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s;border:1px solid var(--accent);background:var(--accent);color:#fff;}
+.btn-sm:hover{background:#2563eb;}
+.btn-sm.secondary{background:transparent;border-color:var(--border);color:var(--muted);}
+.btn-sm.secondary:hover{border-color:var(--muted);color:#fff;}
+.tags-empty{color:var(--muted);font-size:12px;padding:8px 0;}
+.tag-section-note{font-size:10px;color:#475569;margin-top:6px;}
+.error-box{background:#1e293b;border:1px solid #ef444444;border-radius:8px;padding:24px;text-align:center;color:#fca5a5;font-size:13px;}
+@media(max-width:600px){
+  .hide-mobile{display:none;}
+  .section{padding:12px;}
+}
+</style>
+</head>
+<body>
+<div id="loading"><div class="sp"></div><div class="sa">데이터 로딩 중...</div></div>
+
+<div style="max-width:900px;margin:0 auto;padding:12px 16px;" id="mainContent" style="display:none;">
+
+<!-- Header -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+  <div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:2px;">
+      <a href="./">← 기업 목록</a>
+    </div>
+    <h1 style="font-size:20px;font-weight:700;" id="pageTitle">—</h1>
+    <div class="sa" id="pageSubtitle">—</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <a href="../" class="tab-btn" style="font-size:11px;">배당 캘린더</a>
+    <button class="tab-btn active" id="btnDividend" onclick="goDividend()" style="font-size:11px;">배당 상세</button>
+  </div>
+</div>
+
+<!-- Error state -->
+<div id="errorBox" style="display:none;">
+  <div class="error-box">
+    <div style="font-size:16px;font-weight:600;margin-bottom:8px;">종목을 찾을 수 없습니다</div>
+    <div id="errorMsg" style="font-size:12px;"></div>
+    <div style="margin-top:12px;"><a href="./" class="tab-btn">← 기업 목록으로</a></div>
+  </div>
+</div>
+
+<!-- Company Info -->
+<div class="section" id="sectionInfo" style="display:none;">
+  <div class="section-title">기업 기본 정보</div>
+  <div class="info-row">
+    <span class="info-label">종목코드</span>
+    <span class="info-value" id="infoCode" style="font-family:monospace;"></span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">종목명</span>
+    <span class="info-value" id="infoName"></span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">시장</span>
+    <span id="infoMarket"></span>
+  </div>
+  <div class="info-row">
+    <span class="info-label">시가총액</span>
+    <span class="info-value" id="infoCap">—</span>
+  </div>
+  <div class="info-row" id="rowSector" style="display:none;">
+    <span class="info-label">섹터</span>
+    <span class="info-value" id="infoSector"></span>
+  </div>
+</div>
+
+<!-- Tags Section -->
+<div class="section" id="sectionTags" style="display:none;">
+  <div class="section-title">태그</div>
+  <div id="tagsContainer">
+    <div class="tags-empty">태그 로딩 중...</div>
+  </div>
+  <div class="tag-add-row" id="tagAddRow" style="display:none;">
+    <input type="text" class="tag-input" id="tagInput" placeholder="새 태그 제안 (예: 고배당, 성장주, ...)" maxlength="30">
+    <button class="btn-sm" onclick="submitTag()">제안</button>
+  </div>
+  <div class="tag-section-note">투표는 익명으로 처리됩니다. 새 태그는 관리자 검토 후 승인됩니다.</div>
+</div>
+
+<!-- Dividend History -->
+<div class="section" id="sectionDiv" style="display:none;">
+  <div class="section-title">배당·소각 내역 <span id="divCount" style="font-weight:400;color:var(--muted);"></span></div>
+  <div style="overflow-x:auto;">
+    <table id="divTable">
+      <thead>
+        <tr>
+          <th style="text-align:left;">유형</th>
+          <th style="text-align:left;">기준일</th>
+          <th style="text-align:left;">지급일</th>
+          <th style="text-align:right;">DPS (원)</th>
+          <th style="text-align:right;">배당수익률</th>
+          <th style="text-align:right;">총배당액 (억원)</th>
+        </tr>
+      </thead>
+      <tbody id="divTbody"></tbody>
+    </table>
+  </div>
+  <div id="divEmpty" style="display:none;color:var(--muted);font-size:12px;padding:16px 0;text-align:center;">배당 내역이 없습니다</div>
+</div>
+
+<div class="footer-disclaimer">데이터 출처: DART 공시 기반 · 투자 참고용으로만 활용하세요</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ── 설정 ────────────────────────────────────────────────────────────────
+const SUPABASE_URL      = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
+
+// ── 상태 ────────────────────────────────────────────────────────────────
+let currentCode = '';
+let stockInfo = {};
+let sb = null;
+let sessionId = '';
+
+// ── 익명 세션 ID (투표 추적) ────────────────────────────────────────────
+function getSessionId() {
+  let id = localStorage.getItem('__nodo_sid');
+  if (!id) {
+    id = 'anon_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('__nodo_sid', id);
+  }
+  return id;
+}
+
+// ── URL 파라미터 파싱 ───────────────────────────────────────────────────
+function getCode() {
+  const params = new URLSearchParams(window.location.search);
+  return (params.get('code') || '').replace(/\D/g, '').padStart(6, '0').slice(0, 6);
+}
+
+// ── 초기화 ──────────────────────────────────────────────────────────────
+async function init() {
+  sessionId = getSessionId();
+  currentCode = getCode();
+
+  if (!currentCode || currentCode === '000000') {
+    showError('URL에 종목코드가 없습니다. (?code=005930)');
+    return;
+  }
+
+  // Supabase 클라이언트
+  if (window.supabase && window.supabase.createClient) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+
+  try {
+    const [idxRes, divRes] = await Promise.all([
+      fetch('../data/earnings_index.json'),
+      fetch('../data/dividends.json')
+    ]);
+    const idxData = await idxRes.json();
+    const divData = await divRes.json();
+
+    const info = idxData[currentCode];
+    if (!info) {
+      showError(`종목코드 ${currentCode}를 찾을 수 없습니다.`);
+      return;
+    }
+
+    stockInfo = { ...info, ticker: currentCode };
+
+    // 시가총액 — dividends.json caps (원 단위) 또는 earnings_index.json cap (억 단위)
+    const caps = divData.caps || {};
+    const capRaw = caps[currentCode];
+    let capDisplay = '—';
+    if (capRaw) {
+      const eok = Math.round(capRaw / 100000000);
+      if (eok >= 10000) {
+        capDisplay = `${(eok/10000).toFixed(2)}조 (${eok.toLocaleString()}억)`;
+      } else {
+        capDisplay = `${eok.toLocaleString()}억원`;
+      }
+    } else if (info.cap) {
+      const eok = info.cap;
+      capDisplay = eok >= 10000 ? `${(eok/10000).toFixed(2)}조 (${eok.toLocaleString()}억)` : `${eok.toLocaleString()}억원`;
+    }
+
+    // 헤더 업데이트
+    const mktBadgeClass = info.market === 'KOSPI' ? 'b-kospi' : 'b-kosdaq';
+    document.getElementById('pageTitle').textContent = `${info.name || currentCode}`;
+    document.getElementById('pageSubtitle').textContent = `${currentCode} · ${info.market || ''}`;
+    document.title = `${info.name} | 기업 상세`;
+
+    // 기본 정보
+    document.getElementById('infoCode').textContent = currentCode;
+    document.getElementById('infoName').textContent = info.name || '—';
+    document.getElementById('infoMarket').innerHTML = `<span class="badge ${mktBadgeClass}">${info.market || '—'}</span>`;
+    document.getElementById('infoCap').textContent = capDisplay;
+
+    if (info.sector) {
+      document.getElementById('infoSector').textContent = info.sector;
+      document.getElementById('rowSector').style.display = 'flex';
+    }
+
+    document.getElementById('sectionInfo').style.display = 'block';
+
+    // 배당 내역
+    const events = (divData.events || []).filter(e => e.ticker === currentCode);
+    renderDividends(events);
+
+    // 태그
+    document.getElementById('sectionTags').style.display = 'block';
+    await loadTags();
+
+    document.getElementById('mainContent').style.display = 'block';
+  } catch(e) {
+    showError('데이터를 불러오지 못했습니다: ' + e.message);
+    return;
+  }
+
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ── 배당 내역 렌더 ────────────────────────────────────────────────────
+function renderDividends(events) {
+  document.getElementById('sectionDiv').style.display = 'block';
+  const divCount = document.getElementById('divCount');
+
+  if (!events || events.length === 0) {
+    document.getElementById('divCount').textContent = '(0건)';
+    document.getElementById('divEmpty').style.display = 'block';
+    return;
+  }
+
+  // 최신순 정렬
+  events.sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''));
+  divCount.textContent = `(${events.length}건)`;
+
+  const tbody = document.getElementById('divTbody');
+  tbody.innerHTML = events.map(e => {
+    let typeLabel = '배당';
+    let typeCls = 'b-post';
+    if (e.type === 'buyback' || e.type === 'bb') { typeLabel = '자사주소각'; typeCls = 'b-bb'; }
+    else if (e.type === 'buy') { typeLabel = '자사주취득'; typeCls = 'b-buy'; }
+    else if (e.type === 'pre' || (e.fiscalYear || '').includes('중간')) { typeLabel = '중간배당'; typeCls = 'b-pre'; }
+
+    const dps = e.dps ? e.dps.toLocaleString() + '원' : '—';
+    const yld = e.yield ? `<span style="color:var(--gold);">${e.yield.toFixed(1)}%</span>` : '—';
+    const total = e.totalDividend ? `<span style="color:var(--muted);">${Math.round(e.totalDividend/100000000).toLocaleString()}억</span>` : '—';
+
+    return `<tr>
+      <td><span class="badge ${typeCls}">${typeLabel}</span></td>
+      <td>${e.recordDate || '—'}</td>
+      <td>${e.payDate || '—'}</td>
+      <td style="text-align:right;">${dps}</td>
+      <td style="text-align:right;">${yld}</td>
+      <td style="text-align:right;">${total}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 태그 로딩 ────────────────────────────────────────────────────────
+async function loadTags() {
+  const container = document.getElementById('tagsContainer');
+  if (!sb) {
+    container.innerHTML = '<div class="tags-empty">태그 기능을 사용하려면 네트워크 연결이 필요합니다.</div>';
+    document.getElementById('tagAddRow').style.display = 'flex';
+    return;
+  }
+
+  try {
+    // stock_tags JOIN tags
+    const { data: stockTags, error } = await sb
+      .from('stock_tags')
+      .select('id, status, vote_count, tags(id, name, category)')
+      .eq('ticker', currentCode)
+      .order('vote_count', { ascending: false });
+
+    if (error) throw error;
+
+    // 내 투표 조회
+    let myVotes = {};
+    const { data: votes } = await sb
+      .from('tag_votes')
+      .select('stock_tag_id, vote')
+      .eq('session_id', sessionId)
+      .eq('ticker', currentCode);
+
+    if (votes) {
+      votes.forEach(v => { myVotes[v.stock_tag_id] = v.vote; });
+    }
+
+    renderTags(stockTags || [], myVotes);
+    document.getElementById('tagAddRow').style.display = 'flex';
+  } catch(e) {
+    container.innerHTML = `<div class="tags-empty">태그 로딩 실패: ${escHtml(e.message)}</div>`;
+    document.getElementById('tagAddRow').style.display = 'flex';
+  }
+}
+
+function renderTags(stockTags, myVotes) {
+  const container = document.getElementById('tagsContainer');
+  if (!stockTags.length) {
+    container.innerHTML = '<div class="tags-empty">아직 태그가 없습니다. 첫 번째 태그를 제안해 보세요.</div>';
+    return;
+  }
+
+  const active = stockTags.filter(t => t.status === 'active' || !t.status || t.status === 'approved');
+  const candidates = stockTags.filter(t => t.status === 'candidate' || t.status === 'pending');
+
+  let html = '';
+
+  if (active.length) {
+    html += '<div style="margin-bottom:8px;">';
+    active.forEach(st => {
+      const tag = st.tags || {};
+      const name = escHtml(tag.name || '?');
+      const vc = st.vote_count || 0;
+      const myV = myVotes[st.id] || 0;
+      html += `<span class="tag-chip">
+        <span>${name}</span>
+        <button class="vote-btn ${myV===1?'voted-up':''}" onclick="castVote('${st.id}',1)" title="좋아요">▲</button>
+        <span style="font-size:10px;min-width:14px;text-align:center;">${vc}</span>
+        <button class="vote-btn ${myV===-1?'voted-dn':''}" onclick="castVote('${st.id}',-1)" title="비추천">▼</button>
+      </span>`;
+    });
+    html += '</div>';
+  }
+
+  if (candidates.length) {
+    html += '<div style="font-size:10px;color:var(--muted);margin:6px 0 4px;">검토 중인 태그</div>';
+    candidates.forEach(st => {
+      const tag = st.tags || {};
+      const name = escHtml(tag.name || '?');
+      const vc = st.vote_count || 0;
+      const myV = myVotes[st.id] || 0;
+      html += `<span class="tag-chip candidate">
+        <span>${name}</span>
+        <button class="vote-btn ${myV===1?'voted-up':''}" onclick="castVote('${st.id}',1)" title="좋아요">▲</button>
+        <span style="font-size:10px;min-width:14px;text-align:center;">${vc}</span>
+        <button class="vote-btn ${myV===-1?'voted-dn':''}" onclick="castVote('${st.id}',-1)" title="비추천">▼</button>
+      </span>`;
+    });
+  }
+
+  container.innerHTML = html || '<div class="tags-empty">아직 태그가 없습니다.</div>';
+}
+
+// ── 투표 ─────────────────────────────────────────────────────────────
+async function castVote(stockTagId, vote) {
+  if (!sb) return;
+  try {
+    // upsert: 같은 session + stock_tag면 덮어쓰기
+    const { error } = await sb.from('tag_votes').upsert({
+      stock_tag_id: stockTagId,
+      ticker: currentCode,
+      session_id: sessionId,
+      vote: vote
+    }, { onConflict: 'stock_tag_id,session_id' });
+
+    if (error) throw error;
+
+    // vote_count 업데이트 (RPC가 없으면 클라이언트에서 재계산)
+    await sb.rpc('recalc_tag_vote_count', { p_stock_tag_id: stockTagId }).catch(() => {});
+
+    await loadTags();
+  } catch(e) {
+    console.warn('투표 실패:', e.message);
+    await loadTags();
+  }
+}
+
+// ── 태그 제안 ─────────────────────────────────────────────────────────
+async function submitTag() {
+  if (!sb) {
+    alert('네트워크 연결이 필요합니다.');
+    return;
+  }
+  const input = document.getElementById('tagInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (name.length > 30) { alert('태그는 30자 이내로 입력해 주세요.'); return; }
+
+  try {
+    // 1. tags 테이블에서 같은 이름 태그 찾기 (없으면 insert)
+    let tagId = null;
+    const { data: existingTags } = await sb
+      .from('tags')
+      .select('id')
+      .eq('name', name)
+      .limit(1);
+
+    if (existingTags && existingTags.length) {
+      tagId = existingTags[0].id;
+    } else {
+      const { data: newTag, error: tagErr } = await sb
+        .from('tags')
+        .insert({ name, category: 'user' })
+        .select('id')
+        .single();
+      if (tagErr) throw tagErr;
+      tagId = newTag.id;
+    }
+
+    // 2. stock_tags에 candidate 상태로 insert (중복 무시)
+    const { error: stErr } = await sb
+      .from('stock_tags')
+      .upsert({
+        ticker: currentCode,
+        tag_id: tagId,
+        status: 'candidate',
+        vote_count: 0
+      }, { onConflict: 'ticker,tag_id', ignoreDuplicates: true });
+
+    if (stErr) throw stErr;
+
+    input.value = '';
+    await loadTags();
+  } catch(e) {
+    alert('태그 제안 실패: ' + e.message);
+  }
+}
+
+// ── 배당 페이지로 이동 ─────────────────────────────────────────────
+function goDividend() {
+  window.location.href = `../?ticker=${currentCode}`;
+}
+
+// ── 에러 표시 ──────────────────────────────────────────────────────
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('errorBox').style.display = 'block';
+  document.getElementById('mainContent').style.display = 'block';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── 태그 입력 엔터키 지원 ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const tagInput = document.getElementById('tagInput');
+  if (tagInput) {
+    tagInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') submitTag();
+    });
+  }
+  init();
+});
+</script>
+</body>
+</html>
