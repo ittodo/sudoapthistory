@@ -702,6 +702,9 @@ function renderCompany(){
   rows.sort((a,b)=>{
     const va=a[sk]??'', vb=b[sk]??'';
     if(typeof va==='number'&&typeof vb==='number'){
+      // 값이 0이면 항상 하단 배치
+      if(va===0&&vb!==0)return 1;
+      if(vb===0&&va!==0)return -1;
       const d=va-vb; return asc?d:-d;
     }
     const r=String(va).localeCompare(String(vb),'ko'); return asc?r:-r;
