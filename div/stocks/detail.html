@@ -56,6 +56,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 @media(max-width:600px){
   .hide-mobile{display:none;}
   .section{padding:12px;}
+  #earningsRatios{grid-template-columns:repeat(2,1fr)!important;}
 }
 </style>
 </head>
@@ -124,6 +125,50 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
     <button class="btn-sm" onclick="submitTag()">제안</button>
   </div>
   <div class="tag-section-note">투표는 익명으로 처리됩니다. 새 태그는 관리자 검토 후 승인됩니다.</div>
+</div>
+
+<!-- Earnings Section -->
+<div class="section" id="sectionEarnings" style="display:none;">
+  <div class="section-title">실적</div>
+  <!-- 투자 지표 카드 -->
+  <div id="earningsRatios" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
+  <!-- 분기별 실적 -->
+  <div style="margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">분기별 실적 (억원)</div>
+    <div style="overflow-x:auto;">
+      <table id="earningsQTable">
+        <thead>
+          <tr>
+            <th style="text-align:left;">분기</th>
+            <th style="text-align:right;">매출액</th>
+            <th style="text-align:right;">영업이익</th>
+            <th style="text-align:right;">순이익</th>
+            <th style="text-align:right;">영업이익률</th>
+            <th style="text-align:right;" class="hide-mobile">YoY매출</th>
+          </tr>
+        </thead>
+        <tbody id="earningsQTbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- 연간 실적 -->
+  <div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">연간 실적 (억원)</div>
+    <div style="overflow-x:auto;">
+      <table id="earningsATable">
+        <thead>
+          <tr>
+            <th style="text-align:left;">연도</th>
+            <th style="text-align:right;">매출액</th>
+            <th style="text-align:right;">영업이익</th>
+            <th style="text-align:right;">순이익</th>
+            <th style="text-align:right;">영업이익률</th>
+          </tr>
+        </thead>
+        <tbody id="earningsATbody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
 <!-- Dividend History -->
@@ -251,6 +296,15 @@ async function init() {
     // 태그
     document.getElementById('sectionTags').style.display = 'block';
     await loadTags();
+
+    // 실적 데이터 (없으면 섹션 숨김)
+    try {
+      const earnRes = await fetch(`../data/earnings/${currentCode}.json`);
+      if (earnRes.ok) {
+        const earnData = await earnRes.json();
+        renderEarnings(earnData);
+      }
+    } catch(e) { /* earnings 없음 — 섹션 유지 hidden */ }
 
     document.getElementById('mainContent').style.display = 'block';
   } catch(e) {
@@ -489,6 +543,60 @@ async function submitTag() {
   } catch(e) {
     alert('태그 제안 실패: ' + e.message);
   }
+}
+
+// ── 실적 렌더 ──────────────────────────────────────────────────────
+function renderEarnings(data) {
+  document.getElementById('sectionEarnings').style.display = 'block';
+
+  const fmtAmt = v => v == null ? '—' : Math.round(v / 100).toLocaleString();
+  const fmtPct = v => v == null ? '—' : `${Number(v).toFixed(1)}%`;
+  const fmtYoY = v => {
+    if (v == null) return '—';
+    const n = Number(v);
+    const color = n > 0 ? 'var(--up)' : n < 0 ? 'var(--dn)' : 'var(--muted)';
+    return `<span style="color:${color};">${n > 0 ? '+' : ''}${n.toFixed(1)}%</span>`;
+  };
+
+  // 투자 지표 카드
+  const r = data.ratios || {};
+  const cards = [
+    { label: 'ROE', value: r.roe != null ? fmtPct(r.roe) : '—' },
+    { label: 'EPS', value: r.eps != null ? r.eps.toLocaleString() + '원' : '—' },
+    { label: 'BPS', value: r.bps != null ? r.bps.toLocaleString() + '원' : '—' },
+    { label: '부채비율', value: r.debt_ratio != null ? fmtPct(r.debt_ratio) : '—' },
+  ];
+  document.getElementById('earningsRatios').innerHTML = cards.map(c =>
+    `<div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">${c.label}</div>
+      <div style="font-size:14px;font-weight:700;">${c.value}</div>
+    </div>`
+  ).join('');
+
+  // 분기별 실적 (최근 8분기)
+  const quarterly = (data.quarterly || []).slice(0, 8);
+  document.getElementById('earningsQTbody').innerHTML = quarterly.length
+    ? quarterly.map(q => `<tr>
+        <td style="font-family:monospace;">${q.period || '—'}</td>
+        <td style="text-align:right;">${fmtAmt(q.revenue)}</td>
+        <td style="text-align:right;">${fmtAmt(q.operating_profit)}</td>
+        <td style="text-align:right;">${fmtAmt(q.net_income)}</td>
+        <td style="text-align:right;">${fmtPct(q.op_margin)}</td>
+        <td style="text-align:right;" class="hide-mobile">${fmtYoY(q.yoy_revenue)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:12px;">분기 데이터 없음</td></tr>';
+
+  // 연간 실적 (최근 5년)
+  const annual = (data.annual || []).slice(0, 5);
+  document.getElementById('earningsATbody').innerHTML = annual.length
+    ? annual.map(a => `<tr>
+        <td style="font-family:monospace;">${a.year || '—'}</td>
+        <td style="text-align:right;">${fmtAmt(a.revenue)}</td>
+        <td style="text-align:right;">${fmtAmt(a.operating_profit)}</td>
+        <td style="text-align:right;">${fmtAmt(a.net_income)}</td>
+        <td style="text-align:right;">${fmtPct(a.op_margin)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px;">연간 데이터 없음</td></tr>';
 }
 
 // ── 배당 페이지로 이동 ─────────────────────────────────────────────
