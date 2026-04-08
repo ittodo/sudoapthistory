@@ -1,14 +1,20 @@
 {
   "ticker": "484130",
   "name": "하나34호스팩",
+  "market": "KOSDAQ",
+  "sector": "Financial Services",
   "quarterly": [
     {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
-      "op_margin": 0
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
@@ -17,14 +23,10 @@
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
-      "op_margin": 0,
-      "net_margin": 0
+      "op_margin": null
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 0,
     "eps": -18,
     "bps": 1882,
     "debt_ratio": 15.71

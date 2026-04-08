@@ -1,57 +1,80 @@
 {
   "ticker": "014950",
   "name": "삼익제약",
+  "market": "KOSDAQ",
+  "sector": "Healthcare",
   "quarterly": [
     {
-      "period": "2024QQ2",
-      "stac_yymm": "202406",
-      "revenue": 275,
-      "operating_profit": 0,
-      "net_income": 19,
-      "op_margin": 0
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "revenue": 152,
+      "operating_profit": -38,
+      "net_income": -36,
+      "op_margin": -25,
+      "yoy_revenue": 7.801418439716312,
+      "yoy_op": -733.3333333333333,
+      "qoq_revenue": -3.79746835443038,
+      "qoq_op": -416.6666666666667
     },
     {
-      "period": "2024QQ3",
-      "stac_yymm": "202409",
-      "revenue": 418,
-      "operating_profit": 0,
-      "net_income": 31,
-      "op_margin": 0
+      "period": "2025Q3",
+      "stac_yymm": "202509",
+      "revenue": 158,
+      "operating_profit": 12,
+      "net_income": 9,
+      "op_margin": 7.59493670886076,
+      "yoy_revenue": 10.48951048951049,
+      "yoy_op": -20,
+      "qoq_revenue": -45.51724137931035,
+      "qoq_op": -53.84615384615385
     },
     {
-      "period": "2024QQ4",
-      "stac_yymm": "202412",
-      "revenue": 559,
-      "operating_profit": 0,
-      "net_income": 35,
-      "op_margin": 0
-    },
-    {
-      "period": "2025QQ2",
+      "period": "2025Q2",
       "stac_yymm": "202506",
       "revenue": 290,
-      "operating_profit": 0,
+      "operating_profit": 26,
       "net_income": 19,
-      "op_margin": 0,
-      "yoy_revenue": 5.454545454545454
+      "op_margin": 8.96551724137931,
+      "yoy_revenue": 5.454545454545454,
+      "yoy_op": 13.043478260869565,
+      "qoq_revenue": 105.67375886524823,
+      "qoq_op": 333.33333333333337
     },
     {
-      "period": "2025QQ3",
-      "stac_yymm": "202509",
-      "revenue": 448,
-      "operating_profit": 0,
-      "net_income": 28,
-      "op_margin": 0,
-      "yoy_revenue": 7.177033492822966
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "revenue": 141,
+      "operating_profit": 6,
+      "net_income": 4,
+      "op_margin": 4.25531914893617,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -1.3986013986013985,
+      "qoq_op": -60
     },
     {
-      "period": "2025QQ4",
-      "stac_yymm": "202512",
-      "revenue": 600,
-      "operating_profit": 0,
-      "net_income": -8,
-      "op_margin": 0,
-      "yoy_revenue": 7.334525939177102
+      "period": "2024Q3",
+      "stac_yymm": "202409",
+      "revenue": 143,
+      "operating_profit": 15,
+      "net_income": 12,
+      "op_margin": 10.48951048951049,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -48,
+      "qoq_op": -34.78260869565217
+    },
+    {
+      "period": "2024Q2",
+      "stac_yymm": "202406",
+      "revenue": 275,
+      "operating_profit": 23,
+      "net_income": 19,
+      "op_margin": 8.363636363636363,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
@@ -60,22 +83,17 @@
       "revenue": 600,
       "operating_profit": 0,
       "net_income": -8,
-      "op_margin": 0,
-      "net_margin": -1.3333333333333335
+      "op_margin": 0
     },
     {
       "year": "2024",
       "revenue": 559,
-      "operating_profit": 0,
+      "operating_profit": 44,
       "net_income": 35,
-      "op_margin": 0,
-      "net_margin": 6.261180679785331
+      "op_margin": 7.8711985688729875
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 0,
     "eps": -82,
     "bps": 7504,
     "debt_ratio": 23.54

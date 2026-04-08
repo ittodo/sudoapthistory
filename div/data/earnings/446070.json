@@ -1,71 +1,81 @@
 {
   "ticker": "446070",
   "name": "유니드비티플러스",
+  "market": "KOSPI",
   "quarterly": [
     {
-      "period": "2022QQ4",
-      "stac_yymm": "202212",
-      "revenue": 292,
-      "operating_profit": 0,
-      "net_income": 10,
-      "op_margin": 0
-    },
-    {
-      "period": "2023QQ3",
-      "stac_yymm": "202309",
-      "revenue": 1264,
-      "operating_profit": 0,
-      "net_income": 13,
-      "op_margin": 0
-    },
-    {
-      "period": "2023QQ4",
-      "stac_yymm": "202312",
-      "revenue": 1688,
-      "operating_profit": 0,
-      "net_income": 9,
-      "op_margin": 0,
-      "yoy_revenue": 478.0821917808219
-    },
-    {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 1949,
-      "operating_profit": 0,
+      "operating_profit": 82,
       "net_income": 64,
-      "op_margin": 0,
-      "yoy_revenue": 15.462085308056873
+      "op_margin": 4.207285787583376,
+      "yoy_revenue": 359.6698113207547,
+      "yoy_op": 1466.6666666666665,
+      "qoq_revenue": 359.6698113207547,
+      "qoq_op": 1466.6666666666665
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "revenue": 424,
+      "operating_profit": -6,
+      "net_income": -4,
+      "op_margin": -1.4150943396226416,
+      "yoy_revenue": 45.20547945205479,
+      "yoy_op": -133.33333333333331,
+      "qoq_revenue": -66.45569620253164,
+      "qoq_op": -135.29411764705884
+    },
+    {
+      "period": "2023Q3",
+      "stac_yymm": "202309",
+      "revenue": 1264,
+      "operating_profit": 17,
+      "net_income": 13,
+      "op_margin": 1.3449367088607596,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": 332.8767123287671,
+      "qoq_op": -5.555555555555555
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "revenue": 292,
+      "operating_profit": 18,
+      "net_income": 10,
+      "op_margin": 6.164383561643835,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2024",
       "revenue": 1949,
-      "operating_profit": 0,
+      "operating_profit": 82,
       "net_income": 64,
-      "op_margin": 0,
-      "net_margin": 3.2837352488455616
+      "op_margin": 4.207285787583376
     },
     {
       "year": "2023",
       "revenue": 1688,
-      "operating_profit": 0,
+      "operating_profit": 11,
       "net_income": 9,
-      "op_margin": 0,
-      "net_margin": 0.533175355450237
+      "op_margin": 0.6516587677725119
     },
     {
       "year": "2022",
       "revenue": 292,
-      "operating_profit": 0,
+      "operating_profit": 18,
       "net_income": 10,
-      "op_margin": 0,
-      "net_margin": 3.4246575342465753
+      "op_margin": 6.164383561643835
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
     "roe": 3.31,
     "eps": 603,
     "bps": 18517,

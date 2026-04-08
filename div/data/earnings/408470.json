@@ -1,55 +1,62 @@
 {
   "ticker": "408470",
   "name": "한패스",
+  "market": "KOSDAQ",
   "quarterly": [
     {
-      "period": "2024QQ4",
-      "stac_yymm": "202412",
-      "revenue": 553,
-      "operating_profit": 0,
-      "net_income": 44,
-      "op_margin": 0
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "revenue": 196,
+      "operating_profit": 32,
+      "net_income": 26,
+      "op_margin": 16.3265306122449,
+      "yoy_revenue": -64.55696202531645,
+      "yoy_op": -34.69387755102041,
+      "qoq_revenue": -58.119658119658126,
+      "qoq_op": -15.789473684210526
     },
     {
-      "period": "2025QQ3",
+      "period": "2025Q3",
       "stac_yymm": "202509",
       "revenue": 468,
-      "operating_profit": 0,
+      "operating_profit": 38,
       "net_income": 40,
-      "op_margin": 0
+      "op_margin": 8.11965811965812,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -15.370705244122965,
+      "qoq_op": -22.448979591836736
     },
     {
-      "period": "2025QQ4",
-      "stac_yymm": "202512",
-      "revenue": 664,
-      "operating_profit": 0,
-      "net_income": 66,
-      "op_margin": 0,
-      "yoy_revenue": 20.07233273056058
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "revenue": 553,
+      "operating_profit": 49,
+      "net_income": 44,
+      "op_margin": 8.860759493670885,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2025",
       "revenue": 664,
-      "operating_profit": 0,
+      "operating_profit": 70,
       "net_income": 66,
-      "op_margin": 0,
-      "net_margin": 9.939759036144578
+      "op_margin": 10.542168674698797
     },
     {
       "year": "2024",
       "revenue": 553,
-      "operating_profit": 0,
+      "operating_profit": 49,
       "net_income": 44,
-      "op_margin": 0,
-      "net_margin": 7.956600361663653
+      "op_margin": 8.860759493670885
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 0,
     "eps": 708,
     "bps": 4459,
     "debt_ratio": 189.6

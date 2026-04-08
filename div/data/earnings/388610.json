@@ -1,63 +1,70 @@
 {
   "ticker": "388610",
   "name": "지에프씨생명과학",
+  "market": "KOSDAQ",
+  "sector": "Healthcare",
   "quarterly": [
     {
-      "period": "2022QQ4",
-      "stac_yymm": "202212",
-      "revenue": 142,
-      "operating_profit": 0,
-      "net_income": 3,
-      "op_margin": 0
-    },
-    {
-      "period": "2023QQ4",
-      "stac_yymm": "202312",
-      "revenue": 154,
-      "operating_profit": 0,
-      "net_income": 21,
-      "op_margin": 0,
-      "yoy_revenue": 8.450704225352112
-    },
-    {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 168,
-      "operating_profit": 0,
+      "operating_profit": -57,
       "net_income": -59,
-      "op_margin": 0,
-      "yoy_revenue": 9.090909090909092
+      "op_margin": -33.92857142857143,
+      "yoy_revenue": 9.090909090909092,
+      "yoy_op": -359.09090909090907,
+      "qoq_revenue": 9.090909090909092,
+      "qoq_op": -359.09090909090907
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "revenue": 154,
+      "operating_profit": 22,
+      "net_income": 21,
+      "op_margin": 14.285714285714285,
+      "yoy_revenue": 8.450704225352112,
+      "yoy_op": 1000,
+      "qoq_revenue": 8.450704225352112,
+      "qoq_op": 1000
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "revenue": 142,
+      "operating_profit": 2,
+      "net_income": 3,
+      "op_margin": 1.4084507042253522,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2024",
       "revenue": 168,
-      "operating_profit": 0,
+      "operating_profit": -57,
       "net_income": -59,
-      "op_margin": 0,
-      "net_margin": -35.11904761904761
+      "op_margin": -33.92857142857143
     },
     {
       "year": "2023",
       "revenue": 154,
-      "operating_profit": 0,
+      "operating_profit": 22,
       "net_income": 21,
-      "op_margin": 0,
-      "net_margin": 13.636363636363635
+      "op_margin": 14.285714285714285
     },
     {
       "year": "2022",
       "revenue": 142,
-      "operating_profit": 0,
+      "operating_profit": 2,
       "net_income": 3,
-      "op_margin": 0,
-      "net_margin": 2.112676056338028
+      "op_margin": 1.4084507042253522
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
     "roe": -122.16,
     "eps": -1417,
     "bps": 2521,

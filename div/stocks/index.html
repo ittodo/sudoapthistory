@@ -96,7 +96,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
         <th class="sortable" data-col="ticker" onclick="sortBy('ticker')" style="width:90px;">종목코드 <span class="sort-icon"></span></th>
         <th class="sortable" data-col="name" onclick="sortBy('name')" style="min-width:160px;">종목명 <span class="sort-icon"></span></th>
         <th class="sortable" data-col="market" onclick="sortBy('market')" style="width:100px;">시장 <span class="sort-icon"></span></th>
-        <th style="width:140px;text-align:right;">시가총액 <span style="font-size:9px;color:#475569;">(추후 연동)</span></th>
+        <th class="sortable" data-col="cap" onclick="sortBy('cap')" style="width:140px;text-align:right;">시가총액<span style="font-size:9px;color:#94a3b8;"> (억원)</span> <span class="sort-icon"></span></th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -106,7 +106,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <!-- Pagination -->
 <div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;flex-wrap:wrap;" id="pagination"></div>
 
-<div class="footer-disclaimer">데이터 출처: DART 공시 기반 · 시가총액은 추후 연동 예정 · 투자 참고용으로만 활용하세요</div>
+<div class="footer-disclaimer">데이터 출처: DART 공시 기반 · 시가총액 기준일: 최근 거래일 종가 기준 · 투자 참고용으로만 활용하세요</div>
 </div>
 
 <script>
@@ -114,19 +114,25 @@ const PAGE_SIZE = 50;
 let allStocks = [];
 let filtered = [];
 let currentPage = 1;
-let sortCol = 'name';
-let sortDir = 'asc';
+let sortCol = 'cap';
+let sortDir = 'desc';
 let marketFilter = 'all';
 let searchQ = '';
 
 async function loadData() {
   try {
-    const res = await fetch('../data/earnings_index.json');
-    const raw = await res.json();
+    const [idxRes, divRes] = await Promise.all([
+      fetch('../data/earnings_index.json'),
+      fetch('../data/dividends.json')
+    ]);
+    const raw = await idxRes.json();
+    const divData = await divRes.json();
+    const caps = divData.caps || {};
     allStocks = Object.entries(raw).map(([ticker, info]) => ({
       ticker,
       name: info.name || '',
-      market: info.market || ''
+      market: info.market || '',
+      cap: caps[ticker] || 0
     }));
     init();
   } catch(e) {
@@ -202,6 +208,13 @@ function sortBy(col) {
 
 function sortFiltered() {
   filtered.sort((a, b) => {
+    if (sortCol === 'cap') {
+      const va = a.cap || 0, vb = b.cap || 0;
+      if (va === 0 && vb === 0) return 0;
+      if (va === 0) return 1;
+      if (vb === 0) return -1;
+      return sortDir === 'asc' ? va - vb : vb - va;
+    }
     let va = a[sortCol] || '', vb = b[sortCol] || '';
     const cmp = va.localeCompare(vb, 'ko');
     return sortDir === 'asc' ? cmp : -cmp;
@@ -231,7 +244,7 @@ function renderTable() {
       <td style="font-family:monospace;color:var(--muted);">${s.ticker}</td>
       <td><span class="name-link">${escHtml(s.name)}</span></td>
       <td>${mktBadge}</td>
-      <td style="text-align:right;"><span class="cap-pending">—</span></td>
+      <td style="text-align:right;">${s.cap > 0 ? formatCap(s.cap) : '<span class="cap-pending">—</span>'}</td>
     </tr>`;
   }).join('');
 }
@@ -279,12 +292,20 @@ function goDividend(ticker) {
   window.location.href = `../?ticker=${ticker}`;
 }
 
+function formatCap(cap) {
+  const eok = Math.round(cap / 100000000);
+  if (eok >= 10000) {
+    return `<span style="color:var(--text);">${(eok).toLocaleString()}억</span>`;
+  }
+  return `<span style="color:var(--muted);">${eok.toLocaleString()}억</span>`;
+}
+
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // init sort header state
-document.querySelector(`thead th[data-col="${sortCol}"]`).classList.add('sort-asc');
+document.querySelector(`thead th[data-col="${sortCol}"]`).classList.add('sort-desc');
 
 loadData();
 </script>

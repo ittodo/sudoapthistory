@@ -1,455 +1,379 @@
 {
   "ticker": "060310",
   "name": "3S",
+  "market": "KOSDAQ",
   "quarterly": [
     {
-      "period": "2018QQ3",
-      "stac_yymm": "201809",
-      "revenue": 143,
-      "operating_profit": 0,
-      "net_income": -16,
-      "op_margin": 0
-    },
-    {
-      "period": "2018QQ4",
-      "stac_yymm": "201812",
-      "revenue": 231,
-      "operating_profit": 0,
-      "net_income": -4,
-      "op_margin": 0
-    },
-    {
-      "period": "2019QQ1",
-      "stac_yymm": "201903",
-      "revenue": 358,
-      "operating_profit": 0,
-      "net_income": 14,
-      "op_margin": 0
-    },
-    {
-      "period": "2019QQ2",
-      "stac_yymm": "201906",
-      "revenue": 75,
-      "operating_profit": 0,
-      "net_income": 8,
-      "op_margin": 0
-    },
-    {
-      "period": "2019QQ3",
-      "stac_yymm": "201909",
-      "revenue": 124,
-      "operating_profit": 0,
-      "net_income": 5,
-      "op_margin": 0,
-      "yoy_revenue": -13.286713286713287
-    },
-    {
-      "period": "2019QQ4",
-      "stac_yymm": "201912",
-      "revenue": 176,
-      "operating_profit": 0,
-      "net_income": 8,
-      "op_margin": 0,
-      "yoy_revenue": -23.809523809523807
-    },
-    {
-      "period": "2020QQ1",
-      "stac_yymm": "202003",
-      "revenue": 226,
-      "operating_profit": 0,
-      "net_income": -11,
-      "op_margin": 0,
-      "yoy_revenue": -36.87150837988827
-    },
-    {
-      "period": "2020QQ2",
-      "stac_yymm": "202006",
-      "revenue": 43,
-      "operating_profit": 0,
-      "net_income": -5,
-      "op_margin": 0,
-      "yoy_revenue": -42.66666666666667
-    },
-    {
-      "period": "2020QQ3",
-      "stac_yymm": "202009",
-      "revenue": 110,
-      "operating_profit": 0,
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "revenue": 55,
+      "operating_profit": -12,
       "net_income": -12,
-      "op_margin": 0,
-      "yoy_revenue": -11.29032258064516
+      "op_margin": -21.818181818181817,
+      "yoy_revenue": -15.384615384615385,
+      "yoy_op": -1100,
+      "qoq_revenue": -6.779661016949152,
+      "qoq_op": 42.857142857142854
     },
     {
-      "period": "2020QQ4",
-      "stac_yymm": "202012",
-      "revenue": 197,
-      "operating_profit": 0,
-      "net_income": -10,
-      "op_margin": 0,
-      "yoy_revenue": 11.931818181818182
+      "period": "2025Q3",
+      "stac_yymm": "202509",
+      "revenue": 59,
+      "operating_profit": -21,
+      "net_income": -21,
+      "op_margin": -35.59322033898305,
+      "yoy_revenue": -7.8125,
+      "yoy_op": -162.5,
+      "qoq_revenue": 130.89005235602093,
+      "qoq_op": -121
     },
     {
-      "period": "2021QQ1",
-      "stac_yymm": "202103",
-      "revenue": 235,
-      "operating_profit": 0,
-      "net_income": 7,
-      "op_margin": 0,
-      "yoy_revenue": 3.982300884955752
+      "period": "2025Q2",
+      "stac_yymm": "202506",
+      "revenue": -191,
+      "operating_profit": 100,
+      "net_income": 100,
+      "op_margin": -52.35602094240838,
+      "yoy_revenue": 50,
+      "yoy_op": 403.030303030303,
+      "qoq_revenue": -165.86206896551724,
+      "qoq_op": 200
     },
     {
-      "period": "2021QQ2",
-      "stac_yymm": "202106",
-      "revenue": 38,
-      "operating_profit": 0,
-      "net_income": -4,
-      "op_margin": 0,
-      "yoy_revenue": -11.627906976744185
-    },
-    {
-      "period": "2021QQ3",
-      "stac_yymm": "202109",
-      "revenue": 114,
-      "operating_profit": 0,
-      "net_income": 11,
-      "op_margin": 0,
-      "yoy_revenue": 3.6363636363636362
-    },
-    {
-      "period": "2021QQ4",
-      "stac_yymm": "202112",
-      "revenue": 181,
-      "operating_profit": 0,
-      "net_income": 21,
-      "op_margin": 0,
-      "yoy_revenue": -8.121827411167512
-    },
-    {
-      "period": "2022QQ1",
-      "stac_yymm": "202203",
-      "revenue": 271,
-      "operating_profit": 0,
-      "net_income": 12,
-      "op_margin": 0,
-      "yoy_revenue": 15.319148936170212
-    },
-    {
-      "period": "2022QQ2",
-      "stac_yymm": "202206",
-      "revenue": 71,
-      "operating_profit": 0,
-      "net_income": 4,
-      "op_margin": 0,
-      "yoy_revenue": 86.8421052631579
-    },
-    {
-      "period": "2022QQ3",
-      "stac_yymm": "202209",
-      "revenue": 180,
-      "operating_profit": 0,
-      "net_income": 10,
-      "op_margin": 0,
-      "yoy_revenue": 57.89473684210527
-    },
-    {
-      "period": "2022QQ4",
-      "stac_yymm": "202212",
-      "revenue": 284,
-      "operating_profit": 0,
-      "net_income": 20,
-      "op_margin": 0,
-      "yoy_revenue": 56.9060773480663
-    },
-    {
-      "period": "2023QQ1",
-      "stac_yymm": "202303",
-      "revenue": 419,
-      "operating_profit": 0,
-      "net_income": 14,
-      "op_margin": 0,
-      "yoy_revenue": 54.61254612546126
-    },
-    {
-      "period": "2023QQ2",
-      "stac_yymm": "202306",
-      "revenue": 133,
-      "operating_profit": 0,
-      "net_income": 11,
-      "op_margin": 0,
-      "yoy_revenue": 87.32394366197182
-    },
-    {
-      "period": "2023QQ3",
-      "stac_yymm": "202309",
-      "revenue": 230,
-      "operating_profit": 0,
-      "net_income": 18,
-      "op_margin": 0,
-      "yoy_revenue": 27.77777777777778
-    },
-    {
-      "period": "2023QQ4",
-      "stac_yymm": "202312",
-      "revenue": 311,
-      "operating_profit": 0,
-      "net_income": 35,
-      "op_margin": 0,
-      "yoy_revenue": 9.507042253521126
-    },
-    {
-      "period": "2024QQ1",
-      "stac_yymm": "202403",
-      "revenue": 436,
-      "operating_profit": 0,
-      "net_income": 26,
-      "op_margin": 0,
-      "yoy_revenue": 4.05727923627685
-    },
-    {
-      "period": "2024QQ2",
-      "stac_yymm": "202406",
-      "revenue": 54,
-      "operating_profit": 0,
-      "net_income": -7,
-      "op_margin": 0,
-      "yoy_revenue": -59.3984962406015
-    },
-    {
-      "period": "2024QQ3",
-      "stac_yymm": "202409",
-      "revenue": 118,
-      "operating_profit": 0,
-      "net_income": -15,
-      "op_margin": 0,
-      "yoy_revenue": -48.69565217391305
-    },
-    {
-      "period": "2024QQ4",
-      "stac_yymm": "202412",
-      "revenue": 183,
-      "operating_profit": 0,
-      "net_income": -16,
-      "op_margin": 0,
-      "yoy_revenue": -41.157556270096464
-    },
-    {
-      "period": "2025QQ1",
+      "period": "2025Q1",
       "stac_yymm": "202503",
       "revenue": 290,
-      "operating_profit": 0,
+      "operating_profit": -100,
       "net_income": -100,
-      "op_margin": 0,
-      "yoy_revenue": -33.48623853211009
+      "op_margin": -34.48275862068966,
+      "yoy_revenue": -33.48623853211009,
+      "yoy_op": -484.6153846153846,
+      "qoq_revenue": 346.1538461538462,
+      "qoq_op": -9900
     },
     {
-      "period": "2025QQ2",
-      "stac_yymm": "202506",
-      "revenue": 99,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": 0,
-      "yoy_revenue": 83.33333333333334
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "revenue": 65,
+      "operating_profit": -1,
+      "net_income": -1,
+      "op_margin": -1.5384615384615385,
+      "yoy_revenue": -19.753086419753085,
+      "yoy_op": -105.88235294117648,
+      "qoq_revenue": 1.5625,
+      "qoq_op": 87.5
     },
     {
-      "period": "2025QQ3",
-      "stac_yymm": "202509",
-      "revenue": 158,
-      "operating_profit": 0,
-      "net_income": -21,
-      "op_margin": 0,
-      "yoy_revenue": 33.89830508474576
+      "period": "2024Q3",
+      "stac_yymm": "202409",
+      "revenue": 64,
+      "operating_profit": -8,
+      "net_income": -8,
+      "op_margin": -12.5,
+      "yoy_revenue": -34.02061855670103,
+      "yoy_op": -214.28571428571428,
+      "qoq_revenue": 116.75392670157068,
+      "qoq_op": 75.75757575757575
     },
     {
-      "period": "2025QQ4",
-      "stac_yymm": "202512",
-      "revenue": 213,
-      "operating_profit": 0,
+      "period": "2024Q2",
+      "stac_yymm": "202406",
+      "revenue": -382,
+      "operating_profit": -33,
       "net_income": -33,
-      "op_margin": 0,
-      "yoy_revenue": 16.39344262295082
+      "op_margin": 8.638743455497382,
+      "yoy_revenue": -33.56643356643357,
+      "yoy_op": -1000,
+      "qoq_revenue": -187.61467889908258,
+      "qoq_op": -226.9230769230769
+    },
+    {
+      "period": "2024Q1",
+      "stac_yymm": "202403",
+      "revenue": 436,
+      "operating_profit": 26,
+      "net_income": 26,
+      "op_margin": 5.963302752293578,
+      "yoy_revenue": 4.05727923627685,
+      "yoy_op": 85.71428571428571,
+      "qoq_revenue": 438.2716049382716,
+      "qoq_op": 52.94117647058824
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "revenue": 81,
+      "operating_profit": 17,
+      "net_income": 17,
+      "op_margin": 20.98765432098765,
+      "yoy_revenue": -22.115384615384613,
+      "yoy_op": 70,
+      "qoq_revenue": -16.49484536082474,
+      "qoq_op": 142.85714285714286
+    },
+    {
+      "period": "2023Q3",
+      "stac_yymm": "202309",
+      "revenue": 97,
+      "operating_profit": 7,
+      "net_income": 7,
+      "op_margin": 7.216494845360824,
+      "yoy_revenue": -11.009174311926607,
+      "yoy_op": 16.666666666666664,
+      "qoq_revenue": 133.91608391608392,
+      "qoq_op": 333.33333333333337
+    },
+    {
+      "period": "2023Q2",
+      "stac_yymm": "202306",
+      "revenue": -286,
+      "operating_profit": -3,
+      "net_income": -3,
+      "op_margin": 1.048951048951049,
+      "yoy_revenue": -43,
+      "yoy_op": 62.5,
+      "qoq_revenue": -168.2577565632458,
+      "qoq_op": -121.42857142857142
+    },
+    {
+      "period": "2023Q1",
+      "stac_yymm": "202303",
+      "revenue": 419,
+      "operating_profit": 14,
+      "net_income": 14,
+      "op_margin": 3.341288782816229,
+      "yoy_revenue": 54.61254612546126,
+      "yoy_op": 16.666666666666664,
+      "qoq_revenue": 302.88461538461536,
+      "qoq_op": 40
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "revenue": 104,
+      "operating_profit": 10,
+      "net_income": 10,
+      "op_margin": 9.615384615384617,
+      "yoy_revenue": 55.223880597014926,
+      "yoy_op": 0,
+      "qoq_revenue": -4.587155963302752,
+      "qoq_op": 66.66666666666666
+    },
+    {
+      "period": "2022Q3",
+      "stac_yymm": "202209",
+      "revenue": 109,
+      "operating_profit": 6,
+      "net_income": 6,
+      "op_margin": 5.5045871559633035,
+      "yoy_revenue": 43.42105263157895,
+      "yoy_op": -60,
+      "qoq_revenue": 154.5,
+      "qoq_op": 175
+    },
+    {
+      "period": "2022Q2",
+      "stac_yymm": "202206",
+      "revenue": -200,
+      "operating_profit": -8,
+      "net_income": -8,
+      "op_margin": 4,
+      "yoy_revenue": -1.5228426395939088,
+      "yoy_op": 20,
+      "qoq_revenue": -173.80073800738006,
+      "qoq_op": -166.66666666666669
+    },
+    {
+      "period": "2022Q1",
+      "stac_yymm": "202203",
+      "revenue": 271,
+      "operating_profit": 12,
+      "net_income": 12,
+      "op_margin": 4.428044280442804,
+      "yoy_revenue": 15.319148936170212,
+      "yoy_op": 71.42857142857143,
+      "qoq_revenue": 304.4776119402985,
+      "qoq_op": 20
+    },
+    {
+      "period": "2021Q4",
+      "stac_yymm": "202112",
+      "revenue": 67,
+      "operating_profit": 10,
+      "net_income": 10,
+      "op_margin": 14.925373134328357,
+      "yoy_revenue": -22.988505747126435,
+      "yoy_op": 400,
+      "qoq_revenue": -11.842105263157894,
+      "qoq_op": -33.33333333333333
+    },
+    {
+      "period": "2021Q3",
+      "stac_yymm": "202109",
+      "revenue": 76,
+      "operating_profit": 15,
+      "net_income": 15,
+      "op_margin": 19.736842105263158,
+      "yoy_revenue": 13.432835820895523,
+      "yoy_op": 314.2857142857143,
+      "qoq_revenue": 138.57868020304568,
+      "qoq_op": 250
+    },
+    {
+      "period": "2021Q2",
+      "stac_yymm": "202106",
+      "revenue": -197,
+      "operating_profit": -10,
+      "net_income": -11,
+      "op_margin": 5.0761421319796955,
+      "yoy_revenue": -7.650273224043716,
+      "yoy_op": -266.66666666666663,
+      "qoq_revenue": -183.82978723404256,
+      "qoq_op": -242.85714285714283
+    },
+    {
+      "period": "2021Q1",
+      "stac_yymm": "202103",
+      "revenue": 235,
+      "operating_profit": 7,
+      "net_income": 7,
+      "op_margin": 2.9787234042553195,
+      "yoy_revenue": 3.982300884955752,
+      "yoy_op": 163.63636363636365,
+      "qoq_revenue": 170.1149425287356,
+      "qoq_op": 250
+    },
+    {
+      "period": "2020Q4",
+      "stac_yymm": "202012",
+      "revenue": 87,
+      "operating_profit": 2,
+      "net_income": 2,
+      "op_margin": 2.2988505747126435,
+      "yoy_revenue": 67.3076923076923,
+      "yoy_op": -50,
+      "qoq_revenue": 29.850746268656714,
+      "qoq_op": 128.57142857142858
+    },
+    {
+      "period": "2020Q3",
+      "stac_yymm": "202009",
+      "revenue": 67,
+      "operating_profit": -7,
+      "net_income": -7,
+      "op_margin": -10.44776119402985,
+      "yoy_revenue": 36.734693877551024,
+      "yoy_op": -133.33333333333331,
+      "qoq_revenue": 136.61202185792348,
+      "qoq_op": -216.66666666666666
+    },
+    {
+      "period": "2020Q2",
+      "stac_yymm": "202006",
+      "revenue": -183,
+      "operating_profit": 6,
+      "net_income": 6,
+      "op_margin": -3.278688524590164,
+      "yoy_revenue": 35.3356890459364,
+      "yoy_op": 200,
+      "qoq_revenue": -180.97345132743362,
+      "qoq_op": 154.54545454545453
+    },
+    {
+      "period": "2020Q1",
+      "stac_yymm": "202003",
+      "revenue": 226,
+      "operating_profit": -11,
+      "net_income": -11,
+      "op_margin": -4.867256637168142,
+      "yoy_revenue": -36.87150837988827,
+      "yoy_op": -178.57142857142858,
+      "qoq_revenue": 334.61538461538464,
+      "qoq_op": -375
+    },
+    {
+      "period": "2019Q4",
+      "stac_yymm": "201912",
+      "revenue": 52,
+      "operating_profit": 4,
+      "net_income": 3,
+      "op_margin": 7.6923076923076925,
+      "yoy_revenue": -40.909090909090914,
+      "yoy_op": -66.66666666666666,
+      "qoq_revenue": 6.122448979591836,
+      "qoq_op": 233.33333333333334
+    },
+    {
+      "period": "2019Q3",
+      "stac_yymm": "201909",
+      "revenue": 49,
+      "operating_profit": -3,
+      "net_income": -3,
+      "op_margin": -6.122448979591836,
+      "yoy_revenue": -65.73426573426573,
+      "yoy_op": 80,
+      "qoq_revenue": 117.31448763250883,
+      "qoq_op": 50
+    },
+    {
+      "period": "2019Q2",
+      "stac_yymm": "201906",
+      "revenue": -283,
+      "operating_profit": -6,
+      "net_income": -6,
+      "op_margin": 2.1201413427561837,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -179.05027932960894,
+      "qoq_op": -142.85714285714286
+    },
+    {
+      "period": "2019Q1",
+      "stac_yymm": "201903",
+      "revenue": 358,
+      "operating_profit": 14,
+      "net_income": 14,
+      "op_margin": 3.910614525139665,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": 306.8181818181818,
+      "qoq_op": 16.666666666666664
+    },
+    {
+      "period": "2018Q4",
+      "stac_yymm": "201812",
+      "revenue": 88,
+      "operating_profit": 12,
+      "net_income": 12,
+      "op_margin": 13.636363636363635,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -38.46153846153847,
+      "qoq_op": 180
+    },
+    {
+      "period": "2018Q3",
+      "stac_yymm": "201809",
+      "revenue": 143,
+      "operating_profit": -15,
+      "net_income": -16,
+      "op_margin": -10.48951048951049,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2025",
       "revenue": 213,
-      "operating_profit": 0,
+      "operating_profit": -33,
       "net_income": -33,
-      "op_margin": 0,
-      "net_margin": -15.492957746478872
-    },
-    {
-      "year": "2024",
-      "revenue": 436,
-      "operating_profit": 0,
-      "net_income": 26,
-      "op_margin": 0,
-      "net_margin": 5.963302752293578
-    },
-    {
-      "year": "2023",
-      "revenue": 419,
-      "operating_profit": 0,
-      "net_income": 14,
-      "op_margin": 0,
-      "net_margin": 3.341288782816229
-    },
-    {
-      "year": "2022",
-      "revenue": 271,
-      "operating_profit": 0,
-      "net_income": 12,
-      "op_margin": 0,
-      "net_margin": 4.428044280442804
-    },
-    {
-      "year": "2021",
-      "revenue": 235,
-      "operating_profit": 0,
-      "net_income": 7,
-      "op_margin": 0,
-      "net_margin": 2.9787234042553195
-    },
-    {
-      "year": "2020",
-      "revenue": 226,
-      "operating_profit": 0,
-      "net_income": -11,
-      "op_margin": 0,
-      "net_margin": -4.867256637168142
-    },
-    {
-      "year": "2019",
-      "revenue": 358,
-      "operating_profit": 0,
-      "net_income": 14,
-      "op_margin": 0,
-      "net_margin": 3.910614525139665
-    },
-    {
-      "year": "2018",
-      "revenue": 315,
-      "operating_profit": 0,
-      "net_income": -14,
-      "op_margin": 0,
-      "net_margin": -4.444444444444445
-    },
-    {
-      "year": "2017",
-      "revenue": 265,
-      "operating_profit": 0,
-      "net_income": -88,
-      "op_margin": 0,
-      "net_margin": -33.20754716981132
-    },
-    {
-      "year": "2016",
-      "revenue": 237,
-      "operating_profit": 0,
-      "net_income": -34,
-      "op_margin": 0,
-      "net_margin": -14.345991561181433
-    },
-    {
-      "year": "2015",
-      "revenue": 232,
-      "operating_profit": 0,
-      "net_income": -56,
-      "op_margin": 0,
-      "net_margin": -24.137931034482758
-    },
-    {
-      "year": "2014",
-      "revenue": 289,
-      "operating_profit": 0,
-      "net_income": -48,
-      "op_margin": 0,
-      "net_margin": -16.608996539792386
-    },
-    {
-      "year": "2013",
-      "revenue": 322,
-      "operating_profit": 0,
-      "net_income": 7,
-      "op_margin": 0,
-      "net_margin": 2.1739130434782608
-    },
-    {
-      "year": "2012",
-      "revenue": 312,
-      "operating_profit": 0,
-      "net_income": 16,
-      "op_margin": 0,
-      "net_margin": 5.128205128205128
-    },
-    {
-      "year": "2011",
-      "revenue": 274,
-      "operating_profit": 0,
-      "net_income": 28,
-      "op_margin": 0,
-      "net_margin": 10.218978102189782
-    },
-    {
-      "year": "2010",
-      "revenue": 102,
-      "operating_profit": 0,
-      "net_income": -28,
-      "op_margin": 0,
-      "net_margin": -27.450980392156865
-    },
-    {
-      "year": "2009",
-      "revenue": 93,
-      "operating_profit": 0,
-      "net_income": -36,
-      "op_margin": 0,
-      "net_margin": -38.70967741935484
-    },
-    {
-      "year": "2008",
-      "revenue": 77,
-      "operating_profit": 0,
-      "net_income": -27,
-      "op_margin": 0,
-      "net_margin": -35.064935064935064
-    },
-    {
-      "year": "2007",
-      "revenue": 76,
-      "operating_profit": 0,
-      "net_income": -20,
-      "op_margin": 0,
-      "net_margin": -26.31578947368421
-    },
-    {
-      "year": "2006",
-      "revenue": 82,
-      "operating_profit": 0,
-      "net_income": -8,
-      "op_margin": 0,
-      "net_margin": -9.75609756097561
-    },
-    {
-      "year": "2005",
-      "revenue": 121,
-      "operating_profit": 0,
-      "net_income": -48,
-      "op_margin": 0,
-      "net_margin": -39.66942148760331
-    },
-    {
-      "year": "2004",
-      "revenue": 145,
-      "operating_profit": 0,
-      "net_income": 1,
-      "op_margin": 0,
-      "net_margin": 0.6896551724137931
+      "op_margin": -15.492957746478872
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
     "roe": -22.42,
     "eps": -62,
     "bps": 873,

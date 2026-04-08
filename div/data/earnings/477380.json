@@ -1,30 +1,32 @@
 {
   "ticker": "477380",
   "name": "미래에셋비전스팩4호",
+  "market": "KOSDAQ",
+  "sector": "Financial Services",
   "quarterly": [
     {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 0,
-      "operating_profit": 0,
+      "operating_profit": 2,
       "net_income": 2,
-      "op_margin": 0
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2024",
       "revenue": 0,
-      "operating_profit": 0,
+      "operating_profit": 2,
       "net_income": 2,
-      "op_margin": 0,
-      "net_margin": 0
+      "op_margin": null
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 0,
     "eps": 35,
     "bps": 1860,
     "debt_ratio": 13.44

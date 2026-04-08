@@ -1,66 +1,71 @@
 {
   "ticker": "478340",
   "name": "나라스페이스테크놀로지",
+  "market": "KOSDAQ",
+  "sector": "Industrials",
   "quarterly": [
     {
-      "period": "2022QQ4",
-      "stac_yymm": "202212",
-      "revenue": 10,
-      "operating_profit": 0,
-      "net_income": -128,
-      "op_margin": 0
-    },
-    {
-      "period": "2023QQ4",
-      "stac_yymm": "202312",
-      "revenue": 16,
-      "operating_profit": 0,
-      "net_income": -139,
-      "op_margin": 0,
-      "yoy_revenue": 60
-    },
-    {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 43,
-      "operating_profit": 0,
+      "operating_profit": -107,
       "net_income": -107,
-      "op_margin": 0,
-      "yoy_revenue": 168.75
+      "op_margin": -248.8372093023256,
+      "yoy_revenue": 168.75,
+      "yoy_op": 23.021582733812952,
+      "qoq_revenue": 168.75,
+      "qoq_op": 23.021582733812952
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "revenue": 16,
+      "operating_profit": -139,
+      "net_income": -139,
+      "op_margin": -868.75,
+      "yoy_revenue": 60,
+      "yoy_op": -8.59375,
+      "qoq_revenue": 60,
+      "qoq_op": -8.59375
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "revenue": 10,
+      "operating_profit": -128,
+      "net_income": -128,
+      "op_margin": -1280,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2024",
       "revenue": 43,
-      "operating_profit": 0,
+      "operating_profit": -107,
       "net_income": -107,
-      "op_margin": 0,
-      "net_margin": -248.8372093023256
+      "op_margin": -248.8372093023256
     },
     {
       "year": "2023",
       "revenue": 16,
-      "operating_profit": 0,
+      "operating_profit": -139,
       "net_income": -139,
-      "op_margin": 0,
-      "net_margin": -868.75
+      "op_margin": -868.75
     },
     {
       "year": "2022",
       "revenue": 10,
-      "operating_profit": 0,
+      "operating_profit": -128,
       "net_income": -128,
-      "op_margin": 0,
-      "net_margin": -1280
+      "op_margin": -1280
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 0,
     "eps": -1194,
-    "bps": -4583,
-    "debt_ratio": 0
+    "bps": -4583
   }
 }

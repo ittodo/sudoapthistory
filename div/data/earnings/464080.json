@@ -1,80 +1,89 @@
 {
   "ticker": "464080",
   "name": "에스오에스랩",
+  "market": "KOSDAQ",
+  "sector": "Technology",
   "quarterly": [
     {
-      "period": "2021QQ4",
-      "stac_yymm": "202112",
-      "revenue": 12,
-      "operating_profit": 0,
-      "net_income": -188,
-      "op_margin": 0
-    },
-    {
-      "period": "2022QQ4",
-      "stac_yymm": "202212",
-      "revenue": 23,
-      "operating_profit": 0,
-      "net_income": -203,
-      "op_margin": 0,
-      "yoy_revenue": 91.66666666666666
-    },
-    {
-      "period": "2023QQ4",
-      "stac_yymm": "202312",
-      "revenue": 41,
-      "operating_profit": 0,
-      "net_income": 60,
-      "op_margin": 0,
-      "yoy_revenue": 78.26086956521739
-    },
-    {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 49,
-      "operating_profit": 0,
+      "operating_profit": -120,
       "net_income": -120,
-      "op_margin": 0,
-      "yoy_revenue": 19.51219512195122
+      "op_margin": -244.89795918367346,
+      "yoy_revenue": 19.51219512195122,
+      "yoy_op": -300,
+      "qoq_revenue": 19.51219512195122,
+      "qoq_op": -300
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "revenue": 41,
+      "operating_profit": 60,
+      "net_income": 60,
+      "op_margin": 146.34146341463415,
+      "yoy_revenue": 78.26086956521739,
+      "yoy_op": 129.55665024630542,
+      "qoq_revenue": 78.26086956521739,
+      "qoq_op": 129.55665024630542
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "revenue": 23,
+      "operating_profit": -203,
+      "net_income": -203,
+      "op_margin": -882.6086956521739,
+      "yoy_revenue": 91.66666666666666,
+      "yoy_op": -7.9787234042553195,
+      "qoq_revenue": 91.66666666666666,
+      "qoq_op": -7.9787234042553195
+    },
+    {
+      "period": "2021Q4",
+      "stac_yymm": "202112",
+      "revenue": 12,
+      "operating_profit": -188,
+      "net_income": -188,
+      "op_margin": -1566.6666666666665,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2024",
       "revenue": 49,
-      "operating_profit": 0,
+      "operating_profit": -120,
       "net_income": -120,
-      "op_margin": 0,
-      "net_margin": -244.89795918367346
+      "op_margin": -244.89795918367346
     },
     {
       "year": "2023",
       "revenue": 41,
-      "operating_profit": 0,
+      "operating_profit": 60,
       "net_income": 60,
-      "op_margin": 0,
-      "net_margin": 146.34146341463415
+      "op_margin": 146.34146341463415
     },
     {
       "year": "2022",
       "revenue": 23,
-      "operating_profit": 0,
+      "operating_profit": -203,
       "net_income": -203,
-      "op_margin": 0,
-      "net_margin": -882.6086956521739
+      "op_margin": -882.6086956521739
     },
     {
       "year": "2021",
       "revenue": 12,
-      "operating_profit": 0,
+      "operating_profit": -188,
       "net_income": -188,
-      "op_margin": 0,
-      "net_margin": -1566.6666666666665
+      "op_margin": -1566.6666666666665
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
     "roe": -46.12,
     "eps": -720,
     "bps": 1808,

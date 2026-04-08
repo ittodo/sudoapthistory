@@ -1,114 +1,127 @@
 {
   "ticker": "469750",
   "name": "아이비젼웍스",
+  "market": "KOSDAQ",
+  "sector": "Industrials",
   "quarterly": [
     {
-      "period": "2019QQ4",
-      "stac_yymm": "201912",
-      "revenue": 46,
-      "operating_profit": 0,
-      "net_income": 6,
-      "op_margin": 0
-    },
-    {
-      "period": "2020QQ4",
-      "stac_yymm": "202012",
-      "revenue": 77,
-      "operating_profit": 0,
-      "net_income": 6,
-      "op_margin": 0,
-      "yoy_revenue": 67.3913043478261
-    },
-    {
-      "period": "2021QQ4",
-      "stac_yymm": "202112",
-      "revenue": 120,
-      "operating_profit": 0,
-      "net_income": 7,
-      "op_margin": 0,
-      "yoy_revenue": 55.84415584415584
-    },
-    {
-      "period": "2022QQ4",
-      "stac_yymm": "202212",
-      "revenue": 180,
-      "operating_profit": 0,
-      "net_income": 4,
-      "op_margin": 0,
-      "yoy_revenue": 50
-    },
-    {
-      "period": "2023QQ4",
-      "stac_yymm": "202312",
-      "revenue": 232,
-      "operating_profit": 0,
-      "net_income": 27,
-      "op_margin": 0,
-      "yoy_revenue": 28.888888888888886
-    },
-    {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 352,
-      "operating_profit": 0,
+      "operating_profit": -46,
       "net_income": -46,
-      "op_margin": 0,
-      "yoy_revenue": 51.724137931034484
+      "op_margin": -13.068181818181818,
+      "yoy_revenue": 51.724137931034484,
+      "yoy_op": -276.9230769230769,
+      "qoq_revenue": 51.724137931034484,
+      "qoq_op": -276.9230769230769
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "revenue": 232,
+      "operating_profit": 26,
+      "net_income": 27,
+      "op_margin": 11.206896551724139,
+      "yoy_revenue": 28.888888888888886,
+      "yoy_op": 550,
+      "qoq_revenue": 28.888888888888886,
+      "qoq_op": 550
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "revenue": 180,
+      "operating_profit": 4,
+      "net_income": 4,
+      "op_margin": 2.2222222222222223,
+      "yoy_revenue": 50,
+      "yoy_op": -20,
+      "qoq_revenue": 50,
+      "qoq_op": -20
+    },
+    {
+      "period": "2021Q4",
+      "stac_yymm": "202112",
+      "revenue": 120,
+      "operating_profit": 5,
+      "net_income": 7,
+      "op_margin": 4.166666666666666,
+      "yoy_revenue": 55.84415584415584,
+      "yoy_op": -44.44444444444444,
+      "qoq_revenue": 55.84415584415584,
+      "qoq_op": -44.44444444444444
+    },
+    {
+      "period": "2020Q4",
+      "stac_yymm": "202012",
+      "revenue": 77,
+      "operating_profit": 9,
+      "net_income": 6,
+      "op_margin": 11.688311688311687,
+      "yoy_revenue": 67.3913043478261,
+      "yoy_op": 50,
+      "qoq_revenue": 67.3913043478261,
+      "qoq_op": 50
+    },
+    {
+      "period": "2019Q4",
+      "stac_yymm": "201912",
+      "revenue": 46,
+      "operating_profit": 6,
+      "net_income": 6,
+      "op_margin": 13.043478260869565,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
     {
       "year": "2024",
       "revenue": 352,
-      "operating_profit": 0,
+      "operating_profit": -46,
       "net_income": -46,
-      "op_margin": 0,
-      "net_margin": -13.068181818181818
+      "op_margin": -13.068181818181818
     },
     {
       "year": "2023",
       "revenue": 232,
-      "operating_profit": 0,
+      "operating_profit": 26,
       "net_income": 27,
-      "op_margin": 0,
-      "net_margin": 11.637931034482758
+      "op_margin": 11.206896551724139
     },
     {
       "year": "2022",
       "revenue": 180,
-      "operating_profit": 0,
+      "operating_profit": 4,
       "net_income": 4,
-      "op_margin": 0,
-      "net_margin": 2.2222222222222223
+      "op_margin": 2.2222222222222223
     },
     {
       "year": "2021",
       "revenue": 120,
-      "operating_profit": 0,
+      "operating_profit": 5,
       "net_income": 7,
-      "op_margin": 0,
-      "net_margin": 5.833333333333333
+      "op_margin": 4.166666666666666
     },
     {
       "year": "2020",
       "revenue": 77,
-      "operating_profit": 0,
+      "operating_profit": 9,
       "net_income": 6,
-      "op_margin": 0,
-      "net_margin": 7.792207792207792
+      "op_margin": 11.688311688311687
     },
     {
       "year": "2019",
       "revenue": 46,
-      "operating_profit": 0,
+      "operating_profit": 6,
       "net_income": 6,
-      "op_margin": 0,
-      "net_margin": 13.043478260869565
+      "op_margin": 13.043478260869565
     }
   ],
   "ratios": {
-    "per": 0,
-    "pbr": 0,
     "roe": -17.05,
     "eps": -135,
     "bps": 1065,

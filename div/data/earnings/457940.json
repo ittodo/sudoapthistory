@@ -1,31 +1,32 @@
 {
   "ticker": "457940",
   "name": "에스케이증권제10호스팩",
+  "market": "KOSDAQ",
   "quarterly": [
     {
-      "period": "2023QQ4",
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": 1,
+      "net_income": 1,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2023Q4",
       "stac_yymm": "202312",
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
-      "op_margin": 0
-    },
-    {
-      "period": "2024QQ4",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 1,
-      "op_margin": 0
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
-  "annual": [],
-  "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 1.43,
-    "eps": 28,
-    "bps": 1979,
-    "debt_ratio": 23.62
-  }
+  "annual": null
 }

@@ -1,14 +1,20 @@
 {
   "ticker": "488060",
   "name": "유진스팩11호",
+  "market": "KOSDAQ",
+  "sector": "Financial Services",
   "quarterly": [
     {
-      "period": "2024QQ4",
+      "period": "2024Q4",
       "stac_yymm": "202412",
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
-      "op_margin": 0
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
     }
   ],
   "annual": [
@@ -17,16 +23,7 @@
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
-      "op_margin": 0,
-      "net_margin": 0
+      "op_margin": null
     }
-  ],
-  "ratios": {
-    "per": 0,
-    "pbr": 0,
-    "roe": 0,
-    "eps": 9,
-    "bps": 1981,
-    "debt_ratio": 16.15
-  }
+  ]
 }
