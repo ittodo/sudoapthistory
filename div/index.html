@@ -227,7 +227,7 @@ const NOW=new Date(), TODAY=NOW.toISOString().slice(0,10), THIS_YEAR=NOW.getFull
 const YEARS=[2022,2023,2024,2025,2026];
 let divData=[],bbData=[],priceMap={},capsMap={},currentTab='calendar';
 let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null, calSort={key:'totalDividend',asc:false};
-let cmpSort={key:'totalDiv',asc:false};
+let cmpSort={key:'totalDiv',asc:false};let cmpPage=1;const CMP_PS=100;
 let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
 let dataUpdated='',priceDate='';
 const earningsCache={};let currentDetailTicker='';
@@ -335,9 +335,10 @@ function switchTab(t,replace){currentTab=t;document.querySelectorAll('[data-tab]
   else if(location.hash!==h)history.pushState({tab:t},'',h);
   render();
 }
-function setF(k,v){F[k]=v;document.querySelectorAll(`[data-${k.toLowerCase()}]`).forEach(b=>b.classList.toggle('active',b.dataset[k.toLowerCase()]==String(v)));render();}
+function setF(k,v){F[k]=v;document.querySelectorAll(`[data-${k.toLowerCase()}]`).forEach(b=>b.classList.toggle('active',b.dataset[k.toLowerCase()]==String(v)));cmpPage=1;render();}
 
-function render(){
+function render(resetPage){
+  if(resetPage!==false)cmpPage=1;
   if(currentTab==='calendar')renderCal();
   else if(currentTab==='annual')renderAnnual();
   else renderCompany();
@@ -650,6 +651,7 @@ function renderYearlyChart(ya){
 function cmpSortBy(key){
   if(cmpSort.key===key)cmpSort.asc=!cmpSort.asc;
   else{cmpSort.key=key;cmpSort.asc=key==='name';}
+  cmpPage=1;
   // sync dropdown
   const keyMap={totalDiv:'totalDiv',totalBuy:'totalBB',totalAll:'totalAll',shareholderReturn:'sratio',yield:'yield',curYield:'curYield',dps:'dps',cap:'cap',price:'price',name:'name'};
   const sel=document.getElementById('selCmpSort');
@@ -708,9 +710,13 @@ function renderCompany(){
   updateCmpSortArrows();
 
   const tbody=document.getElementById('cmpBody');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:20px;color:var(--muted);">데이터 없음</td></tr>';renderCmpPager(0,0);return;}
 
-  const show=rows.slice(0,200);
+  const totalRows=rows.length;
+  const totalPages=Math.ceil(totalRows/CMP_PS);
+  if(cmpPage>totalPages)cmpPage=totalPages;
+  if(cmpPage<1)cmpPage=1;
+  const show=rows.slice((cmpPage-1)*CMP_PS, cmpPage*CMP_PS);
   const maxTrend=Math.max(...show.flatMap(r=>r.trend),1);
   let html='';
   for(const r of show){
@@ -740,8 +746,28 @@ function renderCompany(){
     </tr>`;
   }
   tbody.innerHTML=html;
-  document.getElementById('countInfo').textContent=`${show.length}/${rows.length}개 종목 (${sy}년)`;
+  renderCmpPager(totalRows, totalPages);
 }
+function renderCmpPager(total, totalPages){
+  const el=document.getElementById('countInfo');
+  if(!total){el.textContent='';return;}
+  const start=(cmpPage-1)*CMP_PS+1, end=Math.min(cmpPage*CMP_PS,total);
+  let html=`<span>${start}–${end} / 총 ${total.toLocaleString()}개 종목</span> `;
+  if(totalPages>1){
+    html+=`<button onclick="cmpGoPage(1)" style="margin:0 2px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;" ${cmpPage===1?'disabled':''}>«</button>`;
+    html+=`<button onclick="cmpGoPage(${cmpPage-1})" style="margin:0 2px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;" ${cmpPage===1?'disabled':''}>‹</button>`;
+    // window of pages
+    const w=2, lo=Math.max(1,cmpPage-w), hi=Math.min(totalPages,cmpPage+w);
+    for(let p=lo;p<=hi;p++){
+      const act=p===cmpPage;
+      html+=`<button onclick="cmpGoPage(${p})" style="margin:0 2px;padding:2px 7px;border:1px solid ${act?'var(--accent)':'var(--border)'};border-radius:4px;background:${act?'var(--accent)':'transparent'};color:${act?'#fff':'var(--muted)'};cursor:pointer;font-size:11px;">${p}</button>`;
+    }
+    html+=`<button onclick="cmpGoPage(${cmpPage+1})" style="margin:0 2px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;" ${cmpPage===totalPages?'disabled':''}>›</button>`;
+    html+=`<button onclick="cmpGoPage(${totalPages})" style="margin:0 2px;padding:2px 7px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--muted);cursor:pointer;font-size:11px;" ${cmpPage===totalPages?'disabled':''}>»</button>`;
+  }
+  el.innerHTML=html;
+}
+function cmpGoPage(p){cmpPage=p;renderCompany();}
 
 // ===== DETAIL =====
 function showDetail(ticker,name){
