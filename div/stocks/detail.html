@@ -464,7 +464,12 @@ async function castVote(tagId, voteType) {
       vote_type: voteType
     });
     // 23505 = unique_violation: 이미 투표함 (무시)
-    if (error && error.code !== '23505') console.warn('투표 실패:', error.message);
+    // 42501 = RLS 차단: 세션 문제 → 로그인 유도
+    if (error) {
+      if (error.code === '23505') { /* 이미 투표 — 무시 */ }
+      else if (error.code === '42501') { requireLogin('세션이 만료됐습니다. 다시 로그인해 주세요.'); return; }
+      else { console.warn('투표 실패:', error.code, error.message); }
+    }
     // 트리거(trg_tag_vote_counts)가 tags.upvotes/downvotes 자동 갱신
     await loadTags();
   } catch(e) {
