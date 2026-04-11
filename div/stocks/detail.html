@@ -38,7 +38,6 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 
 /* Tag styles */
 .tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--border);background:rgba(59,130,246,.08);color:#93c5fd;margin:3px;}
-.tag-chip.candidate{background:rgba(245,158,11,.08);border-color:#78350f;color:#fbbf24;}
 .vote-btn{background:none;border:none;cursor:pointer;padding:1px 3px;font-size:11px;color:var(--muted);line-height:1;border-radius:3px;transition:all .15s;}
 .vote-btn:hover{color:#fff;background:rgba(255,255,255,.1);}
 .vote-btn.voted-up{color:#10b981;}
@@ -121,10 +120,10 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
     <div class="tags-empty">태그 로딩 중...</div>
   </div>
   <div class="tag-add-row" id="tagAddRow" style="display:none;">
-    <input type="text" class="tag-input" id="tagInput" placeholder="새 태그 제안 (예: 고배당, 성장주, ...)" maxlength="30">
-    <button class="btn-sm" onclick="submitTag()">제안</button>
+    <input type="text" class="tag-input" id="tagInput" placeholder="태그 추가 (예: 고배당, 성장주, ...)" maxlength="30">
+    <button class="btn-sm" id="tagSubmitBtn" onclick="submitTag()">추가</button>
   </div>
-  <div class="tag-section-note">투표는 익명으로 처리됩니다. 새 태그는 관리자 검토 후 승인됩니다.</div>
+  <div class="tag-section-note" id="tagSectionNote"></div>
 </div>
 
 <!-- Earnings Section -->
@@ -205,17 +204,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
 let currentCode = '';
 let stockInfo = {};
 let sb = null;
-let sessionId = '';
-
-// ── 익명 세션 ID (투표 추적) ────────────────────────────────────────────
-function getSessionId() {
-  let id = localStorage.getItem('__nodo_sid');
-  if (!id) {
-    id = 'anon_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-    localStorage.setItem('__nodo_sid', id);
-  }
-  return id;
-}
+let currentUser = null;  // 로그인한 유저 (null = 비로그인)
 
 // ── URL 파라미터 파싱 ───────────────────────────────────────────────────
 function getCode() {
@@ -233,9 +222,11 @@ async function init() {
     return;
   }
 
-  // Supabase 클라이언트
+  // Supabase 클라이언트 + 로그인 유저 확인
   if (window.supabase && window.supabase.createClient) {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { user } } = await sb.auth.getUser();
+    currentUser = user || null;
   }
 
   try {
@@ -353,133 +344,123 @@ function renderDividends(events) {
   }).join('');
 }
 
+// ── 로그인 유도 ───────────────────────────────────────────────────────
+function requireLogin(msg) {
+  // js/comments.js의 로그인 모달이 있으면 활용, 없으면 안내 메시지
+  if (typeof openLoginModal === 'function') {
+    openLoginModal(msg);
+  } else {
+    alert((msg || '로그인이 필요합니다.') + '\n\n로그인 후 이용해 주세요.');
+  }
+}
+
+// ── 태그 노출 여부 ────────────────────────────────────────────────────
+function isVisible(tag) {
+  const s = tag.status;
+  return s === 'official' || s === 'candidate';
+}
+
 // ── 태그 로딩 ────────────────────────────────────────────────────────
 async function loadTags() {
   const container = document.getElementById('tagsContainer');
+  const note = document.getElementById('tagSectionNote');
+  const addRow = document.getElementById('tagAddRow');
+
+  // 로그인 상태에 따라 안내 문구와 입력 UI 결정
+  if (currentUser) {
+    if (note) note.textContent = '추천수가 높은 태그가 상위에 표시됩니다.';
+    if (addRow) addRow.style.display = 'flex';
+  } else {
+    if (note) note.textContent = '로그인 후 태그를 추가하고 추천할 수 있습니다.';
+    if (addRow) addRow.style.display = 'flex'; // 비로그인도 UI 노출, 클릭 시 로그인 유도
+  }
+
   if (!sb) {
     container.innerHTML = '<div class="tags-empty">태그 기능을 사용하려면 네트워크 연결이 필요합니다.</div>';
-    document.getElementById('tagAddRow').style.display = 'flex';
     return;
   }
 
   try {
-    // stock_tags JOIN tags — status/vote_count은 stock_tags에 없고 tags에 있음
     const { data: stockTags, error } = await sb
       .from('stock_tags')
-      .select('id, tag_id, tags(id, name, slug, category, status, upvotes, downvotes, color)')
+      .select('id, tag_id, tags(id, name, slug, category, status, upvotes, downvotes, color, created_at)')
       .eq('ticker', currentCode);
 
     if (error) throw error;
 
-    // 내 투표 조회 — tag_votes는 (tag_id, ip_hash) UNIQUE, vote_type 'up'|'down'
+    // 내 투표 조회 (로그인 시에만)
     let myVotes = {};
-    if (stockTags && stockTags.length) {
+    if (currentUser && stockTags && stockTags.length) {
       const tagIds = stockTags.map(st => st.tag_id).filter(Boolean);
       if (tagIds.length) {
         const { data: votes } = await sb
           .from('tag_votes')
           .select('tag_id, vote_type')
-          .eq('ip_hash', sessionId)
+          .eq('user_id', currentUser.id)
           .in('tag_id', tagIds);
-        if (votes) {
-          votes.forEach(v => { myVotes[v.tag_id] = v.vote_type; });
-        }
+        if (votes) votes.forEach(v => { myVotes[v.tag_id] = v.vote_type; });
       }
     }
 
     renderTags(stockTags || [], myVotes);
-    document.getElementById('tagAddRow').style.display = 'flex';
   } catch(e) {
     container.innerHTML = `<div class="tags-empty">태그 로딩 실패: ${escHtml(e.message)}</div>`;
-    document.getElementById('tagAddRow').style.display = 'flex';
   }
 }
 
 function renderTags(stockTags, myVotes) {
   const container = document.getElementById('tagsContainer');
-  if (!stockTags.length) {
-    container.innerHTML = '<div class="tags-empty">아직 태그가 없습니다. 첫 번째 태그를 제안해 보세요.</div>';
-    return;
-  }
 
-  // status는 tags 테이블에 있음: 'official' | 'candidate' | 'hidden' | 'rejected'
-  const visible = stockTags.filter(st => {
-    const s = (st.tags || {}).status;
-    return s === 'official' || s === 'candidate';
-  });
+  // 표시 가능한 태그 필터 (official | candidate)
+  const visible = stockTags.filter(st => st.tags && isVisible(st.tags));
 
   if (!visible.length) {
-    container.innerHTML = '<div class="tags-empty">표시할 태그가 없습니다.</div>';
+    container.innerHTML = '<div class="tags-empty">아직 태그가 없습니다. 로그인 후 첫 번째 태그를 추가해 보세요.</div>';
     return;
   }
 
-  // official 먼저, candidate 나중 / 각 그룹 내 upvotes 내림차순
+  // 정렬: upvotes DESC, 동률이면 최신순(created_at DESC)
   visible.sort((a, b) => {
     const ta = a.tags || {}, tb = b.tags || {};
-    if (ta.status === 'official' && tb.status !== 'official') return -1;
-    if (ta.status !== 'official' && tb.status === 'official') return 1;
-    return (tb.upvotes || 0) - (ta.upvotes || 0);
+    const upDiff = (tb.upvotes || 0) - (ta.upvotes || 0);
+    if (upDiff !== 0) return upDiff;
+    return (tb.created_at || '').localeCompare(ta.created_at || '');
   });
 
-  const official   = visible.filter(st => (st.tags || {}).status === 'official');
-  const candidates = visible.filter(st => (st.tags || {}).status === 'candidate');
-
-  let html = '';
-
-  if (official.length) {
-    html += '<div style="margin-bottom:8px;">';
-    official.forEach(st => {
-      const tag = st.tags || {};
-      const name = escHtml(tag.name || '?');
-      const ups  = tag.upvotes   || 0;
-      const dns  = tag.downvotes || 0;
-      const myV  = myVotes[st.tag_id] || '';
-      const colorStyle = tag.color ? `border-color:${tag.color}40;color:${tag.color};` : '';
-      html += `<span class="tag-chip" style="${colorStyle}">
-        <span>${name}</span>
-        <button class="vote-btn ${myV==='up'?'voted-up':''}" onclick="castVote(${st.tag_id},'up')" title="좋아요">▲</button>
-        <span style="font-size:10px;min-width:14px;text-align:center;">${ups}</span>
-        <button class="vote-btn ${myV==='down'?'voted-dn':''}" onclick="castVote(${st.tag_id},'down')" title="비추천">▼</button>
-      </span>`;
-    });
-    html += '</div>';
-  }
-
-  if (candidates.length) {
-    html += '<div style="font-size:10px;color:var(--muted);margin:6px 0 4px;">검토 중인 태그</div>';
-    candidates.forEach(st => {
-      const tag = st.tags || {};
-      const name = escHtml(tag.name || '?');
-      const ups  = tag.upvotes   || 0;
-      const myV  = myVotes[st.tag_id] || '';
-      html += `<span class="tag-chip candidate">
-        <span>${name}</span>
-        <button class="vote-btn ${myV==='up'?'voted-up':''}" onclick="castVote(${st.tag_id},'up')" title="좋아요">▲</button>
-        <span style="font-size:10px;min-width:14px;text-align:center;">${ups}</span>
-        <button class="vote-btn ${myV==='down'?'voted-dn':''}" onclick="castVote(${st.tag_id},'down')" title="비추천">▼</button>
-      </span>`;
-    });
-  }
+  let html = '<div>';
+  visible.forEach(st => {
+    const tag   = st.tags || {};
+    const name  = escHtml(tag.name || '?');
+    const ups   = tag.upvotes || 0;
+    const myV   = myVotes[st.tag_id] || '';
+    const colorStyle = tag.color ? `border-color:${tag.color}40;color:${tag.color};` : '';
+    html += `<span class="tag-chip" style="${colorStyle}">
+      <span>${name}</span>
+      <button class="vote-btn ${myV==='up'?'voted-up':''}" onclick="castVote(${st.tag_id},'up')" title="추천">▲</button>
+      <span style="font-size:10px;min-width:14px;text-align:center;">${ups}</span>
+      <button class="vote-btn ${myV==='down'?'voted-dn':''}" onclick="castVote(${st.tag_id},'down')" title="비추천">▼</button>
+    </span>`;
+  });
+  html += '</div>';
 
   container.innerHTML = html;
 }
 
 // ── 투표 ─────────────────────────────────────────────────────────────
-// tag_votes schema: (tag_id, ip_hash, vote_type) UNIQUE(tag_id, ip_hash)
-// ip_hash로 localStorage UUID 사용 (서버 IP 해시 대신 클라이언트 식별자)
 async function castVote(tagId, voteType) {
   if (!sb) return;
+  if (!currentUser) {
+    requireLogin('태그 추천은 로그인 후 이용 가능합니다.');
+    return;
+  }
   try {
     const { error } = await sb.from('tag_votes').insert({
       tag_id:    tagId,
-      ip_hash:   sessionId,
-      vote_type: voteType   // 'up' | 'down'
+      user_id:   currentUser.id,
+      vote_type: voteType
     });
-
-    if (error) {
-      // 23505 = unique_violation: 이미 투표함 (무시)
-      if (error.code !== '23505') console.warn('투표 실패:', error.message);
-    }
+    // 23505 = unique_violation: 이미 투표함 (무시)
+    if (error && error.code !== '23505') console.warn('투표 실패:', error.message);
     // 트리거(trg_tag_vote_counts)가 tags.upvotes/downvotes 자동 갱신
     await loadTags();
   } catch(e) {
@@ -488,19 +469,24 @@ async function castVote(tagId, voteType) {
   }
 }
 
-// ── 태그 제안 ─────────────────────────────────────────────────────────
+// ── 태그 추가 ─────────────────────────────────────────────────────────
 async function submitTag() {
-  if (!sb) {
-    alert('네트워크 연결이 필요합니다.');
+  if (!sb) { alert('네트워크 연결이 필요합니다.'); return; }
+  if (!currentUser) {
+    requireLogin('태그 추가는 로그인 후 이용 가능합니다.');
     return;
   }
+
   const input = document.getElementById('tagInput');
   const name = input.value.trim();
   if (!name) return;
+  if (name.length < 2) { alert('태그는 2자 이상 입력해 주세요.'); return; }
   if (name.length > 30) { alert('태그는 30자 이내로 입력해 주세요.'); return; }
 
+  const btn = document.getElementById('tagSubmitBtn');
+  if (btn) btn.disabled = true;
+
   try {
-    // slug: 한글·영문·숫자만 남기고 공백→하이픈, 소문자화
     const slug = name
       .toLowerCase()
       .replace(/\s+/g, '-')
@@ -508,40 +494,45 @@ async function submitTag() {
       .slice(0, 40)
       + '-' + Date.now().toString(36);
 
-    // tags INSERT — anon 가능 (RLS: status='candidate' AND is_auto=FALSE)
-    // category는 'sector'|'theme'|'custom' 중 'custom'
-    // stock_tags 쓰기는 service_role 전용이므로 tags만 생성, 관리자가 연결
-    const { error: tagErr } = await sb
+    // tags INSERT (status='official' — 즉시 노출)
+    const { data: tagData, error: tagErr } = await sb
       .from('tags')
       .insert({
         name,
         slug,
         category: 'custom',
-        status:   'candidate',
+        status:   'official',
         is_auto:  false,
-        ip_hash:  sessionId
-      });
+        ip_hash:  null
+      })
+      .select('id')
+      .single();
 
     if (tagErr) {
-      // 23505 = 이름 중복 (unique violation)
-      if (tagErr.code === '23505') {
-        alert('이미 존재하는 태그 이름입니다.');
-      } else {
-        throw tagErr;
-      }
-      return;
+      if (tagErr.code === '23505') { alert('이미 존재하는 태그 이름입니다.'); return; }
+      throw tagErr;
     }
 
+    // stock_tags 연결
+    const { error: stErr } = await sb
+      .from('stock_tags')
+      .insert({ ticker: currentCode, tag_id: tagData.id });
+
+    if (stErr && stErr.code !== '23505') throw stErr;
+
+    // 본인 upvote 자동 1회 부여
+    await sb.from('tag_votes').insert({
+      tag_id:    tagData.id,
+      user_id:   currentUser.id,
+      vote_type: 'up'
+    });
+
     input.value = '';
-    // 태그 제안 완료 — 관리자가 stock_tags 연결 후 표시됨
-    const container = document.getElementById('tagsContainer');
-    const note = document.createElement('div');
-    note.style.cssText = 'font-size:11px;color:var(--green);margin-top:6px;';
-    note.textContent = '태그가 제안되었습니다. 관리자 검토 후 이 종목에 연결됩니다.';
-    container.appendChild(note);
-    setTimeout(() => note.remove(), 4000);
+    await loadTags();
   } catch(e) {
-    alert('태그 제안 실패: ' + e.message);
+    alert('태그 추가 실패: ' + e.message);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
