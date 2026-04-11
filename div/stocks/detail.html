@@ -229,8 +229,15 @@ async function init() {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
   if (sb) {
-    const { data: { user } } = await sb.auth.getUser();
-    currentUser = user || null;
+    // getSession()은 localStorage에서 직접 읽음 — getUser()는 네트워크 검증으로 PKCE 타이밍 시 실패 가능
+    const { data: { session } } = await sb.auth.getSession();
+    currentUser = session ? session.user : null;
+
+    // 로그인/로그아웃 이벤트 시 currentUser 최신화
+    sb.auth.onAuthStateChange((event, session) => {
+      currentUser = session ? session.user : null;
+      renderTags();
+    });
   }
 
   try {
