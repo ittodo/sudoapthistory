@@ -206,6 +206,7 @@ let currentCode = '';
 let stockInfo = {};
 let sb = null;
 let currentUser = null;  // 로그인한 유저 (null = 비로그인)
+let myVotes = {};        // { [tagId]: 'up'|'down' } — castVote 토글 판정용
 
 // ── URL 파라미터 파싱 ───────────────────────────────────────────────────
 function getCode() {
@@ -233,10 +234,10 @@ async function init() {
     const { data: { session } } = await sb.auth.getSession();
     currentUser = session ? session.user : null;
 
-    // 로그인/로그아웃 이벤트 시 currentUser 최신화
+    // 로그인/로그아웃 이벤트 시 currentUser + myVotes 최신화
     sb.auth.onAuthStateChange((event, session) => {
       currentUser = session ? session.user : null;
-      renderTags();
+      loadTags(); // myVotes도 함께 갱신
     });
   }
 
@@ -399,8 +400,8 @@ async function loadTags() {
 
     if (error) throw error;
 
-    // 내 투표 조회 (로그인 시에만)
-    let myVotes = {};
+    // 내 투표 조회 (로그인 시에만) — 전역 myVotes 갱신
+    myVotes = {};
     if (currentUser && stockTags && stockTags.length) {
       const tagIds = stockTags.map(st => st.tag_id).filter(Boolean);
       if (tagIds.length) {
@@ -413,13 +414,13 @@ async function loadTags() {
       }
     }
 
-    renderTags(stockTags || [], myVotes);
+    renderTags(stockTags || []);
   } catch(e) {
     container.innerHTML = `<div class="tags-empty">태그 로딩 실패: ${escHtml(e.message)}</div>`;
   }
 }
 
-function renderTags(stockTags, myVotes) {
+function renderTags(stockTags) {
   const container = document.getElementById('tagsContainer');
 
   // 표시 가능한 태그 필터 (official | candidate)
@@ -457,7 +458,10 @@ function renderTags(stockTags, myVotes) {
   container.innerHTML = html;
 }
 
-// ── 투표 ─────────────────────────────────────────────────────────────
+// ── 투표 (토글/방향 전환) ──────────────────────────────────────────────
+// - 같은 방향 재클릭 → DELETE (취소)
+// - 반대 방향 클릭   → DELETE 후 INSERT (전환)
+// - 첫 클릭         → INSERT
 async function castVote(tagId, voteType) {
   if (!sb) return;
   if (!currentUser) {
@@ -465,18 +469,34 @@ async function castVote(tagId, voteType) {
     return;
   }
   try {
-    const { error } = await sb.from('tag_votes').insert({
-      tag_id:    tagId,
-      user_id:   currentUser.id,
-      vote_type: voteType
-    });
-    // 23505 = unique_violation: 이미 투표함 (무시)
-    // 42501 = RLS 차단: 세션 문제 → 로그인 유도
-    if (error) {
-      if (error.code === '23505') { /* 이미 투표 — 무시 */ }
-      else if (error.code === '42501') { requireLogin('세션이 만료됐습니다. 다시 로그인해 주세요.'); return; }
-      else { console.warn('투표 실패:', error.code, error.message); }
+    const existing = myVotes[tagId]; // 현재 내 투표 상태
+
+    if (existing) {
+      // 기존 투표 삭제 (토글 취소 or 방향 전환 전처리)
+      const { error: delErr } = await sb.from('tag_votes')
+        .delete()
+        .eq('tag_id', tagId)
+        .eq('user_id', currentUser.id);
+      if (delErr && delErr.code !== 'PGRST116') {
+        if (delErr.code === '42501') { requireLogin('세션이 만료됐습니다. 다시 로그인해 주세요.'); return; }
+        console.warn('투표 삭제 실패:', delErr.code, delErr.message);
+        await loadTags(); return;
+      }
     }
+
+    if (existing !== voteType) {
+      // 같은 방향 재클릭이 아닐 때만 INSERT (취소가 아닌 경우)
+      const { error: insErr } = await sb.from('tag_votes').insert({
+        tag_id:    tagId,
+        user_id:   currentUser.id,
+        vote_type: voteType
+      });
+      if (insErr) {
+        if (insErr.code === '42501') { requireLogin('세션이 만료됐습니다. 다시 로그인해 주세요.'); return; }
+        console.warn('투표 실패:', insErr.code, insErr.message);
+      }
+    }
+
     // 트리거(trg_tag_vote_counts)가 tags.upvotes/downvotes 자동 갱신
     await loadTags();
   } catch(e) {
