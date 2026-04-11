@@ -214,7 +214,6 @@ function getCode() {
 
 // ── 초기화 ──────────────────────────────────────────────────────────────
 async function init() {
-  sessionId = getSessionId();
   currentCode = getCode();
 
   if (!currentCode || currentCode === '000000') {
