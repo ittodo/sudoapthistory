@@ -195,6 +195,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/js/supabase-init.js"></script>
 <script>
 // ── 설정 ────────────────────────────────────────────────────────────────
 const SUPABASE_URL      = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
@@ -221,9 +222,13 @@ async function init() {
     return;
   }
 
-  // Supabase 클라이언트 + 로그인 유저 확인
-  if (window.supabase && window.supabase.createClient) {
+  // supabase-init.js의 공유 클라이언트 재사용 (세션 공유를 위해)
+  // 직접 createClient 하면 세션이 없는 별도 인스턴스가 생성되어 RLS 차단됨
+  sb = window.__supabaseClient || null;
+  if (!sb && window.supabase && window.supabase.createClient) {
     sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+  if (sb) {
     const { data: { user } } = await sb.auth.getUser();
     currentUser = user || null;
   }
