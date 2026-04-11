@@ -52,6 +52,20 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .cap-pending{color:#475569;font-size:11px;}
 .name-link{color:var(--text);transition:color .15s;}
 .name-link:hover{color:var(--accent);}
+/* ── 인기 태그 칩 ── */
+.tag-chip-section{margin-bottom:12px;}
+.tag-chip-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.tag-chip-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
+.tag-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid;white-space:nowrap;transition:background .15s,border-color .15s;cursor:default;user-select:none;}
+.tag-chip.cat-sector{background:rgba(59,130,246,.07);color:#93c5fd;border-color:rgba(59,130,246,.25);}
+.tag-chip.cat-sector:hover{background:rgba(59,130,246,.16);border-color:#93c5fd;}
+.tag-chip.cat-theme{background:rgba(167,139,250,.07);color:#c4b5fd;border-color:rgba(167,139,250,.25);}
+.tag-chip.cat-theme:hover{background:rgba(167,139,250,.16);border-color:#c4b5fd;}
+.tag-chip.cat-custom{background:rgba(16,185,129,.07);color:#6ee7b7;border-color:rgba(16,185,129,.25);}
+.tag-chip.cat-custom:hover{background:rgba(16,185,129,.16);border-color:#6ee7b7;}
+.tag-chip-cnt{font-size:10px;opacity:.55;}
+.tag-chip-empty{font-size:11px;color:#475569;}
 @media(max-width:600px){
   .hide-mobile{display:none;}
   .stat-card .value{font-size:17px;}
@@ -77,6 +91,17 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 
 <!-- Stats -->
 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;" id="statsBar"></div>
+
+<!-- Popular Tags -->
+<div class="tag-chip-section" id="tagChipSection">
+  <div class="tag-chip-header">
+    <span class="tag-chip-label">인기 태그</span>
+    <span style="font-size:10px;color:#475569;">· 클릭 필터는 준비 중</span>
+  </div>
+  <div class="tag-chips" id="tagChips">
+    <span class="tag-chip-empty">태그 불러오는 중...</span>
+  </div>
+</div>
 
 <!-- Filters -->
 <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
@@ -304,10 +329,43 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// init sort header state
+// ── 인기 태그 칩 ────────────────────────────────────────────────────────
+const SB_URL     = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
+const SB_ANON    = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
+
+async function loadPopularTags() {
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/tags?status=eq.official&order=upvotes.desc&limit=10&select=id,name,category,upvotes`,
+      { headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` } }
+    );
+    if (!res.ok) throw new Error(res.status);
+    const tags = await res.json();
+    renderTagChips(tags);
+  } catch(e) {
+    document.getElementById('tagChips').innerHTML =
+      '<span class="tag-chip-empty">태그를 불러올 수 없습니다</span>';
+  }
+}
+
+function renderTagChips(tags) {
+  const el = document.getElementById('tagChips');
+  if (!tags || tags.length === 0) {
+    el.innerHTML = '<span class="tag-chip-empty">등록된 태그가 없습니다</span>';
+    return;
+  }
+  el.innerHTML = tags.map(t => {
+    const cat = ['sector','theme','custom'].includes(t.category) ? t.category : 'theme';
+    const cnt = t.upvotes > 0 ? ` <span class="tag-chip-cnt">${t.upvotes}</span>` : '';
+    return `<span class="tag-chip cat-${cat}" title="클릭 필터는 2차 구현 예정">${escHtml(t.name)}${cnt}</span>`;
+  }).join('');
+}
+
+// ── init ──────────────────────────────────────────────────────────────────
 document.querySelector(`thead th[data-col="${sortCol}"]`).classList.add('sort-desc');
 
 loadData();
+loadPopularTags();
 </script>
 </body>
 </html>
