@@ -249,7 +249,8 @@ async function init() {
     const idxData = await idxRes.json();
     const divData = await divRes.json();
 
-    const info = idxData[currentCode];
+    const stocksMap = idxData.stocks || idxData;
+    const info = stocksMap[currentCode];
     if (!info) {
       showError(`종목코드 ${currentCode}를 찾을 수 없습니다.`);
       return;

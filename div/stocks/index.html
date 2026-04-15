@@ -153,7 +153,8 @@ async function loadData() {
     const raw = await idxRes.json();
     const divData = await divRes.json();
     const caps = divData.caps || {};
-    allStocks = Object.entries(raw).map(([ticker, info]) => ({
+    const stocksMap = raw.stocks || raw;
+    allStocks = Object.entries(stocksMap).map(([ticker, info]) => ({
       ticker,
       name: info.name || '',
       market: info.market || '',
