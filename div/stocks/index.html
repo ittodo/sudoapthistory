@@ -158,8 +158,10 @@ async function loadData() {
       ticker,
       name: info.name || '',
       market: info.market || '',
-      cap: caps[ticker] || 0
+      cap: caps[ticker] || 0,
+      tags: info.tags || []
     }));
+    buildPopularTags();
     init();
   } catch(e) {
     document.getElementById('loading').innerHTML = '<div style="color:#ef4444;font-size:14px;">데이터 로딩 실패</div>';
@@ -331,22 +333,20 @@ function escHtml(s) {
 }
 
 // ── 인기 태그 칩 ────────────────────────────────────────────────────────
-const SB_URL     = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
-const SB_ANON    = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
-
-async function loadPopularTags() {
-  try {
-    const res = await fetch(
-      `${SB_URL}/rest/v1/tags?status=eq.official&order=upvotes.desc&limit=10&select=id,name,category,upvotes`,
-      { headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` } }
-    );
-    if (!res.ok) throw new Error(res.status);
-    const tags = await res.json();
-    renderTagChips(tags);
-  } catch(e) {
-    document.getElementById('tagChips').innerHTML =
-      '<span class="tag-chip-empty">태그를 불러올 수 없습니다</span>';
+function buildPopularTags() {
+  const counter = {};
+  const typeMap = {};
+  for (const s of allStocks) {
+    for (const t of (s.tags || [])) {
+      const name = typeof t === 'string' ? t : t.name;
+      const type = typeof t === 'string' ? 'theme' : (t.type || 'theme');
+      counter[name] = (counter[name] || 0) + 1;
+      typeMap[name] = type;
+    }
   }
+  const sorted = Object.entries(counter)
+    .sort((a, b) => b[1] - a[1]);
+  renderTagChips(sorted.map(([name, cnt]) => ({ name, cnt, type: typeMap[name] })));
 }
 
 function renderTagChips(tags) {
@@ -355,10 +355,10 @@ function renderTagChips(tags) {
     el.innerHTML = '<span class="tag-chip-empty">등록된 태그가 없습니다</span>';
     return;
   }
+  // industry/sector → cat-sector(파란계열), theme → cat-theme(보라계열)
   el.innerHTML = tags.map(t => {
-    const cat = ['sector','theme','custom'].includes(t.category) ? t.category : 'theme';
-    const cnt = t.upvotes > 0 ? ` <span class="tag-chip-cnt">${t.upvotes}</span>` : '';
-    return `<span class="tag-chip cat-${cat}" title="클릭 필터는 2차 구현 예정">${escHtml(t.name)}${cnt}</span>`;
+    const cat = t.type === 'theme' ? 'theme' : 'sector';
+    return `<span class="tag-chip cat-${cat}">${escHtml(t.name)} <span class="tag-chip-cnt">${t.cnt}</span></span>`;
   }).join('');
 }
 
@@ -366,7 +366,6 @@ function renderTagChips(tags) {
 document.querySelector(`thead th[data-col="${sortCol}"]`).classList.add('sort-desc');
 
 loadData();
-loadPopularTags();
 </script>
 </body>
 </html>
