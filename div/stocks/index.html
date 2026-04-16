@@ -24,7 +24,7 @@ tbody td{padding:6px;border-bottom:1px solid #1e293b;white-space:nowrap;font-siz
 tbody tr{transition:background .1s;cursor:pointer;}
 tbody tr:hover{background:rgba(59,130,246,.08);}
 .badge{display:inline-block;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;}
-.b-kospi{background:#7c3aed22;color:#a78bfa;}.b-kosdaq{background:#05966922;color:#6ee7b7;}
+.b-kospi{background:#7c3aed22;color:#a78bfa;}.b-kosdaq{background:#05966922;color:#6ee7b7;}.b-nasdaq{background:#f59e0b22;color:#fcd34d;}
 .tab-btn{padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;}
 .tab-btn:hover{border-color:var(--muted);color:#fff;}
 .tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -167,7 +167,7 @@ async function loadData() {
       ticker,
       name: info.name || '',
       market: info.market || '',
-      cap: caps[ticker] || 0,
+      cap: caps[ticker] || (info.cap ? info.cap * 100000000 : 0),
       tags: info.tags || []
     }));
     buildPopularTags();
@@ -283,7 +283,9 @@ function renderTable() {
   tbody.innerHTML = slice.map(s => {
     const mktBadge = s.market === 'KOSPI'
       ? `<span class="badge b-kospi">KOSPI</span>`
-      : `<span class="badge b-kosdaq">KOSDAQ</span>`;
+      : s.market === 'NASDAQ'
+        ? `<span class="badge b-nasdaq">NASDAQ</span>`
+        : `<span class="badge b-kosdaq">KOSDAQ</span>`;
     return `<tr onclick="goDetail('${s.ticker}')">
       <td style="font-family:monospace;color:var(--muted);">${s.ticker}</td>
       <td><span class="name-link">${escHtml(s.name)}</span></td>
