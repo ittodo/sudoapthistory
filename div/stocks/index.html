@@ -150,6 +150,7 @@ let sortDir = 'desc';
 let marketFilter = 'all';
 let searchQ = '';
 let selectedTags = new Set();
+let allTagsData = [];
 
 async function loadData() {
   try {
@@ -352,45 +353,51 @@ function buildPopularTags() {
     for (const t of (s.tags || [])) {
       const name = typeof t === 'string' ? t : t.name;
       const type = typeof t === 'string' ? 'theme' : (t.type || 'theme');
+      if (!name) continue;
       counter[name] = (counter[name] || 0) + 1;
       typeMap[name] = type;
     }
   }
-  const sorted = Object.entries(counter)
-    .sort((a, b) => b[1] - a[1]);
-  renderTagChips(sorted.map(([name, cnt]) => ({ name, cnt, type: typeMap[name] })));
+  allTagsData = Object.entries(counter)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, cnt]) => ({ name, cnt, type: typeMap[name] }));
+  renderTagChips();
 }
 
-function renderTagChips(tags) {
+function renderTagChips() {
   const el = document.getElementById('tagChips');
-  if (!tags || tags.length === 0) {
+  if (!allTagsData || allTagsData.length === 0) {
     el.innerHTML = '<span class="tag-chip-empty">등록된 태그가 없습니다</span>';
     return;
   }
-  el.innerHTML = tags.map(t => {
+  el.innerHTML = allTagsData.map(t => {
     const cat = t.type === 'theme' ? 'theme' : 'sector';
     const isSelected = selectedTags.has(t.name);
-    return `<span class="tag-chip cat-${cat}${isSelected ? ' selected' : ''}" data-tag="${escHtml(t.name)}" onclick="toggleTag(this,'${escHtml(t.name)}')">${escHtml(t.name)} <span class="tag-chip-cnt">${t.cnt}</span></span>`;
+    return `<span class="tag-chip cat-${cat}${isSelected ? ' selected' : ''}" data-tag="${escHtml(t.name)}">${escHtml(t.name)} <span class="tag-chip-cnt">${t.cnt}</span></span>`;
   }).join('');
+  // 이벤트 위임으로 클릭 처리 (onclick 인라인 속성 제거)
+  el.onclick = function(e) {
+    const chip = e.target.closest('.tag-chip');
+    if (!chip) return;
+    const tagName = chip.dataset.tag;
+    if (!tagName) return;
+    if (selectedTags.has(tagName)) {
+      selectedTags.delete(tagName);
+      chip.classList.remove('selected');
+    } else {
+      selectedTags.add(tagName);
+      chip.classList.add('selected');
+    }
+    updateClearBtn();
+    currentPage = 1;
+    applyFilter();
+  };
   updateClearBtn();
-}
-
-function toggleTag(el, tagName) {
-  if (selectedTags.has(tagName)) {
-    selectedTags.delete(tagName);
-    el.classList.remove('selected');
-  } else {
-    selectedTags.add(tagName);
-    el.classList.add('selected');
-  }
-  updateClearBtn();
-  currentPage = 1;
-  applyFilter();
 }
 
 function clearTags() {
   selectedTags.clear();
-  document.querySelectorAll('.tag-chip.selected').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('#tagChips .tag-chip.selected').forEach(el => el.classList.remove('selected'));
   updateClearBtn();
   currentPage = 1;
   applyFilter();
@@ -398,7 +405,7 @@ function clearTags() {
 
 function updateClearBtn() {
   const btn = document.getElementById('tagClearBtn');
-  btn.classList.toggle('visible', selectedTags.size > 0);
+  if (btn) btn.classList.toggle('visible', selectedTags.size > 0);
 }
 
 // ── init ──────────────────────────────────────────────────────────────────
