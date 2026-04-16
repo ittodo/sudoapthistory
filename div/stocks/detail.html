@@ -38,6 +38,9 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 
 /* Tag styles */
 .tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--border);background:rgba(59,130,246,.08);color:#93c5fd;margin:3px;}
+.tag-chip.cat-sector,.tag-chip.cat-industry{background:rgba(59,130,246,.07);color:#93c5fd;border-color:rgba(59,130,246,.25);}
+.tag-chip.cat-theme{background:rgba(167,139,250,.07);color:#c4b5fd;border-color:rgba(167,139,250,.25);}
+.tag-chip.cat-custom{background:rgba(16,185,129,.07);color:#6ee7b7;border-color:rgba(16,185,129,.25);}
 .vote-btn{background:none;border:none;cursor:pointer;padding:1px 3px;font-size:11px;color:var(--muted);line-height:1;border-radius:3px;transition:all .15s;}
 .vote-btn:hover{color:#fff;background:rgba(255,255,255,.1);}
 .vote-btn.voted-up{color:#10b981;}
@@ -389,7 +392,9 @@ async function loadTags() {
   }
 
   if (!sb) {
-    container.innerHTML = '<div class="tags-empty">태그 기능을 사용하려면 네트워크 연결이 필요합니다.</div>';
+    const staticTags = (stockInfo && stockInfo.tags) ? stockInfo.tags : [];
+    if (staticTags.length > 0) { renderStaticTags(staticTags); }
+    else { container.innerHTML = '<div class="tags-empty">태그 기능을 사용하려면 네트워크 연결이 필요합니다.</div>'; }
     return;
   }
 
@@ -417,8 +422,20 @@ async function loadTags() {
 
     renderTags(stockTags || []);
   } catch(e) {
-    container.innerHTML = `<div class="tags-empty">태그 로딩 실패: ${escHtml(e.message)}</div>`;
+    const staticTags = (stockInfo && stockInfo.tags) ? stockInfo.tags : [];
+    if (staticTags.length > 0) { renderStaticTags(staticTags); }
+    else { container.innerHTML = `<div class="tags-empty">태그 로딩 실패: ${escHtml(e.message)}</div>`; }
   }
+}
+
+function renderStaticTags(tags) {
+  const container = document.getElementById('tagsContainer');
+  container.innerHTML = '<div>' + tags.map(t => {
+    const name = escHtml(typeof t === 'string' ? t : (t.name || ''));
+    const type = typeof t === 'string' ? 'theme' : (t.type || 'theme');
+    const catClass = (type === 'industry' || type === 'sector') ? 'cat-sector' : 'cat-theme';
+    return `<span class="tag-chip ${catClass}">${name}</span>`;
+  }).join('') + '</div>';
 }
 
 function renderTags(stockTags) {
@@ -428,6 +445,8 @@ function renderTags(stockTags) {
   const visible = stockTags.filter(st => st.tags && isVisible(st.tags));
 
   if (!visible.length) {
+    const staticTags = (stockInfo && stockInfo.tags) ? stockInfo.tags : [];
+    if (staticTags.length > 0) { renderStaticTags(staticTags); return; }
     container.innerHTML = '<div class="tags-empty">아직 태그가 없습니다. 로그인 후 첫 번째 태그를 추가해 보세요.</div>';
     return;
   }
