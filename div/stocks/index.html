@@ -54,18 +54,24 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .name-link:hover{color:var(--accent);}
 /* ── 인기 태그 칩 ── */
 .tag-chip-section{margin-bottom:12px;}
-.tag-chip-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.tag-chip-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
 .tag-chip-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;}
 .tag-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid;white-space:nowrap;transition:background .15s,border-color .15s;cursor:default;user-select:none;}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid;white-space:nowrap;transition:background .15s,border-color .15s,color .15s;cursor:pointer;user-select:none;}
 .tag-chip.cat-sector{background:rgba(59,130,246,.07);color:#93c5fd;border-color:rgba(59,130,246,.25);}
 .tag-chip.cat-sector:hover{background:rgba(59,130,246,.16);border-color:#93c5fd;}
+.tag-chip.cat-sector.selected{background:rgba(59,130,246,.35);border-color:#93c5fd;color:#fff;}
 .tag-chip.cat-theme{background:rgba(167,139,250,.07);color:#c4b5fd;border-color:rgba(167,139,250,.25);}
 .tag-chip.cat-theme:hover{background:rgba(167,139,250,.16);border-color:#c4b5fd;}
+.tag-chip.cat-theme.selected{background:rgba(167,139,250,.35);border-color:#c4b5fd;color:#fff;}
 .tag-chip.cat-custom{background:rgba(16,185,129,.07);color:#6ee7b7;border-color:rgba(16,185,129,.25);}
 .tag-chip.cat-custom:hover{background:rgba(16,185,129,.16);border-color:#6ee7b7;}
+.tag-chip.cat-custom.selected{background:rgba(16,185,129,.35);border-color:#6ee7b7;color:#fff;}
 .tag-chip-cnt{font-size:10px;opacity:.55;}
 .tag-chip-empty{font-size:11px;color:#475569;}
+.tag-clear-btn{font-size:10px;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:99px;padding:2px 8px;cursor:pointer;transition:all .15s;display:none;}
+.tag-clear-btn:hover{border-color:var(--muted);color:#fff;}
+.tag-clear-btn.visible{display:inline-block;}
 @media(max-width:600px){
   .hide-mobile{display:none;}
   .stat-card .value{font-size:17px;}
@@ -96,7 +102,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <div class="tag-chip-section" id="tagChipSection">
   <div class="tag-chip-header">
     <span class="tag-chip-label">인기 태그</span>
-    <span style="font-size:10px;color:#475569;">· 클릭 필터는 준비 중</span>
+    <button class="tag-clear-btn" id="tagClearBtn" onclick="clearTags()">전체 해제</button>
   </div>
   <div class="tag-chips" id="tagChips">
     <span class="tag-chip-empty">태그 불러오는 중...</span>
@@ -143,6 +149,7 @@ let sortCol = 'cap';
 let sortDir = 'desc';
 let marketFilter = 'all';
 let searchQ = '';
+let selectedTags = new Set();
 
 async function loadData() {
   try {
@@ -207,6 +214,11 @@ function applyFilter() {
   filtered = allStocks.filter(s => {
     if (marketFilter !== 'all' && s.market !== marketFilter) return false;
     if (q && !s.name.toLowerCase().includes(q) && !s.ticker.includes(q)) return false;
+    if (selectedTags.size > 0) {
+      const stockTagNames = (s.tags || []).map(t => typeof t === 'string' ? t : t.name);
+      const hasAny = [...selectedTags].some(tag => stockTagNames.includes(tag));
+      if (!hasAny) return false;
+    }
     return true;
   });
   sortFiltered();
@@ -355,11 +367,38 @@ function renderTagChips(tags) {
     el.innerHTML = '<span class="tag-chip-empty">등록된 태그가 없습니다</span>';
     return;
   }
-  // industry/sector → cat-sector(파란계열), theme → cat-theme(보라계열)
   el.innerHTML = tags.map(t => {
     const cat = t.type === 'theme' ? 'theme' : 'sector';
-    return `<span class="tag-chip cat-${cat}">${escHtml(t.name)} <span class="tag-chip-cnt">${t.cnt}</span></span>`;
+    const isSelected = selectedTags.has(t.name);
+    return `<span class="tag-chip cat-${cat}${isSelected ? ' selected' : ''}" data-tag="${escHtml(t.name)}" onclick="toggleTag(this,'${escHtml(t.name)}')">${escHtml(t.name)} <span class="tag-chip-cnt">${t.cnt}</span></span>`;
   }).join('');
+  updateClearBtn();
+}
+
+function toggleTag(el, tagName) {
+  if (selectedTags.has(tagName)) {
+    selectedTags.delete(tagName);
+    el.classList.remove('selected');
+  } else {
+    selectedTags.add(tagName);
+    el.classList.add('selected');
+  }
+  updateClearBtn();
+  currentPage = 1;
+  applyFilter();
+}
+
+function clearTags() {
+  selectedTags.clear();
+  document.querySelectorAll('.tag-chip.selected').forEach(el => el.classList.remove('selected'));
+  updateClearBtn();
+  currentPage = 1;
+  applyFilter();
+}
+
+function updateClearBtn() {
+  const btn = document.getElementById('tagClearBtn');
+  btn.classList.toggle('visible', selectedTags.size > 0);
 }
 
 // ── init ──────────────────────────────────────────────────────────────────
