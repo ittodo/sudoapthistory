@@ -341,7 +341,10 @@ function goDetail(ticker) {
 function formatCap(cap) {
   const eok = Math.round(cap / 100000000);
   if (eok >= 10000) {
-    return `<span style="color:var(--text);">${(eok).toLocaleString()}억</span>`;
+    const jo = Math.floor(eok / 10000);
+    const rem = eok % 10000;
+    const remStr = rem > 0 ? ` ${rem.toLocaleString()}억` : '';
+    return `<span style="color:var(--text);">${jo.toLocaleString()}조${remStr}</span>`;
   }
   return `<span style="color:var(--muted);">${eok.toLocaleString()}억</span>`;
 }
