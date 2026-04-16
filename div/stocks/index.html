@@ -114,6 +114,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   <button class="pill active" data-market="all" onclick="setMarket('all')">전체</button>
   <button class="pill" data-market="KOSPI" onclick="setMarket('KOSPI')">KOSPI</button>
   <button class="pill" data-market="KOSDAQ" onclick="setMarket('KOSDAQ')">KOSDAQ</button>
+  <button class="pill" data-market="NASDAQ" onclick="setMarket('NASDAQ')">NASDAQ</button>
   <div style="flex:1;min-width:8px;"></div>
   <input type="text" class="fi" id="search" placeholder="종목명 / 코드 검색..." style="width:200px;" oninput="onSearch()">
   <span class="pg-info" id="resultCount"></span>
@@ -185,10 +186,12 @@ function init() {
 function renderStats() {
   const kospi = allStocks.filter(s => s.market === 'KOSPI').length;
   const kosdaq = allStocks.filter(s => s.market === 'KOSDAQ').length;
+  const nasdaq = allStocks.filter(s => s.market === 'NASDAQ').length;
   const cards = [
-    { label: '전체 종목', value: allStocks.length.toLocaleString(), sub: 'KOSPI + KOSDAQ', color: 'var(--accent)' },
+    { label: '전체 종목', value: allStocks.length.toLocaleString(), sub: 'KRX + NASDAQ', color: 'var(--accent)' },
     { label: 'KOSPI', value: kospi.toLocaleString(), sub: '코스피 상장', color: 'var(--purple)' },
     { label: 'KOSDAQ', value: kosdaq.toLocaleString(), sub: '코스닥 상장', color: 'var(--green)' },
+    { label: 'NASDAQ', value: nasdaq.toLocaleString(), sub: '나스닥 상장', color: 'var(--gold)' },
   ];
   document.getElementById('statsBar').innerHTML = cards.map(c =>
     `<div class="stat-card"><div class="label">${c.label}</div><div class="value" style="color:${c.color}">${c.value}</div><div class="sub">${c.sub}</div></div>`
