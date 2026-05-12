@@ -1504,6 +1504,7 @@ function sb(col){
 
 function rt(){
   const tb=document.getElementById('tb');
+  if(!tb) return; // \uB2E8\uC9C0\uBCC4 \uBDF0 \uD14C\uC774\uBE14\uC774 \uC5C6\uB294 \uD398\uC774\uC9C0(\uC608: /compare/)\uC5D0\uC11C\uB294 no-op
   const s=(cp-1)*ps, e=Math.min(s+ps,F.length);
   const tp=Math.max(1,Math.ceil(F.length/ps));
   document.getElementById('fc').textContent=F.length.toLocaleString()+'\uAC74';
