@@ -2181,6 +2181,18 @@ function loadHash(){
   if(!h) return false;
   const p={};
   h.split('&').forEach(s=>{const [k,v]=s.split('=');if(k)p[k]=decodeURIComponent(v||'');});
+  // 비교 페이지 전용 hash가 메인 페이지에 들어왔으면 /compare/로 자동 이전
+  // (옛 북마크 호환: /#al=... 또는 /#vm=area → /compare/#...)
+  if((p.al||p.vm==='area'||p.aa) && typeof window.APT_PAGE==='undefined'){
+    delete p.vm; // 더 이상 사용 안 함
+    const newHash=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+    location.replace('compare/'+(newHash?'#'+newHash:''));
+    return true;
+  }
+  // 비교 뷰 전용 hash 키는 메인에서 그 외에는 무시 (해당 DOM이 없으므로)
+  if(p.al||p.vm||p.aa||p.st){
+    delete p.al; delete p.vm; delete p.aa; delete p.st;
+  }
   hashLock=true;
   if(p.r){document.getElementById('fR').value=p.r;onR();}
   if(p.g){selGus=p.g.split('|');renderGuChips();onR();}
