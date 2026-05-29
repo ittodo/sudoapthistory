@@ -240,9 +240,9 @@ let tickerMeta={}, yearAgg={};
 async function init(){
   try{
     const [dR,bR,eIdx]=await Promise.all([
-      fetch('data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
-      fetch('data/buybacks.json').then(r=>r.ok?r.json():{events:[]}),
-      fetch('data/earnings_index.json').then(r=>r.ok?r.json():{})
+      fetch('../data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
+      fetch('../data/buybacks.json').then(r=>r.ok?r.json():{events:[]}),
+      fetch('../data/earnings_index.json').then(r=>r.ok?r.json():{})
     ]);
     divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};capsMap=dR.caps||{};priceDate=dR.priceDate||'';
     // Fix dividend types
@@ -256,7 +256,8 @@ async function init(){
     });
     buildMeta();
     // earnings_index에 있지만 tickerMeta에 없는 종목 추가 (배당/자사주 없이 실적만 있는 종목)
-    for(const [t,m] of Object.entries(eIdx)){
+    const eStocks=eIdx.stocks||eIdx;
+    for(const [t,m] of Object.entries(eStocks)){
       if(!tickerMeta[t])tickerMeta[t]={name:m.name,market:m.market,yearDiv:{},yearBuy:{},yearCancel:{},yearDPS:{},yearYield:{},events:[],shares:0};
     }
     dataUpdated=dR.updated||'';
@@ -851,7 +852,7 @@ async function loadEarnings(ticker){
   }
   el.innerHTML='<div class="detail-section" style="text-align:center;padding:40px;"><div class="sp" style="margin:0 auto;"></div></div>';
   try{
-    const r=await fetch(`data/earnings/${ticker}.json`);
+    const r=await fetch(`../data/earnings/${ticker}.json`);
     if(!r.ok)throw new Error('not found');
     const data=await r.json();
     earningsCache[ticker]=data;

@@ -156,8 +156,8 @@ let allTagsData = [];
 async function loadData() {
   try {
     const [idxRes, divRes] = await Promise.all([
-      fetch('../data/earnings_index.json'),
-      fetch('../data/dividends.json')
+      fetch('../../data/earnings_index.json'),
+      fetch('../../data/dividends.json')
     ]);
     const raw = await idxRes.json();
     const divData = await divRes.json();

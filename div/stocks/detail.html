@@ -246,8 +246,8 @@ async function init() {
 
   try {
     const [idxRes, divRes] = await Promise.all([
-      fetch('../data/earnings_index.json'),
-      fetch('../data/dividends.json')
+      fetch('../../data/earnings_index.json'),
+      fetch('../../data/dividends.json')
     ]);
     const idxData = await idxRes.json();
     const divData = await divRes.json();
@@ -306,7 +306,7 @@ async function init() {
 
     // 실적 데이터 (없으면 섹션 숨김)
     try {
-      const earnRes = await fetch(`../data/earnings/${currentCode}.json`);
+      const earnRes = await fetch(`../../data/earnings/${currentCode}.json`);
       if (earnRes.ok) {
         const earnData = await earnRes.json();
         renderEarnings(earnData);
