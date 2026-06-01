@@ -252,7 +252,7 @@ let tickerMeta={}, yearAgg={};
 
 async function fetchTradeIndex(){
   try{
-    const r=await fetch('../data/trade/index.json');
+    const r=await fetch('../data/trade/index.json?v=20260601-prlst');
     if(!r.ok)throw new Error('HTTP '+r.status);
     tradeData=await r.json();
     tradeError=null;
