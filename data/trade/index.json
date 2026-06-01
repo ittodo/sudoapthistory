@@ -399,5 +399,158 @@
   "notes": [
     "속보 품목은 최신 수출입총괄 발표월 기준이며 보도자료 품목 분류를 사용합니다.",
     "HS 그룹은 관세청 HS 확정 통계 기준월의 원천 HS 코드 묶음이라 최신 총괄월과 다를 수 있습니다."
+  ],
+  "release_snapshots": [
+    {
+      "release_date": "2026-05-11",
+      "release_label": "5/11",
+      "period_label": "5월 1~10일",
+      "period_start": "2026-05-01",
+      "period_end": "2026-05-10",
+      "release_type": "flash_10d",
+      "export_usd": 18434000000,
+      "import_usd": 16737000000,
+      "balance_usd": 1698000000,
+      "export_yoy_pct": 43.7,
+      "import_yoy_pct": 14.9,
+      "workdays": 5.0,
+      "daily_export_usd": 3690000000,
+      "daily_export_yoy_pct": 43.7,
+      "source": "KCS_PRESS_RELEASE",
+      "source_url": "https://m.korea.kr/news/pressReleaseView.do?newsId=156760738&pWise=mSub&pWiseSub=C7",
+      "items": [
+        {
+          "item_code": "SEMICONDUCTOR",
+          "item_name": "반도체",
+          "export_usd": 8539000000,
+          "export_yoy_pct": 149.8,
+          "export_share_pct": 46.3
+        }
+      ]
+    },
+    {
+      "release_date": "2026-05-21",
+      "release_label": "5/21",
+      "period_label": "5월 1~20일",
+      "period_start": "2026-05-01",
+      "period_end": "2026-05-20",
+      "release_type": "flash_20d",
+      "export_usd": 52652000000,
+      "import_usd": 41618000000,
+      "balance_usd": 11034000000,
+      "export_yoy_pct": 64.8,
+      "import_yoy_pct": 29.3,
+      "workdays": 13.5,
+      "daily_export_usd": 3900000000,
+      "daily_export_yoy_pct": 52.6,
+      "source": "KCS_PRESS_RELEASE",
+      "source_url": "https://m.korea.kr/briefing/pressReleaseView.do?newsId=156763825&pWise=sub&pWiseSub=J2",
+      "items": [
+        {
+          "item_code": "SEMICONDUCTOR",
+          "item_name": "반도체",
+          "export_usd": 22000000000,
+          "export_yoy_pct": 202.1
+        }
+      ]
+    },
+    {
+      "release_date": "2026-06-01",
+      "release_label": "6/1",
+      "period_label": "5월 전체",
+      "period_start": "2026-05-01",
+      "period_end": "2026-05-31",
+      "release_type": "monthly_provisional",
+      "export_usd": 87746911555,
+      "import_usd": 60734596026,
+      "balance_usd": 27012315529,
+      "export_yoy_pct": 53.2,
+      "import_yoy_pct": 20.8,
+      "workdays": null,
+      "daily_export_usd": 4280000000,
+      "daily_export_yoy_pct": 60.7,
+      "source": "MOTIE_PRESS_RELEASE",
+      "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view",
+      "items": [
+        {
+          "date": "2026-05-01",
+          "month_label": "2026년 5월",
+          "release_type": "provisional",
+          "item_code": "SEMICONDUCTOR",
+          "item_name": "반도체",
+          "rank": 1,
+          "export_usd": 37160000000,
+          "export_yoy_pct": 169.4,
+          "has_export_yoy": true,
+          "source": "MOTIE_PRESS_RELEASE",
+          "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view"
+        },
+        {
+          "date": "2026-05-01",
+          "month_label": "2026년 5월",
+          "release_type": "provisional",
+          "item_code": "AUTO",
+          "item_name": "자동차",
+          "rank": 2,
+          "export_usd": 5830000000,
+          "export_yoy_pct": -5.9,
+          "has_export_yoy": true,
+          "source": "MOTIE_PRESS_RELEASE",
+          "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view"
+        },
+        {
+          "date": "2026-05-01",
+          "month_label": "2026년 5월",
+          "release_type": "provisional",
+          "item_code": "COMPUTER",
+          "item_name": "컴퓨터",
+          "rank": 3,
+          "export_usd": 4180000000,
+          "export_yoy_pct": 290.7,
+          "has_export_yoy": true,
+          "source": "MOTIE_PRESS_RELEASE",
+          "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view"
+        },
+        {
+          "date": "2026-05-01",
+          "month_label": "2026년 5월",
+          "release_type": "provisional",
+          "item_code": "SHIP",
+          "item_name": "선박",
+          "rank": 4,
+          "export_usd": 2610000000,
+          "export_yoy_pct": 16.7,
+          "has_export_yoy": true,
+          "source": "MOTIE_PRESS_RELEASE",
+          "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view"
+        },
+        {
+          "date": "2026-05-01",
+          "month_label": "2026년 5월",
+          "release_type": "provisional",
+          "item_code": "DISPLAY",
+          "item_name": "디스플레이",
+          "rank": 5,
+          "export_usd": 1470000000,
+          "export_yoy_pct": 9.4,
+          "has_export_yoy": true,
+          "source": "MOTIE_PRESS_RELEASE",
+          "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view"
+        },
+        {
+          "date": "2026-05-01",
+          "month_label": "2026년 5월",
+          "release_type": "provisional",
+          "item_code": "WIRELESS",
+          "item_name": "무선통신기기",
+          "rank": 6,
+          "export_usd": 1460000000,
+          "export_yoy_pct": 12.6,
+          "has_export_yoy": true,
+          "source": "MOTIE_PRESS_RELEASE",
+          "source_url": "https://www.motir.go.kr/kor/article/ATCL3f49a5a8c/171880/view"
+        }
+      ]
+    }
   ]
 }

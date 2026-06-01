@@ -709,8 +709,18 @@ function renderTrade(){
   `;
 
   const topRows=tradeTopExportRows(tradeData,motie,monthObj);
+  const snapshotRows=tradeReleaseSnapshots(tradeData);
   const hsRows=tradeHsGroupRows(tradeData,hs,monthObj);
   content.innerHTML=`
+    <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
+      <div class="label" style="margin-bottom:8px;">속보 히스토리(1·11·21·월말)</div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>발표일</th><th>기간</th><th style="text-align:right">수출</th><th style="text-align:right">YoY</th><th style="text-align:right">수입</th><th style="text-align:right">YoY</th><th style="text-align:right">무역수지</th><th style="text-align:right">반도체</th></tr></thead>
+          <tbody>${renderTradeSnapshotRows(snapshotRows)}</tbody>
+        </table>
+      </div>
+    </div>
     <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
       <div class="label" style="margin-bottom:8px;">주요 수출품(속보/잠정)</div>
       <div class="table-scroll">
@@ -764,10 +774,39 @@ function tradeTopExportRows(root,motie,monthObj){
 function tradeHsGroupRows(root,hs,monthObj){
   return tradeArr(root.hs_groups,root.hsGroups,root.groups,hs.hs_groups,hs.hsGroups,hs.groups,hs.items,monthObj?.hs_groups,monthObj?.hsGroups).slice(0,20);
 }
+function tradeReleaseSnapshots(root){
+  return tradeArr(root.release_snapshots,root.flash_snapshots,root.snapshots,root.period_snapshots).slice(0,12);
+}
 function renderTradeNotes(notes){
   const rows=tradeArr(notes).filter(Boolean).slice(0,2);
   if(!rows.length)return'';
   return'<div style="margin-top:6px;">'+rows.map(n=>esc(n)).join('<br>')+'</div>';
+}
+function renderTradeSnapshotRows(rows){
+  if(!rows.length)return'<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--muted);">속보 히스토리 준비 중</td></tr>';
+  return rows.map(r=>{
+    const semiconductor=tradeSnapshotSemiconductor(r);
+    return`<tr>
+      <td>${esc(r.release_label||r.release_date||'-')}</td>
+      <td>${esc(r.period_label||r.label||'-')}</td>
+      <td style="text-align:right;font-weight:600;">${fmtTradeAmount(r.export_usd,'export_usd')}</td>
+      <td style="text-align:right;${tradePctStyle(r.export_yoy_pct)}">${fmtTradePct(r.export_yoy_pct)}</td>
+      <td style="text-align:right;">${fmtTradeAmount(r.import_usd,'import_usd')}</td>
+      <td style="text-align:right;${tradePctStyle(r.import_yoy_pct)}">${fmtTradePct(r.import_yoy_pct)}</td>
+      <td style="text-align:right;${tradeNumber(r.balance_usd)<0?'color:var(--dn);':'color:var(--green);'}">${fmtTradeAmount(r.balance_usd,'balance_usd')}</td>
+      <td style="text-align:right;">${semiconductor}</td>
+    </tr>`;
+  }).join('');
+}
+function tradeSnapshotSemiconductor(row){
+  const items=tradeArr(row.items,row.release_items,row.top_exports);
+  const semi=items.find(item=>String(tradeFirstValue(TR_ITEM_KEYS,item)||'').includes('반도체'));
+  if(!semi)return'-';
+  const ex=tradeFirstEntry(TR_EXPORT_KEYS,semi);
+  const yoy=tradeFirstEntry(TR_YOY_KEYS,semi);
+  const amount=fmtTradeAmount(ex?.value,ex?.key);
+  const pct=fmtTradePct(yoy?.value);
+  return amount==='-'?pct:`${amount} / ${pct}`;
 }
 function renderTradeTopRows(rows){
   if(!rows.length)return'<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted);">수출입 데이터 준비 중</td></tr>';
