@@ -36,6 +36,10 @@ tbody tr:hover{background:rgba(59,130,246,.08);}
 .tc{max-height:calc(100vh - 300px);overflow-y:auto;}
 .tc::-webkit-scrollbar{width:5px;}
 .tc::-webkit-scrollbar-thumb{background:#475569;border-radius:3px;}
+.table-scroll{overflow-x:auto;}
+.table-scroll table{min-width:620px;}
+.empty-state{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:36px 12px;text-align:center;color:var(--muted);}
+.trade-note{font-size:11px;color:var(--muted);line-height:1.5;}
 #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:999;gap:12px;}
 .sp{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -83,6 +87,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 .ratio-card .rl{font-size:10px;color:var(--muted);}
 .ratio-card .rv{font-size:14px;font-weight:700;margin-top:2px;}
 @media(max-width:600px){#detailPanel{width:100vw!important;}}
+@media(max-width:600px){.table-scroll{margin:0 -4px;padding-bottom:4px;}.table-scroll table{min-width:700px;}}
 </style>
 </head>
 <body>
@@ -111,6 +116,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   <button class="tab-btn active" data-tab="calendar" onclick="switchTab('calendar')">캘린더</button>
   <button class="tab-btn" data-tab="annual" onclick="switchTab('annual')">연간 분석</button>
   <button class="tab-btn" data-tab="company" onclick="switchTab('company')">기업별</button>
+  <button class="tab-btn" data-tab="trade" onclick="switchTab('trade')">수출입 통계</button>
   <div style="flex:1;"></div>
   <input type="text" class="fi" id="search" placeholder="종목명 / 코드 검색..." style="width:200px;" oninput="render()">
 </div>
@@ -203,6 +209,12 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   </div>
 </div>
 
+<!-- ===== 수출입 통계 ===== -->
+<div id="panelTrade" style="display:none;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;" id="tradeStats"></div>
+  <div id="tradeContent"></div>
+</div>
+
 <!-- Footer -->
 <div id="countInfo" style="text-align:center;padding:8px;font-size:11px;color:var(--muted);"></div>
 <div class="footer-disclaimer">DART 공시 기반 · 전체 KOSPI/KOSDAQ · 투자 판단의 책임은 본인에게 있습니다 · <a href="../">아파트 스크리너</a></div>
@@ -228,6 +240,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 const NOW=new Date(), TODAY=NOW.toISOString().slice(0,10), THIS_YEAR=NOW.getFullYear();
 const YEARS=[2022,2023,2024,2025,2026];
 let divData=[],bbData=[],priceMap={},capsMap={},currentTab='calendar';
+let tradeData=null,tradeError=null;
 let calYear=THIS_YEAR, calMonth=NOW.getMonth(), calSelectedDate=null, calSort={key:'totalDividend',asc:false};
 let cmpSort={key:'totalDiv',asc:false};let cmpPage=1;const CMP_PS=100;
 let F={cmarket:'all',amarket:'all',aview:'monthly',cmpmarket:'all',aYear:THIS_YEAR};
@@ -237,12 +250,25 @@ const earningsCache={};let currentDetailTicker='';
 // Precomputed
 let tickerMeta={}, yearAgg={};
 
+async function fetchTradeIndex(){
+  try{
+    const r=await fetch('../data/trade/index.json');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    tradeData=await r.json();
+    tradeError=null;
+  }catch(e){
+    tradeData=null;
+    tradeError=e;
+  }
+}
+
 async function init(){
   try{
     const [dR,bR,eIdx]=await Promise.all([
       fetch('../data/dividends.json').then(r=>r.ok?r.json():{events:[]}),
       fetch('../data/buybacks.json').then(r=>r.ok?r.json():{events:[]}),
-      fetch('../data/earnings_index.json').then(r=>r.ok?r.json():{})
+      fetch('../data/earnings_index.json').then(r=>r.ok?r.json():{}),
+      fetchTradeIndex()
     ]);
     divData=dR.events||[];bbData=bR.events||[];priceMap=dR.prices||{};capsMap=dR.caps||{};priceDate=dR.priceDate||'';
     // Fix dividend types
@@ -264,7 +290,7 @@ async function init(){
     const priceCount=Object.keys(priceMap).length;
     document.getElementById('updatedAt').textContent=`DART 공시 기준 · ${divData.length.toLocaleString()}건 배당 · ${bbData.length.toLocaleString()}건 자사주 · 현재가 ${priceCount.toLocaleString()}종목 · ${dataUpdated}`;
     buildYearSelect();buildStats();
-    const initHash=location.hash.slice(1);const validTabs={calendar:1,annual:1,company:1};
+    const initHash=location.hash.slice(1);const validTabs={calendar:1,annual:1,company:1,trade:1};
     switchTab(validTabs[initHash]?initHash:'calendar',true);
   }catch(e){console.error(e);}
   document.getElementById('loading').style.display='none';
@@ -333,6 +359,7 @@ function switchTab(t,replace){currentTab=t;document.querySelectorAll('[data-tab]
   document.getElementById('panelCalendar').style.display=t==='calendar'?'':'none';
   document.getElementById('panelAnnual').style.display=t==='annual'?'':'none';
   document.getElementById('panelCompany').style.display=t==='company'?'':'none';
+  document.getElementById('panelTrade').style.display=t==='trade'?'':'none';
   const h='#'+t;
   if(replace)history.replaceState({tab:t},'',h);
   else if(location.hash!==h)history.pushState({tab:t},'',h);
@@ -344,6 +371,7 @@ function render(resetPage){
   if(resetPage!==false)cmpPage=1;
   if(currentTab==='calendar')renderCal();
   else if(currentTab==='annual')renderAnnual();
+  else if(currentTab==='trade')renderTrade();
   else renderCompany();
 }
 
@@ -648,6 +676,169 @@ function renderYearlyChart(ya){
   }
   html+=`</div></div></div>`;
   document.getElementById('annualCharts').innerHTML=html;
+}
+
+// ===== TRADE =====
+function renderTrade(){
+  const stats=document.getElementById('tradeStats');
+  const content=document.getElementById('tradeContent');
+  document.getElementById('countInfo').textContent='';
+
+  if(!tradeData){
+    stats.innerHTML='';
+    content.innerHTML='<div class="empty-state">수출입 데이터 준비 중</div>';
+    return;
+  }
+
+  const monthObj=tradeLatestObjFromArray(tradeData.monthly_totals||tradeData.months||tradeData.monthly||tradeData.overviews);
+  const summary=tradeObj(tradeData.latest_total,tradeData.summary,tradeData.overview,tradeData.latest,tradeData.total,tradeData.totals,monthObj,tradeData);
+  const motie=tradeObj(tradeData.motie,tradeData.quick,tradeData.preliminary,tradeData.flash,summary);
+  const hs=tradeObj(tradeData.hs,tradeData.hs_detail,tradeData.customs,tradeData.confirmed,summary);
+  const overviewMonth=tradeFirstValue(TR_MONTH_KEYS,summary,tradeData,motie,monthObj);
+  const hsMonth=tradeData.hs_basis_month_label||tradeFirstValue(TR_HS_MONTH_KEYS,hs,tradeData);
+  const exportEntry=tradeFirstEntry(TR_EXPORT_KEYS,summary,tradeData,motie,monthObj);
+  const importEntry=tradeFirstEntry(TR_IMPORT_KEYS,summary,tradeData,motie,monthObj);
+  const balanceEntry=tradeFirstEntry(TR_BALANCE_KEYS,summary,tradeData,motie,monthObj);
+
+  stats.innerHTML=`
+    <div class="stat-card"><div class="label">최신 총괄월</div><div class="value">${esc(overviewMonth||'-')}</div><div class="sub">속보/잠정 기준</div></div>
+    <div class="stat-card"><div class="label">수출</div><div class="value" style="color:var(--accent)">${fmtTradeAmount(exportEntry?.value,exportEntry?.key)}</div></div>
+    <div class="stat-card"><div class="label">수입</div><div class="value" style="color:var(--gold)">${fmtTradeAmount(importEntry?.value,importEntry?.key)}</div></div>
+    <div class="stat-card"><div class="label">무역수지</div><div class="value" style="color:${tradeNumber(balanceEntry?.value)<0?'var(--dn)':'var(--green)'}">${fmtTradeAmount(balanceEntry?.value,balanceEntry?.key)}</div></div>
+    <div class="stat-card"><div class="label">HS 상세 기준월</div><div class="value">${esc(hsMonth||'-')}</div><div class="sub">관세청 확정/상세</div></div>
+  `;
+
+  const topRows=tradeTopExportRows(tradeData,motie,monthObj);
+  const hsRows=tradeHsGroupRows(tradeData,hs,monthObj);
+  content.innerHTML=`
+    <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
+      <div class="label" style="margin-bottom:8px;">주요 수출품(속보/잠정)</div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>품목</th><th style="text-align:right">수출</th><th style="text-align:right">YoY</th></tr></thead>
+          <tbody>${renderTradeTopRows(topRows)}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
+      <div class="label" style="margin-bottom:8px;">HS 그룹(확정 기준)</div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>그룹</th><th style="text-align:right">수출</th><th style="text-align:right">수입</th><th style="text-align:right">무역수지</th><th style="text-align:right">MoM</th><th style="text-align:right">YoY</th></tr></thead>
+          <tbody>${renderTradeHsRows(hsRows)}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="trade-note">속보 품목은 MOTIE 발표 기준, HS 그룹은 관세청 HS 확정/상세 기준이라 월과 분류가 다를 수 있음.${renderTradeNotes(tradeData.notes)}</div>
+  `;
+}
+
+const TR_MONTH_KEYS=['latest_total_month','latest_overall_month','latest_overview_month','overview_month','total_month','summary_month','latest_month','latestMonth','base_month','month_label','month','period','year_month','yyyymm','date','기준월'];
+const TR_HS_MONTH_KEYS=['hs_detail_month','hs_base_month','hs_month','detail_month','confirmed_month','customs_month','base_month','month','period','year_month','yyyymm','기준월'];
+const TR_ITEM_KEYS=['item','item_name','name','product','product_name','label','title','품목'];
+const TR_GROUP_KEYS=['group','group_name','hs_group','category','category_name','name','label','그룹'];
+const TR_EXPORT_KEYS=['exports','export','export_amount','exportAmount','export_value','exportValue','exports_value','export_usd','exports_usd','export_usd_million','exports_usd_million','export_million_usd','exports_million_usd','export_100m_usd','exports_100m_usd','value','amount','수출'];
+const TR_IMPORT_KEYS=['imports','import','import_amount','importAmount','import_value','importValue','imports_value','import_usd','imports_usd','import_usd_million','imports_usd_million','import_million_usd','imports_million_usd','import_100m_usd','imports_100m_usd','수입'];
+const TR_BALANCE_KEYS=['balance','trade_balance','tradeBalance','surplus','net_export','netExport','net_exports','balance_usd','balance_usd_million','balance_million_usd','balance_100m_usd','무역수지'];
+const TR_MOM_KEYS=['mom','mom_pct','mom_percent','month_over_month','growth_mom','export_mom','exports_mom','MoM','전월비'];
+const TR_YOY_KEYS=['yoy','yoy_pct','yoy_percent','year_over_year','growth_yoy','export_yoy','exports_yoy','YoY','전년비'];
+
+function tradeObj(...items){for(const item of items){if(item&&typeof item==='object'&&!Array.isArray(item))return item;}return{};}
+function tradeArr(...items){for(const item of items){if(Array.isArray(item))return item;}return[];}
+function tradeLatestObjFromArray(items){
+  if(!Array.isArray(items)||!items.length)return null;
+  return items.slice().sort((a,b)=>String(tradeFirstValue(TR_MONTH_KEYS,b)||'').localeCompare(String(tradeFirstValue(TR_MONTH_KEYS,a)||'')))[0];
+}
+function tradeEntry(obj,keys){
+  if(!obj||typeof obj!=='object')return null;
+  for(const k of keys){
+    if(Object.prototype.hasOwnProperty.call(obj,k)&&obj[k]!==null&&obj[k]!==undefined&&obj[k]!=='')return{key:k,value:obj[k]};
+  }
+  return null;
+}
+function tradeFirstEntry(keys,...objs){for(const obj of objs){const e=tradeEntry(obj,keys);if(e)return e;}return null;}
+function tradeFirstValue(keys,...objs){const e=tradeFirstEntry(keys,...objs);return e?e.value:null;}
+function tradeTopExportRows(root,motie,monthObj){
+  return tradeArr(root.release_items,root.top_exports,root.topExports,root.export_items,root.exportItems,root.items,motie.top_exports,motie.topExports,motie.export_items,motie.exportItems,motie.items,monthObj?.top_exports,monthObj?.topExports,monthObj?.items).slice(0,10);
+}
+function tradeHsGroupRows(root,hs,monthObj){
+  return tradeArr(root.hs_groups,root.hsGroups,root.groups,hs.hs_groups,hs.hsGroups,hs.groups,hs.items,monthObj?.hs_groups,monthObj?.hsGroups).slice(0,20);
+}
+function renderTradeNotes(notes){
+  const rows=tradeArr(notes).filter(Boolean).slice(0,2);
+  if(!rows.length)return'';
+  return'<div style="margin-top:6px;">'+rows.map(n=>esc(n)).join('<br>')+'</div>';
+}
+function renderTradeTopRows(rows){
+  if(!rows.length)return'<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted);">수출입 데이터 준비 중</td></tr>';
+  return rows.map(r=>{
+    const item=tradeFirstValue(TR_ITEM_KEYS,r)||'-';
+    const ex=tradeFirstEntry(TR_EXPORT_KEYS,r);
+    const yoy=tradeFirstEntry(TR_YOY_KEYS,r);
+    return`<tr><td>${esc(item)}</td><td style="text-align:right;font-weight:600;">${fmtTradeAmount(ex?.value,ex?.key)}</td><td style="text-align:right;${tradePctStyle(yoy?.value)}">${fmtTradePct(yoy?.value)}</td></tr>`;
+  }).join('');
+}
+function renderTradeHsRows(rows){
+  if(!rows.length)return'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">수출입 데이터 준비 중</td></tr>';
+  return rows.map(r=>{
+    const group=tradeFirstValue(TR_GROUP_KEYS,r)||'-';
+    const ex=tradeFirstEntry(TR_EXPORT_KEYS,r);
+    const im=tradeFirstEntry(TR_IMPORT_KEYS,r);
+    const bal=tradeFirstEntry(TR_BALANCE_KEYS,r)||tradeBalanceEntry(ex,im);
+    const mom=tradeFirstEntry(TR_MOM_KEYS,r);
+    const yoy=tradeFirstEntry(TR_YOY_KEYS,r);
+    return`<tr>
+      <td>${esc(group)}</td>
+      <td style="text-align:right;font-weight:600;">${fmtTradeAmount(ex?.value,ex?.key)}</td>
+      <td style="text-align:right;">${fmtTradeAmount(im?.value,im?.key)}</td>
+      <td style="text-align:right;${tradeNumber(bal?.value)<0?'color:var(--dn);':'color:var(--green);'}">${fmtTradeAmount(bal?.value,bal?.key)}</td>
+      <td style="text-align:right;${tradePctStyle(mom?.value)}">${fmtTradePct(mom?.value)}</td>
+      <td style="text-align:right;${tradePctStyle(yoy?.value)}">${fmtTradePct(yoy?.value)}</td>
+    </tr>`;
+  }).join('');
+}
+function tradeBalanceEntry(ex,im){
+  const ev=tradeNumber(ex?.value),iv=tradeNumber(im?.value);
+  if(ev===null||iv===null)return null;
+  return{key:ex?.key||'balance',value:ev-iv};
+}
+function tradeNumber(v){
+  if(v===null||v===undefined||v==='')return null;
+  if(typeof v==='number'&&Number.isFinite(v))return v;
+  const n=Number(String(v).replace(/[,%$,\s]/g,''));
+  return Number.isFinite(n)?n:null;
+}
+function fmtTradeAmount(v,key){
+  if(v===null||v===undefined||v==='')return'-';
+  const n=tradeNumber(v);
+  if(n===null)return esc(v);
+  const hint=String(key||'').toLowerCase();
+  const sign=n<0?'-':'';
+  const abs=Math.abs(n);
+  if(hint.includes('100m_usd')||hint.includes('usd_100m'))return sign+abs.toLocaleString(undefined,{maximumFractionDigits:1})+'억달러';
+  if(hint.includes('million_usd')||hint.includes('usd_million'))return sign+(abs/100).toLocaleString(undefined,{maximumFractionDigits:1})+'억달러';
+  if(hint.includes('billion_usd')||hint.includes('usd_billion'))return sign+(abs*10).toLocaleString(undefined,{maximumFractionDigits:1})+'억달러';
+  if(isRawUsdKey(hint))return sign+fmtTradeUsdCompact(abs);
+  return sign+abs.toLocaleString(undefined,{maximumFractionDigits:1});
+}
+function isRawUsdKey(hint){
+  return /(^|_)(exports?|imports?|balance|trade_balance)_usd$/.test(hint)||(/_usd$/.test(hint)&&!/(100m|million|billion)/.test(hint));
+}
+function fmtTradeUsdCompact(abs){
+  if(abs>=1e9)return(abs/1e9).toLocaleString(undefined,{maximumFractionDigits:1})+'B$';
+  if(abs>=1e6)return(abs/1e6).toLocaleString(undefined,{maximumFractionDigits:1})+'M$';
+  return abs.toLocaleString(undefined,{maximumFractionDigits:0})+'$';
+}
+function fmtTradePct(v){
+  if(v===null||v===undefined||v==='')return'-';
+  const n=tradeNumber(v);
+  if(n===null)return esc(v);
+  return(n>0?'+':'')+n.toFixed(Math.abs(n)>=10?1:2)+'%';
+}
+function tradePctStyle(v){
+  const n=tradeNumber(v);
+  if(n===null)return'';
+  return n>0?'color:var(--up);':n<0?'color:var(--dn);':'';
 }
 
 // ===== COMPANY =====
@@ -1015,7 +1206,7 @@ function drawEarningsChart(quarters){
   ctx.fillStyle='rgba(16,185,129,0.7)';ctx.fillRect(PAD.left+38,4,10,7);
   ctx.fillStyle='#94a3b8';ctx.fillText('영업이익',PAD.left+51,11);
 }
-window.addEventListener('popstate',e=>{const t=e.state?.tab||'calendar';switchTab(t,true);});
+window.addEventListener('popstate',e=>{const t=e.state?.tab||location.hash.slice(1)||'calendar';const validTabs={calendar:1,annual:1,company:1,trade:1};switchTab(validTabs[t]?t:'calendar',true);});
 
 // ===== HELPERS =====
 function mktB(m){return m==='KOSPI'?'<span class="badge b-kospi">KOSPI</span>':m==='KOSDAQ'?'<span class="badge b-kosdaq">KOSDAQ</span>':m||'';}
