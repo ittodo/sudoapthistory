@@ -106,6 +106,17 @@ a:hover { text-decoration: underline; }
   </div>
 </div>
 
+<!-- Price Tier Mode -->
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+  <span style="font-size:11px;color:var(--muted);">가격대</span>
+  <div style="display:flex;gap:4px;">
+    <button class="tab-btn active" data-tier-mode="off" onclick="setTierMode('off')">기본</button>
+    <button class="tab-btn" data-tier-mode="simple" onclick="setTierMode('simple')">3단계</button>
+    <button class="tab-btn" data-tier-mode="detail" onclick="setTierMode('detail')">5단계</button>
+  </div>
+  <span style="font-size:11px;color:var(--muted);">거래가격 기준 · 거래량은 누적 막대</span>
+</div>
+
 <!-- Month Navigator + Stats -->
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
   <div style="display:flex;align-items:center;gap:6px;">
@@ -118,13 +129,13 @@ a:hover { text-decoration: underline; }
 
 <!-- Price Chart -->
 <div class="chart-wrap price">
-  <h3>가격 추이 (거래건수 가중평균, 억원)</h3>
+  <h3 id="priceChartTitle">가격 추이 (거래건수 가중평균, 억원)</h3>
   <canvas id="priceChart"></canvas>
 </div>
 
 <!-- Volume Chart -->
 <div class="chart-wrap volume">
-  <h3>월간 거래건수</h3>
+  <h3 id="volumeChartTitle">월간 거래건수</h3>
   <canvas id="volumeChart"></canvas>
 </div>
 
@@ -209,10 +220,12 @@ a:hover { text-decoration: underline; }
 let MKT = null;
 let region = 'all';
 let selectedGus = [];
+let tierMode = 'off';
 let tSortKey = 'lastC', tSortAsc = false;
 let refSlot = -1; // 기준월 슬롯 (자동 설정)
 
 const GU_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6'];
+const TIER_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#a855f7'];
 
 async function init() {
   try {
@@ -373,6 +386,13 @@ function removeGu(g) {
   buildGuMenu();
   renderChips();
   updateAll();
+  saveHash();
+}
+
+function setTierMode(mode) {
+  tierMode = mode;
+  document.querySelectorAll('[data-tier-mode]').forEach(b => b.classList.toggle('active', b.dataset.tierMode === mode));
+  updateCharts();
   saveHash();
 }
 
@@ -539,6 +559,103 @@ function getMainData() {
   return { p, c: Array.from(sum_c), v: Array.from(sum_v) };
 }
 
+function getTierDefs() {
+  return MKT.meta.priceTiers || [
+    { id: 'le6', label: '6억 이하' },
+    { id: 'gt6_12', label: '6억~12억' },
+    { id: 'gt12_15', label: '12억~15억' },
+    { id: 'gt15_24', label: '15억~24억' },
+    { id: 'gt24', label: '24억 초과' },
+  ];
+}
+
+function getTierGroups() {
+  if (tierMode === 'simple') {
+    return [
+      { id: 'le6', label: '6억 이하', ids: ['le6'] },
+      { id: 'gt6_12', label: '6억~12억', ids: ['gt6_12'] },
+      { id: 'gt12', label: '12억 초과', ids: ['gt12_15','gt15_24','gt24'] },
+    ];
+  }
+  return getTierDefs().map(t => ({ id: t.id, label: t.label, ids: [t.id] }));
+}
+
+function getTierSource() {
+  if (selectedGus.length === 0) return MKT[region] || MKT.all;
+
+  const n = MKT.meta.months;
+  const tierIds = getTierDefs().map(t => t.id);
+  const work = {};
+  for (const id of tierIds) {
+    work[id] = {
+      sumP: new Float64Array(n),
+      c: new Int32Array(n),
+      v: new Float64Array(n),
+    };
+  }
+
+  for (const g of selectedGus) {
+    const gd = MKT.gu[g];
+    if (!gd || !gd.tiers) continue;
+    for (const id of tierIds) {
+      const td = gd.tiers[id];
+      if (!td) continue;
+      for (let i = 0; i < n; i++) {
+        const cnt = td.c[i] || 0;
+        if (cnt > 0) {
+          work[id].sumP[i] += (td.p[i] || 0) * cnt;
+          work[id].c[i] += cnt;
+        }
+        if (td.v && td.v[i] > 0) work[id].v[i] += td.v[i];
+      }
+    }
+  }
+
+  const tiers = {};
+  for (const id of tierIds) {
+    const w = work[id];
+    tiers[id] = {
+      p: Array.from({length: n}, (_, i) => w.c[i] > 0 ? Math.round(w.sumP[i] / w.c[i] * 100) / 100 : 0),
+      c: Array.from(w.c),
+      v: Array.from(w.v, x => Math.round(x)),
+    };
+  }
+  return { tiers };
+}
+
+function buildTierSeries(from, to) {
+  const source = getTierSource();
+  if (!source || !source.tiers) return null;
+
+  return getTierGroups().map((group, idx) => {
+    const len = to - from;
+    const sumP = Array(len).fill(0);
+    const cnt = Array(len).fill(0);
+    const amount = Array(len).fill(0);
+    for (const id of group.ids) {
+      const td = source.tiers[id];
+      if (!td) continue;
+      for (let s = from; s < to; s++) {
+        const j = s - from;
+        const c = td.c[s] || 0;
+        if (c > 0) {
+          sumP[j] += (td.p[s] || 0) * c;
+          cnt[j] += c;
+        }
+        amount[j] += (td.v && td.v[s]) || 0;
+      }
+    }
+    return {
+      id: group.id,
+      label: group.label,
+      color: TIER_COLORS[idx],
+      p: cnt.map((c, i) => c > 0 ? Math.round(sumP[i] / c * 100) / 100 : null),
+      c: cnt,
+      v: amount,
+    };
+  });
+}
+
 // ---- Density Band Plugin ----
 const densityBandPlugin = {
   id: 'densityBand',
@@ -602,8 +719,36 @@ function updateCharts() {
   const priceSets = [];
   const volSets = [];
   let _bandData = null;
+  const tierSeries = tierMode !== 'off' ? buildTierSeries(from, to) : null;
 
-  if (selectedGus.length === 0) {
+  if (tierSeries) {
+    document.getElementById('priceChartTitle').textContent = '가격대별 월평균 거래가격';
+    document.getElementById('volumeChartTitle').textContent = '가격대별 월간 거래건수';
+    for (const tier of tierSeries) {
+      priceSets.push({
+        label: tier.label,
+        data: tier.p,
+        borderColor: tier.color,
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+        spanGaps: true,
+      });
+      volSets.push({
+        label: tier.label,
+        data: tier.c,
+        backgroundColor: tier.color + 'cc',
+        borderRadius: 1,
+        barPercentage: 0.9,
+        categoryPercentage: 0.95,
+        stack: 'price-tier',
+      });
+    }
+  } else if (selectedGus.length === 0) {
+    document.getElementById('priceChartTitle').textContent = '가격 추이 (거래건수 가중평균, 억원)';
+    document.getElementById('volumeChartTitle').textContent = '월간 거래건수';
     const data = getMainData();
     const pSlice = data.p.slice(from, to);
     const cSlice = data.c.slice(from, to);
@@ -658,6 +803,8 @@ function updateCharts() {
       categoryPercentage: 0.95,
     });
   } else {
+    document.getElementById('priceChartTitle').textContent = '가격 추이 (거래건수 가중평균, 억원)';
+    document.getElementById('volumeChartTitle').textContent = '월간 거래건수';
     for (let gi = 0; gi < selectedGus.length; gi++) {
       const g = selectedGus[gi];
       const gd = MKT.gu[g];
@@ -706,11 +853,12 @@ function updateCharts() {
       plugins: {
         legend: { display: selectedGus.length > 0 || (priceSets.length > 1), labels: { color: '#e2e8f0', font: { size: 11 } } },
         tooltip: {
+          itemSort: tierSeries ? (a, b) => (b.parsed.y || 0) - (a.parsed.y || 0) : undefined,
           callbacks: {
             label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) ?? '-'}억`,
           }
         },
-        densityBand: _bandData ? { bandData: _bandData } : null,
+        densityBand: tierSeries ? null : (_bandData ? { bandData: _bandData } : null),
       },
       scales: {
         x: commonScaleX,
@@ -741,16 +889,22 @@ function updateCharts() {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: selectedGus.length > 0, labels: { color: '#e2e8f0', font: { size: 11 } } },
+        legend: { display: selectedGus.length > 0 || !!tierSeries, labels: { color: '#e2e8f0', font: { size: 11 } } },
         tooltip: {
           callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toLocaleString() ?? 0}건`,
+            label: ctx => {
+              const total = ctx.chart.data.datasets.reduce((sum, ds) => sum + ((ds.data && ds.data[ctx.dataIndex]) || 0), 0);
+              const value = ctx.parsed.y || 0;
+              const share = tierSeries && total > 0 ? ` (${(value / total * 100).toFixed(1)}%)` : '';
+              return `${ctx.dataset.label}: ${value.toLocaleString()}건${share}`;
+            },
           }
         },
       },
       scales: {
-        x: commonScaleX,
+        x: { ...commonScaleX, stacked: !!tierSeries },
         y: {
+          stacked: !!tierSeries,
           ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v >= 1000 ? (v/1000).toFixed(0) + 'k' : v },
           grid: { color: 'rgba(51,65,85,.3)' },
         },
@@ -968,6 +1122,7 @@ function saveHash() {
   const params = [];
   if (region !== 'all') params.push('r=' + region);
   if (selectedGus.length) params.push('gu=' + selectedGus.join(','));
+  if (tierMode !== 'off') params.push('tier=' + tierMode);
   params.push('from=' + document.getElementById('fromYear').value);
   params.push('to=' + document.getElementById('toYear').value);
   params.push('m=' + refSlot);
@@ -991,6 +1146,10 @@ function parseHash() {
     selectedGus = params.gu.split(',').filter(g => MKT.gu[g]).slice(0, 5);
     buildGuMenu();
     renderChips();
+  }
+  if (params.tier && ['off','simple','detail'].includes(params.tier)) {
+    tierMode = params.tier;
+    document.querySelectorAll('[data-tier-mode]').forEach(b => b.classList.toggle('active', b.dataset.tierMode === tierMode));
   }
   if (params.from) document.getElementById('fromYear').value = params.from;
   if (params.to) document.getElementById('toYear').value = params.to;
@@ -1182,5 +1341,6 @@ function initTrades() {
 
 init();
 </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"b3454008be2746fcba34f74a8f3b4e36","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
