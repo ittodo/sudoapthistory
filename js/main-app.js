@@ -452,15 +452,15 @@ async function renderComparison(){
           <thead><tr><th>단지명</th><th>동</th><th>면적</th><th>최근가</th><th>CAGR</th><th>MDD</th><th>거래</th></tr></thead>
           <tbody>`;
       displayItems.forEach(x=>{
-        const cv=x.c!==null?x.c+'%':'-';
+        const cv=fmtPct(x.c);
         const cc=x.c>0?'up':x.c<0?'dn':'';
         html+=`<tr onclick="goToComplex(${x.i})">
           <td style="text-align:left">${x.n}</td>
           <td style="text-align:left;color:#64748b">${x.d||'-'}</td>
           <td>${fmtArea(x.a)}</td>
-          <td style="font-weight:600">${x.lp?x.lp+'억':'-'}</td>
+          <td style="font-weight:600">${fmtPrice(x.lp)}</td>
           <td class="${cc}">${cv}</td>
-          <td>${x.m}%</td>
+          <td>${fmtPct(x.m)}</td>
           <td style="color:#64748b">${x.v}</td>
         </tr>`;
       });
@@ -1536,6 +1536,29 @@ function sb(col){
   cp=1;ds();rt();saveHash();
 }
 
+function fmtNum(v,d=1){
+  if(v===null||v===undefined||Number.isNaN(v)) return '-';
+  const n=Number(v);
+  if(!Number.isFinite(n)) return '-';
+  const s=(Object.is(n,-0)?0:n).toFixed(d);
+  return s.replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');
+}
+function fmtPct(v,d=1){
+  const s=fmtNum(v,d);
+  return s==='-'?'-':s+'%';
+}
+function fmtSignedPct(v,d=1){
+  const s=fmtNum(v,d);
+  if(s==='-') return '-';
+  return s==='0'?'0%':(Number(v)>0?'+':'')+s+'%';
+}
+function fmtPrice(v){
+  return v&&v>0?fmtNum(v,2)+'\uC5B5':'-';
+}
+function fmtSharp(v){
+  return v!==null&&v!==undefined?fmtNum(v,2):'-';
+}
+
 function rt(){
   const tb=document.getElementById('tb');
   if(!tb) return; // \uB2E8\uC9C0\uBCC4 \uBDF0 \uD14C\uC774\uBE14\uC774 \uC5C6\uB294 \uD398\uC774\uC9C0(\uC608: /compare/)\uC5D0\uC11C\uB294 no-op
@@ -1549,12 +1572,12 @@ function rt(){
     const x=F[i];
     const bg=['b-g','b-s','b-i'][x.r];
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
-    const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
+    const lpv=fmtPrice(x.lp);
     const retObj=calcReturnObj(x);
     const retv=retObj?(retObj.val>0?'+':'')+retObj.val.toFixed(1)+'%':'-';
     const retc=retObj?(retObj.val>0?'up':retObj.val<0?'dn':''):'';
     const retYrs=retObj&&retObj.years!==(retMonths()/12)?'<span style="font-size:9px;color:#64748b;margin-left:2px">'+retObj.years.toFixed(1)+'년</span>':'';
-    const cv=x.c!==null?x.c+'%':'-';
+    const cv=fmtPct(x.c);
     const cc=x.c>0?'up':x.c<0?'dn':'';
     const mc=x.m<-10?'dn':'';
 
@@ -1567,8 +1590,8 @@ function rt(){
       <td style="text-align:center;font-weight:600">${lpv}</td>
       <td style="text-align:center;font-weight:600" class="${retc}">${retv}${retYrs}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
-      <td style="text-align:center" class="${mc}">${x.m}%</td>
-      <td style="text-align:center;color:#94a3b8">${x.s!==null?x.s:'-'}</td>
+      <td style="text-align:center" class="${mc}">${fmtPct(x.m)}</td>
+      <td style="text-align:center;color:#94a3b8">${fmtSharp(x.s)}</td>
       <td style="text-align:center;color:#94a3b8;font-size:11px">${fmtDate(x.ld)}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
@@ -1585,10 +1608,10 @@ function rt(){
       const x=F[i];
       const bg=['b-g','b-s','b-i'][x.r];
       const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
-      const lpv=x.lp&&x.lp>0?x.lp+'\uC5B5':'-';
-      const cv=x.c!==null?(x.c>0?'+':'')+x.c+'%':'-';
+      const lpv=fmtPrice(x.lp);
+      const cv=fmtSignedPct(x.c);
       const cc=x.c>0?'up':x.c<0?'dn':'';
-      const mv=x.m+'%';
+      const mv=fmtPct(x.m);
       const retObj2=calcReturnObj(x);
       const retv=retObj2?(retObj2.val>0?'+':'')+retObj2.val.toFixed(1)+'%':'-';
       const retc=retObj2?(retObj2.val>0?'up':retObj2.val<0?'dn':''):'';
@@ -1601,7 +1624,7 @@ function rt(){
           <div class="m-card-metric"><div class="ml">CAGR</div><div class="mv ${cc}">${cv}</div></div>
           <div class="m-card-metric"><div class="ml">MDD</div><div class="mv dn">${mv}</div></div>
           <div class="m-card-metric"><div class="ml">${retYearFrom%100}→${retYearTo%100}</div><div class="mv ${retc}">${retv}</div></div>
-          <div class="m-card-metric"><div class="ml">샤프</div><div class="mv" style="color:#94a3b8">${x.s!==null?x.s:'-'}</div></div>
+          <div class="m-card-metric"><div class="ml">샤프</div><div class="mv" style="color:#94a3b8">${fmtSharp(x.s)}</div></div>
         </div>
       </div>`);
     }
@@ -1667,7 +1690,7 @@ function showDetail(x){
   }
 
   // 메트릭 카드
-  const fm=(v,s='%')=>v!==null&&v!==undefined?(v>0?'+':'')+v+s:'-';
+  const fm=(v,s='%')=>s==='%'?fmtSignedPct(v):fmtNum(v)+s;
   const lsVal=calcLandShare(x);
   const lsPy=lsVal?(lsVal/3.3058).toFixed(1)+'평':'-';
   const lsM2=lsVal?lsVal.toFixed(1)+'㎡':'-';
@@ -1677,9 +1700,9 @@ function showDetail(x){
   const retLbl=retO?retYearFrom+'\u2192'+retYearTo+' ('+retO.years.toFixed(1)+'년)':retYearFrom+'\u2192'+retYearTo;
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
-    ['MDD',x.m+'%','dn'],
-    ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
-    ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
+    ['MDD',fmtPct(x.m),'dn'],
+    ['\uC0E4\uD504\uBE44\uC728',fmtSharp(x.s),''],
+    ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
     [retLbl,retFmt,retCls],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal?lsM2+' ('+lsPy+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
@@ -1722,7 +1745,7 @@ function switchAreaFromMerged(dataIdx){
     tabsEl.innerHTML=tabs;
   }
   // 메트릭/차트는 개별 평형 것으로 표시
-  const fm=(v,s='%')=>v!==null&&v!==undefined?(v>0?'+':'')+v+s:'-';
+  const fm=(v,s='%')=>s==='%'?fmtSignedPct(v):fmtNum(v)+s;
   document.getElementById('dn').textContent=x.n;
   const uStr2=x.u?` | ${x.u.toLocaleString()}세대`:'';
   const farStr2=x.fr?` | 용적률 ${x.fr}%`:'';
@@ -1737,9 +1760,9 @@ function switchAreaFromMerged(dataIdx){
   const retLbl2=retO2?retYearFrom+'\u2192'+retYearTo+' ('+retO2.years.toFixed(1)+'년)':retYearFrom+'\u2192'+retYearTo;
   document.getElementById('metrics').innerHTML=[
     ['CAGR',fm(x.c),x.c>0?'up':'dn'],
-    ['MDD',x.m+'%','dn'],
-    ['\uC0E4\uD504\uBE44\uC728',x.s!==null?''+x.s:'-',''],
-    ['\uCD5C\uADFC\uAC00',x.lp&&x.lp>0?x.lp+'\uC5B5':'-',''],
+    ['MDD',fmtPct(x.m),'dn'],
+    ['\uC0E4\uD504\uBE44\uC728',fmtSharp(x.s),''],
+    ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
     [retLbl2,retFmt2,retCls2],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal2?lsM22+' ('+lsPy2+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');

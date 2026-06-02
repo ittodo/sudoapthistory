@@ -12,8 +12,15 @@ function cached(target, key, read) {
   return value;
 }
 
-function f32(value) {
-  return Number.isNaN(value) ? null : value;
+function round(value, digits) {
+  const scale = 10 ** digits;
+  const rounded = Math.round((value + Number.EPSILON) * scale) / scale;
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+function f32(value, digits) {
+  if (Number.isNaN(value)) return null;
+  return digits === undefined ? value : round(value, digits);
 }
 
 function u16(value) {
@@ -44,17 +51,17 @@ class PackedAptIndexRow {
   get r() { return this._table.region[this._index]; }
   get g() { return cached(this, "g", () => stringValue(this._table.strings, this._table.gu[this._index])); }
   get d() { return cached(this, "d", () => stringValue(this._table.strings, this._table.dong[this._index])); }
-  get a() { return this._table.area[this._index]; }
+  get a() { return f32(this._table.area[this._index], 2); }
   get b() { return u16(this._table.builtYear[this._index]); }
-  get c() { return f32(this._table.cagr[this._index]); }
-  get m() { return f32(this._table.mdd[this._index]); }
-  get s() { return f32(this._table.sharpe[this._index]); }
+  get c() { return f32(this._table.cagr[this._index], 1); }
+  get m() { return f32(this._table.mdd[this._index], 1); }
+  get s() { return f32(this._table.sharpe[this._index], 2); }
   get v() { return this._table.tradeCount[this._index]; }
-  get q() { return f32(this._table.momentum[this._index]); }
-  get k() { return f32(this._table.acceleration[this._index]); }
+  get q() { return f32(this._table.momentum[this._index], 1); }
+  get k() { return f32(this._table.acceleration[this._index], 1); }
   get t() { return this._table.transactionTotal[this._index]; }
-  get lp() { return f32(this._table.latestPrice[this._index]); }
-  get y25() { return f32(this._table.y25[this._index]); }
+  get lp() { return f32(this._table.latestPrice[this._index], 2); }
+  get y25() { return f32(this._table.y25[this._index], 1); }
   get ld() { return u32(this._table.latestDate[this._index]); }
   get us() { return optionalStringValue(this._table.strings, this._table.source[this._index]); }
   get u() { return u32(this._table.unitCount[this._index]); }
