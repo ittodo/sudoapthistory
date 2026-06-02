@@ -3,3 +3,10 @@
 data/market/*
 !data/market/2026-*/
 !data/market/2026-*/*.json
+data/polygen/*
+!data/polygen/index.meta.json
+!data/polygen/index.packed.bin
+js/generated/*
+!js/generated/browser/
+js/generated/browser/*
+!js/generated/browser/nodostream_binary_refs.js

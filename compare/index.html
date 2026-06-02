@@ -177,34 +177,7 @@
   const t0=performance.now();
   document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
   try{
-    const r=await fetch('../data/index.json');
-    const j=await r.json();
-    if(j.meta&&j.meta.years){
-      Y=j.meta.years;
-      MONTH_START_YEAR=Y[0];
-      N_MONTHS=Y.length*12;
-      initMonthLabels();
-    }
-    if(j.meta&&j.meta.updated){
-      const ud=new Date(j.meta.updated);
-      const lastY=Y[Y.length-1];
-      if(ud.getFullYear()===lastY){ dataLastMonth=ud.getMonth()+1; }
-      else { dataLastMonth=12; }
-    }
-    if(j.g && j.o && Array.isArray(j.d[0])){
-      const GUS=j.g, DONGS=j.o;
-      D=j.d.map((x,idx)=>({
-        i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
-        a:x[4], b:x[5],
-        c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
-        v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
-        t:x[12], lp:x[13]||null, si:x[14]||null
-      }));
-    } else {
-      D=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
-    }
-    DI={};
-    D.forEach(x=>{ DI[x.i]=x; });
+    applyIndexPayload(await loadAptIndex());
     document.getElementById('tc').textContent=D.length.toLocaleString();
     document.getElementById('yearRange').textContent=Y[0]+'-'+Y[Y.length-1];
     buildLoc();

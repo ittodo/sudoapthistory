@@ -1,0 +1,159 @@
+name: Build PolyGen index
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - data/index.json
+      - schemas/nodostream.poly
+      - js/polygen-index-loader.js
+      - js/polygen-packed-index-loader.js
+      - tools/build-packed-index.mjs
+      - tools/build-polygen-browser.mjs
+      - tools/build-polygen-index.mjs
+      - tools/verify-polygen-packed-index.mjs
+      - tools/verify-polygen-index.ts
+      - .github/workflows/build-polygen-index.yml
+  pull_request:
+    paths:
+      - data/index.json
+      - schemas/nodostream.poly
+      - js/polygen-index-loader.js
+      - js/polygen-packed-index-loader.js
+      - tools/build-packed-index.mjs
+      - tools/build-polygen-browser.mjs
+      - tools/build-polygen-index.mjs
+      - tools/verify-polygen-packed-index.mjs
+      - tools/verify-polygen-index.ts
+      - .github/workflows/build-polygen-index.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: polygen-index-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  POLYGEN_VERSION: "v0.1.8"
+  POLYGEN_RELEASE_TAG: "gui-v0.1.8"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install build tools
+        run: npm install --no-save esbuild tsx typescript @types/node
+
+      - name: Download PolyGen release
+        run: |
+          mkdir -p .polygen
+          curl -L "https://github.com/ittodo/PolyGen/releases/download/${POLYGEN_RELEASE_TAG}/PolyGen-${POLYGEN_VERSION}-linux.tar.gz" -o .polygen/polygen.tar.gz
+          tar -xzf .polygen/polygen.tar.gz -C .polygen
+          chmod +x ".polygen/PolyGen-${POLYGEN_VERSION}-linux/polygen"
+          ".polygen/PolyGen-${POLYGEN_VERSION}-linux/polygen" --version || true
+
+      - name: Generate PolyGen TypeScript
+        run: |
+          repo_root="$PWD"
+          polygen_dir="$PWD/.polygen/PolyGen-${POLYGEN_VERSION}-linux"
+          cd "$polygen_dir"
+          ./polygen generate \
+            --schema-path "$repo_root/schemas/nodostream.poly" \
+            --lang typescript \
+            --output-dir "$repo_root/js/generated" \
+            --templates-dir "$polygen_dir/templates"
+
+      - name: Build browser binary refs
+        run: node tools/build-polygen-browser.mjs
+
+      - name: Build index binaries
+        run: node tools/build-polygen-index.mjs
+
+      - name: Verify packed index
+        run: node tools/verify-polygen-packed-index.mjs
+
+      - name: Verify PolyGen row refs
+        run: npx tsx tools/verify-polygen-index.ts
+
+      - name: Report artifact sizes
+        run: |
+          node -e "const fs=require('fs'),z=require('zlib'); for (const p of ['data/index.json','data/polygen/index.packed.bin','data/polygen/index.slim.bin','js/generated/browser/nodostream_binary_refs.js']) { const b=fs.readFileSync(p); console.log(p, 'raw', b.length, 'gzip', z.gzipSync(b).length, 'brotli', z.brotliCompressSync(b).length); }"
+
+      - name: Commit generated index
+        id: commit
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/polygen/index.meta.json data/polygen/index.packed.bin js/generated/browser/nodostream_binary_refs.js
+          if git diff --cached --quiet; then
+            echo "No generated PolyGen index changes."
+            echo "generated_changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: rebuild polygen index"
+            git push
+            echo "generated_changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Purge Cloudflare cache
+        if: steps.commit.outputs.generated_changed == 'true'
+        env:
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          node - <<'NODE'
+          const zoneId = process.env.CF_ZONE_ID;
+          const token = process.env.CF_API_TOKEN;
+          if (!zoneId || !token) {
+            console.log("Cloudflare secrets are not configured; skipping purge.");
+            process.exit(0);
+          }
+
+          const files = [
+            "https://nodostream.com/",
+            "https://nodostream.com/index.html",
+            "https://nodostream.com/data/index.json",
+            "https://nodostream.com/data/polygen/index.meta.json",
+            "https://nodostream.com/data/polygen/index.packed.bin",
+            "https://nodostream.com/js/generated/browser/nodostream_binary_refs.js",
+            "https://nodostream.com/js/polygen-index-loader.js",
+            "https://nodostream.com/js/polygen-packed-index-loader.js",
+            "https://nodostream.com/compare/",
+            "https://nodostream.com/compare/index.html"
+          ];
+
+          const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ files })
+          });
+
+          const body = await res.text();
+          if (res.status === 401) {
+            console.error("Cloudflare purge failed with 401. Refresh CF_API_TOKEN.");
+            process.exit(1);
+          }
+          if (!res.ok) {
+            console.error(`Cloudflare purge failed: ${res.status}`);
+            console.error(body);
+            process.exit(1);
+          }
+          console.log(`Purged ${files.length} Cloudflare URLs.`);
+          NODE

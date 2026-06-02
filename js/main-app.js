@@ -1197,13 +1197,50 @@ function renderSimChart(validResults, allResults, params){
   });
 }
 
-async function init(){
-  const t0=performance.now();
-  document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
+function normalizeIndexPayload(j){
+  let rows;
+  if(j.g && j.o && Array.isArray(j.d[0])){
+    const GUS=j.g, DONGS=j.o;
+    rows=j.d.map((x,idx)=>({
+      i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
+      a:x[4], b:x[5],
+      c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
+      v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
+      t:x[12], lp:x[13]||null, si:x[14]||null
+    }));
+  } else {
+    rows=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
+  }
+  return {meta:j.meta||{}, d:rows, format:'json'};
+}
 
-  const r=await fetch('data/index.json');
+async function loadAptIndex(){
+  const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
+  if(!window.DISABLE_POLYGEN_INDEX){
+    const jsBase=new URL(base+'js/', window.location.href).href;
+    try{
+      const packed=await import(jsBase+'polygen-packed-index-loader.js');
+      const loaded=await packed.loadPackedAptIndex(base);
+      console.log(`PolyGen packed index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
+      return loaded;
+    }catch(e){
+      console.warn('PolyGen packed index unavailable, trying row refs', e);
+    }
+    try{
+      const mod=await import(jsBase+'polygen-index-loader.js');
+      const loaded=await mod.loadPolygenAptIndex(base);
+      console.log(`PolyGen index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
+      return loaded;
+    }catch(e){
+      console.warn('PolyGen index unavailable, falling back to JSON', e);
+    }
+  }
+  const r=await fetch(base+'data/index.json');
   const j=await r.json();
+  return normalizeIndexPayload(j);
+}
 
+function applyIndexPayload(j){
   // Update Y from meta.years if available
   if(j.meta&&j.meta.years){
     Y=j.meta.years;
@@ -1219,21 +1256,18 @@ async function init(){
     else { dataLastMonth=12; }
   }
 
-  if(j.g && j.o && Array.isArray(j.d[0])){
-    const GUS=j.g, DONGS=j.o;
-    D=j.d.map((x,idx)=>({
-      i:idx, n:x[0], r:x[1], g:GUS[x[2]], d:x[3]>=0?DONGS[x[3]]:'',
-      a:x[4], b:x[5],
-      c:x[6]===''?null:x[6], m:x[7], s:x[8]===''?null:x[8],
-      v:x[9], q:x[10]===''?null:x[10], k:x[11]===''?null:x[11],
-      t:x[12], lp:x[13]||null, si:x[14]||null
-    }));
-  } else {
-    D=(j.d||j.data||j).map((x,idx)=>({...x, i:x.i??idx}));
-  }
+  D=j.d||[];
 
   DI={};
   D.forEach(x=>{ DI[x.i]=x; });
+}
+
+async function init(){
+  const t0=performance.now();
+  document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
+
+  const j=await loadAptIndex();
+  applyIndexPayload(j);
 
   document.getElementById('tc').textContent=D.length.toLocaleString();
   document.getElementById('yearRange').textContent=Y[0]+'-'+Y[Y.length-1];

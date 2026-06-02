@@ -1,0 +1,31 @@
+namespace nodostream.apt {
+    @cache("full_load")
+    @load(json: "data/polygen/index.slim.json")
+    @index(gu)
+    @index(region)
+    table AptIndexRow {
+        id: u32 primary_key;
+        name: string;
+        region: u8;
+        gu: string;
+        dong: string?;
+        area: f32;
+        built_year: u16?;
+        cagr: f32?;
+        mdd: f32?;
+        sharpe: f32?;
+        trade_count: u32;
+        momentum: f32?;
+        acceleration: f32?;
+        transaction_total: u32;
+        latest_price: f32?;
+        y25: f32?;
+        latest_date: u32?;
+        source: string?;
+        unit_count: u32?;
+        jibun: string?;
+        road_address: string?;
+        total_units: u32?;
+        sibling_ids: string?;
+    }
+}
