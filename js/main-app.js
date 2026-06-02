@@ -1216,10 +1216,12 @@ function normalizeIndexPayload(j){
 
 async function loadAptIndex(){
   const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
+  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260603-numberfix';
+  const importSuffix='?v='+encodeURIComponent(assetVersion);
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
     try{
-      const packed=await import(jsBase+'polygen-packed-index-loader.js');
+      const packed=await import(jsBase+'polygen-packed-index-loader.js'+importSuffix);
       const loaded=await packed.loadPackedAptIndex(base);
       console.log(`PolyGen packed index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
       return loaded;
@@ -1227,7 +1229,7 @@ async function loadAptIndex(){
       console.warn('PolyGen packed index unavailable, trying row refs', e);
     }
     try{
-      const mod=await import(jsBase+'polygen-index-loader.js');
+      const mod=await import(jsBase+'polygen-index-loader.js'+importSuffix);
       const loaded=await mod.loadPolygenAptIndex(base);
       console.log(`PolyGen index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
       return loaded;
