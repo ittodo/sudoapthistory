@@ -216,6 +216,7 @@ a:hover { text-decoration: underline; }
 
 </div>
 
+<script>window.APT_ASSET_VERSION='20260603-numberfix';</script>
 <script>
 let MKT = null;
 let region = 'all';
@@ -229,7 +230,8 @@ const TIER_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#a855f7'];
 
 async function init() {
   try {
-    const res = await fetch('../data/market.json?v=' + Date.now());
+    const version = (typeof window !== 'undefined' && window.APT_ASSET_VERSION) || '20260603-numberfix';
+    const res = await fetch('../data/market.json?v=' + encodeURIComponent(version));
     MKT = await res.json();
   } catch(e) {
     console.error(e);

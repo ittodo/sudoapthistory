@@ -81,8 +81,8 @@ jobs:
           CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |
+          node tools/cloudflare-purge-policy.mjs --json > purge-policy.json
           node - <<'NODE'
-          const { execFileSync } = await import("node:child_process");
           const { readFileSync } = await import("node:fs");
 
           const zoneId = process.env.CF_ZONE_ID;
@@ -91,52 +91,16 @@ jobs:
             throw new Error("Missing CF_ZONE_ID or CF_API_TOKEN GitHub secret.");
           }
 
-          function git(args) {
-            return execFileSync("git", args, { encoding: "utf8" }).trim();
-          }
-
-          let changed = [];
-          try {
-            git(["rev-parse", "--verify", "HEAD^"]);
-            changed = git(["diff", "--name-only", "HEAD^", "HEAD"]).split(/\r?\n/).filter(Boolean);
-          } catch {
-            changed = git(["ls-tree", "-r", "--name-only", "HEAD"]).split(/\r?\n/).filter(Boolean);
-          }
-
-          const html = readFileSync("index.html", "utf8");
-          const version = html.match(/main-app\.js\?v=([^"']+)/)?.[1];
-          const files = new Set([
-            "https://nodostream.com/",
-            "https://nodostream.com/index.html",
-            "https://nodostream.com/compare/",
-            "https://nodostream.com/compare/index.html",
-            "https://nodostream.com/data/market.json",
-            "https://nodostream.com/market/",
-            "https://nodostream.com/market/index.html"
-          ]);
-
-          for (const path of changed) {
-            if (
-              path.startsWith(".") ||
-              path.startsWith("tools/") ||
-              path.startsWith("schemas/") ||
-              path.startsWith("docs/")
-            ) {
-              continue;
-            }
-            files.add(`https://nodostream.com/${path}`);
-          }
-
-          if (version) {
-            files.add(`https://nodostream.com/js/main-app.js?v=${version}`);
-            files.add(`https://nodostream.com/js/polygen-packed-index-loader.js?v=${version}`);
-            files.add(`https://nodostream.com/js/polygen-index-loader.js?v=${version}`);
-          }
-
-          const urls = [...files].sort();
+          const policy = JSON.parse(readFileSync("purge-policy.json", "utf8"));
+          const urls = policy.urls || [];
           const endpoint = `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`;
 
-          if (urls.length > 90) {
+          if (urls.length === 0) {
+            console.log("No Cloudflare URLs selected for purge.");
+            process.exit(0);
+          }
+
+          if (policy.purgeEverything) {
             const res = await fetch(endpoint, {
               method: "POST",
               headers: {
