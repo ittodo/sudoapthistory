@@ -302,5 +302,7 @@ GitHub Actions:
 - `node tools/build-polygen-index.mjs`로 row-ref 바이너리와 packed 바이너리를 모두 생성한다.
 - PR에서는 생성과 검증만 수행한다.
 - `main` push에서는 `data/polygen/index.meta.json`, `data/polygen/index.packed.bin`, `js/generated/browser/nodostream_binary_refs.js`가 달라진 경우 bot 커밋으로 다시 push한다.
-- GitHub Secrets에 `CF_ZONE_ID`, `CF_API_TOKEN`이 있으면 bot 커밋 후 Cloudflare에서 packed 인덱스 관련 URL을 purge한다.
+- `Purge Cloudflare` 워크플로는 `main` push마다 Pages 배포 완료를 기다린 뒤 Cloudflare purge를 실행한다.
+- GitHub Secrets에 `CF_ZONE_ID`, `CF_API_TOKEN`이 있어야 purge가 성공한다.
+- `Build PolyGen index`가 generated 파일 bot 커밋을 만들면 그 bot 커밋의 push도 `Purge Cloudflare`를 다시 실행한다.
 - `data/polygen/index.slim.bin`, `data/polygen/index.slim.json`, TypeScript 중간 산출물은 git에서 제외한다. 배포 필수 파일은 packed 바이너리와 브라우저 fallback 번들만 추적한다.
