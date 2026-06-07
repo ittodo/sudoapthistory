@@ -122,7 +122,7 @@ a:hover { text-decoration: underline; }
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
   <div style="display:flex;align-items:center;gap:6px;">
     <button class="tab-btn" onclick="moveMonth(-1)" style="padding:4px 10px;font-size:14px;" title="이전 월">&larr;</button>
-    <div id="refMonthLabel" style="font-size:15px;font-weight:700;min-width:80px;text-align:center;"></div>
+    <select class="fi" id="refMonthSel" style="width:105px;font-weight:700;text-align:center;" onchange="onRefMonthChange()" title="기준월"></select>
     <button class="tab-btn" onclick="moveMonth(1)" style="padding:4px 10px;font-size:14px;" title="다음 월">&rarr;</button>
   </div>
   <div id="stats" style="display:flex;gap:8px;flex:1;flex-wrap:wrap;"></div>
@@ -217,7 +217,7 @@ a:hover { text-decoration: underline; }
 
 </div>
 
-<script>window.APT_ASSET_VERSION='20260603-numberfix';</script>
+<script>window.APT_ASSET_VERSION='20260607-month-select';</script>
 <script>
 let MKT = null;
 let region = 'all';
@@ -254,9 +254,11 @@ async function init() {
 
   // 기준월 초기화: 마지막 "충분한" 데이터가 있는 월
   initRefSlot();
+  buildRefMonthSelect();
 
   buildGuMenu();
   parseHash();
+  syncRefMonthSelect();
   updateAll();
   document.getElementById('loading').style.display = 'none';
 
@@ -300,9 +302,36 @@ function moveMonth(delta) {
   }
   if (next >= 0 && next < MKT.meta.months && allC[next] > 0) {
     refSlot = next;
+    syncRefMonthSelect();
     updateAll();
     saveHash();
   }
+}
+
+function buildRefMonthSelect() {
+  const sel = document.getElementById('refMonthSel');
+  if (!sel) return;
+  const allC = MKT.all.c;
+  const months = [];
+  for (let s = MKT.meta.months - 1; s >= 0; s--) {
+    if (allC[s] > 0) months.push(s);
+  }
+  sel.innerHTML = months.map(s => `<option value="${s}">${slotLabel(s)}</option>`).join('');
+}
+
+function syncRefMonthSelect() {
+  const sel = document.getElementById('refMonthSel');
+  if (sel && refSlot >= 0) sel.value = String(refSlot);
+}
+
+function onRefMonthChange() {
+  const sel = document.getElementById('refMonthSel');
+  if (!sel) return;
+  const slot = parseInt(sel.value, 10);
+  if (Number.isNaN(slot) || slot < 0 || slot >= MKT.meta.months) return;
+  refSlot = slot;
+  updateAll();
+  saveHash();
 }
 
 // ---- Region ----
@@ -462,7 +491,7 @@ function calcGuStats(gd, s) {
 
 function updateStats() {
   const s = refSlot;
-  document.getElementById('refMonthLabel').textContent = s >= 0 ? slotLabel(s) : '';
+  syncRefMonthSelect();
 
   if (s < 0) {
     document.getElementById('stats').innerHTML = '';
