@@ -217,7 +217,7 @@ a:hover { text-decoration: underline; }
 
 </div>
 
-<script>window.APT_ASSET_VERSION='20260607-month-select';</script>
+<script>window.APT_ASSET_VERSION='20260607-market-fast-stale-hash';</script>
 <script>
 let MKT = null;
 let region = 'all';
@@ -225,6 +225,7 @@ let selectedGus = [];
 let tierMode = 'off';
 let tSortKey = 'lastC', tSortAsc = false;
 let refSlot = -1; // 기준월 슬롯 (자동 설정)
+let refMonthExplicit = false;
 
 const GU_COLORS = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6'];
 const TIER_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#a855f7'];
@@ -280,10 +281,6 @@ function initRefSlot() {
   // 마지막 데이터 슬롯 찾기
   let last = findLastDataSlot(allC);
   if (last < 0) { refSlot = 0; return; }
-  // 최근월 거래건수가 이전월의 50% 미만이면 이전월을 기본으로
-  if (last > 0 && allC[last - 1] > 0 && allC[last] < allC[last - 1] * 0.5) {
-    last--;
-  }
   refSlot = last;
 }
 
@@ -302,6 +299,7 @@ function moveMonth(delta) {
   }
   if (next >= 0 && next < MKT.meta.months && allC[next] > 0) {
     refSlot = next;
+    refMonthExplicit = true;
     syncRefMonthSelect();
     updateAll();
     saveHash();
@@ -330,6 +328,7 @@ function onRefMonthChange() {
   const slot = parseInt(sel.value, 10);
   if (Number.isNaN(slot) || slot < 0 || slot >= MKT.meta.months) return;
   refSlot = slot;
+  refMonthExplicit = true;
   updateAll();
   saveHash();
 }
@@ -1158,6 +1157,7 @@ function saveHash() {
   params.push('from=' + document.getElementById('fromYear').value);
   params.push('to=' + document.getElementById('toYear').value);
   params.push('m=' + refSlot);
+  if (refMonthExplicit) params.push('mExact=1');
   location.hash = params.join('&');
 }
 
@@ -1187,7 +1187,14 @@ function parseHash() {
   if (params.to) document.getElementById('toYear').value = params.to;
   if (params.m) {
     const m = parseInt(params.m);
-    if (m >= 0 && m < MKT.meta.months) refSlot = m;
+    if (m >= 0 && m < MKT.meta.months) {
+      const latest = findLastDataSlot(MKT.all.c);
+      const exact = params.mExact === '1';
+      // Older builds wrote the previous month into the hash when the latest
+      // month had partial data. Treat that stale "latest" bookmark as latest.
+      refSlot = !exact && latest === m + 1 ? latest : m;
+      refMonthExplicit = exact;
+    }
   }
 }
 
@@ -1200,8 +1207,13 @@ let txState = {
   loading: false,
   hasNext: false,
   totalLoaded: 0,
+  pending: [],
+  initialized: false,
+  activeToken: 0,
 };
 let txObserver = null;
+let txSyncedRefSlot = null;
+const TX_RENDER_BATCH = 250;
 
 function slotToYYYYMM(slot) {
   const y = MKT.meta.startYear + Math.floor(slot / 12);
@@ -1258,14 +1270,21 @@ function onTxMonthChange() {
 }
 
 function resetTrades(month) {
+  if (!month) return;
+  const sel = document.getElementById('txMonthSel');
+  if (sel) sel.value = month;
+
+  txState.activeToken++;
   txState.month   = month;
   txState.page    = 1;
   txState.loading = false;
-  txState.hasNext = false;
+  txState.hasNext = true;
   txState.totalLoaded = 0;
+  txState.pending = [];
   document.getElementById('tradesBody').innerHTML = '';
   document.getElementById('tradesEnd').style.display   = 'none';
   document.getElementById('tradesEmpty').style.display = 'none';
+  document.getElementById('tradesLoader').style.display = 'none';
   document.getElementById('tradesMonthBadge').textContent = month || '';
   document.getElementById('tradesCnt').textContent = '';
   loadNextTrades();
@@ -1273,55 +1292,65 @@ function resetTrades(month) {
 
 async function loadNextTrades() {
   if (txState.loading) return;
+  if (txState.pending.length > 0) {
+    renderTradeBatch();
+    return;
+  }
   if (txState.page > 1 && !txState.hasNext) return;
 
   txState.loading = true;
+  const token = txState.activeToken;
   document.getElementById('tradesLoader').style.display = '';
 
-  const url = `../data/market/${txState.month}/${txState.page}.json`;
-  let data;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('not found');
-    data = await res.json();
-  } catch (e) {
-    document.getElementById('tradesLoader').style.display = 'none';
-    if (txState.page === 1) {
-      document.getElementById('tradesEmpty').style.display = '';
-    } else {
-      document.getElementById('tradesEnd').style.display = '';
+  while (true) {
+    const url = `../data/market/${txState.month}/${txState.page}.json`;
+    let data;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('not found');
+      data = await res.json();
+    } catch (e) {
+      if (token !== txState.activeToken) return;
+      document.getElementById('tradesLoader').style.display = 'none';
+      if (txState.page === 1) {
+        document.getElementById('tradesEmpty').style.display = '';
+      } else {
+        document.getElementById('tradesEnd').style.display = '';
+      }
+      txState.loading = false;
+      return;
     }
-    txState.loading = false;
-    return;
+
+    if (token !== txState.activeToken) return;
+
+    txState.hasNext = data.meta.page < data.meta.pages;
+    txState.page++;
+
+    const trades = data.data || [];
+
+    // 지역 탭 기준 필터링
+    const rc = regionCodeFromTab();
+    const filtered = rc !== null
+      ? trades.filter(t => { const gd = MKT.gu[t.g]; return gd && gd.r === rc; })
+      : trades;
+
+    txState.pending = filtered;
+    if (filtered.length > 0 || !txState.hasNext) break;
   }
 
   document.getElementById('tradesLoader').style.display = 'none';
-  txState.hasNext = data.meta.page < data.meta.pages;
   txState.loading = false;
+  renderTradeBatch();
+}
 
-  const trades = data.data || [];
-
-  // 지역 탭 기준 필터링
-  const rc = regionCodeFromTab();
-  const filtered = rc !== null
-    ? trades.filter(t => { const gd = MKT.gu[t.g]; return gd && gd.r === rc; })
-    : trades;
-
-  txState.page++;
-  txState.totalLoaded += filtered.length;
-
-  // 현재 페이지에 결과 없고 다음 페이지 있으면 자동으로 다음 페이지 로드
-  if (filtered.length === 0 && txState.hasNext) {
-    loadNextTrades();
-    return;
-  }
-
+function renderTradeBatch() {
+  const batch = txState.pending.splice(0, TX_RENDER_BATCH);
   const tbody = document.getElementById('tradesBody');
 
-  if (filtered.length > 0) {
+  if (batch.length > 0) {
     let html = '';
-    const showRegion = rc === null; // 전체 탭일 때만 지역 배지 표시
-    for (const t of filtered) {
+    const showRegion = regionCodeFromTab() === null; // 전체 탭일 때만 지역 배지 표시
+    for (const t of batch) {
       const badge = showRegion ? regionBadgeHtml(t.g) : '';
       const area  = t.a != null ? Number(t.a).toFixed(1) : '-';
       const floor = t.f != null ? t.f + '층' : '-';
@@ -1335,40 +1364,74 @@ async function loadNextTrades() {
       </tr>`;
     }
     tbody.innerHTML += html;
-    document.getElementById('tradesCnt').textContent = `${txState.totalLoaded.toLocaleString()}건 로드됨`;
+    txState.totalLoaded += batch.length;
+    document.getElementById('tradesCnt').textContent = `${txState.totalLoaded.toLocaleString()}건 표시됨`;
   }
 
-  if (txState.totalLoaded === 0 && !txState.hasNext) {
+  updateTradeFooter();
+  fillTradeViewportIfNeeded();
+}
+
+function updateTradeFooter() {
+  const hasMoreRows = txState.pending.length > 0 || txState.hasNext || txState.loading;
+  if (txState.totalLoaded === 0 && !hasMoreRows) {
     document.getElementById('tradesEmpty').style.display = '';
-  } else if (!txState.hasNext) {
+  } else {
+    document.getElementById('tradesEmpty').style.display = 'none';
+  }
+
+  if (txState.totalLoaded > 0 && !hasMoreRows) {
     document.getElementById('tradesEnd').style.display = '';
+  } else {
+    document.getElementById('tradesEnd').style.display = 'none';
+  }
+}
+
+function fillTradeViewportIfNeeded() {
+  const box = document.getElementById('tradesScrollBox');
+  if (!box || txState.loading) return;
+  if (box.scrollHeight <= box.clientHeight + 20 && (txState.pending.length > 0 || txState.hasNext)) {
+    loadNextTrades();
+  }
+}
+
+function maybeLoadMoreTrades() {
+  const box = document.getElementById('tradesScrollBox');
+  if (!box || txState.loading) return;
+  const nearBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 160;
+  if (nearBottom && (txState.pending.length > 0 || txState.hasNext)) {
+    loadNextTrades();
   }
 }
 
 function setupTxObserver() {
-  if (txObserver) txObserver.disconnect();
-  txObserver = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting && txState.hasNext && !txState.loading) {
-      loadNextTrades();
-    }
-  }, { rootMargin: '300px' });
-  const sentinel = document.getElementById('tradesSentinel');
-  if (sentinel) txObserver.observe(sentinel);
+  if (txObserver) {
+    txObserver.disconnect();
+    txObserver = null;
+  }
+  const box = document.getElementById('tradesScrollBox');
+  if (box && !box.dataset.txScrollBound) {
+    box.addEventListener('scroll', maybeLoadMoreTrades, { passive: true });
+    box.dataset.txScrollBound = '1';
+  }
 }
 
 function syncTxMonth() {
+  if (!txState.initialized) return;
+  if (refSlot === txSyncedRefSlot) return;
   const newMonth = slotToYYYYMM(refSlot);
-  const sel = document.getElementById('txMonthSel');
-  if (sel) sel.value = newMonth;
-  if (newMonth !== txState.month) {
-    resetTrades(newMonth);
-  }
+  txSyncedRefSlot = refSlot;
+  resetTrades(newMonth);
 }
 
 function initTrades() {
   buildTxMonthSelect();
   setupTxObserver();
-  resetTrades(slotToYYYYMM(refSlot));
+  txState.initialized = true;
+  txSyncedRefSlot = refSlot;
+  const latestTradeSlot = findLastDataSlot(MKT.all.c);
+  const initialTradeSlot = refMonthExplicit ? refSlot : (latestTradeSlot >= 0 ? latestTradeSlot : refSlot);
+  resetTrades(slotToYYYYMM(initialTradeSlot));
 }
 
 init();
