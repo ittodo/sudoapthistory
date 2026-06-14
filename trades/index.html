@@ -284,6 +284,11 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     </div>
     <div class="stat-sep"></div>
     <div class="stat-item">
+      <div class="sl">평균 평당가</div>
+      <div class="sv" id="sumAvgPp">—</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
       <div class="sl">중위가</div>
       <div class="sv" id="sumMedian">—</div>
     </div>
@@ -309,6 +314,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
           <th onclick="setSort('n')" id="th-n">단지명 <span class="si" id="si-n"></span></th>
           <th onclick="setSort('a')" id="th-a" style="text-align:right;">면적㎡ <span class="si" id="si-a"></span></th>
           <th onclick="setSort('p')" id="th-p" style="text-align:right;">가격 <span class="si" id="si-p"></span></th>
+          <th onclick="setSort('pp')" id="th-pp" style="text-align:right;">평당가 <span class="si" id="si-pp"></span></th>
           <th onclick="setSort('f')" id="th-f" style="text-align:right;">층 <span class="si" id="si-f"></span></th>
         </tr>
       </thead>
@@ -414,6 +420,28 @@ function formatPriceFull(manwon) {
   if (eok > 0 && man > 0) return eok + '억 ' + man.toLocaleString() + '만';
   if (eok > 0) return eok + '억';
   return manwon.toLocaleString() + '만';
+}
+
+function areaToPyeong(area) {
+  const a = Number(area);
+  return Number.isFinite(a) && a > 0 ? a / 3.3058 : null;
+}
+
+function pricePerPyeong(r) {
+  if (!r) return null;
+  if (r.pp != null) {
+    const pp = Number(r.pp);
+    return Number.isFinite(pp) ? pp : null;
+  }
+  const p = Number(r.p);
+  const py = areaToPyeong(r.a);
+  return Number.isFinite(p) && py ? p / py : null;
+}
+
+function formatPyeongPrice(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return Math.round(n).toLocaleString() + '만/평';
 }
 
 function formatDate(dateStr) {
@@ -633,7 +661,8 @@ function getSortedData(data) {
   const { col, dir } = state.sort;
   const factor = dir === 'asc' ? 1 : -1;
   return [...data].sort((a, b) => {
-    let va = a[col], vb = b[col];
+    let va = col === 'pp' ? pricePerPyeong(a) : a[col];
+    let vb = col === 'pp' ? pricePerPyeong(b) : b[col];
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;
@@ -643,14 +672,16 @@ function getSortedData(data) {
 }
 
 function computeSummary(data) {
-  if (!data.length) return { count: 0, avg: null, median: null, max: null, min: null };
+  if (!data.length) return { count: 0, avg: null, avgPp: null, median: null, max: null, min: null };
   const prices = data.map(r => r.p).filter(p => p != null).sort((a, b) => a - b);
+  const ppPrices = data.map(pricePerPyeong).filter(p => p != null).sort((a, b) => a - b);
   const n = prices.length;
-  if (!n) return { count: data.length, avg: null, median: null, max: null, min: null };
+  if (!n) return { count: data.length, avg: null, avgPp: null, median: null, max: null, min: null };
   const sum = prices.reduce((a, b) => a + b, 0);
   const avg = sum / n;
   const median = n % 2 === 0 ? (prices[n/2 - 1] + prices[n/2]) / 2 : prices[Math.floor(n/2)];
-  return { count: data.length, avg, median, max: prices[n-1], min: prices[0] };
+  const avgPp = ppPrices.length ? ppPrices.reduce((a, b) => a + b, 0) / ppPrices.length : null;
+  return { count: data.length, avg, avgPp, median, max: prices[n-1], min: prices[0] };
 }
 
 // ==================== PREV PRICE ====================
@@ -701,7 +732,9 @@ function openDetail(r) {
     [r.g, r.a != null ? r.a + '㎡' : null, r.f != null ? r.f + '층' : null, r.d].filter(Boolean).join(' · ');
   document.getElementById('dpPrice').textContent = formatPriceFull(r.p);
   const prevHtml = renderPrevPrice(r);
-  document.getElementById('dpPrev').innerHTML = prevHtml;
+  const pp = pricePerPyeong(r);
+  const ppHtml = pp != null ? '<div>' + formatPyeongPrice(pp) + '</div>' : '';
+  document.getElementById('dpPrev').innerHTML = ppHtml + prevHtml;
   document.getElementById('dpTxTitle').textContent = '거래 내역' + (r.a != null ? ' (' + r.a + '㎡)' : '');
   document.getElementById('dpTxList').innerHTML = '<div style="color:var(--muted);font-size:12px;text-align:center;padding:16px;">로딩 중...</div>';
   document.getElementById('dpScreenerLink').href = '../#i=' + r.i;
@@ -775,9 +808,13 @@ async function loadDetailTx(r) {
     html += '<div class="dp-yr-label">' + yr + '년</div>';
     for (const t of trades) {
       const isDirect = t[4] === 1;
+      const pp = r.a != null && t[2] != null ? formatPyeongPrice(t[2] / areaToPyeong(r.a)) : '—';
+      const ppHtml = pp !== '—'
+        ? '<span style="display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px;">' + pp + '</span>'
+        : '';
       html += '<div class="dp-tx-row">' +
         '<span class="dp-tx-date">' + t[0] + '월 ' + t[1] + '일</span>' +
-        '<span class="dp-tx-price">' + formatPriceFull(t[2]) + '</span>' +
+        '<span class="dp-tx-price">' + formatPriceFull(t[2]) + ppHtml + '</span>' +
         '<span class="dp-tx-floor">' + (t[3] ? t[3] + '층' : '—') + '</span>' +
         (isDirect ? '<span class="badge-direct">직거래</span>' : '') +
         '</div>';
@@ -856,6 +893,7 @@ function updateSummary(data) {
     document.getElementById('sumTotal').textContent =
       (!hasFilters && state.totalRecords > 0) ? state.totalRecords.toLocaleString() + '건' : '계산 중…';
     document.getElementById('sumAvg').textContent    = '계산 중…';
+    document.getElementById('sumAvgPp').textContent  = '계산 중…';
     document.getElementById('sumMedian').textContent = '계산 중…';
     document.getElementById('sumMax').textContent    = '계산 중…';
     document.getElementById('sumMin').textContent    = '계산 중…';
@@ -863,6 +901,7 @@ function updateSummary(data) {
     // 전체 로드 완료: 필터된 정확한 건수와 통계
     document.getElementById('sumTotal').textContent   = s.count.toLocaleString() + '건';
     document.getElementById('sumAvg').textContent     = s.avg    != null ? formatPrice(Math.round(s.avg))    : '—';
+    document.getElementById('sumAvgPp').textContent   = s.avgPp  != null ? formatPyeongPrice(s.avgPp)         : '—';
     document.getElementById('sumMedian').textContent  = s.median != null ? formatPrice(Math.round(s.median)) : '—';
     document.getElementById('sumMax').textContent     = s.max    != null ? formatPrice(s.max)                : '—';
     document.getElementById('sumMin').textContent     = s.min    != null ? formatPrice(s.min)                : '—';
@@ -872,7 +911,7 @@ function updateSummary(data) {
 function renderTable(data) {
   const tbody = document.getElementById('tableBody');
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="no-data">조건에 맞는 거래가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="no-data">조건에 맞는 거래가 없습니다</td></tr>';
     return;
   }
 
@@ -882,6 +921,7 @@ function renderTable(data) {
 
   let html = display.map((r, idx) => {
     const priceStr = formatPrice(r.p);
+    const ppStr = formatPyeongPrice(pricePerPyeong(r));
     const canOpen = r.i != null;
     const nameCell = canOpen
       ? '<a href="javascript:void(0)" onclick="openDetailByIdx(' + idx + ')" style="color:var(--text);cursor:pointer;" title="단지 상세">' + (r.n || '—') + '</a>'
@@ -893,12 +933,13 @@ function renderTable(data) {
       '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + nameCell + '</td>' +
       '<td style="text-align:right;">' + (r.a != null ? r.a + '㎡' : '—') + '</td>' +
       '<td style="text-align:right;font-weight:600;color:var(--up);">' + priceStr + directBadge + renderPrevPrice(r) + '</td>' +
+      '<td style="text-align:right;color:var(--muted);">' + ppStr + '</td>' +
       '<td style="text-align:right;color:var(--muted);">' + (r.f != null ? r.f + '층' : '—') + '</td>' +
       '</tr>';
   }).join('');
 
   if (truncated) {
-    html += '<tr><td colspan="6" class="trunc-notice">상위 ' + MAX_DISPLAY_ROWS.toLocaleString() + '건만 표시됩니다. 필터를 사용해 범위를 좁혀보세요. (전체: ' + data.length.toLocaleString() + '건)</td></tr>';
+    html += '<tr><td colspan="7" class="trunc-notice">상위 ' + MAX_DISPLAY_ROWS.toLocaleString() + '건만 표시됩니다. 필터를 사용해 범위를 좁혀보세요. (전체: ' + data.length.toLocaleString() + '건)</td></tr>';
   }
 
   tbody.innerHTML = html;
@@ -922,6 +963,7 @@ function renderCards(data) {
       : (r.n || '—');
     const directBadge = r.dt ? ' <span class="badge-direct">직거래</span>' : '';
     const prevHtml = renderPrevPrice(r);
+    const ppStr = formatPyeongPrice(pricePerPyeong(r));
     return '<div class="tx-card">' +
       '<div class="tx-card-top">' +
         '<div>' +
@@ -931,6 +973,7 @@ function renderCards(data) {
         '<div>' +
           '<div class="tx-card-price">' + formatPrice(r.p) + directBadge + '</div>' +
           '<div class="tx-card-date">' + (r.d || '') + '</div>' +
+          '<div class="tx-card-date">' + ppStr + '</div>' +
         '</div>' +
       '</div>' +
       '<div class="tx-card-meta">' +
@@ -949,7 +992,7 @@ function renderCards(data) {
 }
 
 function renderEmpty(msg) {
-  document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" class="no-data">' + msg + '</td></tr>';
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="no-data">' + msg + '</td></tr>';
   document.getElementById('mobileCards').innerHTML = '<div class="no-data">' + msg + '</div>';
 }
 
@@ -1017,7 +1060,7 @@ function updateDataInfo() {
 }
 
 function updateSortIcons() {
-  ['d','g','n','a','p','f'].forEach(col => {
+  ['d','g','n','a','p','pp','f'].forEach(col => {
     const si = document.getElementById('si-' + col);
     const th = document.getElementById('th-' + col);
     if (!si || !th) return;
@@ -1157,7 +1200,7 @@ function setSort(col) {
   } else {
     state.sort.col = col;
     // 거래일·가격은 내림차순이 기본값
-    state.sort.dir = (col === 'd' || col === 'p') ? 'desc' : 'asc';
+    state.sort.dir = (col === 'd' || col === 'p' || col === 'pp') ? 'desc' : 'asc';
   }
   updateSortIcons();
   render();

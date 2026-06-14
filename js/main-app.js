@@ -17,6 +17,7 @@ let areaCache={}; // name → aggregated data
 let cmpChart=null, cmpSimChart=null;
 let cmpSubTab='price'; // 'price' | 'sim'
 let simMode='gap'; // 'gap' | 'live'
+let priceMetricMode=(()=>{try{return localStorage.getItem('aptPriceMetricMode')||'total';}catch(e){return 'total';}})(); // 'total' | 'pyeong'
 const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
 let TX_CACHE={};
 let DI=null;
@@ -34,6 +35,70 @@ let MONTH_LABELS=[];
 function initMonthLabels(){const a=[];const endY=MONTH_START_YEAR+Math.ceil(N_MONTHS/12)-1;for(let y=MONTH_START_YEAR;y<=endY;y++)for(let m=1;m<=12;m++){if(a.length>=N_MONTHS)break;a.push(y+'.'+(m<10?'0'+m:m));}MONTH_LABELS=a;}
 initMonthLabels();
 
+function priceModeLabel(){ return priceMetricMode==='pyeong'?'평당가':'총액'; }
+function priceModeUnit(){ return priceMetricMode==='pyeong'?'만원/평':'억원'; }
+function priceModeSuffix(){ return priceMetricMode==='pyeong'?'':'억'; }
+function priceModeAxisSuffix(){ return priceMetricMode==='pyeong'?'만/평':'억'; }
+function entryPyeongPrice(x){
+  if(!x) return null;
+  if(x.pp!==undefined) return x.pp;
+  if(x._merged&&x.si&&x.si.length>1){
+    let sumV=0,sumW=0;
+    x.si.forEach(sibIdx=>{
+      const sib=DI&&DI[sibIdx];
+      const pp=entryPyeongPrice(sib);
+      if(pp!==null&&pp!==undefined){
+        const w=sib.u||sib.t||1;
+        sumV+=pp*w; sumW+=w;
+      }
+    });
+    return sumW>0?sumV/sumW:null;
+  }
+  return priceEokToPyeongMan(x.lp,x.a);
+}
+function displayPriceValue(x){ return priceMetricMode==='pyeong'?entryPyeongPrice(x):(x?x.lp:null); }
+function fmtDisplayPrice(v){
+  return priceMetricMode==='pyeong'?fmtPyeongPrice(v):fmtPrice(v);
+}
+function fmtDisplayPriceNumber(v){
+  if(v===null||v===undefined) return '-';
+  return priceMetricMode==='pyeong'?Math.round(v).toLocaleString():v.toFixed(2);
+}
+function setPriceMetricMode(mode){
+  if(mode!=='total'&&mode!=='pyeong') return;
+  const prevMode=priceMetricMode;
+  if(prevMode===mode){ syncPriceMetricButtons(); return; }
+  priceMetricMode=mode;
+  try{localStorage.setItem('aptPriceMetricMode',mode);}catch(e){}
+  syncPriceMetricButtons();
+  const pLow=document.getElementById('pL');
+  const pHigh=document.getElementById('pH');
+  if(pLow) pLow.value='';
+  if(pHigh) pHigh.value='';
+  const pLbl=document.getElementById('priceFilterLabel');
+  if(pLbl) pLbl.textContent=mode==='pyeong'?'평당가':'최근가';
+  const pUnit=document.getElementById('priceFilterUnit');
+  if(pUnit) pUnit.textContent=mode==='pyeong'?'만원/평':'억';
+  const pCol=document.getElementById('priceColumnLabel');
+  if(pCol) pCol.textContent=mode==='pyeong'?'평당가':'최근가';
+  areaCache={};
+  if(typeof F!=='undefined'&&Array.isArray(F)&&F.length){ ds(); rt(); }
+  if(typeof selectedAreas!=='undefined'&&selectedAreas.length) renderComparison();
+  if(curDetailIdx!==null&&DI&&DI[curDetailIdx]) showDetail(DI[curDetailIdx]);
+  saveHash();
+}
+function syncPriceMetricButtons(){
+  document.querySelectorAll('[data-price-mode]').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.priceMode===priceMetricMode);
+  });
+  const pLbl=document.getElementById('priceFilterLabel');
+  if(pLbl) pLbl.textContent=priceMetricMode==='pyeong'?'평당가':'최근가';
+  const pUnit=document.getElementById('priceFilterUnit');
+  if(pUnit) pUnit.textContent=priceMetricMode==='pyeong'?'만원/평':'억';
+  const pCol=document.getElementById('priceColumnLabel');
+  if(pCol) pCol.textContent=priceMetricMode==='pyeong'?'평당가':'최근가';
+}
+
 function switchChartTab(tab){
   chartTab=tab;
   document.getElementById('chtYear').className='cmp-sub-tab'+(tab==='year'?' active':'');
@@ -43,14 +108,14 @@ function switchChartTab(tab){
 
 function renderDetailChart(){
   if(!chartDetailCtx) return;
-  const {prices,entryMonthly}=chartDetailCtx;
+  const {x,prices,pricesPp,entryMonthly}=chartDetailCtx;
   if(ch){ch.destroy();ch=null;}
   const canvas=document.getElementById('chart');
   if(!canvas) return;
 
   if(chartTab==='month'&&entryMonthly&&entryMonthly.p.some(v=>v>0)){
     // 월별 차트
-    const rawPrices=entryMonthly.p;
+    const rawPrices=priceMetricMode==='pyeong'?(entryMonthly.pp||entryMonthly.p.map(v=>priceEokToPyeongMan(v,x&&x.a)||0)):entryMonthly.p;
     const rawCounts=entryMonthly.c;
     const ff=entryMonthly._preFilled?{values:rawPrices, filled:entryMonthly._filled}:forwardFill(rawPrices);
     let firstValid=-1, lastValid=-1;
@@ -83,7 +148,7 @@ function renderDetailChart(){
             title:items=>sliceLabels[items[0].dataIndex],
             label:c=>{
               const idx=c.dataIndex;const cnt=sliceCounts[idx];const isFilled=sliceFilled[idx];
-              let label=c.parsed.y+'\uC5B5\uC6D0';
+              let label=priceMetricMode==='pyeong'?Math.round(c.parsed.y).toLocaleString()+'\uB9CC/\uD3C9':c.parsed.y+'\uC5B5\uC6D0';
               if(cnt>0) label+=' ('+cnt+'\uAC74)';
               if(isFilled) label+=' (\uC9C1\uC804\uAC00 \uC720\uC9C0)';
               return label;
@@ -94,14 +159,14 @@ function renderDetailChart(){
           x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:9},maxRotation:0,
             callback:function(val,idx){ return idx%12===0?sliceLabels[idx].slice(0,4):''; }
           }},
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
         }
       }
     });
   } else {
     // 연도별 차트
     const yrData=[],yrLabels=[];
-    prices.forEach((p,j)=>{if(p>0){yrData.push(p);yrLabels.push(Y[j]+'');}});
+    prices.forEach((p,j)=>{if(p>0){yrData.push(priceMetricMode==='pyeong'?((pricesPp&&pricesPp[j])||priceEokToPyeongMan(p,x&&x.a)||0):p);yrLabels.push(Y[j]+'');}});
     if(yrData.length===0) return;
     ch=new Chart(canvas,{
       type:'line',
@@ -111,10 +176,10 @@ function renderDetailChart(){
         pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,spanGaps:true
       }]},
       options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>c.parsed.y+'\uC5B5\uC6D0'}}},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>priceMetricMode==='pyeong'?Math.round(c.parsed.y).toLocaleString()+'\uB9CC/\uD3C9':c.parsed.y+'\uC5B5\uC6D0'}}},
         scales:{
           x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},maxRotation:0}},
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'\uC5B5'}}
+          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
         }
       }
     });
@@ -288,7 +353,7 @@ function aggregateArea(key){
       name: x.n+' '+fmtArea(x.a),
       key, _merged:x._merged,
       cnt:cntLabel, totalTx:x.t||0,
-      avgLp:x.lp, avgCagr:x.c, avgMdd:x.m,
+      avgLp:x.lp, avgPp:entryPyeongPrice(x), avgCagr:x.c, avgMdd:x.m,
       avgSharpe:x.s, avgQ:x.q, avgK:x.k, y25,
       yearAvg, items:x._merged?x.si.map(i=>DI[i]).filter(Boolean):[x], gu:x.g,
       si:x.si
@@ -321,6 +386,7 @@ function aggregateArea(key){
   const cnt=items.length;
   const totalTx=items.reduce((s,x)=>s+(x.t||0),0);
   const avgLp=wavg(items.filter(x=>x.lp&&x.lp>0),x=>x.lp);
+  const avgPp=wavg(items.filter(x=>entryPyeongPrice(x)),x=>entryPyeongPrice(x));
   const avgCagr=wavg(items.filter(x=>x.c!==null),x=>x.c);
   const avgMdd=wavg(items,x=>x.m);
   const avgSharpe=wavg(items.filter(x=>x.s!==null),x=>x.s);
@@ -351,7 +417,7 @@ function aggregateArea(key){
     gu=parts.join(' ');
   }
 
-  const result={name:key,key,cnt,totalTx,avgLp,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu};
+  const result={name:key,key,cnt,totalTx,avgLp,avgPp,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu};
   areaCache[key]=result;
   return result;
 }
@@ -383,6 +449,11 @@ async function renderComparison(){
   html+='</div>';
 
   html+=`<div id="cmpPriceView" style="${cmpSubTab==='price'?'':'display:none'}">`;
+  html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <span style="font-size:11px;color:#64748b">가격 기준</span>
+    <button class="cmp-sub-tab ${priceMetricMode==='total'?'active':''}" data-price-mode="total" onclick="setPriceMetricMode('total')">총액</button>
+    <button class="cmp-sub-tab ${priceMetricMode==='pyeong'?'active':''}" data-price-mode="pyeong" onclick="setPriceMetricMode('pyeong')">평당가</button>
+  </div>`;
 
   // 요약 카드
   html+='<div class="cmp-cards-grid">';
@@ -390,11 +461,12 @@ async function renderComparison(){
     const fm=v=>v!==null&&v!==undefined?v.toFixed(1)+'%':'-';
     const cntLabel=areaLevel==='complex'?'면적':('단지수');
     const cntVal=areaLevel==='complex'?fmtArea((DI[parseInt(d.key.slice(4))]||{}).a):d.cnt;
+    const pv=priceMetricMode==='pyeong'?d.avgPp:d.avgLp;
     html+=`<div class="cmp-summary" style="border-left-color:${CMP_COLORS[i]}">
       <div class="name" style="color:${CMP_COLORS[i]}">${d.name}</div>
       <div class="stats">
         <span class="stat-label">${cntLabel}</span><span class="stat-value">${cntVal}</span>
-        <span class="stat-label">최근가</span><span class="stat-value">${d.avgLp?d.avgLp.toFixed(2)+'억':'-'}</span>
+        <span class="stat-label">${priceMetricMode==='pyeong'?'평당가':'최근가'}</span><span class="stat-value">${fmtDisplayPrice(pv)}</span>
         <span class="stat-label">CAGR</span><span class="stat-value ${d.avgCagr>0?'up':'dn'}">${fm(d.avgCagr)}</span>
         <span class="stat-label">MDD</span><span class="stat-value">${fm(d.avgMdd)}</span>
       </div>
@@ -403,7 +475,7 @@ async function renderComparison(){
   html+='</div>';
 
   // 차트
-  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">평균 가격 추이 (억원, 월별)</h3><div style="height:280px"><canvas id="cmpChart"></canvas></div></div>';
+  html+=`<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">평균 ${priceMetricMode==='pyeong'?'평당가':'가격'} 추이 (${priceModeUnit()}, 월별)</h3><div style="height:280px"><canvas id="cmpChart"></canvas></div></div>`;
 
   // 상세 비교 테이블
   html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">지표 비교</h3>';
@@ -414,7 +486,7 @@ async function renderComparison(){
   const metrics=[
     ['단지수',d=>d.cnt,v=>''+v,'max'],
     ['총 거래건수',d=>d.totalTx,v=>v.toLocaleString(),'max'],
-    ['최근가',d=>d.avgLp,v=>v?v.toFixed(2):'-','max'],
+    [priceMetricMode==='pyeong'?'평당가':'최근가',d=>priceMetricMode==='pyeong'?d.avgPp:d.avgLp,v=>fmtDisplayPriceNumber(v),'max'],
     ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
     ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'],
     ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
@@ -433,7 +505,7 @@ async function renderComparison(){
     html+='<tr><td>'+label+'</td>';
     vals.forEach((v,i)=>{
       const isBest=v!==null&&v===bestVal&&validVals.length>1;
-      const cc=typeof v==='number'&&label!=='단지수'&&label!=='총 거래건수'&&label!=='최근가'&&label!=='샤프비율'?(v>0?'up':v<0?'dn':''):'';
+      const cc=typeof v==='number'&&label!=='단지수'&&label!=='총 거래건수'&&label!=='최근가'&&label!=='평당가'&&label!=='샤프비율'?(v>0?'up':v<0?'dn':''):'';
       html+=`<td class="${isBest?'best':''} ${cc}" style="${isBest?'color:'+CMP_COLORS[i]:''}">${fmt(v)}</td>`;
     });
     html+='</tr>';
@@ -444,21 +516,22 @@ async function renderComparison(){
   if(areaLevel!=='complex'){
     data.forEach((d,i)=>{
       if(!d.items||d.items.length===0) return;
-      const sortedItems=[...d.items].sort((a,b)=>(b.lp||0)-(a.lp||0));
+      const sortedItems=[...d.items].sort((a,b)=>(displayPriceValue(b)||0)-(displayPriceValue(a)||0));
       const displayItems=sortedItems.slice(0,50);
       html+=`<div class="complex-list-section" style="border-left:3px solid ${CMP_COLORS[i]}">
         <h4 style="color:${CMP_COLORS[i]}">${d.name} 단지 목록 (${d.items.length}개${d.items.length>50?' 중 상위 50개':''})</h4>
         <table class="complex-list-table">
-          <thead><tr><th>단지명</th><th>동</th><th>면적</th><th>최근가</th><th>CAGR</th><th>MDD</th><th>거래</th></tr></thead>
+          <thead><tr><th>단지명</th><th>동</th><th>면적</th><th>${priceMetricMode==='pyeong'?'평당가':'최근가'}</th><th>CAGR</th><th>MDD</th><th>거래</th></tr></thead>
           <tbody>`;
       displayItems.forEach(x=>{
         const cv=fmtPct(x.c);
         const cc=x.c>0?'up':x.c<0?'dn':'';
+        const pv=displayPriceValue(x);
         html+=`<tr onclick="goToComplex(${x.i})">
           <td style="text-align:left">${x.n}</td>
           <td style="text-align:left;color:#64748b">${x.d||'-'}</td>
           <td>${fmtArea(x.a)}</td>
-          <td style="font-weight:600">${fmtPrice(x.lp)}</td>
+          <td style="font-weight:600">${fmtDisplayPrice(pv)}</td>
           <td class="${cc}">${cv}</td>
           <td>${fmtPct(x.m)}</td>
           <td style="color:#64748b">${x.v}</td>
@@ -472,6 +545,7 @@ async function renderComparison(){
   html+=`<div id="cmpSimView" style="${cmpSubTab==='sim'?'':'display:none'}"></div>`;
 
   el.innerHTML=html;
+  syncPriceMetricButtons();
 
   // 월별 비교 차트 렌더링
   if(cmpSubTab==='price') await renderComparisonChartMonthly(data);
@@ -498,6 +572,10 @@ async function renderComparisonChartMonthly(data){
     if(d.gu) gusToLoad.add(d.gu);
   });
   await Promise.all([...gusToLoad].map(g=>loadMonthly(g)));
+  const toMetricSeries=(values,x)=>{
+    if(priceMetricMode!=='pyeong') return values;
+    return values.map(v=>priceEokToPyeongMan(v,x&&x.a)||0);
+  };
 
   const datasets=data.map((d,i)=>{
     let monthlyPrices=new Array(N_MONTHS).fill(0);
@@ -514,7 +592,7 @@ async function renderComparisonChartMonthly(data){
           if(md&&md[String(sibIdx)]){
             const ff=forwardFill(md[String(sibIdx)].p);
             const w=sib.u||sib.t||1;
-            filledSeries.push({values:ff.values, raw:md[String(sibIdx)], w});
+            filledSeries.push({values:toMetricSeries(ff.values,sib), raw:md[String(sibIdx)], w});
           }
         });
         for(let slot=0;slot<N_MONTHS;slot++){
@@ -529,7 +607,7 @@ async function renderComparisonChartMonthly(data){
         if(x){
           const md=MONTHLY_CACHE[x.g];
           if(md&&md[String(x.i)]){
-            monthlyPrices=md[String(x.i)].p.slice();
+            monthlyPrices=toMetricSeries(md[String(x.i)].p.slice(),x);
             monthlyCounts=md[String(x.i)].c.slice();
           }
         }
@@ -543,7 +621,7 @@ async function renderComparisonChartMonthly(data){
           const md=MONTHLY_CACHE[x.g];
           if(md&&md[String(x.i)]){
             const ff=forwardFill(md[String(x.i)].p);
-            filledSeries.push(ff.values);
+            filledSeries.push(toMetricSeries(ff.values,x));
           }
         });
         // 2. forward-fill된 값들의 평균
@@ -584,7 +662,11 @@ async function renderComparisonChartMonthly(data){
         legend:{position:'top',labels:{color:'#94a3b8',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
         tooltip:{
           backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
-          callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'억'}
+          callbacks:{label:c=>{
+            const y=c.parsed.y;
+            const val=priceMetricMode==='pyeong'?Math.round(y).toLocaleString():y.toFixed(2);
+            return c.dataset.label+': '+val+priceModeAxisSuffix();
+          }}
         }
       },
       scales:{
@@ -595,7 +677,7 @@ async function renderComparisonChartMonthly(data){
             callback:function(val,idx){ return idx%12===0?MONTH_LABELS[idx].slice(0,4):''; }
           }
         },
-        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+'억'}}
+        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
       }
     }
   });
@@ -1261,7 +1343,11 @@ function applyIndexPayload(j){
   D=j.d||[];
 
   DI={};
-  D.forEach(x=>{ DI[x.i]=x; });
+  D.forEach(x=>{
+    const pp=priceEokToPyeongMan(x.lp,x.a);
+    x.pp=pp!==null?parseFloat(pp.toFixed(0)):null;
+    DI[x.i]=x;
+  });
 }
 
 async function init(){
@@ -1276,6 +1362,7 @@ async function init(){
   initReturnYearSelects();
   buildLoc();
   buildMerged();
+  syncPriceMetricButtons();
 
   if(!loadHash()) af();
 
@@ -1374,6 +1461,7 @@ function buildMerged(){
     const mc=wavg('c'); const mm=wavg('m'); const ms=wavg('s');
     const mq=wavg('q'); const mk=wavg('k'); const my25=wavg('y25');
     const mlp=wavg('lp');
+    const mpp=wavg('pp');
     DM.push({
       _merged:true,
       i:rep.i, // 대표 인덱스
@@ -1388,6 +1476,7 @@ function buildMerged(){
       k:mk!==null?parseFloat(mk.toFixed(1)):null,
       t:totalT,
       lp:mlp!==null?parseFloat(mlp.toFixed(2)):null,
+      pp:mpp!==null?parseFloat(mpp.toFixed(0)):null,
       y25:my25!==null?parseFloat(my25.toFixed(1)):null,
       ld:Math.max(...siblings.map(x=>x.ld||0))||null,
       si:siblings.map(x=>x.i),
@@ -1501,8 +1590,9 @@ function af(){
     if(cH!==null&&(x.c===null||x.c>cH))return false;
     if(mL!==null&&x.m<mL)return false;
     if(mH!==null&&x.m>mH)return false;
-    if(pL!==null&&(x.lp===null||x.lp===0||x.lp<pL))return false;
-    if(pH2!==null&&(x.lp===null||x.lp===0||x.lp>pH2))return false;
+    const priceForFilter=displayPriceValue(x);
+    if(pL!==null&&(priceForFilter===null||priceForFilter===0||priceForFilter<pL))return false;
+    if(pH2!==null&&(priceForFilter===null||priceForFilter===0||priceForFilter>pH2))return false;
     if(sL!==null&&(x.s===null||x.s<sL))return false;
     if(sH!==null&&(x.s===null||x.s>sH))return false;
     if(uL!==null&&(!x.tu||x.tu<uL))return false;
@@ -1521,6 +1611,7 @@ function ds(){
     // 통합 모드: 면적·대지지분은 최대값 기준 정렬
     if(sc==='a'&&merged){ va=a._aNum||a.a; vb=b._aNum||b.a; }
     if(sc==='ls'){ va=merged?(a._lsNum||calcLandShare(a)):calcLandShare(a); vb=merged?(b._lsNum||calcLandShare(b)):calcLandShare(b); }
+    if(sc==='lp'&&priceMetricMode==='pyeong'){ va=entryPyeongPrice(a); vb=entryPyeongPrice(b); }
     // 수익률 정렬: 동적 계산
     if(sc==='ret'){ va=calcReturn(a); vb=calcReturn(b); }
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
@@ -1574,7 +1665,7 @@ function rt(){
     const x=F[i];
     const bg=['b-g','b-s','b-i'][x.r];
     const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
-    const lpv=fmtPrice(x.lp);
+    const lpv=fmtDisplayPrice(displayPriceValue(x));
     const retObj=calcReturnObj(x);
     const retv=retObj?(retObj.val>0?'+':'')+retObj.val.toFixed(1)+'%':'-';
     const retc=retObj?(retObj.val>0?'up':retObj.val<0?'dn':''):'';
@@ -1610,7 +1701,7 @@ function rt(){
       const x=F[i];
       const bg=['b-g','b-s','b-i'][x.r];
       const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
-      const lpv=fmtPrice(x.lp);
+      const lpv=fmtDisplayPrice(displayPriceValue(x));
       const cv=fmtSignedPct(x.c);
       const cc=x.c>0?'up':x.c<0?'dn':'';
       const mv=fmtPct(x.m);
@@ -1705,6 +1796,7 @@ function showDetail(x){
     ['MDD',fmtPct(x.m),'dn'],
     ['\uC0E4\uD504\uBE44\uC728',fmtSharp(x.s),''],
     ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
+    ['\uD3C9\uB2F9\uAC00',fmtPyeongPrice(entryPyeongPrice(x)),''],
     [retLbl,retFmt,retCls],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal?lsM2+' ('+lsPy+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
@@ -1765,6 +1857,7 @@ function switchAreaFromMerged(dataIdx){
     ['MDD',fmtPct(x.m),'dn'],
     ['\uC0E4\uD504\uBE44\uC728',fmtSharp(x.s),''],
     ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
+    ['\uD3C9\uB2F9\uAC00',fmtPyeongPrice(entryPyeongPrice(x)),''],
     [retLbl2,retFmt2,retCls2],
     ['\uB300\uC9C0\uC9C0\uBD84',lsVal2?lsM22+' ('+lsPy2+')':'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
@@ -1799,10 +1892,14 @@ async function renderDetail(x){
   const details=getDetails(x.i);
 
   // 연도별 가격 리스트
+  let chartPrices=prices;
+  let chartPricesPp=null;
   let yh='';
   if(x._merged&&x.si&&x.si.length>1){
     // 통합 엔트리: 세대수(u) 가중평균으로 연도별 가격 산출
     const mergedYearAvg=new Array(Y.length).fill(0);
+    const mergedYearPpAvg=new Array(Y.length).fill(0);
+    const mergedYearPpW=new Array(Y.length).fill(0);
     const mergedYearW=new Array(Y.length).fill(0);
     const mergedYearVols=new Array(Y.length).fill(0);
     const mergedYearCounts=new Array(Y.length).fill(0);
@@ -1813,12 +1910,15 @@ async function renderDetail(x){
       const w=sib?(sib.u||sib.t||1):1;
       if(pr) pr.forEach((p,j)=>{
         if(p>0){ mergedYearAvg[j]+=p*w; mergedYearW[j]+=w; mergedYearCounts[j]++; }
+        const pp=priceEokToPyeongMan(p,sib&&sib.a);
+        if(pp){ mergedYearPpAvg[j]+=pp*w; mergedYearPpW[j]+=w; }
       });
       if(vl) vl.forEach((v,j)=>{ mergedYearVols[j]+=v; });
     });
     for(let j=0;j<Y.length;j++){
       if(mergedYearW[j]>0){
         const avgP=parseFloat((mergedYearAvg[j]/mergedYearW[j]).toFixed(2));
+        const shownPrice=priceMetricMode==='pyeong'?fmtPyeongPrice(mergedYearPpW[j]>0?mergedYearPpAvg[j]/mergedYearPpW[j]:priceEokToPyeongMan(avgP,x.a)):avgP+'억';
         const y=Y[j];
         let chg='';
         if(j>0&&mergedYearW[j-1]>0){
@@ -1829,17 +1929,21 @@ async function renderDetail(x){
         const volStr=mergedYearVols[j]>0?`<span style="color:#64748b;font-size:10px">${mergedYearVols[j]}건</span>`:'';
         yh+=`<div class="yr-row">
           <span style="color:#64748b;min-width:32px">${y}</span>
-          <span style="font-weight:600">${avgP}억</span>
+          <span style="font-weight:600">${shownPrice}</span>
           <span style="color:#475569;font-size:10px">(${mergedYearCounts[j]}평형)</span>
           ${volStr}
           ${chg}
         </div>`;
       }
     }
+    chartPrices=mergedYearAvg.map((v,j)=>mergedYearW[j]>0?parseFloat((v/mergedYearW[j]).toFixed(2)):0);
+    chartPricesPp=mergedYearPpAvg.map((v,j)=>mergedYearPpW[j]>0?parseFloat((v/mergedYearPpW[j]).toFixed(0)):0);
   } else {
+    chartPricesPp=prices.map(p=>p>0?priceEokToPyeongMan(p,x.a):0);
     prices.forEach((p,j)=>{
       if(p>0){
         const y=Y[j];
+        const shownPrice=priceMetricMode==='pyeong'?fmtPyeongPrice(priceEokToPyeongMan(p,x.a)):p+'억';
         const vol=volumes?volumes[j]:0;
         let chg='';
         if(j>0&&prices[j-1]>0){
@@ -1859,7 +1963,7 @@ async function renderDetail(x){
 
         yh+=`<div class="yr-row" onclick="openTxModal(${x.i},${y})">
           <span style="color:#64748b;min-width:32px">${y}</span>
-          <span style="font-weight:600">${p}억</span>
+          <span style="font-weight:600">${shownPrice}</span>
           ${rangeStr}
           ${volStr}
           ${chg}
@@ -1883,33 +1987,38 @@ async function renderDetail(x){
       if(sibMd&&sibMd[String(sibIdx)]){
         const ff=forwardFill(sibMd[String(sibIdx)].p);
         const w=sib.u||sib.t||1;
-        filledSeries.push({values:ff.values, filled:ff.filled, raw:sibMd[String(sibIdx)], w});
+        filledSeries.push({values:ff.values, filled:ff.filled, raw:sibMd[String(sibIdx)], w, area:sib.a});
       }
     }
     if(filledSeries.length>0){
       const mergedP=new Array(N_MONTHS).fill(0);
+      const mergedPp=new Array(N_MONTHS).fill(0);
       const mergedC=new Array(N_MONTHS).fill(0);
       const mergedFilled=new Array(N_MONTHS).fill(true);
       for(let slot=0;slot<N_MONTHS;slot++){
         let sumW=0, sumV=0;
+        let sumPpW=0, sumPpV=0;
         let anyReal=false;
         filledSeries.forEach(s=>{
           if(s.values[slot]>0){ sumV+=s.values[slot]*s.w; sumW+=s.w; if(!s.filled[slot]) anyReal=true; }
+          const pp=priceEokToPyeongMan(s.values[slot],s.area);
+          if(pp){ sumPpV+=pp*s.w; sumPpW+=s.w; }
         });
         if(sumW>0){
           mergedP[slot]=sumV/sumW;
           mergedFilled[slot]=!anyReal;
         }
+        if(sumPpW>0) mergedPp[slot]=sumPpV/sumPpW;
         filledSeries.forEach(s=>{ mergedC[slot]+=s.raw.c[slot]; });
       }
-      entryMonthly={p:mergedP, c:mergedC, _filled:mergedFilled, _preFilled:true};
+      entryMonthly={p:mergedP, pp:mergedPp, c:mergedC, _filled:mergedFilled, _preFilled:true};
     }
   }
 
   // 차트 컨텍스트 저장 (탭 전환용)
-  chartDetailCtx={prices, entryMonthly};
+  chartDetailCtx={x, prices:chartPrices, pricesPp:chartPricesPp, entryMonthly};
   const hasMonthly=!!entryMonthly&&entryMonthly.p.some(v=>v>0);
-  const hasYearly=prices.some(p=>p>0);
+  const hasYearly=chartPrices.some(p=>p>0);
 
   // 둘 다 있으면 탭 표시, 아니면 숨김
   const tabWrap=document.getElementById('chartTabWrap');
@@ -1917,7 +2026,7 @@ async function renderDetail(x){
     tabWrap.style.display='';
     // 기본 탭: 2015 이전 데이터 있으면 연도별, 없으면 월별
     const i2015=Y.indexOf(2015);
-    const hasPreData=prices.some((p,j)=>j<i2015&&p>0);
+    const hasPreData=chartPrices.some((p,j)=>j<i2015&&p>0);
     chartTab=hasPreData?'year':'month';
   } else {
     tabWrap.style.display='none';
@@ -2231,6 +2340,7 @@ function saveHash(){
   if(areaLevel!=='gu')p.al=areaLevel;
   if(selectedAreas.length)p.aa=selectedAreas.join('|');
   if(cmpSubTab==='sim')p.st='sim';
+  if(priceMetricMode!=='total')p.pm=priceMetricMode;
   const h=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   history.replaceState(null,null,h?'#'+h:'#');
 }
@@ -2257,6 +2367,10 @@ function loadHash(){
   if(p.g){selGus=p.g.split('|');renderGuChips();onR();}
   if(p.d)document.getElementById('fD').value=p.d;
   if(p.s)document.getElementById('fS').value=p.s;
+  if(p.pm==='pyeong') priceMetricMode='pyeong';
+  else if(p.pm==='total') priceMetricMode='total';
+  try{localStorage.setItem('aptPriceMetricMode',priceMetricMode);}catch(e){}
+  syncPriceMetricButtons();
   if(p.aL)document.getElementById('aL').value=p.aL;
   if(p.aH)document.getElementById('aH').value=p.aH;
   if(p.cL)document.getElementById('cL').value=p.cL;

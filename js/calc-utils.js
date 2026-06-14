@@ -34,6 +34,33 @@ function fmtArea(a){
   return s+'㎡';
 }
 
+function areaToPyeong(area){
+  if(typeof area==='number'&&area>0) return area/3.3058;
+  const m=String(area||'').match(/^([\d.]+)~([\d.]+)$/);
+  if(m){
+    const lo=parseFloat(m[1]), hi=parseFloat(m[2]);
+    if(lo>0&&hi>0) return ((lo+hi)/2)/3.3058;
+  }
+  return null;
+}
+
+function priceEokToPyeongMan(priceEok, area){
+  const py=areaToPyeong(area);
+  if(!priceEok||priceEok<=0||!py||py<=0) return null;
+  return priceEok*10000/py;
+}
+
+function priceManToPyeongMan(priceMan, area){
+  const py=areaToPyeong(area);
+  if(!priceMan||priceMan<=0||!py||py<=0) return null;
+  return priceMan/py;
+}
+
+function fmtPyeongPrice(v){
+  if(v===null||v===undefined||Number.isNaN(v)||!Number.isFinite(Number(v))) return '-';
+  return Math.round(Number(v)).toLocaleString()+'만/평';
+}
+
 function calcLandShare(x){ return x.ls||null; }
 
 function getPrices(idx){ return typeof PRICES!=='undefined'&&PRICES?PRICES[String(idx)]:null; }

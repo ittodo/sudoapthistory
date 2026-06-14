@@ -21,7 +21,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="js/calc-utils.js"></script>
+<script src="js/calc-utils.js?v=20260614-pyeong"></script>
 <script src="js/data-loader.js"></script>
 <link rel="stylesheet" href="css/main.css">
 </head>
@@ -41,6 +41,8 @@
       <a href="trades/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">실거래가</a>
       <a href="calc/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">금융계산기</a>
       <span id="fc" class="text-xs" style="color:#64748b">0건</span>
+      <button onclick="setPriceMetricMode('total')" class="pg-btn active" data-price-mode="total" title="가격을 총액 기준으로 표시합니다">총액</button>
+      <button onclick="setPriceMetricMode('pyeong')" class="pg-btn" data-price-mode="pyeong" title="가격을 전용면적 평당가 기준으로 표시합니다">평당가</button>
       <button onclick="toggleMerged()" class="pg-btn" id="mgBtn" title="같은 단지의 모든 평형을 하나로 합쳐서 봅니다">평형별</button>
       <button onclick="resetF()" class="pg-btn">초기화</button>
     </div>
@@ -56,7 +58,7 @@
       <div><label class="text-xs" style="color:#64748b">평형(평)</label><div class="rg"><input id="aL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="aH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">최근가</label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:#64748b"><span id="priceFilterLabel">최근가</span><span id="priceFilterUnit" style="margin-left:3px;color:#475569">억</span></label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:#475569">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">세대수</label><div class="rg"><input id="uL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="uH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
       <div><label class="text-xs" style="color:#64748b">준공연도</label><div class="rg"><input id="bL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="bH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
@@ -75,7 +77,7 @@
             <th onclick="sb('g')" class="text-left">구 <span class="sa" data-c="g">▼</span></th>
             <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
             <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
-            <th onclick="sb('lp')">최근가 <span class="sa" data-c="lp">▼</span></th>
+            <th onclick="sb('lp')"><span id="priceColumnLabel">최근가</span> <span class="sa" data-c="lp">▼</span></th>
             <th onclick="sb('ret')" title="선택한 기간의 수익률" id="thRet">수익률 <span class="sa" data-c="ret">▼</span></th>
             <th onclick="sb('c')" title="연평균성장률: 첫 거래연도~2025년 기준. 신축일수록 기간이 짧아 높게 나올 수 있음">CAGR <span class="sa" data-c="c">▼</span></th>
             <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
@@ -181,8 +183,8 @@
   </div>
 </div>
 
-<script>window.APT_ASSET_VERSION='20260603-numberfix';</script>
-<script src="js/main-app.js?v=20260603-numberfix"></script>
+<script>window.APT_ASSET_VERSION='20260614-pyeong';</script>
+<script src="js/main-app.js?v=20260614-pyeong"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-init.js"></script>
 <script src="js/comments.js"></script>

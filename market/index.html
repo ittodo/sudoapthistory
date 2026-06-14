@@ -109,6 +109,11 @@ a:hover { text-decoration: underline; }
 
 <!-- Price Tier Mode -->
 <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+  <span style="font-size:11px;color:var(--muted);">가격 기준</span>
+  <div style="display:flex;gap:4px;">
+    <button class="tab-btn active" data-price-mode="total" onclick="setPriceMetricMode('total')">총액</button>
+    <button class="tab-btn" data-price-mode="pyeong" onclick="setPriceMetricMode('pyeong')">평당가</button>
+  </div>
   <span style="font-size:11px;color:var(--muted);">가격대</span>
   <div style="display:flex;gap:4px;">
     <button class="tab-btn active" data-tier-mode="off" onclick="setTierMode('off')">기본</button>
@@ -158,9 +163,9 @@ a:hover { text-decoration: underline; }
         <th onclick="sortTable('lastC')" style="text-align:right">최근월 거래 <span class="sort-arrow" id="st-lastC"></span></th>
         <th onclick="sortTable('momC')" style="text-align:right">전월비(건) <span class="sort-arrow" id="st-momC"></span></th>
         <th onclick="sortTable('avg3C')" style="text-align:right">3개월 평균 <span class="sort-arrow" id="st-avg3C"></span></th>
-        <th onclick="sortTable('lastP')" style="text-align:right">최근월 평균가 <span class="sort-arrow" id="st-lastP"></span></th>
-        <th onclick="sortTable('lastMedian')" style="text-align:right">중위가 <span class="sort-arrow" id="st-lastMedian"></span></th>
-        <th onclick="sortTable('momP')" style="text-align:right">전월비(가격) <span class="sort-arrow" id="st-momP"></span></th>
+        <th onclick="sortTable('lastP')" style="text-align:right"><span id="guPriceHead">최근월 평균가</span> <span class="sort-arrow" id="st-lastP"></span></th>
+        <th onclick="sortTable('lastMedian')" style="text-align:right"><span id="guMedianHead">중위가</span> <span class="sort-arrow" id="st-lastMedian"></span></th>
+        <th onclick="sortTable('momP')" style="text-align:right"><span id="guMomPriceHead">전월비(가격)</span> <span class="sort-arrow" id="st-momP"></span></th>
         <th onclick="sortTable('yoyC')" style="text-align:right">전년동월비(건) <span class="sort-arrow" id="st-yoyC"></span></th>
       </tr>
     </thead>
@@ -191,6 +196,7 @@ a:hover { text-decoration: underline; }
             <th style="text-align:right;min-width:65px;">면적(㎡)</th>
             <th style="text-align:right;min-width:45px;">층</th>
             <th style="text-align:right;min-width:110px;">가격</th>
+            <th style="text-align:right;min-width:95px;">평당가</th>
             <th style="text-align:right;min-width:85px;">거래일</th>
           </tr>
         </thead>
@@ -223,6 +229,7 @@ let MKT = null;
 let region = 'all';
 let selectedGus = [];
 let tierMode = 'off';
+let priceMetricMode = (() => { try { return localStorage.getItem('aptPriceMetricMode') || 'total'; } catch(e) { return 'total'; } })();
 let tSortKey = 'lastC', tSortAsc = false;
 let refSlot = -1; // 기준월 슬롯 (자동 설정)
 let refMonthExplicit = false;
@@ -259,6 +266,7 @@ async function init() {
 
   buildGuMenu();
   parseHash();
+  syncPriceMetricButtons();
   syncRefMonthSelect();
   updateAll();
   document.getElementById('loading').style.display = 'none';
@@ -477,11 +485,64 @@ function fmtChg(v) {
   return `<span class="${cls}">${sign}${v.toFixed(1)}%</span>`;
 }
 
+function areaToPyeong(area) {
+  return area && area > 0 ? area / 3.3058 : null;
+}
+
+function priceManToPyeongMan(price, area) {
+  const py = areaToPyeong(area);
+  return price && py ? price / py : null;
+}
+
+function metricArray(data, baseKey) {
+  if (priceMetricMode !== 'pyeong') return data?.[baseKey] || [];
+  if (baseKey === 'p') return data?.pp || data?.p || [];
+  if (baseKey === 'median') return data?.ppMedian || data?.median || [];
+  if (baseKey === 'high') return data?.ppHigh || data?.high || [];
+  if (baseKey === 'low') return data?.ppLow || data?.low || [];
+  return data?.[baseKey] || [];
+}
+
+function metricValue(data, baseKey, slot) {
+  const arr = metricArray(data, baseKey);
+  return (arr && arr[slot]) || 0;
+}
+
+function fmtMetricPrice(v) {
+  if (!v || v <= 0) return '-';
+  return priceMetricMode === 'pyeong'
+    ? Math.round(v).toLocaleString() + '만/평'
+    : v.toFixed(2) + '억';
+}
+
+function metricAxisSuffix() {
+  return priceMetricMode === 'pyeong' ? '만/평' : '억';
+}
+
+function syncPriceMetricButtons() {
+  document.querySelectorAll('[data-price-mode]').forEach(b => b.classList.toggle('active', b.dataset.priceMode === priceMetricMode));
+  const avg = priceMetricMode === 'pyeong' ? '최근월 평균 평당가' : '최근월 평균가';
+  const med = priceMetricMode === 'pyeong' ? '중위 평당가' : '중위가';
+  const mom = priceMetricMode === 'pyeong' ? '전월비(평당가)' : '전월비(가격)';
+  const h1 = document.getElementById('guPriceHead'); if (h1) h1.textContent = avg;
+  const h2 = document.getElementById('guMedianHead'); if (h2) h2.textContent = med;
+  const h3 = document.getElementById('guMomPriceHead'); if (h3) h3.textContent = mom;
+}
+
+function setPriceMetricMode(mode) {
+  if (mode !== 'total' && mode !== 'pyeong') return;
+  priceMetricMode = mode;
+  try { localStorage.setItem('aptPriceMetricMode', mode); } catch(e) {}
+  syncPriceMetricButtons();
+  updateAll();
+  saveHash();
+}
+
 function calcGuStats(gd, s) {
   const curC = gd.c[s] || 0;
-  const curP = gd.p[s] || 0;
+  const curP = metricValue(gd, 'p', s);
   const prevC = s > 0 ? (gd.c[s - 1] || 0) : 0;
-  const prevP = s > 0 ? (gd.p[s - 1] || 0) : 0;
+  const prevP = s > 0 ? metricValue(gd, 'p', s - 1) : 0;
   const yoySlot = s - 12;
   const yoyC = yoySlot >= 0 && gd.c[yoySlot] > 0
     ? ((curC - gd.c[yoySlot]) / gd.c[yoySlot] * 100) : null;
@@ -508,8 +569,8 @@ function updateStats() {
     html += `<th style="padding:6px 8px;text-align:left;color:var(--muted);font-size:10px;">구/시</th>`;
     html += `<th style="${th}">거래(${curLabel})</th>`;
     html += `<th style="${th}">거래(${prevLabel})</th>`;
-    html += `<th style="${th}">평균가(${curLabel})</th>`;
-    html += `<th style="${th}">평균가(${prevLabel})</th>`;
+    html += `<th style="${th}">${priceMetricMode==='pyeong'?'평당가':'평균가'}(${curLabel})</th>`;
+    html += `<th style="${th}">${priceMetricMode==='pyeong'?'평당가':'평균가'}(${prevLabel})</th>`;
     html += `<th style="${th}">전년동월비(건)</th>`;
     html += '</tr></thead><tbody>';
 
@@ -523,8 +584,8 @@ function updateStats() {
         <td style="padding:5px 8px;font-weight:600;"><span style="color:${color};margin-right:4px;">●</span>${g}</td>
         <td style="padding:5px 8px;text-align:right;font-weight:600;">${st.curC.toLocaleString()}</td>
         <td style="padding:5px 8px;text-align:right;color:var(--muted);">${st.prevC.toLocaleString()}</td>
-        <td style="padding:5px 8px;text-align:right;font-weight:600;">${st.curP.toFixed(2)}억</td>
-        <td style="padding:5px 8px;text-align:right;color:var(--muted);">${st.prevP ? st.prevP.toFixed(2) + '억' : '-'}</td>
+        <td style="padding:5px 8px;text-align:right;font-weight:600;">${fmtMetricPrice(st.curP)}</td>
+        <td style="padding:5px 8px;text-align:right;color:var(--muted);">${st.prevP ? fmtMetricPrice(st.prevP) : '-'}</td>
         <td style="padding:5px 8px;text-align:right;">${fmtChg(st.yoyC)}</td>
       </tr>`;
     }
@@ -541,8 +602,8 @@ function updateStats() {
   }
   const st = calcGuStats(data, s);
 
-  const curMedian = data.median ? (data.median[s] || 0) : 0;
-  const prevMedian = data.median && s > 0 ? (data.median[s-1] || 0) : 0;
+  const curMedian = metricValue(data, 'median', s);
+  const prevMedian = s > 0 ? metricValue(data, 'median', s - 1) : 0;
   document.getElementById('stats').innerHTML = `
     <div class="stat-card">
       <div class="label">거래건수</div>
@@ -550,14 +611,14 @@ function updateStats() {
       <div class="sub">전월(${prevLabel}) ${st.prevC.toLocaleString()}건 · 전년동월 ${fmtChg(st.yoyC)}</div>
     </div>
     <div class="stat-card">
-      <div class="label">평균가</div>
-      <div class="value">${st.curP.toFixed(2)}<span style="font-size:13px;color:var(--muted)"> 억</span></div>
-      <div class="sub">전월(${prevLabel}) ${st.prevP ? st.prevP.toFixed(2) + '억' : '-'}</div>
+      <div class="label">${priceMetricMode==='pyeong'?'평균 평당가':'평균가'}</div>
+      <div class="value">${st.curP ? (priceMetricMode==='pyeong'?Math.round(st.curP).toLocaleString():st.curP.toFixed(2)) : '-'}<span style="font-size:13px;color:var(--muted)"> ${priceMetricMode==='pyeong'?'만/평':'억'}</span></div>
+      <div class="sub">전월(${prevLabel}) ${st.prevP ? fmtMetricPrice(st.prevP) : '-'}</div>
     </div>
     <div class="stat-card">
-      <div class="label">중위가</div>
-      <div class="value">${curMedian > 0 ? curMedian.toFixed(2) : '-'}<span style="font-size:13px;color:var(--muted)">${curMedian > 0 ? ' 억' : ''}</span></div>
-      <div class="sub">${prevMedian > 0 ? '전월 ' + prevMedian.toFixed(2) + '억' : ''}</div>
+      <div class="label">${priceMetricMode==='pyeong'?'중위 평당가':'중위가'}</div>
+      <div class="value">${curMedian > 0 ? (priceMetricMode==='pyeong'?Math.round(curMedian).toLocaleString():curMedian.toFixed(2)) : '-'}<span style="font-size:13px;color:var(--muted)">${curMedian > 0 ? (priceMetricMode==='pyeong'?' 만/평':' 억') : ''}</span></div>
+      <div class="sub">${prevMedian > 0 ? '전월 ' + fmtMetricPrice(prevMedian) : ''}</div>
     </div>
     <div class="stat-card">
       <div class="label">3개월 평균 거래</div>
@@ -573,6 +634,7 @@ function getMainData() {
   // Aggregate selected gus
   const n = MKT.meta.months;
   const sum_pc = new Float64Array(n);
+  const sum_ppc = new Float64Array(n);
   const sum_c = new Int32Array(n);
   const sum_v = new Float64Array(n);
   for (const g of selectedGus) {
@@ -581,13 +643,15 @@ function getMainData() {
     for (let i = 0; i < n; i++) {
       if (gd.c[i] > 0) {
         sum_pc[i] += gd.p[i] * gd.c[i];
+        if (gd.pp && gd.pp[i] > 0) sum_ppc[i] += gd.pp[i] * gd.c[i];
         sum_c[i] += gd.c[i];
       }
       if (gd.vol && gd.vol[i] > 0) sum_v[i] += gd.vol[i];
     }
   }
   const p = Array.from({length: n}, (_, i) => sum_c[i] > 0 ? Math.round(sum_pc[i] / sum_c[i] * 100) / 100 : 0);
-  return { p, c: Array.from(sum_c), v: Array.from(sum_v) };
+  const pp = Array.from({length: n}, (_, i) => sum_c[i] > 0 ? Math.round(sum_ppc[i] / sum_c[i]) : 0);
+  return { p, pp, c: Array.from(sum_c), v: Array.from(sum_v) };
 }
 
 function getTierDefs() {
@@ -620,6 +684,7 @@ function getTierSource() {
   for (const id of tierIds) {
     work[id] = {
       sumP: new Float64Array(n),
+      sumPP: new Float64Array(n),
       c: new Int32Array(n),
       v: new Float64Array(n),
     };
@@ -635,6 +700,7 @@ function getTierSource() {
         const cnt = td.c[i] || 0;
         if (cnt > 0) {
           work[id].sumP[i] += (td.p[i] || 0) * cnt;
+          if (td.pp && td.pp[i] > 0) work[id].sumPP[i] += td.pp[i] * cnt;
           work[id].c[i] += cnt;
         }
         if (td.v && td.v[i] > 0) work[id].v[i] += td.v[i];
@@ -647,6 +713,7 @@ function getTierSource() {
     const w = work[id];
     tiers[id] = {
       p: Array.from({length: n}, (_, i) => w.c[i] > 0 ? Math.round(w.sumP[i] / w.c[i] * 100) / 100 : 0),
+      pp: Array.from({length: n}, (_, i) => w.c[i] > 0 ? Math.round(w.sumPP[i] / w.c[i]) : 0),
       c: Array.from(w.c),
       v: Array.from(w.v, x => Math.round(x)),
     };
@@ -661,6 +728,7 @@ function buildTierSeries(from, to) {
   return getTierGroups().map((group, idx) => {
     const len = to - from;
     const sumP = Array(len).fill(0);
+    const sumPP = Array(len).fill(0);
     const cnt = Array(len).fill(0);
     const amount = Array(len).fill(0);
     for (const id of group.ids) {
@@ -671,6 +739,7 @@ function buildTierSeries(from, to) {
         const c = td.c[s] || 0;
         if (c > 0) {
           sumP[j] += (td.p[s] || 0) * c;
+          if (td.pp && td.pp[s] > 0) sumPP[j] += td.pp[s] * c;
           cnt[j] += c;
         }
         amount[j] += (td.v && td.v[s]) || 0;
@@ -681,6 +750,7 @@ function buildTierSeries(from, to) {
       label: group.label,
       color: TIER_COLORS[idx],
       p: cnt.map((c, i) => c > 0 ? Math.round(sumP[i] / c * 100) / 100 : null),
+      pp: cnt.map((c, i) => c > 0 ? Math.round(sumPP[i] / c) : null),
       c: cnt,
       v: amount,
     };
@@ -753,12 +823,12 @@ function updateCharts() {
   const tierSeries = tierMode !== 'off' ? buildTierSeries(from, to) : null;
 
   if (tierSeries) {
-    document.getElementById('priceChartTitle').textContent = '가격대별 월평균 거래가격';
+    document.getElementById('priceChartTitle').textContent = priceMetricMode==='pyeong'?'가격대별 월평균 평당가':'가격대별 월평균 거래가격';
     document.getElementById('volumeChartTitle').textContent = '가격대별 월간 거래건수';
     for (const tier of tierSeries) {
       priceSets.push({
         label: tier.label,
-        data: tier.p,
+        data: (priceMetricMode==='pyeong'?tier.pp:tier.p),
         borderColor: tier.color,
         backgroundColor: 'transparent',
         fill: false,
@@ -778,10 +848,10 @@ function updateCharts() {
       });
     }
   } else if (selectedGus.length === 0) {
-    document.getElementById('priceChartTitle').textContent = '가격 추이 (거래건수 가중평균, 억원)';
+    document.getElementById('priceChartTitle').textContent = priceMetricMode==='pyeong'?'평당가 추이 (거래건수 가중평균, 만원/평)':'가격 추이 (거래건수 가중평균, 억원)';
     document.getElementById('volumeChartTitle').textContent = '월간 거래건수';
     const data = getMainData();
-    const pSlice = data.p.slice(from, to);
+    const pSlice = metricArray(data, 'p').slice(from, to);
     const cSlice = data.c.slice(from, to);
     const regionLabel = region === 'seoul' ? '서울' : region === 'gyeonggi' ? '경기' : region === 'incheon' ? '인천' : '전체';
 
@@ -805,9 +875,9 @@ function updateCharts() {
 
     // 중위값 라인
     if (data.median) {
-      const medSlice = data.median.slice(from, to);
+      const medSlice = metricArray(data, 'median').slice(from, to);
       priceSets.push({
-        label: '중위가',
+        label: priceMetricMode==='pyeong'?'중위 평당가':'중위가',
         data: medSlice.map(v => v || null),
         borderColor: '#f59e0b',
         backgroundColor: 'transparent',
@@ -834,14 +904,14 @@ function updateCharts() {
       categoryPercentage: 0.95,
     });
   } else {
-    document.getElementById('priceChartTitle').textContent = '가격 추이 (거래건수 가중평균, 억원)';
+    document.getElementById('priceChartTitle').textContent = priceMetricMode==='pyeong'?'평당가 추이 (거래건수 가중평균, 만원/평)':'가격 추이 (거래건수 가중평균, 억원)';
     document.getElementById('volumeChartTitle').textContent = '월간 거래건수';
     for (let gi = 0; gi < selectedGus.length; gi++) {
       const g = selectedGus[gi];
       const gd = MKT.gu[g];
       if (!gd) continue;
       const color = GU_COLORS[gi];
-      const pSlice = gd.p.slice(from, to);
+      const pSlice = metricArray(gd, 'p').slice(from, to);
       const cSlice = gd.c.slice(from, to);
 
       priceSets.push({
@@ -886,10 +956,15 @@ function updateCharts() {
         tooltip: {
           itemSort: tierSeries ? (a, b) => (b.parsed.y || 0) - (a.parsed.y || 0) : undefined,
           callbacks: {
-            label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(2) ?? '-'}억`,
+            label: ctx => {
+              const y = ctx.parsed.y;
+              if (y == null) return `${ctx.dataset.label}: -`;
+              const val = priceMetricMode==='pyeong' ? Math.round(y).toLocaleString() : y.toFixed(2);
+              return `${ctx.dataset.label}: ${val}${metricAxisSuffix()}`;
+            },
           }
         },
-        densityBand: tierSeries ? null : (_bandData ? { bandData: _bandData } : null),
+        densityBand: tierSeries || priceMetricMode==='pyeong' ? null : (_bandData ? { bandData: _bandData } : null),
       },
       scales: {
         x: commonScaleX,
@@ -898,11 +973,11 @@ function updateCharts() {
           const priceAvg = priceVals.length > 0
             ? priceVals.reduce((s, v) => s + v, 0) / priceVals.length
             : 0;
-          const yMax = priceAvg > 0 ? Math.ceil(priceAvg * 2 / 5) * 5 : undefined;
+          const yMax = priceAvg > 0 ? (priceMetricMode==='pyeong'?Math.ceil(priceAvg * 1.35 / 500) * 500:Math.ceil(priceAvg * 2 / 5) * 5) : undefined;
           return {
             min: 0,
             max: yMax,
-            ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + '억' },
+            ticks: { color: '#94a3b8', font: { size: 10 }, callback: v => v + metricAxisSuffix() },
             grid: { color: 'rgba(51,65,85,.3)' },
           };
         })(),
@@ -1067,18 +1142,18 @@ function updateGuTable() {
     if (region === 'incheon' && gd.r !== 2) continue;
 
     const curC = gd.c[s] || 0;
-    const curP = gd.p[s] || 0;
+    const curP = metricValue(gd, 'p', s);
     // 해당 월에 거래가 아예 없는 구는 표시하되 0으로
     const prevC = s > 0 ? (gd.c[s - 1] || 0) : 0;
     const momC = prevC > 0 ? (curC - prevC) / prevC * 100 : null;
     const avg3C = Math.round((curC + (gd.c[s-1]||0) + (gd.c[s-2]||0)) / 3);
-    const prevP = s > 0 ? (gd.p[s - 1] || 0) : 0;
+    const prevP = s > 0 ? metricValue(gd, 'p', s - 1) : 0;
     const momP = prevP > 0 ? (curP - prevP) / prevP * 100 : null;
     const yoySlot = s - 12;
     const yoyC = yoySlot >= 0 && gd.c[yoySlot] > 0
       ? (curC - gd.c[yoySlot]) / gd.c[yoySlot] * 100 : null;
 
-    const lastMedian = gd.median ? (gd.median[s] || 0) : 0;
+    const lastMedian = metricValue(gd, 'median', s);
     rows.push({ name: g, region: gd.r, lastC: curC, momC, avg3C, lastP: curP, lastMedian, momP, yoyC });
   }
 
@@ -1124,8 +1199,8 @@ function updateGuTable() {
       <td style="text-align:right;font-weight:600">${r.lastC.toLocaleString()}</td>
       <td style="text-align:right">${fmtChg(r.momC)}</td>
       <td style="text-align:right">${r.avg3C.toLocaleString()}</td>
-      <td style="text-align:right;font-weight:600">${r.lastP.toFixed(2)}억</td>
-      <td style="text-align:right;color:var(--muted)">${r.lastMedian > 0 ? r.lastMedian.toFixed(2) + '억' : '-'}</td>
+      <td style="text-align:right;font-weight:600">${fmtMetricPrice(r.lastP)}</td>
+      <td style="text-align:right;color:var(--muted)">${r.lastMedian > 0 ? fmtMetricPrice(r.lastMedian) : '-'}</td>
       <td style="text-align:right">${fmtChg(r.momP)}</td>
       <td style="text-align:right">${fmtChg(r.yoyC)}</td>
     </tr>`;
@@ -1154,6 +1229,7 @@ function saveHash() {
   if (region !== 'all') params.push('r=' + region);
   if (selectedGus.length) params.push('gu=' + selectedGus.join(','));
   if (tierMode !== 'off') params.push('tier=' + tierMode);
+  if (priceMetricMode !== 'total') params.push('pm=' + priceMetricMode);
   params.push('from=' + document.getElementById('fromYear').value);
   params.push('to=' + document.getElementById('toYear').value);
   params.push('m=' + refSlot);
@@ -1182,6 +1258,10 @@ function parseHash() {
   if (params.tier && ['off','simple','detail'].includes(params.tier)) {
     tierMode = params.tier;
     document.querySelectorAll('[data-tier-mode]').forEach(b => b.classList.toggle('active', b.dataset.tierMode === tierMode));
+  }
+  if (params.pm && ['total','pyeong'].includes(params.pm)) {
+    priceMetricMode = params.pm;
+    try { localStorage.setItem('aptPriceMetricMode', priceMetricMode); } catch(e) {}
   }
   if (params.from) document.getElementById('fromYear').value = params.from;
   if (params.to) document.getElementById('toYear').value = params.to;
@@ -1354,12 +1434,14 @@ function renderTradeBatch() {
       const badge = showRegion ? regionBadgeHtml(t.g) : '';
       const area  = t.a != null ? Number(t.a).toFixed(1) : '-';
       const floor = t.f != null ? t.f + '층' : '-';
+      const pp = t.pp || priceManToPyeongMan(t.p, t.a);
       html += `<tr>
         <td>${badge}${t.g || '-'}</td>
         <td>${t.n || '-'}</td>
         <td style="text-align:right;">${area}</td>
         <td style="text-align:right;">${floor}</td>
         <td style="text-align:right;font-weight:600;">${fmtPrice(t.p)}</td>
+        <td style="text-align:right;color:var(--muted);">${pp ? Math.round(pp).toLocaleString() + '만/평' : '-'}</td>
         <td style="text-align:right;color:var(--muted);">${t.d || '-'}</td>
       </tr>`;
     }
