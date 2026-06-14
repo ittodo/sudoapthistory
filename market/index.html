@@ -223,7 +223,7 @@ a:hover { text-decoration: underline; }
 
 </div>
 
-<script>window.APT_ASSET_VERSION='20260607-market-fast-stale-hash';</script>
+<script>window.APT_ASSET_VERSION='20260614-pyeong';</script>
 <script>
 let MKT = null;
 let region = 'all';
@@ -496,10 +496,10 @@ function priceManToPyeongMan(price, area) {
 
 function metricArray(data, baseKey) {
   if (priceMetricMode !== 'pyeong') return data?.[baseKey] || [];
-  if (baseKey === 'p') return data?.pp || data?.p || [];
-  if (baseKey === 'median') return data?.ppMedian || data?.median || [];
-  if (baseKey === 'high') return data?.ppHigh || data?.high || [];
-  if (baseKey === 'low') return data?.ppLow || data?.low || [];
+  if (baseKey === 'p') return Array.isArray(data?.pp) ? data.pp : [];
+  if (baseKey === 'median') return Array.isArray(data?.ppMedian) ? data.ppMedian : [];
+  if (baseKey === 'high') return Array.isArray(data?.ppHigh) ? data.ppHigh : [];
+  if (baseKey === 'low') return Array.isArray(data?.ppLow) ? data.ppLow : [];
   return data?.[baseKey] || [];
 }
 
@@ -612,12 +612,12 @@ function updateStats() {
     </div>
     <div class="stat-card">
       <div class="label">${priceMetricMode==='pyeong'?'평균 평당가':'평균가'}</div>
-      <div class="value">${st.curP ? (priceMetricMode==='pyeong'?Math.round(st.curP).toLocaleString():st.curP.toFixed(2)) : '-'}<span style="font-size:13px;color:var(--muted)"> ${priceMetricMode==='pyeong'?'만/평':'억'}</span></div>
+      <div class="value">${st.curP ? (priceMetricMode==='pyeong'?Math.round(st.curP).toLocaleString():st.curP.toFixed(2)) : '-'}<span style="font-size:13px;color:var(--muted)">${st.curP ? (priceMetricMode==='pyeong'?'만/평':'억') : ''}</span></div>
       <div class="sub">전월(${prevLabel}) ${st.prevP ? fmtMetricPrice(st.prevP) : '-'}</div>
     </div>
     <div class="stat-card">
       <div class="label">${priceMetricMode==='pyeong'?'중위 평당가':'중위가'}</div>
-      <div class="value">${curMedian > 0 ? (priceMetricMode==='pyeong'?Math.round(curMedian).toLocaleString():curMedian.toFixed(2)) : '-'}<span style="font-size:13px;color:var(--muted)">${curMedian > 0 ? (priceMetricMode==='pyeong'?' 만/평':' 억') : ''}</span></div>
+      <div class="value">${curMedian > 0 ? (priceMetricMode==='pyeong'?Math.round(curMedian).toLocaleString():curMedian.toFixed(2)) : '-'}<span style="font-size:13px;color:var(--muted)">${curMedian > 0 ? (priceMetricMode==='pyeong'?'만/평':'억') : ''}</span></div>
       <div class="sub">${prevMedian > 0 ? '전월 ' + fmtMetricPrice(prevMedian) : ''}</div>
     </div>
     <div class="stat-card">
@@ -828,7 +828,7 @@ function updateCharts() {
     for (const tier of tierSeries) {
       priceSets.push({
         label: tier.label,
-        data: (priceMetricMode==='pyeong'?tier.pp:tier.p),
+        data: (priceMetricMode==='pyeong'?(tier.pp || []):tier.p),
         borderColor: tier.color,
         backgroundColor: 'transparent',
         fill: false,
