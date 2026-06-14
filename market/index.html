@@ -223,7 +223,7 @@ a:hover { text-decoration: underline; }
 
 </div>
 
-<script>window.APT_ASSET_VERSION='20260614-pyeong';</script>
+<script>window.APT_ASSET_VERSION='20260614-pyeong-chart';</script>
 <script>
 let MKT = null;
 let region = 'all';
@@ -970,10 +970,9 @@ function updateCharts() {
         x: commonScaleX,
         y: (() => {
           const priceVals = priceSets.flatMap(ds => ds.data.filter(v => v != null && v > 0));
-          const priceAvg = priceVals.length > 0
-            ? priceVals.reduce((s, v) => s + v, 0) / priceVals.length
-            : 0;
-          const yMax = priceAvg > 0 ? (priceMetricMode==='pyeong'?Math.ceil(priceAvg * 1.35 / 500) * 500:Math.ceil(priceAvg * 2 / 5) * 5) : undefined;
+          const priceMax = priceVals.length > 0 ? Math.max(...priceVals) : 0;
+          const tickUnit = priceMetricMode === 'pyeong' ? 500 : 5;
+          const yMax = priceMax > 0 ? Math.ceil(priceMax * 1.08 / tickUnit) * tickUnit : undefined;
           return {
             min: 0,
             max: yMax,
