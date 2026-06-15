@@ -16,7 +16,12 @@
   };
 
   window.loadPrices = async function(){
-    try{ const r=await fetch(_base()+'data/prices.json'); PRICES=await r.json(); console.log('Prices loaded'); }
+    try{
+      const r=await fetch(_base()+'data/prices.json'); PRICES=await r.json(); console.log('Prices loaded');
+      if(typeof areaCache!=='undefined') areaCache={};
+      if(typeof renderAreaList==='function' && typeof document!=='undefined' && document.getElementById('areaChecklist')) renderAreaList();
+      if(typeof renderComparison==='function' && typeof selectedAreas!=='undefined' && selectedAreas.length) renderComparison();
+    }
     catch(e){ console.warn('Price load failed',e); }
   };
 

@@ -14,6 +14,8 @@ let viewMode='complex';
 let areaLevel='complex'; // 'complex' | 'gu' | 'dong'
 let selectedAreas=[]; // max 10
 let areaCache={}; // name → aggregated data
+let areaIndexCache={}; // raw/merged source → gu/dong member maps
+let areaSortMode='price'; // 'price' | 'pyeong' | 'total' | 'cagr' | 'y25' | 'tx' | 'latest' | 'name'
 let cmpChart=null, cmpSimChart=null;
 let cmpSubTab='price'; // 'price' | 'sim'
 let simMode='gap'; // 'gap' | 'live'
@@ -82,6 +84,7 @@ function setPriceMetricMode(mode){
   const pCol=document.getElementById('priceColumnLabel');
   if(pCol) pCol.textContent=mode==='pyeong'?'평당가':'최근가';
   areaCache={};
+  if(document.getElementById('areaChecklist')) renderAreaList();
   if(typeof F!=='undefined'&&Array.isArray(F)&&F.length){ ds(); rt(); }
   if(typeof selectedAreas!=='undefined'&&selectedAreas.length) renderComparison();
   if(curDetailIdx!==null&&DI&&DI[curDetailIdx]) showDetail(DI[curDetailIdx]);
@@ -228,49 +231,248 @@ function buildAreaGuFilter(){
   [...gs].sort().forEach(g=>{sel.innerHTML+=`<option value="${g}">${g}</option>`});
 }
 
+function areaSourceKey(){
+  return merged?'merged':'raw';
+}
+function getAreaIndex(){
+  const sourceKey=areaSourceKey();
+  if(areaIndexCache[sourceKey]) return areaIndexCache[sourceKey];
+  const src=merged?DM:D;
+  const gu=new Map();
+  const dong=new Map();
+  src.forEach(x=>{
+    if(!gu.has(x.g)) gu.set(x.g,[]);
+    gu.get(x.g).push(x);
+    if(x.d){
+      const key=x.g+' '+x.d;
+      if(!dong.has(key)) dong.set(key,[]);
+      dong.get(key).push(x);
+    }
+  });
+  areaIndexCache[sourceKey]={gu,dong};
+  return areaIndexCache[sourceKey];
+}
+function getAreaMembers(key,level=areaLevel){
+  const idx=getAreaIndex();
+  if(level==='gu') return idx.gu.get(key)||[];
+  if(level==='dong') return idx.dong.get(key)||[];
+  return [];
+}
+function getDongGuFromKey(key){
+  const items=getAreaMembers(key,'dong');
+  if(items.length) return items[0].g;
+  const parts=String(key).split(' ');
+  parts.pop();
+  return parts.join(' ');
+}
+
+function getAreaSortMode(){
+  const el=document.getElementById('aSort');
+  return el?el.value:areaSortMode;
+}
+function onAreaSortChange(){
+  areaSortMode=getAreaSortMode();
+  renderAreaList();
+  saveHash();
+}
+function getAreaSortValue(item,mode){
+  if(mode==='name') return item.label||item.key;
+  if(areaLevel==='complex'){
+    const x=getComplexCandidateEntry(item.key,item._entry);
+    if(!x) return null;
+    if(mode==='pyeong') return entryPyeongPrice(x);
+    if(mode==='total') return x.lp;
+    if(mode==='cagr') return x.c;
+    if(mode==='y25') return x.y25;
+    if(mode==='tx') return x.t||x.v;
+    if(mode==='latest') return x.ld;
+    return displayPriceValue(x);
+  }
+  const d=aggregateArea(item.key);
+  if(!d) return null;
+  if(mode==='pyeong') return d.avgPp;
+  if(mode==='total') return d.avgLp;
+  if(mode==='cagr') return d.avgCagr;
+  if(mode==='y25') return d.y25;
+  if(mode==='tx') return d.totalTx;
+  if(mode==='latest') return d.latestDate;
+  return priceMetricMode==='pyeong'?d.avgPp:d.avgLp;
+}
+function sortAreaItems(items){
+  const mode=getAreaSortMode();
+  areaSortMode=mode;
+  const byName=(a,b)=>(a.label||a.key).localeCompare(b.label||b.key,'ko');
+  return [...items].sort((a,b)=>{
+    if(mode==='name') return byName(a,b);
+    const va=getAreaSortValue(a,mode);
+    const vb=getAreaSortValue(b,mode);
+    const aBad=va===null||va===undefined||Number.isNaN(Number(va));
+    const bBad=vb===null||vb===undefined||Number.isNaN(Number(vb));
+    if(aBad&&bBad) return byName(a,b);
+    if(aBad) return 1;
+    if(bBad) return -1;
+    return Number(vb)-Number(va)||byName(a,b);
+  });
+}
+
 function getAreaNames(){
   const rv=document.getElementById('aR').value;
   const sq=document.getElementById('aSearch').value.toLowerCase();
   const names=[];
-
   if(areaLevel==='complex'){
     // 단지 목록: 통합 모드 반영
     const guF=document.getElementById('aGu').value;
     const seen=new Set();
-    let count=0;
+    const matches=[];
     const src=merged?DM:D;
     for(const x of src){
       if(rv!==''&&x.r!==parseInt(rv)) continue;
       if(guF&&x.g!==guF) continue;
-      const label=x.n+' '+fmtArea(x.a)+' ('+x.g+')';
-      if(sq&&!label.toLowerCase().includes(sq)) continue;
+      const label=x.n;
+      const searchLabel=x.n+' '+fmtArea(x.a)+' '+x.g+' '+(x.d||'');
+      if(sq&&!searchLabel.toLowerCase().includes(sq)) continue;
       const key='idx:'+x.i;
-      if(!seen.has(key)){ seen.add(key); names.push({label, key}); count++; }
-      if(count>=200) break;
+      if(!seen.has(key)){
+        seen.add(key);
+        matches.push({label, key, _entry:x});
+      }
     }
-    return names;
+    return sortAreaItems(matches).slice(0,200);
   } else if(areaLevel==='gu'){
-    const nameSet=new Set();
-    Object.entries(LT).forEach(([rk,ro])=>{
-      if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
-      Object.keys(ro).forEach(g=>{ if(!sq||g.toLowerCase().includes(sq)) nameSet.add(g); });
+    const matches=[];
+    getAreaIndex().gu.forEach((items,g)=>{
+      const first=items[0];
+      if(!first) return;
+      if(rv!==''&&first.r!==parseInt(rv)) return;
+      if(sq&&!g.toLowerCase().includes(sq)) return;
+      matches.push({label:g,key:g});
     });
-    return [...nameSet].sort().map(n=>({label:n,key:n}));
+    return sortAreaItems(matches);
   } else {
     const guF=document.getElementById('aGu').value;
-    const nameSet=new Set();
-    Object.entries(LT).forEach(([rk,ro])=>{
-      if(rv!==''&&parseInt(rv)!==parseInt(rk)) return;
-      Object.entries(ro).forEach(([g,dset])=>{
-        if(guF&&g!==guF) return;
-        dset.forEach(d=>{
-          const label=g+' '+d;
-          if(!sq||label.toLowerCase().includes(sq)) nameSet.add(label);
-        });
-      });
+    const matches=[];
+    getAreaIndex().dong.forEach((items,key)=>{
+      const first=items[0];
+      if(!first) return;
+      if(rv!==''&&first.r!==parseInt(rv)) return;
+      if(guF&&first.g!==guF) return;
+      if(sq&&!key.toLowerCase().includes(sq)) return;
+      matches.push({label:key,key});
     });
-    return [...nameSet].sort().map(n=>({label:n,key:n}));
+    return sortAreaItems(matches);
   }
+}
+
+function escHtml(v){
+  return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function escJs(v){
+  return String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+function statClass(v){
+  return typeof v==='number'&&Number.isFinite(v)?(v>0?'up':v<0?'dn':''):'';
+}
+function fmtCount(v,suffix){
+  return v?Number(v).toLocaleString()+suffix:'-';
+}
+function fmtRecentDate(d){
+  return d?fmtDate(d):'최근거래 없음';
+}
+function calcAreaY25FromPrices(items,wt){
+  if(!PRICES) return null;
+  const i24=Y.indexOf(2024), i25=Y.indexOf(2025);
+  if(i24<0||i25<0) return null;
+  let sum24=0, wt24=0, sum25=0, wt25=0;
+  items.forEach(x=>{
+    const pr=PRICES[String(x.i)];
+    if(!pr) return;
+    const w=wt(x);
+    if(pr[i24]>0){ sum24+=pr[i24]*w; wt24+=w; }
+    if(pr[i25]>0){ sum25+=pr[i25]*w; wt25+=w; }
+  });
+  if(!wt24||!wt25) return null;
+  const avg24=sum24/wt24, avg25=sum25/wt25;
+  return avg24>0?((avg25-avg24)/avg24*100):null;
+}
+function getComplexCandidateEntry(key,entry){
+  if(entry) return entry;
+  if(!String(key).startsWith('idx:')) return null;
+  const dataIdx=parseInt(String(key).slice(4));
+  if(!Number.isFinite(dataIdx)) return null;
+  if(merged){
+    const mx=DM.find(e=>e.i===dataIdx);
+    if(mx) return mx;
+  }
+  return DI&&DI[dataIdx]?DI[dataIdx]:null;
+}
+function renderAreaMetric(label,value,cls){
+  return `<span class="area-item-metric"><span class="k">${escHtml(label)}</span><span class="v ${cls||''}">${escHtml(value)}</span></span>`;
+}
+function buildAreaItemInsight(item){
+  if(areaLevel==='complex'){
+    const x=getComplexCandidateEntry(item.key,item._entry);
+    if(!x) return {title:item.label, main:'-', sub:'데이터 없음', metrics:[], foot:''};
+    const pp=entryPyeongPrice(x);
+    const main=priceMetricMode==='pyeong'?fmtPyeongPrice(pp):fmtPrice(x.lp);
+    const sub=[x.g,x.d,fmtArea(x.a)].filter(Boolean).join(' · ');
+    const foot=[
+      x.b?x.b+'년 준공':null,
+      fmtCount(x.tu||x.u,'세대'),
+      fmtRecentDate(x.ld)
+    ].filter(Boolean).join(' · ');
+    return {
+      title:x.n,
+      main,
+      sub,
+      metrics:[
+        ['평당',fmtPyeongPrice(pp),''],
+        ['최근',fmtPrice(x.lp),''],
+        ['CAGR',fmtSignedPct(x.c),statClass(x.c)],
+        ['거래',fmtCount(x.t||x.v,'건'),'']
+      ],
+      foot
+    };
+  }
+
+  const d=aggregateArea(item.key);
+  if(!d) return {title:item.label, main:'-', sub:'데이터 없음', metrics:[], foot:''};
+  const main=priceMetricMode==='pyeong'?fmtPyeongPrice(d.avgPp):fmtPrice(d.avgLp);
+  const sub=areaLevel==='gu'
+    ? `${fmtCount(d.cnt,'개 단지')} · ${fmtCount(d.totalTx,'건')}`
+    : `${d.gu} · ${fmtCount(d.cnt,'개 단지')} · ${fmtCount(d.totalTx,'건')}`;
+  const foot=[
+    '최근 '+fmtRecentDate(d.latestDate),
+    '24→25 '+fmtSignedPct(d.y25),
+    'MDD '+fmtSignedPct(d.avgMdd)
+  ].join(' · ');
+  return {
+    title:d.name,
+    main,
+    sub,
+    metrics:[
+      ['평당',fmtPyeongPrice(d.avgPp),''],
+      ['평균',fmtPrice(d.avgLp),''],
+      ['CAGR',fmtSignedPct(d.avgCagr),statClass(d.avgCagr)],
+      ['거래',fmtCount(d.totalTx,'건'),'']
+    ],
+    foot
+  };
+}
+function renderAreaItem(item, checked){
+  const info=buildAreaItemInsight(item);
+  const metrics=info.metrics.map(m=>renderAreaMetric(m[0],m[1],m[2])).join('');
+  return `<div class="area-item${checked?' checked':''}" onclick="toggleArea('${escJs(item.key)}')">
+    <div class="area-check">${checked?'✓':''}</div>
+    <div class="area-item-body">
+      <div class="area-item-head">
+        <span class="area-item-title">${escHtml(info.title)}</span>
+        <span class="area-item-price">${escHtml(info.main)}</span>
+      </div>
+      <div class="area-item-sub">${escHtml(info.sub)}</div>
+      <div class="area-item-metrics">${metrics}</div>
+      <div class="area-item-foot">${escHtml(info.foot)}</div>
+    </div>
+  </div>`;
 }
 
 function renderAreaList(){
@@ -279,10 +481,7 @@ function renderAreaList(){
   let h='';
   items.forEach(item=>{
     const checked=selectedAreas.includes(item.key);
-    h+=`<div class="area-item${checked?' checked':''}" onclick="toggleArea('${item.key.replace(/'/g,"\\'")}')">
-      <div class="area-check">${checked?'✓':''}</div>
-      <span>${item.label}</span>
-    </div>`;
+    h+=renderAreaItem(item,checked);
   });
   el.innerHTML=h||'<div style="color:#64748b;padding:12px;text-align:center;font-size:11px">검색 결과 없음</div>';
   renderBadges();
@@ -299,7 +498,7 @@ function renderBadges(){
   const el=document.getElementById('areaBadges');
   el.innerHTML=selectedAreas.map((key,i)=>{
     const label=areaLevel==='complex'?getComplexLabel(key):key;
-    return `<span class="area-badge" style="background:${CMP_COLORS[i]}22;color:${CMP_COLORS[i]}" onclick="toggleArea('${key.replace(/'/g,"\\'")}')">${label}<span class="x">×</span></span>`;
+    return `<span class="area-badge" style="background:${CMP_COLORS[i]}22;color:${CMP_COLORS[i]}" onclick="toggleArea('${escJs(key)}')">${escHtml(label)}<span class="x">×</span></span>`;
   }).join('');
 }
 
@@ -312,8 +511,9 @@ function getComplexLabel(key){
   return key;
 }
 
-function aggregateArea(key){
-  if(areaCache[key]) return areaCache[key];
+function aggregateArea(key,includeSeries=false){
+  const cacheKey=(merged?'m':'r')+'|'+areaLevel+'|'+(includeSeries?'full':'summary')+'|'+(PRICES?'p':'n')+'|'+key;
+  if(areaCache[cacheKey]) return areaCache[cacheKey];
 
   if(areaLevel==='complex'){
     // 단지 비교: 통합 모드면 DM에서 찾기
@@ -326,7 +526,7 @@ function aggregateArea(key){
     if(!x) return null;
 
     const yearAvg=new Array(Y.length).fill(null);
-    if(PRICES){
+    if(includeSeries&&PRICES){
       if(x._merged&&x.si){
         // 통합: 세대수 가중평균 (u가 있으면 사용, 없으면 t)
         for(let j=0;j<Y.length;j++){
@@ -344,7 +544,7 @@ function aggregateArea(key){
       }
     }
 
-    let y25=null;
+    let y25=x.y25!==null&&x.y25!==undefined?x.y25:null;
     const i24=Y.indexOf(2024),i25=Y.indexOf(2025);
     if(i24>=0&&i25>=0&&yearAvg[i24]&&yearAvg[i25]) y25=((yearAvg[i25]-yearAvg[i24])/yearAvg[i24]*100);
 
@@ -355,23 +555,15 @@ function aggregateArea(key){
       cnt:cntLabel, totalTx:x.t||0,
       avgLp:x.lp, avgPp:entryPyeongPrice(x), avgCagr:x.c, avgMdd:x.m,
       avgSharpe:x.s, avgQ:x.q, avgK:x.k, y25,
-      yearAvg, items:x._merged?x.si.map(i=>DI[i]).filter(Boolean):[x], gu:x.g,
+      yearAvg:includeSeries?yearAvg:null, items:x._merged?x.si.map(i=>DI[i]).filter(Boolean):[x], gu:x.g,
+      latestDate:x.ld||null, units:x.tu||x.u||null, builtYear:x.b||null,
       si:x.si
     };
-    areaCache[key]=result;
+    areaCache[cacheKey]=result;
     return result;
   }
 
-  const src=merged?DM:D;
-  let items;
-  if(areaLevel==='gu'){
-    items=src.filter(x=>x.g===key);
-  } else {
-    const parts=key.split(' ');
-    const dong=parts.pop();
-    const gu=parts.join(' ');
-    items=src.filter(x=>x.g===gu&&x.d===dong);
-  }
+  const items=getAreaMembers(key,areaLevel);
   if(items.length===0) return null;
 
   // 가중평균: 세대수(u)가 있으면 사용, 없으면 거래건수(t)로 대체
@@ -392,9 +584,12 @@ function aggregateArea(key){
   const avgSharpe=wavg(items.filter(x=>x.s!==null),x=>x.s);
   const avgQ=wavg(items.filter(x=>x.q!==null),x=>x.q);
   const avgK=wavg(items.filter(x=>x.k!==null),x=>x.k);
-
-  const yearAvg=new Array(Y.length).fill(null);
-  if(PRICES){
+  let y25=wavg(items.filter(x=>x.y25!==null&&x.y25!==undefined),x=>x.y25);
+  const exactY25=calcAreaY25FromPrices(items,wt);
+  if(exactY25!==null) y25=exactY25;
+  const latestDate=items.reduce((m,x)=>Math.max(m,x.ld||0),0)||null;
+  const yearAvg=includeSeries?new Array(Y.length).fill(null):null;
+  if(includeSeries&&PRICES){
     for(let yi=0;yi<Y.length;yi++){
       let sumW=0, sumV=0;
       items.forEach(x=>{
@@ -405,20 +600,17 @@ function aggregateArea(key){
     }
   }
 
-  let y25=null;
-  {const i24=Y.indexOf(2024),i25=Y.indexOf(2025);
+  if(includeSeries&&yearAvg){const i24=Y.indexOf(2024),i25=Y.indexOf(2025);
   if(i24>=0&&i25>=0&&yearAvg[i24]&&yearAvg[i25]) y25=((yearAvg[i25]-yearAvg[i24])/yearAvg[i24]*100);}
 
   // 구 이름 추출 (동 레벨일 때)
   let gu=key;
   if(areaLevel==='dong'){
-    const parts=key.split(' ');
-    parts.pop();
-    gu=parts.join(' ');
+    gu=getDongGuFromKey(key);
   }
 
-  const result={name:key,key,cnt,totalTx,avgLp,avgPp,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu};
-  areaCache[key]=result;
+  const result={name:key,key,cnt,totalTx,avgLp,avgPp,avgCagr,avgMdd,avgSharpe,avgQ,avgK,y25,yearAvg,items,gu,latestDate};
+  areaCache[cacheKey]=result;
   return result;
 }
 
@@ -439,7 +631,7 @@ async function renderComparison(){
     el.innerHTML='<div class="cmp-empty"><div class="icon">&#x1F4CA;</div><div class="msg">좌측에서 비교할 항목을 선택하세요 (최대 10개)</div></div>';
     return;
   }
-  const data=selectedAreas.map(n=>aggregateArea(n)).filter(Boolean);
+  const data=selectedAreas.map(n=>aggregateArea(n,true)).filter(Boolean);
   if(data.length===0){ el.innerHTML='<div class="cmp-empty"><div class="msg">데이터가 없습니다</div></div>'; return; }
 
   // 서브탭
@@ -462,13 +654,21 @@ async function renderComparison(){
     const cntLabel=areaLevel==='complex'?'면적':('단지수');
     const cntVal=areaLevel==='complex'?fmtArea((DI[parseInt(d.key.slice(4))]||{}).a):d.cnt;
     const pv=priceMetricMode==='pyeong'?d.avgPp:d.avgLp;
+    const recent=fmtRecentDate(d.latestDate);
+    const y25Cls=statClass(d.y25);
+    const metaLine=areaLevel==='complex'
+      ? [fmtCount(d.totalTx,'건'),d.units?fmtCount(d.units,'세대'):null,d.builtYear?d.builtYear+'년 준공':null,recent].filter(Boolean).join(' · ')
+      : [fmtCount(d.cnt,'개 단지'),fmtCount(d.totalTx,'건'),recent].filter(Boolean).join(' · ');
     html+=`<div class="cmp-summary" style="border-left-color:${CMP_COLORS[i]}">
       <div class="name" style="color:${CMP_COLORS[i]}">${d.name}</div>
+      <div class="cmp-summary-meta">${metaLine}</div>
       <div class="stats">
         <span class="stat-label">${cntLabel}</span><span class="stat-value">${cntVal}</span>
         <span class="stat-label">${priceMetricMode==='pyeong'?'평당가':'최근가'}</span><span class="stat-value">${fmtDisplayPrice(pv)}</span>
         <span class="stat-label">CAGR</span><span class="stat-value ${d.avgCagr>0?'up':'dn'}">${fm(d.avgCagr)}</span>
         <span class="stat-label">MDD</span><span class="stat-value">${fm(d.avgMdd)}</span>
+        <span class="stat-label">거래</span><span class="stat-value">${fmtCount(d.totalTx,'건')}</span>
+        <span class="stat-label">24→25</span><span class="stat-value ${y25Cls}">${fmtSignedPct(d.y25)}</span>
       </div>
     </div>`;
   });
@@ -1341,6 +1541,8 @@ function applyIndexPayload(j){
   }
 
   D=j.d||[];
+  areaCache={};
+  areaIndexCache={};
 
   DI={};
   D.forEach(x=>{
@@ -1499,6 +1701,8 @@ function buildMerged(){
     });
   });
   console.log(`Merged: ${D.length} → ${DM.length} entries`);
+  areaCache={};
+  areaIndexCache={};
 }
 
 function toggleMerged(){
@@ -1508,6 +1712,7 @@ function toggleMerged(){
   document.getElementById('mgBtn').style.color=merged?'#fff':'';
   document.getElementById('mgBtn').style.borderColor=merged?'var(--accent)':'';
   areaCache={}; // 비교 캐시 클리어
+  areaIndexCache={};
   if(curDetailIdx!==null) cd(); // 상세 패널 열려있을 때만 닫기
   else { si=-1; document.getElementById('dp').classList.remove('open'); }
   af();

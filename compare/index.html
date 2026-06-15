@@ -20,10 +20,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>window.APT_BASE='../'; window.APT_PAGE='compare'; window.APT_ASSET_VERSION='20260614-pyeong';</script>
-<script src="../js/calc-utils.js?v=20260614-pyeong"></script>
-<script src="../js/data-loader.js"></script>
-<link rel="stylesheet" href="../css/main.css">
+<script>window.APT_BASE='../'; window.APT_PAGE='compare'; window.APT_ASSET_VERSION='20260615-compare-insights';</script>
+<script src="../js/calc-utils.js?v=20260615-compare-insights"></script>
+<script src="../js/data-loader.js?v=20260615-compare-insights"></script>
+<link rel="stylesheet" href="../css/main.css?v=20260615-compare-insights">
 <style>
   /* 비교 페이지 전용: 단지 상세 패널은 데스크탑에서도 풀스크린 오버레이로 표시 */
   .right-col { display: none; }
@@ -82,6 +82,18 @@
       </div>
       <div style="margin-bottom:8px">
         <input id="aSearch" type="text" class="fi" placeholder="검색...">
+      </div>
+      <div style="margin-bottom:8px">
+        <select id="aSort" class="fi" onchange="onAreaSortChange()">
+          <option value="price">현재 가격순</option>
+          <option value="pyeong">평당가 높은순</option>
+          <option value="total">최근가 높은순</option>
+          <option value="cagr">CAGR 높은순</option>
+          <option value="y25">24→25 높은순</option>
+          <option value="tx">거래 많은순</option>
+          <option value="latest">최근거래순</option>
+          <option value="name">이름순</option>
+        </select>
       </div>
       <div class="area-badges" id="areaBadges"></div>
       <div class="area-checklist" id="areaChecklist"></div>
@@ -169,7 +181,7 @@
   </div>
 </div>
 
-<script src="../js/main-app.js?v=20260614-pyeong"></script>
+<script src="../js/main-app.js?v=20260615-compare-insights"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-init.js"></script>
 <script src="../js/comments.js"></script>
@@ -244,6 +256,7 @@ function saveCompareHash(){
   if(cmpSubTab==='sim') p.st='sim';
   if(merged) p.mg=1;
   if(priceMetricMode!=='total') p.pm=priceMetricMode;
+  if(areaSortMode&&areaSortMode!=='price') p.as=areaSortMode;
   const h=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   history.replaceState(null,null,h?'#'+h:'#');
 }
@@ -264,6 +277,9 @@ function loadCompareHash(){
   if(p.pm==='pyeong') priceMetricMode='pyeong';
   else if(p.pm==='total') priceMetricMode='total';
   try{localStorage.setItem('aptPriceMetricMode',priceMetricMode);}catch(e){}
+  if(p.as){ areaSortMode=p.as; }
+  const sortSel=document.getElementById('aSort');
+  if(sortSel&&areaSortMode) sortSel.value=areaSortMode;
   if(p.aa){ selectedAreas=p.aa.split('|'); }
   if(p.st==='sim') cmpSubTab='sim';
   document.getElementById('lvComplex').className='level-tab'+(areaLevel==='complex'?' active':'');
