@@ -17,7 +17,7 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
-  const dataVersion = "20260808-tax-actuals2";
+  const dataVersion = "20260808-tax-region";
 
   const $ = (id) => document.getElementById(id);
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
@@ -304,29 +304,27 @@
 
   function renderTaxActuals() {
     if (!state.taxActuals) return;
-    const rows = state.taxActuals.series || [];
-    const years = rows.map((row) => row.year);
-    const decided = rows.map((row) => row.decidedTaxTrillion ?? row.decidedTaxEstimateTrillion ?? null);
-    const notice = rows.map((row) => row.noticeTaxTrillion ?? null);
+    const regions = state.taxActuals.regions || [{ key: "national", label: "전국", series: state.taxActuals.series || [] }];
+    const selected = state.selectedRegion === ""
+      ? regions.filter((region) => ["national", "capital", "seoul", "gyeonggi", "incheon"].includes(region.key))
+      : regions.filter((region) => String(region.regionCode) === state.selectedRegion);
+    const shown = selected.length ? selected : regions.filter((region) => region.key === "national");
+    const years = Array.from(new Set(shown.flatMap((region) => region.series.map((row) => row.year)))).sort((a, b) => a - b);
+    const national = regions.find((region) => region.key === "national");
+    const nationalByYear = new Map((national?.series || []).map((row) => [row.year, row.noticeTaxTrillion ?? row.decidedTaxTrillion ?? null]));
+    const palette = ["#38bdf8", "#f59e0b", "#22c55e", "#a855f7", "#f97316"];
+    const datasets = shown.map((region, i) => ({
+      label: `${region.label} 고지세액`,
+      data: years.map((year) => region.series.find((row) => row.year === year)?.noticeTaxTrillion ?? null),
+      backgroundColor: palette[i % palette.length],
+      borderWidth: 0,
+    }));
     if (state.taxChart) state.taxChart.destroy();
     state.taxChart = new Chart($("taxChart"), {
       type: "bar",
       data: {
         labels: years,
-        datasets: [
-          {
-            label: "결정세액",
-            data: decided,
-            backgroundColor: "#38bdf8",
-            borderWidth: 0,
-          },
-          {
-            label: "고지세액",
-            data: notice,
-            backgroundColor: "#f59e0b",
-            borderWidth: 0,
-          },
-        ],
+        datasets,
       },
       options: {
         responsive: true,
@@ -342,16 +340,26 @@
         },
       },
     });
-    $("taxCaption").textContent = "전국 주택분 | 국세청·기재부 공개 집계";
-    $("taxBody").innerHTML = rows.slice().reverse().map((row) => (
+    $("taxCaption").textContent = state.selectedRegion === ""
+      ? "전국·수도권·서울·경기·인천 | 공식 주택분"
+      : `${shown[0]?.label || "선택 지역"} | 공식 주택분`;
+    const tableRows = shown.flatMap((region) => region.series.map((row) => ({ region, row })))
+      .sort((a, b) => b.row.year - a.row.year || a.region.label.localeCompare(b.region.label, "ko"));
+    $("taxBody").innerHTML = tableRows.map(({ region, row }) => {
+      const value = row.noticeTaxTrillion ?? row.decidedTaxTrillion ?? null;
+      const nationalValue = nationalByYear.get(row.year);
+      return (
       `<tr>
+        <td>${region.label}</td>
         <td>${row.year}</td>
         <td class="num">${fmtTrillion(row.decidedTaxTrillion ?? row.decidedTaxEstimateTrillion)}</td>
         <td class="num">${fmtTrillion(row.noticeTaxTrillion)}</td>
         <td class="num">${row.taxpayers ? Math.round(row.taxpayers).toLocaleString() : "-"}</td>
+        <td class="num">${value && nationalValue ? fmtPct(value / nationalValue * 100) : "-"}</td>
         <td>${row.basis || "-"}</td>
       </tr>`
-    )).join("");
+      );
+    }).join("");
     $("taxNote").textContent = (state.taxActuals.meta.notes || []).join(" ");
   }
 
