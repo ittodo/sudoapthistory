@@ -15,8 +15,8 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>window.APT_BASE='../';</script>
-<link rel="stylesheet" href="../css/main.css?v=20260807-marketcap-fix">
-<link rel="stylesheet" href="../css/stats.css?v=20260807-marketcap-fix">
+<link rel="stylesheet" href="../css/main.css?v=20260808-tax-actuals">
+<link rel="stylesheet" href="../css/stats.css?v=20260808-tax-actuals">
 </head>
 <body>
 <div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">통계 로딩 중...</span></div>
@@ -113,6 +113,26 @@
     </section>
     <section class="stats-panel span-2">
       <div class="panel-head">
+        <h2>실제 주택분 종부세</h2>
+        <span id="taxCaption"></span>
+      </div>
+      <div class="tax-layout">
+        <div class="chart-box tax"><canvas id="taxChart"></canvas></div>
+        <div class="table-wrap compact tax-table">
+          <table>
+            <thead>
+              <tr>
+                <th>연도</th><th class="num">결정세액</th><th class="num">고지세액</th><th class="num">납세자</th><th>기준</th>
+              </tr>
+            </thead>
+            <tbody id="taxBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="source-note" id="taxNote"></p>
+    </section>
+    <section class="stats-panel span-2">
+      <div class="panel-head">
         <h2>평형별 단지 목록</h2>
         <span id="rowCaption"></span>
       </div>
@@ -130,6 +150,6 @@
   </main>
 </div>
 
-<script src="../js/stats-app.js?v=20260807-marketcap-fix"></script>
+<script src="../js/stats-app.js?v=20260808-tax-actuals"></script>
 </body>
 </html>

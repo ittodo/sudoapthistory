@@ -2,10 +2,12 @@
   const state = {
     index: null,
     stats: null,
+    taxActuals: null,
     rows: [],
     filteredRows: [],
     trendChart: null,
     currentChart: null,
+    taxChart: null,
     currentMetric: "units",
     selectedRegion: "",
     selectedGu: "",
@@ -15,12 +17,17 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
-  const dataVersion = "20260807-marketcap-fix";
+  const dataVersion = "20260808-tax-actuals";
 
   const $ = (id) => document.getElementById(id);
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
   const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
   const fmtPrice = (v) => v > 0 ? `${Number(v).toFixed(2)}억` : "-";
+  const fmtTrillion = (v) => {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n) || n <= 0) return "-";
+    return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}조`;
+  };
   const fmtCap = (v) => {
     const n = Number(v || 0);
     if (!Number.isFinite(n) || n <= 0) return "-";
@@ -295,6 +302,59 @@
     }).join("") : "<tr><td class=\"empty-row\" colspan=\"6\">표시할 하위 지역이 없습니다.</td></tr>";
   }
 
+  function renderTaxActuals() {
+    if (!state.taxActuals) return;
+    const rows = state.taxActuals.series || [];
+    const years = rows.map((row) => row.year);
+    const decided = rows.map((row) => row.decidedTaxTrillion ?? row.decidedTaxEstimateTrillion ?? null);
+    const notice = rows.map((row) => row.noticeTaxTrillion ?? null);
+    if (state.taxChart) state.taxChart.destroy();
+    state.taxChart = new Chart($("taxChart"), {
+      type: "bar",
+      data: {
+        labels: years,
+        datasets: [
+          {
+            label: "결정세액",
+            data: decided,
+            backgroundColor: "#38bdf8",
+            borderWidth: 0,
+          },
+          {
+            label: "고지세액",
+            data: notice,
+            backgroundColor: "#f59e0b",
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10 } },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtTrillion(ctx.parsed.y)}` } },
+        },
+        scales: {
+          x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+          y: { ticks: { callback: (v) => fmtTrillion(v) } },
+        },
+      },
+    });
+    $("taxCaption").textContent = "전국 주택분 | 국세청·기재부 공개 집계";
+    $("taxBody").innerHTML = rows.slice().reverse().map((row) => (
+      `<tr>
+        <td>${row.year}</td>
+        <td class="num">${fmtTrillion(row.decidedTaxTrillion ?? row.decidedTaxEstimateTrillion)}</td>
+        <td class="num">${fmtTrillion(row.noticeTaxTrillion)}</td>
+        <td class="num">${row.taxpayers ? Math.round(row.taxpayers).toLocaleString() : "-"}</td>
+        <td>${row.basis || "-"}</td>
+      </tr>`
+    )).join("");
+    $("taxNote").textContent = (state.taxActuals.meta.notes || []).join(" ");
+  }
+
   function rowMatchesScope(row) {
     if (state.selectedRegion !== "" && String(row.r) !== state.selectedRegion) return false;
     if (state.selectedGu && row.g !== state.selectedGu) return false;
@@ -355,6 +415,7 @@
     renderCurrentChart(scope);
     renderBuckets(scope);
     renderChildren(scope);
+    renderTaxActuals();
     renderCaptions(scope);
     renderRows();
   }
@@ -362,12 +423,14 @@
   async function init() {
     try {
       chartDefaults();
-      const [stats, index] = await Promise.all([
+      const [stats, index, taxActuals] = await Promise.all([
         loadJson(`../data/price_bands.json?v=${dataVersion}`),
         loadJson(`../data/index.json?v=${dataVersion}`),
+        loadJson(`../data/holding_tax_actuals.json?v=${dataVersion}`),
       ]);
       state.stats = stats;
       state.index = index;
+      state.taxActuals = taxActuals;
       state.rows = index.d || [];
       ensureMarketCapFields(state.stats, state.rows);
       initFilters();

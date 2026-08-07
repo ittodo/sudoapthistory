@@ -1,0 +1,59 @@
+{
+  "meta": {
+    "updated": "2026-08-08",
+    "unit": "trillion_krw",
+    "title": "주택분 종합부동산세 실제/공식 집계",
+    "notes": [
+      "2011~2023년은 국회예산정책처가 국세통계 기반으로 정리한 주택분 종합부동산세 결정세액입니다.",
+      "2024~2025년 고지세액은 기획재정부 발표를 인용한 보도 기준입니다.",
+      "결정세액과 고지세액은 집계 기준이 다를 수 있어 같은 표 안에서 기준을 분리해 표시합니다."
+    ],
+    "sources": [
+      {
+        "name": "국회예산정책처 NABO Focus 제110호",
+        "url": "https://www.nabo.go.kr/board/file/bulkDown.do?bid=68&idx=8741"
+      },
+      {
+        "name": "국세청 주택분 종합부동산세 현황 공공데이터",
+        "url": "https://www.data.go.kr/data/15119698/fileData.do?recommendDataYn=Y"
+      },
+      {
+        "name": "연합뉴스 2024년 주택분 종부세 고지",
+        "url": "https://www.yna.co.kr/view/AKR20241126120751002"
+      },
+      {
+        "name": "연합뉴스 2025년 주택분 종부세 고지",
+        "url": "https://www.yna.co.kr/view/AKR20251126121900002"
+      }
+    ]
+  },
+  "series": [
+    { "year": 2011, "decidedTaxTrillion": 0.2, "basis": "결정세액" },
+    { "year": 2012, "decidedTaxTrillion": 0.3, "basis": "결정세액" },
+    { "year": 2013, "decidedTaxTrillion": 0.2, "basis": "결정세액" },
+    { "year": 2014, "decidedTaxTrillion": 0.2, "basis": "결정세액" },
+    { "year": 2015, "decidedTaxTrillion": 0.3, "basis": "결정세액" },
+    { "year": 2016, "decidedTaxTrillion": 0.3, "basis": "결정세액" },
+    { "year": 2017, "decidedTaxTrillion": 0.4, "basis": "결정세액" },
+    { "year": 2018, "decidedTaxTrillion": 0.4, "basis": "결정세액" },
+    { "year": 2019, "decidedTaxTrillion": 1.0, "basis": "결정세액" },
+    { "year": 2020, "decidedTaxTrillion": 1.5, "basis": "결정세액" },
+    { "year": 2021, "decidedTaxTrillion": 4.4, "basis": "결정세액" },
+    { "year": 2022, "decidedTaxTrillion": 3.3, "basis": "결정세액" },
+    { "year": 2023, "decidedTaxTrillion": 0.9, "basis": "결정세액" },
+    {
+      "year": 2024,
+      "decidedTaxEstimateTrillion": 1.0,
+      "noticeTaxTrillion": 1.6122,
+      "taxpayers": 460277,
+      "basis": "전망/고지"
+    },
+    {
+      "year": 2025,
+      "decidedTaxEstimateTrillion": 1.1,
+      "noticeTaxTrillion": 1.7,
+      "taxpayers": 540000,
+      "basis": "전망/고지"
+    }
+  ]
+}

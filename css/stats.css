@@ -22,6 +22,10 @@
 .chart-box { position: relative; width: 100%; }
 .chart-box.trend { height: 330px; }
 .chart-box.current { height: 300px; }
+.chart-box.tax { height: 280px; }
+.tax-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, .75fr); gap: 12px; align-items: stretch; }
+.tax-table { max-height: 280px; }
+.source-note { margin-top: 8px; color: #64748b; font-size: 10px; line-height: 1.5; }
 .metric-toggle { display: inline-flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 2px; margin-bottom: 8px; }
 .metric-btn { border: 0; border-radius: 5px; padding: 5px 12px; color: var(--muted); background: transparent; cursor: pointer; font-size: 11px; font-weight: 700; }
 .metric-btn.active { color: #fff; background: var(--accent); }
@@ -40,6 +44,7 @@
   .stats-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-grid { grid-template-columns: 1fr; }
   .stats-panel.span-2 { grid-column: span 1; }
+  .tax-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
