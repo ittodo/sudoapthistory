@@ -9,6 +9,7 @@
     currentChart: null,
     taxChart: null,
     currentMetric: "units",
+    taxMetric: "holding",
     selectedRegion: "",
     selectedGu: "",
     selectedDong: "",
@@ -17,7 +18,7 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
-  const dataVersion = "20260808-tax-region2";
+  const dataVersion = "20260808-tax-revenue";
 
   const $ = (id) => document.getElementById(id);
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
@@ -33,6 +34,12 @@
     if (!Number.isFinite(n) || n <= 0) return "-";
     if (n >= 10000) return `${(n / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}조`;
     return `${Math.round(n).toLocaleString()}억`;
+  };
+  const fmtTax = (v) => {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n) || n <= 0) return "-";
+    if (n >= 1) return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}조`;
+    return `${Math.round(n * 10000).toLocaleString()}억`;
   };
   const pyeong = (row) => row.a ? row.a / 3.3058 : 0;
 
@@ -101,6 +108,11 @@
     });
     $("chartUnitsBtn").addEventListener("click", () => setCurrentMetric("units"));
     $("chartCapBtn").addEventListener("click", () => setCurrentMetric("cap"));
+    $("taxHoldingBtn").addEventListener("click", () => setTaxMetric("holding"));
+    $("taxCreBtn").addEventListener("click", () => setTaxMetric("cre"));
+    $("taxAcquisitionBtn").addEventListener("click", () => setTaxMetric("acquisition"));
+    $("taxCapitalGainsBtn").addEventListener("click", () => setTaxMetric("capitalGains"));
+    $("taxRateBtn").addEventListener("click", () => setTaxMetric("holdingRate"));
     for (const id of ["areaMin", "areaMax", "searchInput"]) {
       $(id).addEventListener("input", renderRows);
     }
@@ -113,6 +125,16 @@
     $("chartUnitsBtn").classList.toggle("active", metric === "units");
     $("chartCapBtn").classList.toggle("active", metric === "cap");
     renderCurrentChart(currentScope());
+  }
+
+  function setTaxMetric(metric) {
+    state.taxMetric = metric;
+    $("taxHoldingBtn").classList.toggle("active", metric === "holding");
+    $("taxCreBtn").classList.toggle("active", metric === "cre");
+    $("taxAcquisitionBtn").classList.toggle("active", metric === "acquisition");
+    $("taxCapitalGainsBtn").classList.toggle("active", metric === "capitalGains");
+    $("taxRateBtn").classList.toggle("active", metric === "holdingRate");
+    renderTaxActuals();
   }
 
   function updateGuOptions() {
@@ -304,18 +326,38 @@
 
   function renderTaxActuals() {
     if (!state.taxActuals) return;
-    const regions = state.taxActuals.regions || [{ key: "national", label: "전국", series: state.taxActuals.series || [] }];
+    const regions = state.taxActuals.regions || [];
     const selected = state.selectedRegion === ""
       ? regions.filter((region) => ["national", "capital", "seoul", "gyeonggi", "incheon"].includes(region.key))
       : regions.filter((region) => String(region.regionCode) === state.selectedRegion);
     const shown = selected.length ? selected : regions.filter((region) => region.key === "national");
     const years = Array.from(new Set(shown.flatMap((region) => region.series.map((row) => row.year)))).sort((a, b) => a - b);
-    const national = regions.find((region) => region.key === "national");
-    const nationalByYear = new Map((national?.series || []).map((row) => [row.year, row.noticeTaxTrillion ?? row.decidedTaxTrillion ?? null]));
     const palette = ["#38bdf8", "#f59e0b", "#22c55e", "#a855f7", "#f97316"];
+    const metricLabel = {
+      holding: "보유세",
+      cre: "종부세",
+      acquisition: "취득세",
+      capitalGains: "양도세",
+      holdingRate: "보유세/시총",
+    }[state.taxMetric] || "보유세";
+    const rowValue = (region, row) => {
+      const propertyTax = Number(row.propertyTax?.taxTrillion || 0);
+      const creTax = Number(row.comprehensiveRealEstateTax?.taxTrillion || 0);
+      const hasHoldingTax = Boolean(row.propertyTax && row.comprehensiveRealEstateTax);
+      const holdingTax = hasHoldingTax ? propertyTax + creTax : 0;
+      if (state.taxMetric === "holding") return holdingTax || null;
+      if (state.taxMetric === "cre") return creTax || null;
+      if (state.taxMetric === "acquisition") return Number(row.acquisitionTax?.taxTrillion || 0) || null;
+      if (state.taxMetric === "capitalGains") return Number(row.capitalGainsTax?.taxTrillion || 0) || null;
+      const cap = marketCapTrillion(region, row.year);
+      return cap && holdingTax ? holdingTax / cap * 100 : null;
+    };
     const datasets = shown.map((region, i) => ({
-      label: `${region.label} 고지세액`,
-      data: years.map((year) => region.series.find((row) => row.year === year)?.noticeTaxTrillion ?? null),
+      label: `${region.label} ${metricLabel}`,
+      data: years.map((year) => {
+        const row = region.series.find((item) => item.year === year);
+        return row ? rowValue(region, row) : null;
+      }),
       backgroundColor: palette[i % palette.length],
       borderWidth: 0,
     }));
@@ -332,35 +374,56 @@
         interaction: { mode: "index", intersect: false },
         plugins: {
           legend: { position: "bottom", labels: { boxWidth: 10, boxHeight: 10 } },
-          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtTrillion(ctx.parsed.y)}` } },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${state.taxMetric === "holdingRate" ? fmtPct(ctx.parsed.y) : fmtTax(ctx.parsed.y)}` } },
         },
         scales: {
           x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
-          y: { ticks: { callback: (v) => fmtTrillion(v) } },
+          y: { ticks: { callback: (v) => state.taxMetric === "holdingRate" ? fmtPct(v) : fmtTax(v) } },
         },
       },
     });
     $("taxCaption").textContent = state.selectedRegion === ""
-      ? "전국·수도권·서울·경기·인천 | 공식 주택분"
-      : `${shown[0]?.label || "선택 지역"} | 공식 주택분`;
+      ? "전국·수도권·서울·경기·인천 | 공식 주택분 세수"
+      : `${shown[0]?.label || "선택 지역"} | 공식 주택분 세수`;
     const tableRows = shown.flatMap((region) => region.series.map((row) => ({ region, row })))
       .sort((a, b) => b.row.year - a.row.year || a.region.label.localeCompare(b.region.label, "ko"));
     $("taxBody").innerHTML = tableRows.map(({ region, row }) => {
-      const value = row.noticeTaxTrillion ?? row.decidedTaxTrillion ?? null;
-      const nationalValue = nationalByYear.get(row.year);
+      const propertyTax = Number(row.propertyTax?.taxTrillion || 0);
+      const creTax = Number(row.comprehensiveRealEstateTax?.taxTrillion || 0);
+      const hasHoldingTax = Boolean(row.propertyTax && row.comprehensiveRealEstateTax);
+      const holdingTax = hasHoldingTax ? propertyTax + creTax : 0;
+      const acquisitionTax = Number(row.acquisitionTax?.taxTrillion || 0);
+      const capitalGainsTax = Number(row.capitalGainsTax?.taxTrillion || 0);
+      const cap = marketCapTrillion(region, row.year);
+      const bases = [row.propertyTax, row.comprehensiveRealEstateTax, row.acquisitionTax, row.capitalGainsTax]
+        .filter(Boolean)
+        .map((tax) => `${tax.source || "-"} ${tax.basis || ""}`.trim());
       return (
       `<tr>
         <td>${region.label}</td>
         <td>${row.year}</td>
-        <td class="num">${fmtTrillion(row.decidedTaxTrillion ?? row.decidedTaxEstimateTrillion)}</td>
-        <td class="num">${fmtTrillion(row.noticeTaxTrillion)}</td>
-        <td class="num">${row.taxpayers ? Math.round(row.taxpayers).toLocaleString() : "-"}</td>
-        <td class="num">${value && nationalValue ? fmtPct(value / nationalValue * 100) : "-"}</td>
-        <td>${row.basis || "-"}</td>
+        <td class="num">${fmtTax(cap)}</td>
+        <td class="num">${fmtTax(propertyTax)}</td>
+        <td class="num">${fmtTax(creTax)}</td>
+        <td class="num">${fmtTax(holdingTax)}</td>
+        <td class="num">${cap && holdingTax ? fmtPct(holdingTax / cap * 100) : "-"}</td>
+        <td class="num">${fmtTax(acquisitionTax)}</td>
+        <td class="num">${fmtTax(capitalGainsTax)}</td>
+        <td>${Array.from(new Set(bases)).join(" · ") || "-"}</td>
       </tr>`
       );
     }).join("");
     $("taxNote").textContent = (state.taxActuals.meta.notes || []).join(" ");
+  }
+
+  function marketCapTrillion(region, year) {
+    const scopeKey = region.marketCapScope;
+    if (!scopeKey) return 0;
+    const yi = (state.stats.meta.years || []).indexOf(year);
+    if (yi < 0) return 0;
+    const scope = state.stats.scopes[scopeKey];
+    const eok = scope?.trend?.marketCapByYearEok?.[yi] || 0;
+    return eok / 10000;
   }
 
   function rowMatchesScope(row) {
@@ -434,7 +497,7 @@
       const [stats, index, taxActuals] = await Promise.all([
         loadJson(`../data/price_bands.json?v=${dataVersion}`),
         loadJson(`../data/index.json?v=${dataVersion}`),
-        loadJson(`../data/holding_tax_actuals.json?v=${dataVersion}`),
+        loadJson(`../data/tax_revenue_actuals.json?v=${dataVersion}`),
       ]);
       state.stats = stats;
       state.index = index;

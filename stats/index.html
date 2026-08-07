@@ -15,8 +15,8 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>window.APT_BASE='../';</script>
-<link rel="stylesheet" href="../css/main.css?v=20260808-tax-region2">
-<link rel="stylesheet" href="../css/stats.css?v=20260808-tax-region2">
+<link rel="stylesheet" href="../css/main.css?v=20260808-tax-revenue">
+<link rel="stylesheet" href="../css/stats.css?v=20260808-tax-revenue">
 </head>
 <body>
 <div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">통계 로딩 중...</span></div>
@@ -113,8 +113,15 @@
     </section>
     <section class="stats-panel span-2">
       <div class="panel-head">
-        <h2>지역별 실제 주택분 종부세</h2>
+        <h2>지역별 부동산 세수</h2>
         <span id="taxCaption"></span>
+      </div>
+      <div class="metric-toggle" role="group" aria-label="세수 차트 기준">
+        <button id="taxHoldingBtn" class="metric-btn active" type="button">보유세</button>
+        <button id="taxCreBtn" class="metric-btn" type="button">종부세</button>
+        <button id="taxAcquisitionBtn" class="metric-btn" type="button">취득세</button>
+        <button id="taxCapitalGainsBtn" class="metric-btn" type="button">양도세</button>
+        <button id="taxRateBtn" class="metric-btn" type="button">시총 대비 %</button>
       </div>
       <div class="tax-layout">
         <div class="chart-box tax"><canvas id="taxChart"></canvas></div>
@@ -122,7 +129,7 @@
           <table>
             <thead>
               <tr>
-                <th>지역</th><th>연도</th><th class="num">결정세액</th><th class="num">고지세액</th><th class="num">납세자</th><th class="num">전국비중</th><th>기준</th>
+                <th>지역</th><th>연도</th><th class="num">시가총액</th><th class="num">재산세</th><th class="num">종부세</th><th class="num">보유세</th><th class="num">보유세/시총</th><th class="num">취득세</th><th class="num">양도세</th><th>자료 기준</th>
               </tr>
             </thead>
             <tbody id="taxBody"></tbody>
@@ -150,6 +157,6 @@
   </main>
 </div>
 
-<script src="../js/stats-app.js?v=20260808-tax-region2"></script>
+<script src="../js/stats-app.js?v=20260808-tax-revenue"></script>
 </body>
 </html>
