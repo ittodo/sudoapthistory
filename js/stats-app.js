@@ -15,6 +15,7 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
+  const dataVersion = "20260807-marketcap-fix";
 
   const $ = (id) => document.getElementById(id);
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
@@ -124,6 +125,33 @@
       .filter(Boolean))).sort((a, b) => a.localeCompare(b, "ko"));
     fillSelect($("dongSelect"), dongs.map((d) => ({ value: d, label: d })), "전체");
     $("dongSelect").value = state.selectedDong;
+  }
+
+  function ensureMarketCapFields(stats, rows) {
+    const buckets = stats.meta.buckets || [];
+    const scopeEntries = Object.entries(stats.scopes || {});
+    const needsCurrentRepair = scopeEntries.some(([, scope]) => !Array.isArray(scope.current?.marketCapByBucketEok));
+    if (!needsCurrentRepair) return;
+
+    for (const [, scope] of scopeEntries) {
+      scope.current.marketCapEok = 0;
+      scope.current.marketCapByBucketEok = Array(buckets.length).fill(0);
+    }
+
+    for (const row of rows) {
+      const units = Number(row.u || 0);
+      const price = Number(row.lp || 0);
+      const bi = bucketIndex(price);
+      if (units <= 0 || bi < 0) continue;
+      const marketCap = units * price;
+      const keys = ["all", `r:${row.r}`, `g:${row.g}`, `d:${row.g}|${row.d}`];
+      for (const key of keys) {
+        const scope = stats.scopes[key];
+        if (!scope) continue;
+        scope.current.marketCapEok += marketCap;
+        scope.current.marketCapByBucketEok[bi] += marketCap;
+      }
+    }
   }
 
   function renderKpis(scope) {
@@ -335,12 +363,13 @@
     try {
       chartDefaults();
       const [stats, index] = await Promise.all([
-        loadJson("../data/price_bands.json"),
-        loadJson("../data/index.json"),
+        loadJson(`../data/price_bands.json?v=${dataVersion}`),
+        loadJson(`../data/index.json?v=${dataVersion}`),
       ]);
       state.stats = stats;
       state.index = index;
       state.rows = index.d || [];
+      ensureMarketCapFields(state.stats, state.rows);
       initFilters();
       render();
       $("loading").style.display = "none";
