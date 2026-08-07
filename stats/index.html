@@ -15,8 +15,8 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>window.APT_BASE='../';</script>
-<link rel="stylesheet" href="../css/main.css?v=20260807-price-bands">
-<link rel="stylesheet" href="../css/stats.css?v=20260807-price-bands">
+<link rel="stylesheet" href="../css/main.css?v=20260807-marketcap">
+<link rel="stylesheet" href="../css/stats.css?v=20260807-marketcap">
 </head>
 <body>
 <div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">통계 로딩 중...</span></div>
@@ -81,9 +81,25 @@
         <h2>현재 가격대 분포</h2>
         <span id="currentCaption"></span>
       </div>
+      <div class="metric-toggle" role="group" aria-label="현재 분포 차트 기준">
+        <button id="chartUnitsBtn" class="metric-btn active" type="button">세대수</button>
+        <button id="chartCapBtn" class="metric-btn" type="button">시가총액</button>
+      </div>
       <div class="chart-box current"><canvas id="currentChart"></canvas></div>
     </section>
     <section class="stats-panel">
+      <div class="panel-head">
+        <h2>가격대별 비중</h2>
+        <span id="bucketCaption"></span>
+      </div>
+      <div class="table-wrap compact">
+        <table>
+          <thead id="bucketHead"></thead>
+          <tbody id="bucketBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="stats-panel span-2">
       <div class="panel-head">
         <h2>하위 지역 비교</h2>
         <span id="childCaption"></span>
@@ -104,7 +120,7 @@
         <table>
           <thead>
             <tr>
-              <th>단지</th><th>지역</th><th>평형</th><th>최근가</th><th>세대수</th><th>구간</th><th>최근거래</th>
+              <th>단지</th><th>지역</th><th>평형</th><th>최근가</th><th>세대수</th><th>추정 시총</th><th>구간</th><th>최근거래</th>
             </tr>
           </thead>
           <tbody id="rowBody"></tbody>
@@ -114,6 +130,6 @@
   </main>
 </div>
 
-<script src="../js/stats-app.js?v=20260807-price-bands"></script>
+<script src="../js/stats-app.js?v=20260807-marketcap"></script>
 </body>
 </html>

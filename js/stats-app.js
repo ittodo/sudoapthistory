@@ -6,6 +6,7 @@
     filteredRows: [],
     trendChart: null,
     currentChart: null,
+    currentMetric: "units",
     selectedRegion: "",
     selectedGu: "",
     selectedDong: "",
@@ -19,6 +20,12 @@
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
   const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
   const fmtPrice = (v) => v > 0 ? `${Number(v).toFixed(2)}억` : "-";
+  const fmtCap = (v) => {
+    const n = Number(v || 0);
+    if (!Number.isFinite(n) || n <= 0) return "-";
+    if (n >= 10000) return `${(n / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}조`;
+    return `${Math.round(n).toLocaleString()}억`;
+  };
   const pyeong = (row) => row.a ? row.a / 3.3058 : 0;
 
   function bucketIndex(price) {
@@ -84,11 +91,20 @@
       state.selectedBucket = e.target.value;
       renderRows();
     });
+    $("chartUnitsBtn").addEventListener("click", () => setCurrentMetric("units"));
+    $("chartCapBtn").addEventListener("click", () => setCurrentMetric("cap"));
     for (const id of ["areaMin", "areaMax", "searchInput"]) {
       $(id).addEventListener("input", renderRows);
     }
 
     state.filteredRows = rows;
+  }
+
+  function setCurrentMetric(metric) {
+    state.currentMetric = metric;
+    $("chartUnitsBtn").classList.toggle("active", metric === "units");
+    $("chartCapBtn").classList.toggle("active", metric === "cap");
+    renderCurrentChart(currentScope());
   }
 
   function updateGuOptions() {
@@ -114,16 +130,19 @@
     const buckets = state.stats.meta.buckets;
     const currentUnits = scope.current.units || 0;
     const coverageUnits = scope.coverage.units || 0;
+    const marketCap = scope.current.marketCapEok || 0;
     const over10 = scope.current.buckets.slice(2).reduce((a, b) => a + b, 0);
     const over20 = scope.current.buckets.slice(3).reduce((a, b) => a + b, 0);
-    const over50 = scope.current.buckets[6] || 0;
+    const over10Cap = (scope.current.marketCapByBucketEok || []).slice(2).reduce((a, b) => a + b, 0);
+    const over20Cap = (scope.current.marketCapByBucketEok || []).slice(3).reduce((a, b) => a + b, 0);
     const topBucketIndex = scope.current.buckets.reduce((best, value, i, arr) => value > arr[best] ? i : best, 0);
     const cards = [
+      ["전체 시가총액", fmtCap(marketCap), "실거래 평균가 기반 추정"],
+      ["평균 세대가", fmtPrice(currentUnits ? marketCap / currentUnits : 0), fmtUnits(currentUnits)],
+      ["10억+ 시총", fmtCap(over10Cap), `${fmtUnits(over10)} · ${fmtPct(currentUnits ? over10 / currentUnits * 100 : 0)}`],
+      ["20억+ 시총", fmtCap(over20Cap), `${fmtUnits(over20)} · ${fmtPct(currentUnits ? over20 / currentUnits * 100 : 0)}`],
       ["가격 확인 세대", fmtUnits(currentUnits), `커버리지 ${fmtPct(coverageUnits ? currentUnits / coverageUnits * 100 : 0)}`],
-      ["10억 이상", fmtUnits(over10), fmtPct(currentUnits ? over10 / currentUnits * 100 : 0)],
-      ["20억 이상", fmtUnits(over20), fmtPct(currentUnits ? over20 / currentUnits * 100 : 0)],
-      ["50억 이상", fmtUnits(over50), fmtPct(currentUnits ? over50 / currentUnits * 100 : 0)],
-      ["최대 구간", buckets[topBucketIndex].label, fmtUnits(scope.current.buckets[topBucketIndex] || 0)],
+      ["최대 구간", buckets[topBucketIndex].label, `${fmtUnits(scope.current.buckets[topBucketIndex] || 0)} · ${fmtCap((scope.current.marketCapByBucketEok || [])[topBucketIndex] || 0)}`],
     ];
     $("kpis").innerHTML = cards.map(([label, value, sub]) => (
       `<div class="kpi-card"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`
@@ -165,14 +184,16 @@
   }
 
   function renderCurrentChart(scope) {
+    const isCap = state.currentMetric === "cap";
+    const values = isCap ? (scope.current.marketCapByBucketEok || []) : scope.current.buckets;
     if (state.currentChart) state.currentChart.destroy();
     state.currentChart = new Chart($("currentChart"), {
       type: "bar",
       data: {
         labels: state.stats.meta.buckets.map((b) => b.label),
         datasets: [{
-          label: "세대수",
-          data: scope.current.buckets,
+          label: isCap ? "시가총액" : "세대수",
+          data: values,
           backgroundColor: colors,
           borderWidth: 0,
         }],
@@ -183,10 +204,10 @@
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => fmtUnits(ctx.parsed.x) } },
+          tooltip: { callbacks: { label: (ctx) => isCap ? fmtCap(ctx.parsed.x) : fmtUnits(ctx.parsed.x) } },
         },
         scales: {
-          x: { ticks: { callback: (v) => `${Math.round(v / 1000).toLocaleString()}천` } },
+          x: { ticks: { callback: (v) => isCap ? fmtCap(v) : `${Math.round(v / 1000).toLocaleString()}천` } },
           y: { ticks: { autoSkip: false } },
         },
         onClick: (_, elements) => {
@@ -204,18 +225,46 @@
     return Object.entries(state.stats.scopes)
       .filter(([, child]) => child.parent === key)
       .map(([childKey, child]) => ({ key: childKey, scope: child }))
-      .sort((a, b) => (b.scope.current.units || 0) - (a.scope.current.units || 0));
+      .sort((a, b) => (b.scope.current.marketCapEok || 0) - (a.scope.current.marketCapEok || 0));
+  }
+
+  function renderBuckets(scope) {
+    const totalUnits = scope.current.units || 0;
+    const totalCap = scope.current.marketCapEok || 0;
+    $("bucketHead").innerHTML = "<tr><th>가격대</th><th class=\"num\">세대수</th><th class=\"num\">세대수 %</th><th class=\"num\">시가총액</th><th class=\"num\">시총 %</th><th class=\"num\">평균가</th></tr>";
+    $("bucketCaption").textContent = `${fmtUnits(totalUnits)} · ${fmtCap(totalCap)}`;
+    $("bucketBody").innerHTML = state.stats.meta.buckets.map((bucket, i) => {
+      const units = scope.current.buckets[i] || 0;
+      const cap = (scope.current.marketCapByBucketEok || [])[i] || 0;
+      return `<tr>
+        <td><span class="bucket-chip">${bucket.label}</span></td>
+        <td class="num">${Math.round(units).toLocaleString()}</td>
+        <td class="num">${fmtPct(totalUnits ? units / totalUnits * 100 : 0)}</td>
+        <td class="num">${fmtCap(cap)}</td>
+        <td class="num">${fmtPct(totalCap ? cap / totalCap * 100 : 0)}</td>
+        <td class="num">${fmtPrice(units ? cap / units : 0)}</td>
+      </tr>`;
+    }).join("");
   }
 
   function renderChildren(scope) {
-    const bucketHeaders = state.stats.meta.buckets.map((b) => `<th class="num">${b.label}</th>`).join("");
-    $("childHead").innerHTML = `<tr><th>지역</th><th class="num">합계</th>${bucketHeaders}</tr>`;
+    const totalUnits = scope.current.units || 0;
+    const totalCap = scope.current.marketCapEok || 0;
+    $("childHead").innerHTML = "<tr><th>지역</th><th class=\"num\">세대수</th><th class=\"num\">세대수 %</th><th class=\"num\">시가총액</th><th class=\"num\">시총 %</th><th class=\"num\">평균가</th></tr>";
     const children = childScopes(scope).slice(0, 80);
     $("childCaption").textContent = children.length ? `${children.length.toLocaleString()}개 표시` : "하위 지역 없음";
     $("childBody").innerHTML = children.length ? children.map(({ scope: child }) => {
-      const cells = child.current.buckets.map((v) => `<td class="num">${Math.round(v).toLocaleString()}</td>`).join("");
-      return `<tr><td>${child.label}</td><td class="num">${Math.round(child.current.units).toLocaleString()}</td>${cells}</tr>`;
-    }).join("") : `<tr><td class="empty-row" colspan="${state.stats.meta.buckets.length + 2}">표시할 하위 지역이 없습니다.</td></tr>`;
+      const units = child.current.units || 0;
+      const cap = child.current.marketCapEok || 0;
+      return `<tr>
+        <td>${child.label}</td>
+        <td class="num">${Math.round(units).toLocaleString()}</td>
+        <td class="num">${fmtPct(totalUnits ? units / totalUnits * 100 : 0)}</td>
+        <td class="num">${fmtCap(cap)}</td>
+        <td class="num">${fmtPct(totalCap ? cap / totalCap * 100 : 0)}</td>
+        <td class="num">${fmtPrice(units ? cap / units : 0)}</td>
+      </tr>`;
+    }).join("") : "<tr><td class=\"empty-row\" colspan=\"6\">표시할 하위 지역이 없습니다.</td></tr>";
   }
 
   function rowMatchesScope(row) {
@@ -250,16 +299,18 @@
       const bi = bucketIndex(Number(row.lp || 0));
       const bucket = bi >= 0 ? state.stats.meta.buckets[bi].label : "-";
       const py = pyeong(row);
+      const cap = Number(row.u || 0) * Number(row.lp || 0);
       return `<tr>
         <td class="name" title="${row.n || ""}">${row.n || "-"}</td>
         <td>${row.g || "-"} <span class="muted-cell">${row.d || ""}</span></td>
         <td class="num">${py ? py.toFixed(1) : "-"}평</td>
         <td class="num">${fmtPrice(row.lp)}</td>
         <td class="num">${Number(row.u || 0).toLocaleString()}</td>
+        <td class="num">${fmtCap(cap)}</td>
         <td><span class="bucket-chip">${bucket}</span></td>
         <td class="num muted-cell">${row.ld || "-"}</td>
       </tr>`;
-    }).join("") : `<tr><td class="empty-row" colspan="7">조건에 맞는 평형이 없습니다.</td></tr>`;
+    }).join("") : `<tr><td class="empty-row" colspan="8">조건에 맞는 평형이 없습니다.</td></tr>`;
   }
 
   function renderCaptions(scope) {
@@ -274,6 +325,7 @@
     renderKpis(scope);
     renderTrendChart(scope);
     renderCurrentChart(scope);
+    renderBuckets(scope);
     renderChildren(scope);
     renderCaptions(scope);
     renderRows();

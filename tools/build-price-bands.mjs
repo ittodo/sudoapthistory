@@ -39,12 +39,16 @@ function emptyScope(type, label, parent = null) {
     current: {
       units: 0,
       rows: 0,
+      marketCapEok: 0,
       buckets: Array(buckets.length).fill(0),
+      marketCapByBucketEok: Array(buckets.length).fill(0),
       rowsByBucket: Array(buckets.length).fill(0),
     },
     trend: {
       unitsByYear: [],
+      marketCapByYearEok: [],
       buckets: buckets.map(() => []),
+      marketCapByBucketEok: buckets.map(() => []),
     },
     coverage: {
       rows: 0,
@@ -60,7 +64,9 @@ function ensureScope(scopes, key, type, label, parent = null, yearsLen = 0) {
   if (!scopes[key]) {
     const scope = emptyScope(type, label, parent);
     scope.trend.unitsByYear = Array(yearsLen).fill(0);
+    scope.trend.marketCapByYearEok = Array(yearsLen).fill(0);
     scope.trend.buckets = buckets.map(() => Array(yearsLen).fill(0));
+    scope.trend.marketCapByBucketEok = buckets.map(() => Array(yearsLen).fill(0));
     scope.coverage.missingTrendPriceRowsByYear = Array(yearsLen).fill(0);
     scopes[key] = scope;
   }
@@ -73,9 +79,12 @@ function addCurrent(scope, price, units) {
     scope.coverage.missingCurrentPriceRows += 1;
     return;
   }
+  const marketCap = price * units;
   scope.current.units += units;
   scope.current.rows += 1;
+  scope.current.marketCapEok += marketCap;
   scope.current.buckets[bi] += units;
+  scope.current.marketCapByBucketEok[bi] += marketCap;
   scope.current.rowsByBucket[bi] += 1;
 }
 
@@ -87,8 +96,11 @@ function addTrend(scope, priceArr, units, yearsLen) {
       scope.coverage.missingTrendPriceRowsByYear[yi] += 1;
       continue;
     }
+    const marketCap = price * units;
     scope.trend.unitsByYear[yi] += units;
+    scope.trend.marketCapByYearEok[yi] += marketCap;
     scope.trend.buckets[bi][yi] += units;
+    scope.trend.marketCapByBucketEok[bi][yi] += marketCap;
   }
 }
 
