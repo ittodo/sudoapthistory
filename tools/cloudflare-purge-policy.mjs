@@ -60,6 +60,16 @@ const routeDeps = [
     ],
   },
   {
+    routes: ["/stats/", "/stats/index.html"],
+    patterns: [
+      "stats/index.html",
+      "css/stats.css",
+      "js/stats-app.js",
+      "data/price_bands.json",
+      "data/index.json",
+    ],
+  },
+  {
     routes: ["/div/", "/div/index.html"],
     patterns: [
       "div/index.html",
