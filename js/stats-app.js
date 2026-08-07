@@ -17,7 +17,7 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
-  const dataVersion = "20260808-tax-region";
+  const dataVersion = "20260808-tax-region2";
 
   const $ = (id) => document.getElementById(id);
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
