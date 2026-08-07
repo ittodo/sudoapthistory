@@ -66,6 +66,7 @@ const routeDeps = [
       "css/stats.css",
       "js/stats-app.js",
       "data/price_bands.json",
+      "data/holding_tax_actuals.json",
       "data/index.json",
     ],
   },
