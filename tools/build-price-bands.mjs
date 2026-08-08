@@ -89,8 +89,11 @@ function addCurrent(scope, price, units) {
 }
 
 function addTrend(scope, priceArr, units, yearsLen) {
+  let carriedPrice = 0;
   for (let yi = 0; yi < yearsLen; yi += 1) {
-    const price = Array.isArray(priceArr) ? Number(priceArr[yi] || 0) : 0;
+    const observedPrice = Array.isArray(priceArr) ? Number(priceArr[yi] || 0) : 0;
+    if (Number.isFinite(observedPrice) && observedPrice > 0) carriedPrice = observedPrice;
+    const price = carriedPrice;
     const bi = bucketIndex(price);
     if (bi < 0) {
       scope.coverage.missingTrendPriceRowsByYear[yi] += 1;
@@ -157,7 +160,12 @@ const output = {
       prices: "data/prices.json",
     },
     priceBasis: "lp_recent_month_average",
-    trendBasis: "yearly_average_price",
+    trendBasis: "yearly_average_price_carry_forward",
+    trendCarryForward: {
+      enabled: true,
+      source: "last observed yearly average price at or before each year",
+      missingBeforeFirstObservation: true,
+    },
     unitBasis: "area_row_units_u",
     years,
     buckets,

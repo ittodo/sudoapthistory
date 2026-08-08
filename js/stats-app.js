@@ -474,7 +474,10 @@
 
   function renderCaptions(scope) {
     const label = scope.label || "전체";
-    $("trendCaption").textContent = `${label} | 연도별 평균가 기준`;
+    const trendBasis = state.stats.meta.trendBasis === "yearly_average_price_carry_forward"
+      ? "연도별 평균가·직전 유효가 이월 기준"
+      : "연도별 평균가 기준";
+    $("trendCaption").textContent = `${label} | ${trendBasis}`;
     $("currentCaption").textContent = `${label} | 최근가 lp 기준`;
     $("statsMeta").textContent = `${state.stats.meta.updated || "-"} 업데이트 | ${state.stats.meta.indexRows.toLocaleString()}개 평형 | prices extra key ${state.stats.meta.extraPriceKeys}`;
   }
