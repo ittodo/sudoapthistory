@@ -4,15 +4,15 @@
 
 ## 전제
 
-여기서 `polygen`은 `D:\Rust\polygen` 프로젝트를 의미한다.
+여기서 `polygen`은 `D:\Work\PolyGen` 프로젝트를 의미한다.
 
 확인한 사실:
 
-- `D:\Rust\polygen`은 `.poly` 스키마를 SSOT로 삼아 TypeScript/C#/Rust/C++/Go 코드를 생성하는 코드 생성기다.
+- `D:\Work\PolyGen`은 `.poly` 스키마를 SSOT로 삼아 TypeScript/C#/Rust/C++/Go 코드를 생성하는 코드 생성기다.
 - 현재 TypeScript 생성은 인터페이스, enum, Zod 검증을 지원한다.
 - `.poly` 문법에는 `@load(csv/json)`, `@cache`, `@datasource`, `@pack`이 있다.
 - CLI는 `cargo run -- generate --schema-path <schema.poly> --lang typescript --output-dir <dir>` 형태로 실행된다.
-- `D:\asset\sudoapthistory`는 정적 HTML/JS/JSON 사이트이며 루트에 별도 빌드 파이프라인이 없다.
+- `D:\Work\sudoapthistory`는 정적 HTML/JS/JSON 사이트이며 루트에 별도 빌드 파이프라인이 없다.
 
 이 플랜의 핵심은 polygen을 “런타임 다운로드 도구”로 쓰는 것이 아니라, nodostream 데이터 스키마와 타입/검증/로더를 생성하는 도구로 붙이는 것이다. 페이지 속도는 생성된 스키마를 기준으로 JSON을 더 작게 쪼개고, 첫 화면에서 필요한 데이터만 받게 만들어서 올린다.
 
@@ -159,14 +159,14 @@ namespace nodostream.apt {
 ### 1단계: polygen을 사이트에 “읽기 전용 생성 도구”로 연결
 
 1. `schemas/nodostream.poly` 추가.
-2. `D:\Rust\polygen`에서 TypeScript 산출물을 생성하는 명령을 문서화한다.
+2. `D:\Work\PolyGen`에서 TypeScript 산출물을 생성하는 명령을 문서화한다.
 
 ```powershell
-cd D:\Rust\polygen
+cd D:\Work\PolyGen
 cargo run -- generate `
-  --schema-path D:\asset\sudoapthistory\schemas\nodostream.poly `
+  --schema-path D:\Work\sudoapthistory\schemas\nodostream.poly `
   --lang typescript `
-  --output-dir D:\asset\sudoapthistory\js\generated
+  --output-dir D:\Work\sudoapthistory\js\generated
 ```
 
 3. 산출물은 처음에는 런타임에 직접 import하지 않고, 타입/검증/스키마 문서로만 사용한다.

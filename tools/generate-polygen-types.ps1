@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
-$PolygenRoot = if ($env:POLYGEN_ROOT) { $env:POLYGEN_ROOT } else { 'D:\Rust\polygen' }
+$PolygenRoot = if ($env:POLYGEN_ROOT) { $env:POLYGEN_ROOT } else { 'D:\Work\PolyGen' }
 $SchemaPath = Join-Path $RepoRoot 'schemas\nodostream.poly'
 $OutputDir = Join-Path $RepoRoot 'js\generated'
 $TemplatesDir = Join-Path $PolygenRoot 'templates'
