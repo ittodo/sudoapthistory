@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 const repoRoot = resolve(import.meta.dirname, "..");
 const indexPath = resolve(repoRoot, "data/index.json");
 const pricesPath = resolve(repoRoot, "data/prices.json");
+const volumesPath = resolve(repoRoot, "data/volumes.json");
 const outputPath = resolve(repoRoot, "data/price_bands.json");
 
 const buckets = [
@@ -50,12 +51,17 @@ function emptyScope(type, label, parent = null) {
       buckets: buckets.map(() => []),
       marketCapByBucketEok: buckets.map(() => []),
     },
+    liquidity: {
+      transactionsByYear: [],
+      transactionsByBucket: buckets.map(() => []),
+    },
     coverage: {
       rows: 0,
       units: 0,
       missingUnitsRows: 0,
       missingCurrentPriceRows: 0,
       missingTrendPriceRowsByYear: [],
+      allTransactionsByYear: [],
     },
   };
 }
@@ -67,7 +73,10 @@ function ensureScope(scopes, key, type, label, parent = null, yearsLen = 0) {
     scope.trend.marketCapByYearEok = Array(yearsLen).fill(0);
     scope.trend.buckets = buckets.map(() => Array(yearsLen).fill(0));
     scope.trend.marketCapByBucketEok = buckets.map(() => Array(yearsLen).fill(0));
+    scope.liquidity.transactionsByYear = Array(yearsLen).fill(0);
+    scope.liquidity.transactionsByBucket = buckets.map(() => Array(yearsLen).fill(0));
     scope.coverage.missingTrendPriceRowsByYear = Array(yearsLen).fill(0);
+    scope.coverage.allTransactionsByYear = Array(yearsLen).fill(0);
     scopes[key] = scope;
   }
   return scopes[key];
@@ -107,7 +116,30 @@ function addTrend(scope, priceArr, units, yearsLen) {
   }
 }
 
-function addRow(scope, row, priceArr, yearsLen) {
+function addTransactionCoverage(scope, volumeArr, yearsLen) {
+  for (let yi = 0; yi < yearsLen; yi += 1) {
+    const transactions = Array.isArray(volumeArr) ? Number(volumeArr[yi] || 0) : 0;
+    if (Number.isFinite(transactions) && transactions > 0) {
+      scope.coverage.allTransactionsByYear[yi] += transactions;
+    }
+  }
+}
+
+function addLiquidity(scope, priceArr, volumeArr, yearsLen) {
+  let carriedPrice = 0;
+  for (let yi = 0; yi < yearsLen; yi += 1) {
+    const observedPrice = Array.isArray(priceArr) ? Number(priceArr[yi] || 0) : 0;
+    if (Number.isFinite(observedPrice) && observedPrice > 0) carriedPrice = observedPrice;
+    const bi = bucketIndex(carriedPrice);
+    const transactions = Array.isArray(volumeArr) ? Number(volumeArr[yi] || 0) : 0;
+    if (bi < 0 || !Number.isFinite(transactions) || transactions <= 0) continue;
+    scope.liquidity.transactionsByYear[yi] += transactions;
+    scope.liquidity.transactionsByBucket[bi][yi] += transactions;
+  }
+}
+
+function addRow(scope, row, priceArr, volumeArr, yearsLen) {
+  addTransactionCoverage(scope, volumeArr, yearsLen);
   const units = Number(row.u || 0);
   scope.coverage.rows += 1;
   if (!Number.isFinite(units) || units <= 0) {
@@ -117,10 +149,12 @@ function addRow(scope, row, priceArr, yearsLen) {
   scope.coverage.units += units;
   addCurrent(scope, Number(row.lp || 0), units);
   addTrend(scope, priceArr, units, yearsLen);
+  addLiquidity(scope, priceArr, volumeArr, yearsLen);
 }
 
 const indexData = JSON.parse(await readFile(indexPath, "utf8"));
 const prices = JSON.parse(await readFile(pricesPath, "utf8"));
+const volumes = JSON.parse(await readFile(volumesPath, "utf8"));
 const rows = indexData.d || [];
 const years = indexData.meta?.years || [];
 const scopes = {};
@@ -131,6 +165,7 @@ ensureScope(scopes, "all", "all", "전체", null, yearsLen);
 for (const row of rows) {
   const idx = String(row.i);
   const priceArr = prices[idx] || null;
+  const volumeArr = volumes[idx] || null;
   const regionKey = `r:${row.r}`;
   const guKey = `g:${row.g}`;
   const dongKey = `d:${row.g}|${row.d}`;
@@ -143,13 +178,18 @@ for (const row of rows) {
     ensureScope(scopes, dongKey, "dong", row.d || "미상", guKey, yearsLen),
   ];
 
-  for (const scope of targets) addRow(scope, row, priceArr, yearsLen);
+  for (const scope of targets) addRow(scope, row, priceArr, volumeArr, yearsLen);
 }
 
 const indexKeys = new Set(rows.map((row) => String(row.i)));
 const priceKeys = Object.keys(prices);
+const volumeKeys = Object.keys(volumes);
 const extraPriceKeys = priceKeys.filter((key) => !indexKeys.has(key)).length;
 const missingPriceKeys = rows.filter((row) => !prices[String(row.i)]).length;
+const extraVolumeKeys = volumeKeys.filter((key) => !indexKeys.has(key)).length;
+const missingVolumeKeys = rows.filter((row) => !volumes[String(row.i)]).length;
+const updatedYear = Number(String(indexData.meta?.updated || "").slice(0, 4));
+const latestCompleteYear = years.filter((year) => year < updatedYear).at(-1) || years.at(-1) || null;
 
 const output = {
   meta: {
@@ -158,6 +198,7 @@ const output = {
     source: {
       index: "data/index.json",
       prices: "data/prices.json",
+      volumes: "data/volumes.json",
     },
     priceBasis: "lp_recent_month_average",
     trendBasis: "yearly_average_price_carry_forward",
@@ -167,16 +208,27 @@ const output = {
       missingBeforeFirstObservation: true,
     },
     unitBasis: "area_row_units_u",
+    liquidityBasis: {
+      numerator: "annual transaction count from data/volumes.json",
+      denominator: "units assigned to the same yearly price bucket",
+      formula: "transactions / units * 100",
+      priceBucket: "yearly average price with last observation carried forward",
+      partialYearAnnualized: false,
+    },
     years,
+    latestCompleteYear,
     buckets,
     indexRows: rows.length,
     priceKeys: priceKeys.length,
     extraPriceKeys,
     missingPriceKeys,
+    volumeKeys: volumeKeys.length,
+    extraVolumeKeys,
+    missingVolumeKeys,
   },
   scopes,
 };
 
 await writeFile(outputPath, `${JSON.stringify(output)}\n`, "utf8");
 console.log(`wrote ${outputPath}`);
-console.log(`rows=${rows.length} scopes=${Object.keys(scopes).length} extraPriceKeys=${extraPriceKeys} missingPriceKeys=${missingPriceKeys}`);
+console.log(`rows=${rows.length} scopes=${Object.keys(scopes).length} extraPriceKeys=${extraPriceKeys} missingPriceKeys=${missingPriceKeys} extraVolumeKeys=${extraVolumeKeys} missingVolumeKeys=${missingVolumeKeys}`);

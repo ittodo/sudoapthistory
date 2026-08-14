@@ -7,8 +7,11 @@
     filteredRows: [],
     trendChart: null,
     currentChart: null,
+    liquidityChart: null,
     taxChart: null,
     currentMetric: "units",
+    liquidityMetric: "turnover",
+    selectedLiquidityYear: null,
     taxMetric: "holding",
     selectedRegion: "",
     selectedGu: "",
@@ -18,11 +21,13 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
-  const dataVersion = "20260808-tax-revenue2";
+  const dataVersion = "20260814-turnover1";
 
   const $ = (id) => document.getElementById(id);
   const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
+  const fmtTransactions = (v) => `${Math.round(v || 0).toLocaleString()}건`;
   const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
+  const fmtTurnover = (v) => `${(v || 0).toFixed(2)}%`;
   const fmtPrice = (v) => v > 0 ? `${Number(v).toFixed(2)}억` : "-";
   const fmtTrillion = (v) => {
     const n = Number(v || 0);
@@ -81,6 +86,14 @@
     ], "전체");
 
     fillSelect($("bucketSelect"), state.stats.meta.buckets.map((b, i) => ({ value: String(i), label: b.label })), "전체");
+    const latestCompleteYear = Number(state.stats.meta.latestCompleteYear || 0);
+    const latestYear = state.stats.meta.years.at(-1);
+    state.selectedLiquidityYear = latestCompleteYear || latestYear;
+    fillSelect($("liquidityYearSelect"), state.stats.meta.years.slice().reverse().map((year) => ({
+      value: String(year),
+      label: year > latestCompleteYear ? `${year} YTD` : String(year),
+    })), "연도");
+    $("liquidityYearSelect").value = String(state.selectedLiquidityYear || "");
     updateGuOptions();
     updateDongOptions();
 
@@ -108,6 +121,12 @@
     });
     $("chartUnitsBtn").addEventListener("click", () => setCurrentMetric("units"));
     $("chartCapBtn").addEventListener("click", () => setCurrentMetric("cap"));
+    $("liquidityYearSelect").addEventListener("change", (e) => {
+      state.selectedLiquidityYear = Number(e.target.value || state.stats.meta.latestCompleteYear);
+      renderLiquidity(currentScope());
+    });
+    $("liquidityTurnoverBtn").addEventListener("click", () => setLiquidityMetric("turnover"));
+    $("liquidityTransactionsBtn").addEventListener("click", () => setLiquidityMetric("transactions"));
     $("taxHoldingBtn").addEventListener("click", () => setTaxMetric("holding"));
     $("taxCreBtn").addEventListener("click", () => setTaxMetric("cre"));
     $("taxAcquisitionBtn").addEventListener("click", () => setTaxMetric("acquisition"));
@@ -125,6 +144,13 @@
     $("chartUnitsBtn").classList.toggle("active", metric === "units");
     $("chartCapBtn").classList.toggle("active", metric === "cap");
     renderCurrentChart(currentScope());
+  }
+
+  function setLiquidityMetric(metric) {
+    state.liquidityMetric = metric;
+    $("liquidityTurnoverBtn").classList.toggle("active", metric === "turnover");
+    $("liquidityTransactionsBtn").classList.toggle("active", metric === "transactions");
+    renderLiquidityChart(currentScope());
   }
 
   function setTaxMetric(metric) {
@@ -275,6 +301,105 @@
         },
       },
     });
+  }
+
+  function liquiditySnapshot(scope) {
+    const years = state.stats.meta.years || [];
+    const year = Number(state.selectedLiquidityYear || state.stats.meta.latestCompleteYear || years.at(-1));
+    const yi = years.indexOf(year);
+    const unitsByBucket = state.stats.meta.buckets.map((_, i) => Number(scope.trend?.buckets?.[i]?.[yi] || 0));
+    const transactionsByBucket = state.stats.meta.buckets.map((_, i) => Number(scope.liquidity?.transactionsByBucket?.[i]?.[yi] || 0));
+    const turnoverByBucket = unitsByBucket.map((units, i) => units > 0 ? transactionsByBucket[i] / units * 100 : 0);
+    const units = unitsByBucket.reduce((sum, value) => sum + value, 0);
+    const transactions = transactionsByBucket.reduce((sum, value) => sum + value, 0);
+    const rawTransactions = Number(scope.coverage?.allTransactionsByYear?.[yi] || 0);
+    let topBucketIndex = -1;
+    turnoverByBucket.forEach((value, i) => {
+      if (transactionsByBucket[i] > 0 && (topBucketIndex < 0 || value > turnoverByBucket[topBucketIndex])) topBucketIndex = i;
+    });
+    return { year, yi, unitsByBucket, transactionsByBucket, turnoverByBucket, units, transactions, rawTransactions, topBucketIndex };
+  }
+
+  function renderLiquidityKpis(scope) {
+    const snap = liquiditySnapshot(scope);
+    const latestCompleteYear = Number(state.stats.meta.latestCompleteYear || 0);
+    const yearLabel = snap.year > latestCompleteYear ? `${snap.year} YTD` : `${snap.year}년`;
+    const overallTurnover = snap.units > 0 ? snap.transactions / snap.units * 100 : 0;
+    const coverage = snap.rawTransactions > 0 ? snap.transactions / snap.rawTransactions * 100 : 0;
+    const topLabel = snap.topBucketIndex >= 0 ? state.stats.meta.buckets[snap.topBucketIndex].label : "-";
+    const topTurnover = snap.topBucketIndex >= 0 ? snap.turnoverByBucket[snap.topBucketIndex] : 0;
+    const cards = [
+      [`${yearLabel} 거래량`, fmtTransactions(snap.transactions), `원자료 ${fmtTransactions(snap.rawTransactions)}`],
+      [`${yearLabel} 회전율`, fmtTurnover(overallTurnover), `${fmtUnits(snap.units)} 기준`],
+      ["거래량 커버리지", fmtPct(coverage), "세대수·가격대 확인 거래 기준"],
+      ["최고 회전 가격대", topLabel, topLabel === "-" ? "거래 없음" : fmtTurnover(topTurnover)],
+    ];
+    $("liquidityKpis").innerHTML = cards.map(([label, value, sub]) => (
+      `<div class="liquidity-mini"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">${sub}</div></div>`
+    )).join("");
+  }
+
+  function renderLiquidityChart(scope) {
+    const snap = liquiditySnapshot(scope);
+    const isTurnover = state.liquidityMetric === "turnover";
+    const values = isTurnover ? snap.turnoverByBucket : snap.transactionsByBucket;
+    if (state.liquidityChart) state.liquidityChart.destroy();
+    state.liquidityChart = new Chart($("liquidityChart"), {
+      type: "bar",
+      data: {
+        labels: state.stats.meta.buckets.map((bucket) => bucket.label),
+        datasets: [{
+          label: isTurnover ? "회전율" : "거래건수",
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => {
+            const i = ctx.dataIndex;
+            return isTurnover
+              ? `회전율 ${fmtTurnover(ctx.parsed.x)} · ${fmtTransactions(snap.transactionsByBucket[i])} / ${fmtUnits(snap.unitsByBucket[i])}`
+              : `${fmtTransactions(ctx.parsed.x)} · 회전율 ${fmtTurnover(snap.turnoverByBucket[i])}`;
+          } } },
+        },
+        scales: {
+          x: { beginAtZero: true, ticks: { callback: (v) => isTurnover ? fmtTurnover(v) : Math.round(v).toLocaleString() } },
+          y: { ticks: { autoSkip: false } },
+        },
+      },
+    });
+  }
+
+  function renderLiquidityTable(scope) {
+    const snap = liquiditySnapshot(scope);
+    $("liquidityBody").innerHTML = state.stats.meta.buckets.map((bucket, i) => {
+      const transactionShare = snap.transactions > 0 ? snap.transactionsByBucket[i] / snap.transactions * 100 : 0;
+      return `<tr>
+        <td><span class="bucket-chip">${bucket.label}</span></td>
+        <td class="num">${Math.round(snap.unitsByBucket[i]).toLocaleString()}</td>
+        <td class="num">${Math.round(snap.transactionsByBucket[i]).toLocaleString()}</td>
+        <td class="num">${fmtPct(transactionShare)}</td>
+        <td class="num">${fmtTurnover(snap.turnoverByBucket[i])}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderLiquidity(scope) {
+    const snap = liquiditySnapshot(scope);
+    const latestCompleteYear = Number(state.stats.meta.latestCompleteYear || 0);
+    const label = scope.label || "전체";
+    const yearLabel = snap.year > latestCompleteYear ? `${snap.year} YTD` : `${snap.year}년`;
+    const coverage = snap.rawTransactions > 0 ? snap.transactions / snap.rawTransactions * 100 : 0;
+    $("liquidityCaption").textContent = `${label} | ${yearLabel} | 거래량 커버리지 ${fmtPct(coverage)}`;
+    renderLiquidityKpis(scope);
+    renderLiquidityChart(scope);
+    renderLiquidityTable(scope);
   }
 
   function childScopes(scope) {
@@ -479,7 +604,7 @@
       : "연도별 평균가 기준";
     $("trendCaption").textContent = `${label} | ${trendBasis}`;
     $("currentCaption").textContent = `${label} | 최근가 lp 기준`;
-    $("statsMeta").textContent = `${state.stats.meta.updated || "-"} 업데이트 | ${state.stats.meta.indexRows.toLocaleString()}개 평형 | prices extra key ${state.stats.meta.extraPriceKeys}`;
+    $("statsMeta").textContent = `${state.stats.meta.updated || "-"} 업데이트 | ${state.stats.meta.indexRows.toLocaleString()}개 평형 | 가격·거래량·세대수 결합`;
   }
 
   function render() {
@@ -487,6 +612,7 @@
     renderKpis(scope);
     renderTrendChart(scope);
     renderCurrentChart(scope);
+    renderLiquidity(scope);
     renderBuckets(scope);
     renderChildren(scope);
     renderTaxActuals();

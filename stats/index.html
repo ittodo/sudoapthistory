@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>가격대별 세대수 통계 — 서울·경기·인천 아파트</title>
-<meta name="description" content="서울·경기·인천 아파트 평형별 세대수를 최근가 기준 가격대와 연도별 가격 추이로 집계합니다.">
+<title>가격대별 세대수·거래 회전율 통계 — 서울·경기·인천 아파트</title>
+<meta name="description" content="서울·경기·인천 아파트의 가격대별 세대수, 거래량, 거래 회전율과 연도별 가격 추이를 집계합니다.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="가격대별 세대수 통계 — 서울·경기·인천 아파트">
-<meta property="og:description" content="5억·10억·20억·30억·40억·50억 이상 가격대별 아파트 세대수 분포와 연도별 추세.">
+<meta property="og:title" content="가격대별 세대수·거래 회전율 통계 — 서울·경기·인천 아파트">
+<meta property="og:description" content="5억·10억·20억·30억·40억·50억 이상 가격대별 아파트 세대수, 거래량과 회전율.">
 <meta property="og:url" content="https://nodostream.com/stats/">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="아파트 투자 스크리너">
@@ -15,8 +15,8 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>window.APT_BASE='../';</script>
-<link rel="stylesheet" href="../css/main.css?v=20260808-tax-revenue2">
-<link rel="stylesheet" href="../css/stats.css?v=20260808-tax-revenue2">
+<link rel="stylesheet" href="../css/main.css?v=20260814-turnover1">
+<link rel="stylesheet" href="../css/stats.css?v=20260814-turnover1">
 </head>
 <body>
 <div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">통계 로딩 중...</span></div>
@@ -24,8 +24,8 @@
 <div id="app" class="stats-shell" style="display:none">
   <header class="stats-header">
     <div>
-      <h1>가격대별 세대수 통계</h1>
-      <p id="statsMeta">최근가 기준 가격대 분포 | 연도별 평균가 추세</p>
+      <h1>가격대별 세대수·거래 회전율 통계</h1>
+      <p id="statsMeta">최근가 기준 가격대 분포 | 연도별 거래량·회전율</p>
     </div>
     <nav class="stats-nav">
       <a href="../" class="pg-btn">아파트 스크리너</a>
@@ -100,6 +100,35 @@
       </div>
     </section>
     <section class="stats-panel span-2">
+      <div class="panel-head liquidity-head">
+        <div>
+          <h2>가격대별 거래량·회전율</h2>
+          <span id="liquidityCaption"></span>
+        </div>
+        <label class="year-control">
+          <span>기준 연도</span>
+          <select id="liquidityYearSelect" class="fi"></select>
+        </label>
+      </div>
+      <div class="liquidity-kpis" id="liquidityKpis"></div>
+      <div class="metric-toggle" role="group" aria-label="거래 유동성 차트 기준">
+        <button id="liquidityTurnoverBtn" class="metric-btn active" type="button">회전율</button>
+        <button id="liquidityTransactionsBtn" class="metric-btn" type="button">거래건수</button>
+      </div>
+      <div class="liquidity-layout">
+        <div class="chart-box liquidity"><canvas id="liquidityChart"></canvas></div>
+        <div class="table-wrap compact liquidity-table">
+          <table>
+            <thead>
+              <tr><th>가격대</th><th class="num">세대수</th><th class="num">거래건수</th><th class="num">거래 비중</th><th class="num">회전율</th></tr>
+            </thead>
+            <tbody id="liquidityBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="source-note">회전율 = 해당 연도 거래건수 ÷ 해당 가격대 세대수. 가격대는 연도별 평균가를 사용하며 거래가 없는 해에는 직전 유효 가격을 이월합니다. 진행 중인 연도는 연환산하지 않은 YTD입니다.</p>
+    </section>
+    <section class="stats-panel span-2">
       <div class="panel-head">
         <h2>하위 지역 비교</h2>
         <span id="childCaption"></span>
@@ -157,6 +186,6 @@
   </main>
 </div>
 
-<script src="../js/stats-app.js?v=20260808-tax-revenue2"></script>
+<script src="../js/stats-app.js?v=20260814-turnover1"></script>
 </body>
 </html>
