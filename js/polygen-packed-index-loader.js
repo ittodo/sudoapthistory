@@ -152,11 +152,12 @@ function parsePacked(buffer) {
   return Array.from({ length: rowCount }, (_, index) => new PackedAptIndexRow(index, table));
 }
 
-export async function loadPackedAptIndex(base = "") {
+export async function loadPackedAptIndex(base = "", version = "") {
   const prefix = base || "";
+  const suffix = version ? `?v=${encodeURIComponent(version)}` : "";
   const [metaRes, binRes] = await Promise.all([
-    fetch(prefix + "data/polygen/index.meta.json"),
-    fetch(prefix + "data/polygen/index.packed.bin"),
+    fetch(prefix + "data/polygen/index.meta.json" + suffix),
+    fetch(prefix + "data/polygen/index.packed.bin" + suffix),
   ]);
 
   if (!metaRes.ok) throw new Error(`Packed index meta fetch failed: ${metaRes.status}`);

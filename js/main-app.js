@@ -1498,13 +1498,13 @@ function normalizeIndexPayload(j){
 
 async function loadAptIndex(){
   const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
-  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-landrights';
+  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-pnu-bridge';
   const importSuffix='?v='+encodeURIComponent(assetVersion);
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
     try{
       const packed=await import(jsBase+'polygen-packed-index-loader.js'+importSuffix);
-      const loaded=await packed.loadPackedAptIndex(base);
+      const loaded=await packed.loadPackedAptIndex(base,assetVersion);
       console.log(`PolyGen packed index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
       return loaded;
     }catch(e){
