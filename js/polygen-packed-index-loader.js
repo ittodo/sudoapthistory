@@ -1,4 +1,4 @@
-const MAGIC = "NSPIv001";
+const MAGIC = "NSPIv002";
 const textDecoder = new TextDecoder();
 
 function align(offset, bytes) {
@@ -68,6 +68,14 @@ class PackedAptIndexRow {
   get j() { return optionalStringValue(this._table.strings, this._table.jibun[this._index]); }
   get rd() { return optionalStringValue(this._table.strings, this._table.roadAddress[this._index]); }
   get tu() { return u32(this._table.totalUnits[this._index]); }
+  get pa() { return f32(this._table.platArea[this._index], 2); }
+  get fr() { return f32(this._table.floorAreaRatio[this._index], 2); }
+  get pk() { return u32(this._table.parkingCount[this._index]); }
+  get ls() { return f32(this._table.estimatedLandShare[this._index], 2); }
+  get lr() { return f32(this._table.registryLandRight[this._index], 2); }
+  get lc() { return u32(this._table.landRightCount[this._index]); }
+  get ll() { return f32(this._table.landRightLow[this._index], 2); }
+  get lh() { return f32(this._table.landRightHigh[this._index], 2); }
   get si() {
     return cached(this, "si", () => {
       const count = this._table.siblingCount[this._index];
@@ -128,6 +136,14 @@ function parsePacked(buffer) {
     jibun: typed(Uint32Array, rowCount, 4),
     roadAddress: typed(Uint32Array, rowCount, 4),
     totalUnits: typed(Uint32Array, rowCount, 4),
+    platArea: typed(Float32Array, rowCount, 4),
+    floorAreaRatio: typed(Float32Array, rowCount, 4),
+    parkingCount: typed(Uint32Array, rowCount, 4),
+    estimatedLandShare: typed(Float32Array, rowCount, 4),
+    registryLandRight: typed(Float32Array, rowCount, 4),
+    landRightCount: typed(Uint32Array, rowCount, 4),
+    landRightLow: typed(Float32Array, rowCount, 4),
+    landRightHigh: typed(Float32Array, rowCount, 4),
     siblingStart: typed(Uint32Array, rowCount, 4),
     siblingCount: typed(Uint16Array, rowCount, 2),
     siblingValues: typed(Uint32Array, siblingValueCount, 4),

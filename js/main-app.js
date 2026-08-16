@@ -1498,7 +1498,7 @@ function normalizeIndexPayload(j){
 
 async function loadAptIndex(){
   const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
-  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260603-numberfix';
+  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-landrights';
   const importSuffix='?v='+encodeURIComponent(assetVersion);
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
@@ -1508,15 +1508,7 @@ async function loadAptIndex(){
       console.log(`PolyGen packed index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
       return loaded;
     }catch(e){
-      console.warn('PolyGen packed index unavailable, trying row refs', e);
-    }
-    try{
-      const mod=await import(jsBase+'polygen-index-loader.js'+importSuffix);
-      const loaded=await mod.loadPolygenAptIndex(base);
-      console.log(`PolyGen index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
-      return loaded;
-    }catch(e){
-      console.warn('PolyGen index unavailable, falling back to JSON', e);
+      console.warn('PolyGen packed index unavailable, falling back to JSON', e);
     }
   }
   const r=await fetch(base+'data/index.json');
@@ -1694,8 +1686,17 @@ function buildMerged(){
         const lsMin=Math.min(...lsVals), lsMax=Math.max(...lsVals);
         return lsMin===lsMax?lsMin:lsMin+'~'+lsMax;
       })(),
+      lr:(()=>{
+        const vals=siblings.map(x=>x.lr).filter(v=>typeof v==='number'&&v>0);
+        if(vals.length===0) return null;
+        const lo=Math.min(...vals), hi=Math.max(...vals);
+        return lo===hi?lo:lo+'~'+hi;
+      })(),
+      lc:Math.max(0,...siblings.map(x=>x.lc||0))||null,
       _lsNum:(()=>{
-        const lsVals=siblings.map(x=>x.ls).filter(v=>v);
+        const registryVals=siblings.map(x=>x.lr).filter(v=>typeof v==='number'&&v>0);
+        if(registryVals.length>0) return Math.max(...registryVals);
+        const lsVals=siblings.map(x=>x.ls).filter(v=>typeof v==='number'&&v>0);
         return lsVals.length>0?Math.max(...lsVals):null;
       })()
     });
@@ -1893,7 +1894,7 @@ function rt(){
       <td style="text-align:center;color:#94a3b8;font-size:11px">${fmtDate(x.ld)}</td>
       <td style="text-align:center;color:#64748b">${x.v}</td>
       <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
-      <td style="text-align:center;color:#94a3b8">${fmtLs(x.ls)}</td>
+      <td style="text-align:center;color:#94a3b8" title="${x.lr?'등기 대지권':'건축물대장 기반 추정'}">${fmtLs(calcLandShare(x))}${x.lr?'<span style="display:block;font-size:9px;color:#0f766e">등기</span>':''}</td>
     </tr>`);
   }
   tb.innerHTML=frags.join('');
@@ -1990,8 +1991,9 @@ function showDetail(x){
   // 메트릭 카드
   const fm=(v,s='%')=>s==='%'?fmtSignedPct(v):fmtNum(v)+s;
   const lsVal=calcLandShare(x);
-  const lsPy=lsVal?(lsVal/3.3058).toFixed(1)+'평':'-';
-  const lsM2=lsVal?lsVal.toFixed(1)+'㎡':'-';
+  const lsDisplay=fmtLs(lsVal);
+  const lsLabel=x.lr?'등기 대지권':'추정 대지지분';
+  const lsEvidence=x.lr&&x.lc?` · ${x.lc.toLocaleString()}세대 확인`:'';
   const retO=calcReturnObj(x);
   const retFmt=retO?(retO.val>0?'+':'')+retO.val.toFixed(1)+'%':'-';
   const retCls=retO?(retO.val>0?'up':retO.val<0?'dn':''):'';
@@ -2003,7 +2005,7 @@ function showDetail(x){
     ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
     ['\uD3C9\uB2F9\uAC00',fmtPyeongPrice(entryPyeongPrice(x)),''],
     [retLbl,retFmt,retCls],
-    ['\uB300\uC9C0\uC9C0\uBD84',lsVal?lsM2+' ('+lsPy+')':'-','']
+    [lsLabel,lsDisplay+(lsVal?lsEvidence:''),'']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
   let prices=getPrices(x.i);
@@ -2051,8 +2053,9 @@ function switchAreaFromMerged(dataIdx){
   const pkStr2=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}${pkStr2}`;
   const lsVal2=calcLandShare(x);
-  const lsPy2=lsVal2?(lsVal2/3.3058).toFixed(1)+'평':'-';
-  const lsM22=lsVal2?lsVal2.toFixed(1)+'㎡':'-';
+  const lsDisplay2=fmtLs(lsVal2);
+  const lsLabel2=x.lr?'등기 대지권':'추정 대지지분';
+  const lsEvidence2=x.lr&&x.lc?` · ${x.lc.toLocaleString()}세대 확인`:'';
   const retO2=calcReturnObj(x);
   const retFmt2=retO2?(retO2.val>0?'+':'')+retO2.val.toFixed(1)+'%':'-';
   const retCls2=retO2?(retO2.val>0?'up':retO2.val<0?'dn':''):'';
@@ -2064,7 +2067,7 @@ function switchAreaFromMerged(dataIdx){
     ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
     ['\uD3C9\uB2F9\uAC00',fmtPyeongPrice(entryPyeongPrice(x)),''],
     [retLbl2,retFmt2,retCls2],
-    ['\uB300\uC9C0\uC9C0\uBD84',lsVal2?lsM22+' ('+lsPy2+')':'-','']
+    [lsLabel2,lsDisplay2+(lsVal2?lsEvidence2:''),'']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
   renderDetail(x);
 }

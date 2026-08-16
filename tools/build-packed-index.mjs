@@ -79,6 +79,14 @@ function rowToSlim(row, index) {
     jibun: nullableString(row.j),
     roadAddress: nullableString(row.rd),
     totalUnits: nullableNumber(row.tu),
+    platArea: nullableNumber(row.pa),
+    floorAreaRatio: nullableNumber(row.fr),
+    parkingCount: nullableNumber(row.pk),
+    estimatedLandShare: nullableNumber(row.ls),
+    registryLandRight: nullableNumber(row.lr),
+    landRightCount: nullableNumber(row.lc),
+    landRightLow: nullableNumber(row.ll),
+    landRightHigh: nullableNumber(row.lh),
     siblingIds: Array.isArray(row.si) && row.si.length ? row.si.join(",") : undefined,
   };
 }
@@ -140,6 +148,14 @@ function buildPacked(rows) {
   const jibun = new Uint32Array(n);
   const roadAddress = new Uint32Array(n);
   const totalUnits = new Uint32Array(n);
+  const platArea = new Float32Array(n);
+  const floorAreaRatio = new Float32Array(n);
+  const parkingCount = new Uint32Array(n);
+  const estimatedLandShare = new Float32Array(n);
+  const registryLandRight = new Float32Array(n);
+  const landRightCount = new Uint32Array(n);
+  const landRightLow = new Float32Array(n);
+  const landRightHigh = new Float32Array(n);
   const siblingStart = new Uint32Array(n);
   const siblingCount = new Uint16Array(n);
   const siblingValues = [];
@@ -166,6 +182,14 @@ function buildPacked(rows) {
     jibun[i] = intern(row.jibun);
     roadAddress[i] = intern(row.roadAddress);
     totalUnits[i] = u32(row.totalUnits);
+    platArea[i] = f32(row.platArea);
+    floorAreaRatio[i] = f32(row.floorAreaRatio);
+    parkingCount[i] = u32(row.parkingCount);
+    estimatedLandShare[i] = f32(row.estimatedLandShare);
+    registryLandRight[i] = f32(row.registryLandRight);
+    landRightCount[i] = u32(row.landRightCount);
+    landRightLow[i] = f32(row.landRightLow);
+    landRightHigh[i] = f32(row.landRightHigh);
 
     const siblings = parseSiblings(row.siblingIds);
     siblingStart[i] = siblingValues.length;
@@ -174,7 +198,7 @@ function buildPacked(rows) {
   });
 
   const writer = new BinaryWriter();
-  writer.push(encoder.encode("NSPIv001"));
+  writer.push(encoder.encode("NSPIv002"));
   writer.u32(n);
   writer.u32(strings.length);
   writer.u32(siblingValues.length);
@@ -206,6 +230,14 @@ function buildPacked(rows) {
   writer.typedArray(jibun, 4);
   writer.typedArray(roadAddress, 4);
   writer.typedArray(totalUnits, 4);
+  writer.typedArray(platArea, 4);
+  writer.typedArray(floorAreaRatio, 4);
+  writer.typedArray(parkingCount, 4);
+  writer.typedArray(estimatedLandShare, 4);
+  writer.typedArray(registryLandRight, 4);
+  writer.typedArray(landRightCount, 4);
+  writer.typedArray(landRightLow, 4);
+  writer.typedArray(landRightHigh, 4);
   writer.typedArray(siblingStart, 4);
   writer.typedArray(siblingCount, 2);
   writer.typedArray(new Uint32Array(siblingValues), 4);

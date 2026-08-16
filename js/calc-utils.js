@@ -61,7 +61,8 @@ function fmtPyeongPrice(v){
   return Math.round(Number(v)).toLocaleString()+'만/평';
 }
 
-function calcLandShare(x){ return x.ls||null; }
+function calcLandShare(x){ return x.lr||x.ls||null; }
+function landShareSource(x){ return x&&x.lr?'registry':'estimate'; }
 
 function getPrices(idx){ return typeof PRICES!=='undefined'&&PRICES?PRICES[String(idx)]:null; }
 function getVolumes(idx){ return typeof VOLUMES!=='undefined'&&VOLUMES?VOLUMES[String(idx)]:null; }
