@@ -1498,7 +1498,7 @@ function normalizeIndexPayload(j){
 
 async function loadAptIndex(){
   const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
-  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-pnu-bridge';
+  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-sungsan-far';
   const importSuffix='?v='+encodeURIComponent(assetVersion);
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
@@ -2005,7 +2005,8 @@ function showDetail(x){
     ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
     ['\uD3C9\uB2F9\uAC00',fmtPyeongPrice(entryPyeongPrice(x)),''],
     [retLbl,retFmt,retCls],
-    [lsLabel,lsDisplay+(lsVal?lsEvidence:''),'']
+    [lsLabel,lsDisplay+(lsVal?lsEvidence:''),''],
+    ['\uC6A9\uC801\uB960',x.fr?`${x.fr}%`:'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
 
   let prices=getPrices(x.i);
@@ -2067,7 +2068,8 @@ function switchAreaFromMerged(dataIdx){
     ['\uCD5C\uADFC\uAC00',fmtPrice(x.lp),''],
     ['\uD3C9\uB2F9\uAC00',fmtPyeongPrice(entryPyeongPrice(x)),''],
     [retLbl2,retFmt2,retCls2],
-    [lsLabel2,lsDisplay2+(lsVal2?lsEvidence2:''),'']
+    [lsLabel2,lsDisplay2+(lsVal2?lsEvidence2:''),''],
+    ['\uC6A9\uC801\uB960',x.fr?`${x.fr}%`:'-','']
   ].map(([l,v,c])=>`<div class="mc"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`).join('');
   renderDetail(x);
 }
