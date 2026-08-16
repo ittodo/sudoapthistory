@@ -1498,7 +1498,7 @@ function normalizeIndexPayload(j){
 
 async function loadAptIndex(){
   const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
-  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-gap-recovery';
+  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-duplicate-pnu-merge';
   const importSuffix='?v='+encodeURIComponent(assetVersion);
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
