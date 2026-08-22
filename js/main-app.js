@@ -2,6 +2,10 @@
 // Shared between / (main) and /compare/ (regional comparison) pages.
 
 let D=[],F=[],cp=1,ps=100,sc='ld',sa=false,si=-1,ch=null;
+let includeInactive=false;
+let BUILDING_STATUS={version:2,sites:{}};
+let REDEVELOPMENT_RELATIONS={version:1,relations:[]};
+let SITE_ENTRY=new Map(), REL_BY_SITE=new Map();
 let retYearFrom=2024, retYearTo=2025; // 수익률 기간 슬라이더
 let dataLastMonth=12; // 마지막 연도의 데이터 월수 (meta.updated에서 파싱)
 let chartTab='year'; // 'year' | 'month'
@@ -237,7 +241,7 @@ function areaSourceKey(){
 function getAreaIndex(){
   const sourceKey=areaSourceKey();
   if(areaIndexCache[sourceKey]) return areaIndexCache[sourceKey];
-  const src=merged?DM:D;
+  const src=lifecycleSource(merged?DM:D);
   const gu=new Map();
   const dong=new Map();
   src.forEach(x=>{
@@ -324,7 +328,7 @@ function getAreaNames(){
     const guF=document.getElementById('aGu').value;
     const seen=new Set();
     const matches=[];
-    const src=merged?DM:D;
+    const src=lifecycleSource(merged?DM:D);
     for(const x of src){
       if(rv!==''&&x.r!==parseInt(rv)) continue;
       if(guF&&x.g!==guF) continue;
@@ -512,7 +516,7 @@ function getComplexLabel(key){
 }
 
 function aggregateArea(key,includeSeries=false){
-  const cacheKey=(merged?'m':'r')+'|'+areaLevel+'|'+(includeSeries?'full':'summary')+'|'+(PRICES?'p':'n')+'|'+key;
+  const cacheKey=(merged?'m':'r')+'|'+(includeInactive?'history':'active')+'|'+areaLevel+'|'+(includeSeries?'full':'summary')+'|'+(PRICES?'p':'n')+'|'+key;
   if(areaCache[cacheKey]) return areaCache[cacheKey];
 
   if(areaLevel==='complex'){
@@ -1479,6 +1483,117 @@ function renderSimChart(validResults, allResults, params){
   });
 }
 
+function siteKeyOf(x){
+  return `${x.r}|${x.g}|${x.d||''}|${x.j||''}`;
+}
+function lifecycleSource(src){
+  const rows=src||(merged?DM:D);
+  return includeInactive?rows:rows.filter(x=>!x._hiddenInactive);
+}
+function statusLabel(status){
+  return ({active:'현행',rebuilding:'재건축 중',rebuilt:'재건축 완료',demolished:'멸실',partial_closed:'일부폐쇄'})[status]||'';
+}
+function stageLabel(stage){
+  return ({planned:'계획',approved:'사업 승인',construction:'공사 중',completed:'완료',unknown:'확인 중'})[stage]||'';
+}
+function formatLifecycleDate(value){
+  const s=String(value||'');
+  return /^\d{8}$/.test(s)?`${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`:'';
+}
+function statusBadgeHtml(x){
+  if(!x||!x._status||x._status==='active') return '';
+  const scopes=x._relationScopes||[];
+  const partial=scopes.includes('partial')||scopes.includes('unknown');
+  const label=partial&&x._status!=='partial_closed'?'일부 편입':statusLabel(x._status);
+  return `<span class="lifecycle-badge lifecycle-${partial?'partial':x._status}">${escHtml(label)}</span>`;
+}
+async function loadLifecycleData(base,assetVersion){
+  const suffix=assetVersion?'?v='+encodeURIComponent(assetVersion):'';
+  const load=async(path,fallback)=>{
+    try{const r=await fetch(base+path+suffix);if(!r.ok)throw new Error(`${path}: ${r.status}`);return await r.json();}
+    catch(e){console.warn('Lifecycle data unavailable',e);return fallback;}
+  };
+  const [status,relations]=await Promise.all([
+    load('data/building-status.json',{version:2,sites:{}}),
+    load('data/redevelopment-relations.json',{version:1,relations:[]})
+  ]);
+  return {status,relations};
+}
+function applyLifecycleData(data){
+  BUILDING_STATUS=data?.status||{version:2,sites:{}};
+  REDEVELOPMENT_RELATIONS=data?.relations||{version:1,relations:[]};
+  SITE_ENTRY=new Map(); REL_BY_SITE=new Map();
+  D.forEach(x=>{const key=siteKeyOf(x);if(!SITE_ENTRY.has(key))SITE_ENTRY.set(key,x);});
+  (REDEVELOPMENT_RELATIONS.relations||[]).forEach(relation=>{
+    (relation.predecessors||[]).forEach(ref=>{
+      if(!REL_BY_SITE.has(ref.siteKey))REL_BY_SITE.set(ref.siteKey,[]);
+      REL_BY_SITE.get(ref.siteKey).push({relation,role:'predecessor',ref});
+    });
+    (relation.successors||[]).forEach(ref=>{
+      if(!REL_BY_SITE.has(ref.siteKey))REL_BY_SITE.set(ref.siteKey,[]);
+      REL_BY_SITE.get(ref.siteKey).push({relation,role:'successor',ref});
+    });
+  });
+  const inactive=new Set(['demolished','rebuilding','rebuilt']);
+  D.forEach(x=>{
+    const key=siteKeyOf(x), item=BUILDING_STATUS.sites?.[key]||null;
+    const links=REL_BY_SITE.get(key)||[];
+    const scopes=links.filter(v=>v.role==='predecessor').map(v=>v.ref.scope||'unknown');
+    x._siteKey=key;
+    x._status=item?.status||(x.bs==='멸실'?'demolished':'active');
+    x._statusDate=item?.date||(x.bsd?String(x.bsd):'');
+    x._statusName=item?.displayName||x.n;
+    x._relationScopes=scopes;
+    x._hiddenInactive=inactive.has(x._status)&&!scopes.some(s=>s==='partial'||s==='unknown');
+  });
+}
+function updateLifecycleCounts(){
+  const total=document.getElementById('tc');
+  if(total) total.textContent=lifecycleSource(D).length.toLocaleString();
+}
+function syncInactiveToggle(){
+  document.querySelectorAll('[data-inactive-toggle]').forEach(el=>{el.checked=includeInactive;});
+}
+function toggleInactive(value){
+  includeInactive=typeof value==='boolean'?value:!includeInactive;
+  syncInactiveToggle(); updateLifecycleCounts();
+  areaCache={}; areaIndexCache={};
+  if(document.getElementById('tb')) af();
+  if(document.getElementById('areaChecklist')){
+    selectedAreas=selectedAreas.filter(key=>{
+      if(!String(key).startsWith('idx:')||includeInactive)return true;
+      const entry=DI[parseInt(String(key).slice(4))];
+      return !entry||!entry._hiddenInactive;
+    });
+    renderAreaList(); renderComparison(); saveHash();
+  }
+}
+function goToLifecycleSite(key){
+  const x=SITE_ENTRY.get(key);
+  if(!x)return;
+  curDetailIdx=x.i; showDetail(x); saveHash();
+}
+function renderLifecycleInfo(x){
+  const el=document.getElementById('lifecycleInfo');
+  if(!el)return;
+  const key=x._siteKey||siteKeyOf(x), links=REL_BY_SITE.get(key)||[];
+  const badge=statusBadgeHtml(x);
+  const date=formatLifecycleDate(x._statusDate);
+  let html=(badge||date)?`<div class="lifecycle-summary">${badge}${date?`<span>${date} 기준</span>`:''}</div>`:'';
+  links.forEach(({relation,role,ref})=>{
+    const targets=role==='predecessor'?(relation.successors||[]):(relation.predecessors||[]);
+    const title=role==='predecessor'?'재건축 후 단지':'재건축 이전 단지';
+    const items=targets.map(target=>{
+      const targetEntry=SITE_ENTRY.get(target.siteKey);
+      const name=targetEntry?.n||target.displayName||target.siteKey;
+      const meta=[targetEntry?[targetEntry.g,targetEntry.d,targetEntry.j].filter(Boolean).join(' '):'',target.scope==='partial'?'일부 편입':''].filter(Boolean).join(' · ');
+      return `<li>${targetEntry?`<button type="button" onclick="goToLifecycleSite('${escJs(target.siteKey)}')">${escHtml(name)}</button>`:`<span>${escHtml(name)}</span>`}${meta?`<small>${escHtml(meta)}</small>`:''}</li>`;
+    }).join('');
+    if(items)html+=`<section class="lifecycle-relation"><div><strong>${escHtml(title)}</strong>${relation.projectName?`<span>${escHtml(relation.projectName)}</span>`:''}${stageLabel(relation.stage)?`<span>${escHtml(stageLabel(relation.stage))}</span>`:''}</div><ul>${items}</ul></section>`;
+  });
+  el.innerHTML=html; el.style.display=html?'block':'none';
+}
+
 function normalizeIndexPayload(j){
   let rows;
   if(j.g && j.o && Array.isArray(j.d[0])){
@@ -1498,22 +1613,26 @@ function normalizeIndexPayload(j){
 
 async function loadAptIndex(){
   const base=(typeof window!=='undefined'&&window.APT_BASE)||'';
-  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260816-duplicate-pnu-merge';
+  const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260822-redevelopment-v1';
   const importSuffix='?v='+encodeURIComponent(assetVersion);
+  const lifecyclePromise=loadLifecycleData(base,assetVersion);
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
     try{
       const packed=await import(jsBase+'polygen-packed-index-loader.js'+importSuffix);
       const loaded=await packed.loadPackedAptIndex(base,assetVersion);
       console.log(`PolyGen packed index loaded: ${loaded.d.length} rows, ${loaded.bytes.toLocaleString()} bytes`);
+      loaded.lifecycle=await lifecyclePromise;
       return loaded;
     }catch(e){
       console.warn('PolyGen packed index unavailable, falling back to JSON', e);
     }
   }
-  const r=await fetch(base+'data/index.json');
+  const r=await fetch(base+'data/index.json'+importSuffix);
   const j=await r.json();
-  return normalizeIndexPayload(j);
+  const normalized=normalizeIndexPayload(j);
+  normalized.lifecycle=await lifecyclePromise;
+  return normalized;
 }
 
 function applyIndexPayload(j){
@@ -1542,6 +1661,7 @@ function applyIndexPayload(j){
     x.pp=pp!==null?parseFloat(pp.toFixed(0)):null;
     DI[x.i]=x;
   });
+  applyLifecycleData(j.lifecycle);
 }
 
 async function init(){
@@ -1551,7 +1671,7 @@ async function init(){
   const j=await loadAptIndex();
   applyIndexPayload(j);
 
-  document.getElementById('tc').textContent=D.length.toLocaleString();
+  updateLifecycleCounts();
   document.getElementById('yearRange').textContent=Y[0]+'-'+Y[Y.length-1];
   initReturnYearSelects();
   buildLoc();
@@ -1605,7 +1725,7 @@ function updateRetLabel(){
 let LT={};
 function buildLoc(){
   LT={};
-  D.forEach(x=>{
+  lifecycleSource(D).forEach(x=>{
     const rk=x.r;
     if(!LT[rk])LT[rk]={};
     if(!LT[rk][x.g])LT[rk][x.g]=new Set();
@@ -1638,6 +1758,11 @@ function buildMerged(){
     if(siblings.length===1){
       // 단일 평형: 원본 그대로 사용
       DM.push(siblings[0]);
+      return;
+    }
+    // 상태가 다른 형제 행은 합치지 않아 비활성 단지의 거래·세대가 현행 단지에 섞이지 않게 한다.
+    if(new Set(siblings.map(x=>x._hiddenInactive)).size>1){
+      siblings.forEach(x=>DM.push(x));
       return;
     }
     // 다평형 통합: 세대수(u) 우선 가중평균, 없으면 거래건수(t) 대체
@@ -1675,6 +1800,9 @@ function buildMerged(){
       ld:Math.max(...siblings.map(x=>x.ld||0))||null,
       si:siblings.map(x=>x.i),
       j:rep.j, rd:rep.rd,
+      _siteKey:rep._siteKey, _status:rep._status, _statusDate:rep._statusDate,
+      _statusName:rep._statusName, _relationScopes:rep._relationScopes,
+      _hiddenInactive:rep._hiddenInactive,
       pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
       fr:rep.fr, // 용적률
       pk:rep.pk, // 총 주차대수
@@ -1785,12 +1913,12 @@ function af(){
   const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
   const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH'),bL=gn('bL'),bH=gn('bH');
 
-  const src=merged?DM:D;
+  const src=lifecycleSource(merged?DM:D);
   F=src.filter(x=>{
     if(selGus.length>0){if(!selGus.includes(x.g))return false;}
     else if(fR!==''&&x.r!==parseInt(fR))return false;
     if(fD&&x.d!==fD)return false;
-    if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
+    if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!(x.j||'').toLowerCase().includes(fS)&&!(x.rd||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
     if(aL!==null||aH!==null){const ap=typeof x.a==='number'?x.a/3.3058:(()=>{const m=String(x.a).match(/^([\d.]+)~([\d.]+)$/);return m?[parseFloat(m[1])/3.3058,parseFloat(m[2])/3.3058]:null})();if(ap===null)return false;if(typeof ap==='number'){if(aL!==null&&ap<aL)return false;if(aH!==null&&ap>aH)return false;}else{if(aL!==null&&ap[1]<aL)return false;if(aH!==null&&ap[0]>aH)return false;}}
     if(cL!==null&&(x.c===null||x.c<cL))return false;
     if(cH!==null&&(x.c===null||x.c>cH))return false;
@@ -1882,7 +2010,7 @@ function rt(){
 
     frags.push(`<tr onclick="sd(${i})" class="${si===i?'sel':''}">
       <td style="color:#475569;text-align:center">${i+1}</td>
-      <td class="text-left"><span class="badge ${bg}">${rl}</span>${x.n}</td>
+      <td class="text-left"><span class="badge ${bg}">${rl}</span>${x.n}${statusBadgeHtml(x)}</td>
       <td class="text-left" style="color:#94a3b8">${x.g}</td>
       <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
       <td style="text-align:center;color:#94a3b8">${fmtArea(x.a)}</td>
@@ -1916,7 +2044,7 @@ function rt(){
       const retc=retObj2?(retObj2.val>0?'up':retObj2.val<0?'dn':''):'';
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
-          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${fmtArea(x.a)}${x.u?' | '+x.u+'세대':''}</div></div>
+          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}${statusBadgeHtml(x)}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${fmtArea(x.a)}${x.u?' | '+x.u+'세대':''}</div></div>
           <div class="m-card-price">${lpv}</div>
         </div>
         <div class="m-card-metrics">
@@ -1954,6 +2082,7 @@ function showDetail(x){
   const farStr=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr}${pkStr}`;
+  renderLifecycleInfo(x);
 
   // 평형 탭
   const tabsEl=document.getElementById('areaTabs');
@@ -2053,6 +2182,7 @@ function switchAreaFromMerged(dataIdx){
   const farStr2=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr2=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}${pkStr2}`;
+  renderLifecycleInfo(x);
   const lsVal2=calcLandShare(x);
   const lsDisplay2=fmtLs(lsVal2);
   const lsLabel2=x.lr?'등기 대지권':'추정 대지지분';
@@ -2507,6 +2637,8 @@ function resetF(){
     if(el)el.value='';
   });
   selGus=[];
+  includeInactive=false;
+  syncInactiveToggle(); updateLifecycleCounts();
   retYearFrom=2024;retYearTo=2025;
   document.getElementById('ryL').value='2024';
   document.getElementById('ryH').value='2025';
@@ -2546,10 +2678,13 @@ function saveHash(){
   if(ps!==100)p.ps=ps;
   if(curDetailIdx!==null)p.i=curDetailIdx;
   if(merged)p.mg=1;
-  if(viewMode==='area')p.vm='area';
-  if(areaLevel!=='gu')p.al=areaLevel;
-  if(selectedAreas.length)p.aa=selectedAreas.join('|');
-  if(cmpSubTab==='sim')p.st='sim';
+  if(includeInactive)p.hist=1;
+  if(viewMode==='area'){
+    p.vm='area';
+    if(areaLevel!=='gu')p.al=areaLevel;
+    if(selectedAreas.length)p.aa=selectedAreas.join('|');
+    if(cmpSubTab==='sim')p.st='sim';
+  }
   if(priceMetricMode!=='total')p.pm=priceMetricMode;
   const h=Object.entries(p).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
   history.replaceState(null,null,h?'#'+h:'#');
@@ -2573,6 +2708,8 @@ function loadHash(){
     delete p.al; delete p.vm; delete p.aa; delete p.st;
   }
   hashLock=true;
+  includeInactive=p.hist==='1';
+  syncInactiveToggle(); updateLifecycleCounts();
   if(p.r){document.getElementById('fR').value=p.r;onR();}
   if(p.g){selGus=p.g.split('|');renderGuChips();onR();}
   if(p.d)document.getElementById('fD').value=p.d;
@@ -2608,6 +2745,10 @@ function loadHash(){
     btn.style.background='var(--accent)';
     btn.style.color='#fff';
     btn.style.borderColor='var(--accent)';
+  }
+  if(p.i!==undefined){
+    const requestedIdx=parseInt(p.i);
+    if(Number.isFinite(requestedIdx)&&DI[requestedIdx])curDetailIdx=requestedIdx;
   }
   hashLock=false;
   af();

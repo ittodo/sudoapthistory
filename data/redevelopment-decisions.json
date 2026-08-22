@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "updated": "2026-08-22",
+  "sites": {
+    "0|광명시|철산동|105": {
+      "status": "rebuilding",
+      "date": "20220825",
+      "displayName": "저층주공11",
+      "evidenceId": "gm-cheolsan-10-11"
+    },
+    "0|성남시 중원구|하대원동|119": {
+      "status": "rebuilt",
+      "date": "20250421",
+      "displayName": "삼남",
+      "evidenceId": "seongnam-samnam-completion"
+    },
+    "0|성남시 중원구|하대원동|120-1": {
+      "status": "rebuilt",
+      "displayName": "삼두",
+      "evidenceId": "seongnam-samdu-redevelopment"
+    },
+    "0|안양시 만안구|안양동|190-11": {
+      "status": "rebuilding",
+      "date": "20260427",
+      "displayName": "덕천마을동아",
+      "evidenceId": "anyang-daedonga-2026-76"
+    },
+    "0|수원시 팔달구|고등동|94-1": {
+      "status": "rebuilding",
+      "date": "20251211",
+      "displayName": "해창",
+      "evidenceId": "suwon-godeung-115-2"
+    },
+    "2|서구|석남동|521-2": {
+      "status": "rebuilding",
+      "date": "20240620",
+      "displayName": "동우",
+      "evidenceId": "khba-seoknam-granver"
+    }
+  },
+  "relations": [
+    {
+      "id": "redevelopment-cheolsan-10-11",
+      "predecessors": [
+        {"siteKey": "0|광명시|철산동|105", "scope": "all"}
+      ],
+      "successors": [
+        {"siteKey": "", "displayName": "철산자이 브리에르"}
+      ],
+      "stage": "construction",
+      "projectName": "철산주공10·11단지 재건축",
+      "evidenceIds": ["gm-cheolsan-10-11"],
+      "verifiedAt": "2026-08-22"
+    },
+    {
+      "id": "redevelopment-seongnam-samnam",
+      "predecessors": [
+        {"siteKey": "0|성남시 중원구|하대원동|119", "scope": "all"}
+      ],
+      "successors": [
+        {"siteKey": "0|성남시 중원구|하대원동|545"}
+      ],
+      "stage": "completed",
+      "projectName": "삼남아파트 소규모재건축",
+      "evidenceIds": ["seongnam-samnam-completion"],
+      "verifiedAt": "2026-08-22"
+    },
+    {
+      "id": "redevelopment-seongnam-samdu",
+      "predecessors": [
+        {"siteKey": "0|성남시 중원구|하대원동|120-1", "scope": "all"}
+      ],
+      "successors": [
+        {"siteKey": "0|성남시 중원구|하대원동|546"}
+      ],
+      "stage": "completed",
+      "projectName": "삼두아파트·은영빌라 가로주택정비",
+      "evidenceIds": ["seongnam-samdu-redevelopment"],
+      "verifiedAt": "2026-08-22"
+    },
+    {
+      "id": "redevelopment-anyang-daedonga",
+      "predecessors": [
+        {"siteKey": "0|안양시 만안구|안양동|190-11", "scope": "all"}
+      ],
+      "successors": [
+        {"siteKey": "", "displayName": "대동아 소규모재건축 신축 공동주택"}
+      ],
+      "stage": "construction",
+      "projectName": "대동아아파트 소규모재건축",
+      "evidenceIds": ["anyang-daedonga-2026-76"],
+      "verifiedAt": "2026-08-22"
+    },
+    {
+      "id": "redevelopment-suwon-godeung-115-2",
+      "predecessors": [
+        {"siteKey": "0|수원시 팔달구|고등동|94-1", "scope": "all"}
+      ],
+      "successors": [
+        {"siteKey": "", "displayName": "고등동 115-2구역 재건축 신축 단지"}
+      ],
+      "stage": "construction",
+      "projectName": "고등동 115-2구역 주택재건축",
+      "evidenceIds": ["suwon-godeung-115-2"],
+      "verifiedAt": "2026-08-22"
+    },
+    {
+      "id": "redevelopment-incheon-dongwoo",
+      "predecessors": [
+        {"siteKey": "2|서구|석남동|521-2", "scope": "all"}
+      ],
+      "successors": [
+        {"siteKey": "", "displayName": "석남역 센트럴파크 그랑베르"}
+      ],
+      "stage": "construction",
+      "projectName": "동우아파트 가로주택정비",
+      "evidenceIds": ["khba-seoknam-granver"],
+      "verifiedAt": "2026-08-22"
+    }
+  ]
+}

@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="js/calc-utils.js?v=20260816-gap-recovery"></script>
 <script src="js/data-loader.js"></script>
-<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/main.css?v=20260822-redevelopment-v1">
 </head>
 <body>
 <div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">데이터 로딩 중...</span></div>
@@ -45,6 +45,7 @@
       <button onclick="setPriceMetricMode('total')" class="pg-btn active" data-price-mode="total" title="가격을 총액 기준으로 표시합니다">총액</button>
       <button onclick="setPriceMetricMode('pyeong')" class="pg-btn" data-price-mode="pyeong" title="가격을 전용면적 평당가 기준으로 표시합니다">평당가</button>
       <button onclick="toggleMerged()" class="pg-btn" id="mgBtn" title="같은 단지의 모든 평형을 하나로 합쳐서 봅니다">평형별</button>
+      <label class="history-toggle" title="멸실·재건축된 과거 단지를 목록과 집계에 포함합니다"><input type="checkbox" data-inactive-toggle onchange="toggleInactive(this.checked)"><span>과거 단지 포함</span></label>
       <button onclick="resetF()" class="pg-btn">초기화</button>
     </div>
   </div>
@@ -109,6 +110,7 @@
           <div><h2 id="dn" class="text-sm font-bold text-white"></h2><p id="dl" class="text-xs" style="color:#64748b;margin-top:2px"></p></div>
           <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">&#10005;</button>
         </div>
+        <div id="lifecycleInfo" class="lifecycle-info" style="display:none"></div>
         <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
         <div id="chartTabWrap" style="display:none;margin-bottom:4px">
@@ -184,8 +186,8 @@
   </div>
 </div>
 
-<script>window.APT_ASSET_VERSION='20260816-duplicate-pnu-merge';</script>
-<script src="js/main-app.js?v=20260816-duplicate-pnu-merge"></script>
+<script>window.APT_ASSET_VERSION='20260822-redevelopment-v1';</script>
+<script src="js/main-app.js?v=20260822-redevelopment-v1"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-init.js"></script>
 <script src="js/comments.js"></script>

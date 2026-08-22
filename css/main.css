@@ -41,6 +41,25 @@
   .sa.on { opacity: 1; color: var(--accent); }
   .pg-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; }
   .pg-btn:hover { border-color: var(--muted); color: #fff; }
+  .history-toggle { display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:3px 8px; border:1px solid var(--border); border-radius:4px; color:var(--muted); font-size:11px; cursor:pointer; white-space:nowrap; }
+  .history-toggle:hover { border-color:var(--muted); color:#fff; }
+  .history-toggle input { width:14px; height:14px; margin:0; accent-color:var(--accent); }
+  .lifecycle-badge { display:inline-flex; align-items:center; margin-left:6px; padding:1px 5px; border:1px solid transparent; border-radius:4px; font-size:9px; font-weight:700; line-height:1.4; vertical-align:middle; white-space:nowrap; }
+  .lifecycle-demolished { color:#fca5a5; background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); }
+  .lifecycle-rebuilding { color:#fcd34d; background:rgba(245,158,11,.12); border-color:rgba(245,158,11,.3); }
+  .lifecycle-rebuilt { color:#86efac; background:rgba(34,197,94,.12); border-color:rgba(34,197,94,.3); }
+  .lifecycle-partial, .lifecycle-partial_closed { color:#c4b5fd; background:rgba(139,92,246,.12); border-color:rgba(139,92,246,.3); }
+  .lifecycle-info { margin:8px 0 10px; border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:8px 0; font-size:11px; }
+  .lifecycle-summary { display:flex; align-items:center; gap:7px; color:var(--muted); }
+  .lifecycle-summary .lifecycle-badge { margin-left:0; }
+  .lifecycle-relation { margin-top:8px; }
+  .lifecycle-relation > div { display:flex; align-items:center; flex-wrap:wrap; gap:6px; color:var(--muted); }
+  .lifecycle-relation strong { color:#e2e8f0; }
+  .lifecycle-relation ul { display:grid; gap:4px; margin-top:5px; }
+  .lifecycle-relation li { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+  .lifecycle-relation button { padding:0; border:0; background:none; color:#93c5fd; cursor:pointer; font-weight:600; text-align:left; }
+  .lifecycle-relation button:hover { text-decoration:underline; }
+  .lifecycle-relation small { color:#64748b; }
   .area-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
   .area-tab { padding: 3px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 500; transition: all .15s; }
   .area-tab:hover { border-color: var(--muted); color: #fff; }
