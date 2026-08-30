@@ -30,7 +30,7 @@ let DI=null;
 let curDetailIdx=null;
 let Y=[2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]; // overwritten by meta.years
 const VWORLD_KEY='8B74D8CC-0DBF-311A-8E6E-3FBBB54FD034';
-let LMAP=null, LMARKER=null, GEO_DATA=null;
+let LMAP=null, LMARKER=null, GEO_DATA=null, PARCEL_DATA=null, PARCEL_PROMISE=null;
 const GEO_GU={"가평군":[37.8776,127.6018],"고양시 덕양구":[37.6101,126.8547],"고양시 일산동구":[37.657,126.7774],"고양시 일산서구":[37.7024,126.7282],"과천시":[37.418,126.9872],"광명시":[37.4238,126.87],"광주시":[37.4125,127.2641],"구리시":[37.6411,127.1312],"군포시":[37.3766,126.9451],"김포시":[37.6333,126.6751],"남양주시":[37.6387,127.2267],"동두천시":[37.9214,127.1156],"부천시 소사구":[37.4677,126.8061],"부천시 오정구":[37.5385,126.8211],"부천시 원미구":[37.5163,126.7799],"성남시 분당구":[37.3397,127.1295],"성남시 수정구":[37.4375,127.1063],"성남시 중원구":[37.4322,127.1934],"수원시 권선구":[37.2561,126.9841],"수원시 영통구":[37.2478,127.0532],"수원시 장안구":[37.3395,127.0106],"수원시 팔달구":[37.2796,127.0071],"시흥시":[37.3701,126.7595],"안산시 단원구":[37.3357,126.8368],"안산시 상록구":[37.3201,126.909],"안성시":[37.0213,127.2855],"안양시 동안구":[37.4142,126.9721],"안양시 만안구":[37.4078,126.9091],"양주시":[37.8382,127.0714],"양평군":[37.4752,127.4928],"여주시":[37.1944,127.5553],"연천군":[38.0244,127.0529],"오산시":[37.148,127.0486],"용인시 기흥구":[37.2195,127.1488],"용인시 수지구":[37.3499,127.0767],"용인시 처인구":[37.2477,127.2415],"의왕시":[37.3366,126.972],"의정부시":[37.7478,127.0521],"이천시":[37.2917,127.4761],"파주시":[37.7954,126.7573],"평택시":[37.0414,127.0885],"포천시":[37.8307,127.1828],"하남시":[37.5251,127.1693],"화성시 동탄구":[37.1843,127.0776],"화성시 만세구":[37.2151,126.8158],"화성시 병점구":[37.2211,127.0518],"화성시 효행구":[37.2308,126.9929],"강남구":[37.4829,127.0752],"강동구":[37.5797,127.1763],"강북구":[37.6189,127.0364],"강서구":[37.5649,126.8575],"관악구":[37.4753,126.9715],"광진구":[37.5569,127.1129],"구로구":[37.4861,126.8816],"금천구":[37.4823,126.8861],"노원구":[37.6202,127.1041],"도봉구":[37.6923,127.0478],"동대문구":[37.5764,127.0667],"동작구":[37.5161,126.9459],"마포구":[37.5513,126.9621],"서대문구":[37.5845,126.923],"서초구":[37.4616,127.0675],"성동구":[37.5577,127.0231],"성북구":[37.6067,127.0274],"송파구":[37.5031,127.1231],"양천구":[37.5473,126.8806],"영등포구":[37.5426,126.9019],"용산구":[37.5498,126.9728],"은평구":[37.6263,126.9201],"종로구":[37.5861,126.9854],"중구":[37.5654,127.0034],"중랑구":[37.6061,127.1144]};
 
 // === 월별 데이터 ===
@@ -2477,7 +2477,10 @@ function closeTxModal(fromPop){
 
 // --- 지도 ---
 let LMAP_BIG=null, LMARKER_BIG=null, curMapCoord=null, curMapEntry=null;
+let LPARCEL=null, LPARCEL_BIG=null, curParcelOverlay=null, mapSelectionToken=0;
 const VWTILE='https://api.vworld.kr/req/wmts/1.0.0/'+VWORLD_KEY+'/Base/{z}/{y}/{x}.png';
+const VWORLD_DATA_DOMAIN='https://nodostream.com';
+const PARCEL_GEOMETRY_CACHE={};
 
 function initMap(){
   if(LMAP) return;
@@ -2506,6 +2509,114 @@ function vworldJsonp(url){
     script.onerror=function(){cleanup();resolve(null)};
     document.head.appendChild(script);
   });
+}
+
+function parcelLabelHtml(x,landArea,scope){
+  const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'면적 확인 중';
+  const note=scope==='trusted_parcels'?'연결 필지 합계':'대표 필지';
+  return `<div class="parcel-label"><strong>대지 ${land}</strong><span>${note} · 전용 ${fmtArea(x.a)}</span></div>`;
+}
+
+function parcelPopupHtml(x,landArea,scope){
+  const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'-';
+  const note=scope==='trusted_parcels'?'신뢰 연결 필지 합계':'대표 필지 기준';
+  return `<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>대지 ${land} (${note})<br>선택 전용 ${fmtArea(x.a)}`;
+}
+
+function removeMapOverlay(map,big){
+  if(!map) return;
+  const marker=big?LMARKER_BIG:LMARKER;
+  const parcel=big?LPARCEL_BIG:LPARCEL;
+  if(marker&&map.hasLayer(marker)) map.removeLayer(marker);
+  if(parcel&&map.hasLayer(parcel)) map.removeLayer(parcel);
+  if(big){ LMARKER_BIG=null; LPARCEL_BIG=null; }
+  else { LMARKER=null; LPARCEL=null; }
+}
+
+function showMapMarker(map,coord,x,big){
+  if(!map||!coord) return;
+  removeMapOverlay(map,big);
+  const marker=L.circleMarker(coord,{radius:big?10:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
+    .bindPopup(`<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>${fmtArea(x.a)}`,{className:''})
+    .addTo(map).openPopup();
+  if(big) LMARKER_BIG=marker; else LMARKER=marker;
+  map.setView(coord,big?16:15,{animate:!big});
+}
+
+function showParcelOverlay(map,x,overlay,big){
+  if(!map||!overlay||!overlay.collections.length) return false;
+  removeMapOverlay(map,big);
+  const group=L.featureGroup();
+  overlay.collections.forEach(fc=>{
+    L.geoJSON(fc,{style:{color:'#f59e0b',weight:big?3:2,opacity:.95,fillColor:'#fbbf24',fillOpacity:.22}}).addTo(group);
+  });
+  group.addTo(map);
+  const bounds=group.getBounds();
+  if(!bounds.isValid()){ map.removeLayer(group); return false; }
+  L.marker(bounds.getCenter(),{
+    interactive:false,
+    icon:L.divIcon({className:'parcel-label-host',html:parcelLabelHtml(x,overlay.landArea,overlay.scope),iconSize:null,iconAnchor:[0,0]})
+  }).addTo(group);
+  group.bindPopup(parcelPopupHtml(x,overlay.landArea,overlay.scope),{className:''});
+  map.fitBounds(bounds.pad(big?.16:.28),{maxZoom:big?18:17,animate:!big});
+  if(big) LPARCEL_BIG=group; else LPARCEL=group;
+  return true;
+}
+
+function ringArea(coords){
+  if(!coords||coords.length<3) return 0;
+  const rad=Math.PI/180, radius=6378137;
+  let total=0;
+  for(let i=0;i<coords.length;i++){
+    const a=coords[i], b=coords[(i+1)%coords.length];
+    total+=(b[0]-a[0])*rad*(2+Math.sin(a[1]*rad)+Math.sin(b[1]*rad));
+  }
+  return Math.abs(total*radius*radius/2);
+}
+
+function geometryArea(geometry){
+  if(!geometry) return 0;
+  const polygonArea=rings=>Math.max(0,ringArea(rings[0])-rings.slice(1).reduce((sum,ring)=>sum+ringArea(ring),0));
+  if(geometry.type==='Polygon') return polygonArea(geometry.coordinates);
+  if(geometry.type==='MultiPolygon') return geometry.coordinates.reduce((sum,rings)=>sum+polygonArea(rings),0);
+  return 0;
+}
+
+function featureCollectionArea(fc){
+  return (fc&&fc.features||[]).reduce((sum,feature)=>sum+geometryArea(feature.geometry),0);
+}
+
+function fetchParcelGeometry(pnu){
+  if(PARCEL_GEOMETRY_CACHE[pnu]) return PARCEL_GEOMETRY_CACHE[pnu];
+  const params=new URLSearchParams({
+    service:'data',version:'2.0',request:'GetFeature',format:'json',size:'10',page:'1',
+    geometry:'true',attribute:'false',crs:'EPSG:4326',data:'LP_PA_CBND_BUBUN',
+    key:VWORLD_KEY,domain:VWORLD_DATA_DOMAIN,attrfilter:'pnu:=:'+pnu
+  });
+  PARCEL_GEOMETRY_CACHE[pnu]=vworldJsonp('https://api.vworld.kr/req/data?'+params.toString())
+    .then(data=>{
+      const response=data&&data.response;
+      const fc=response&&response.status==='OK'&&response.result&&response.result.featureCollection;
+      if(!fc||!fc.features||!fc.features.length){
+        console.warn('Parcel geometry unavailable',pnu,response&&response.status,response&&response.error&&response.error.code);
+      }
+      return fc&&fc.features&&fc.features.length?fc:null;
+    });
+  return PARCEL_GEOMETRY_CACHE[pnu];
+}
+
+async function getParcelOverlay(x){
+  const payload=typeof loadParcels==='function'?await loadParcels():null;
+  const entry=payload&&payload.d&&payload.d[String(x.i)];
+  if(!entry||!entry.p||!entry.p.length) return null;
+  const fetched=await Promise.all(entry.p.slice(0,8).map(fetchParcelGeometry));
+  const collections=fetched.filter(Boolean);
+  if(!collections.length) return null;
+  return {
+    collections,
+    scope:entry.scope||'representative',
+    landArea:collections.reduce((sum,fc)=>sum+featureCollectionArea(fc),0)
+  };
 }
 
 async function getCoordAsync(x){
@@ -2553,53 +2664,51 @@ async function getCoordAsync(x){
 }
 
 function showOnMap(x){
+  const token=++mapSelectionToken;
   document.getElementById('mapWrap').style.display='block';
   initMap();
+  curMapEntry=x;
+  curParcelOverlay=null;
   const syncCoord=getCoordSync(x);
   if(syncCoord){
-    curMapCoord=syncCoord; curMapEntry=x;
+    curMapCoord=syncCoord;
     setTimeout(()=>{
+      if(token!==mapSelectionToken) return;
       LMAP.invalidateSize();
-      LMAP.setView(syncCoord,15,{animate:true});
-      if(LMARKER) LMAP.removeLayer(LMARKER);
-      LMARKER=L.circleMarker(syncCoord,{radius:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
-        .bindPopup(`<b>${x.n}</b><br>${x.g} ${x.d||''}<br>${fmtArea(x.a)}`,{className:''})
-        .addTo(LMAP).openPopup();
+      showMapMarker(LMAP,syncCoord,x,false);
     },150);
   }
-  getCoordAsync(x).then(coord=>{
-    if(!coord) return;
-    curMapCoord=coord; curMapEntry=x;
-    if(!syncCoord){
-      setTimeout(()=>{ LMAP.invalidateSize(); },50);
-    }
-    LMAP.setView(coord,15,{animate:true});
-    if(LMARKER) LMAP.removeLayer(LMARKER);
-    LMARKER=L.circleMarker(coord,{radius:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
-      .bindPopup(`<b>${x.n}</b><br>${x.g} ${x.d||''}<br>${fmtArea(x.a)}`,{className:''})
-      .addTo(LMAP).openPopup();
+  Promise.all([getCoordAsync(x),getParcelOverlay(x)]).then(([coord,overlay])=>{
+    if(token!==mapSelectionToken) return;
+    if(coord) curMapCoord=coord;
+    curParcelOverlay=overlay;
+    setTimeout(()=>{
+      if(token!==mapSelectionToken) return;
+      LMAP.invalidateSize();
+      if(!showParcelOverlay(LMAP,x,overlay,false)&&coord) showMapMarker(LMAP,coord,x,false);
+      if(document.getElementById('mapModal').style.display!=='none'&&LMAP_BIG){
+        LMAP_BIG.invalidateSize();
+        if(!showParcelOverlay(LMAP_BIG,x,overlay,true)&&coord) showMapMarker(LMAP_BIG,coord,x,true);
+      }
+    },syncCoord?0:50);
   });
 }
 
 function openMapModal(){
-  if(!curMapCoord||!curMapEntry) return;
+  if(!curMapEntry) return;
   const x=curMapEntry;
   pushPopup('map');
   document.getElementById('mapModal').style.display='flex';
-  document.getElementById('mapModalTitle').textContent=`${x.n} \u2014 ${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} ${fmtArea(x.a)}`;
+  document.getElementById('mapModalTitle').textContent=`${x.n} \u2014 ${['경기','서울','인천'][x.r]} ${x.g} ${x.d||''} ${fmtArea(x.a)}`;
 
   if(!LMAP_BIG){
-    LMAP_BIG=L.map('vmapBig',{center:curMapCoord,zoom:16,zoomControl:true,attributionControl:false});
+    LMAP_BIG=L.map('vmapBig',{center:curMapCoord||[37.5665,126.978],zoom:16,zoomControl:true,attributionControl:false});
     L.tileLayer(VWTILE,{maxZoom:19,attribution:'V-World'}).addTo(LMAP_BIG);
     L.control.attribution({position:'bottomright',prefix:false}).addTo(LMAP_BIG);
   }
   setTimeout(()=>{
     LMAP_BIG.invalidateSize();
-    LMAP_BIG.setView(curMapCoord,16,{animate:false});
-    if(LMARKER_BIG) LMAP_BIG.removeLayer(LMARKER_BIG);
-    LMARKER_BIG=L.circleMarker(curMapCoord,{radius:10,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
-      .bindPopup(`<b>${x.n}</b><br>${x.g} ${x.d||''}<br>${fmtArea(x.a)}`,{className:''})
-      .addTo(LMAP_BIG).openPopup();
+    if(!showParcelOverlay(LMAP_BIG,x,curParcelOverlay,true)&&curMapCoord) showMapMarker(LMAP_BIG,curMapCoord,x,true);
   },200);
 }
 
