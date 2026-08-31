@@ -2423,13 +2423,14 @@ function renderTxModal(x){
 
   const filtered=txModalMonth===0?txs:txs.filter(t=>t[0]===txModalMonth);
 
-  if(filtered.length>0){
-    const prices=filtered.map(t=>t[2]);
+  const activeFiltered=filtered.filter(t=>!((Number(t[4])||0)&2));
+  if(activeFiltered.length>0){
+    const prices=activeFiltered.map(t=>t[2]);
     const avg=Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
     const mn=Math.min(...prices);
     const mx=Math.max(...prices);
     document.getElementById('txSummary').innerHTML=[
-      ['\uCD1D \uAC70\uB798',filtered.length+'\uAC74',''],
+      ['\uC815\uC0C1 \uAC70\uB798',activeFiltered.length+'\uAC74',''],
       ['\uD3C9\uADE0',(avg/10000).toFixed(2)+'\uC5B5',''],
       ['\uCD5C\uC800',(mn/10000).toFixed(2)+'\uC5B5','dn'],
       ['\uCD5C\uACE0',(mx/10000).toFixed(2)+'\uC5B5','up']
@@ -2452,9 +2453,11 @@ function renderTxModal(x){
           diff=`<span class="${cls}">${d>0?'+':''}${pct}%</span>`;
         }
       }
-      const directBadge=t[4]===1?'<span class="badge-direct">직거래</span>':'';
+      const flags=Number(t[4])||0;
+      const directBadge=(flags&1)?'<span class="badge-direct">직거래</span>':'';
+      const cancelledBadge=(flags&2)?'<span class="badge-cancelled">해제'+(t[5]?' '+t[5]:'')+'</span>':'';
       rows+=`<tr>
-        <td>${t[0]}\uC6D4 ${t[1]}\uC77C${directBadge}</td>
+        <td>${t[0]}\uC6D4 ${t[1]}\uC77C${directBadge}${cancelledBadge}</td>
         <td style="font-weight:600">${price}\uC5B5</td>
         <td>${t[3]?t[3]+'\uCE35':'-'}</td>
         <td>${diff}</td>
@@ -3089,7 +3092,11 @@ function saveHash(){
   if(sa)p.sa=1;
   if(cp>1)p.p=cp;
   if(ps!==100)p.ps=ps;
-  if(curDetailIdx!==null)p.i=curDetailIdx;
+  if(curDetailIdx!==null){
+    const current=DI&&DI[curDetailIdx];
+    if(current&&current.as){p.a=current.as;p.ar=current.a;}
+    else p.i=curDetailIdx;
+  }
   if(merged)p.mg=1;
   if(includeInactive)p.hist=1;
   if(viewMode==='area'){
@@ -3159,7 +3166,11 @@ function loadHash(){
     btn.style.color='#fff';
     btn.style.borderColor='var(--accent)';
   }
-  if(p.i!==undefined){
+  if(p.a){
+    const requestedArea=Number(p.ar);
+    const requestedIdx=D.findIndex(x=>x&&x.as===p.a&&(!Number.isFinite(requestedArea)||Number(x.a)===requestedArea));
+    if(requestedIdx>=0)curDetailIdx=requestedIdx;
+  } else if(p.i!==undefined){
     const requestedIdx=parseInt(p.i);
     if(Number.isFinite(requestedIdx)&&DI[requestedIdx])curDetailIdx=requestedIdx;
   }
@@ -3167,8 +3178,8 @@ function loadHash(){
   af();
   if(p.p)cp=parseInt(p.p);
   rt();
-  if(p.i!==undefined){
-    const dataIdx=parseInt(p.i);
+  if(p.a||p.i!==undefined){
+    const dataIdx=curDetailIdx!==null?curDetailIdx:parseInt(p.i);
     const x=DI[dataIdx];
     if(x){curDetailIdx=dataIdx;showDetail(x);}
   }

@@ -147,6 +147,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 
 /* Direct badge */
 .badge-direct { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(234,179,8,.15); color:#fbbf24; border:1px solid rgba(234,179,8,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
+.badge-cancelled { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(220,38,38,.12); color:#f87171; border:1px solid rgba(220,38,38,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
 
 /* Detail Panel */
 #detailOverlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:200; display:none; }
@@ -808,7 +809,9 @@ async function loadDetailTx(r) {
     if (!trades.length) continue;
     html += '<div class="dp-yr-label">' + yr + '년</div>';
     for (const t of trades) {
-      const isDirect = t[4] === 1;
+      const flags = Number(t[4]) || 0;
+      const isDirect = (flags & 1) !== 0;
+      const isCancelled = (flags & 2) !== 0;
       const pp = r.a != null && t[2] != null ? formatPyeongPrice(t[2] / areaToPyeong(r.a)) : '—';
       const ppHtml = pp !== '—'
         ? '<span style="display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px;">' + pp + '</span>'
@@ -818,6 +821,7 @@ async function loadDetailTx(r) {
         '<span class="dp-tx-price">' + formatPriceFull(t[2]) + ppHtml + '</span>' +
         '<span class="dp-tx-floor">' + (t[3] ? t[3] + '층' : '—') + '</span>' +
         (isDirect ? '<span class="badge-direct">직거래</span>' : '') +
+        (isCancelled ? '<span class="badge-cancelled">해제' + (t[5] ? ' ' + t[5] : '') + '</span>' : '') +
         '</div>';
     }
   }

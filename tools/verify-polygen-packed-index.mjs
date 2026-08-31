@@ -36,11 +36,17 @@ assert(first.i === (expectedRows[0].i ?? 0), "first id mismatch");
 assert(first.n === expectedRows[0].n, "first name mismatch");
 assert(first.g === expectedRows[0].g, "first gu mismatch");
 assert(first.d === (expectedRows[0].d || ""), "first dong mismatch");
+assert(first.as === expectedRows[0].as, "first aptSeq mismatch");
 
 const last = loaded.d[loaded.d.length - 1];
 const expectedLast = expectedRows[expectedRows.length - 1];
 assert(last.n === expectedLast.n, "last name mismatch");
 assert(last.t === expectedLast.t, "last transaction total mismatch");
+assert(last.as === expectedLast.as, "last aptSeq mismatch");
+
+for (let index = 0; index < expectedRows.length; index += 997) {
+  assert(loaded.d[index].as === expectedRows[index].as, `aptSeq mismatch at row ${index}`);
+}
 
 const siblingRow = loaded.d.find((row) => row.si && row.si.length > 1);
 if (siblingRow) {

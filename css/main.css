@@ -80,6 +80,7 @@
   .tx-table th { padding: 6px 8px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; border-bottom: 1px solid var(--border); }
   .tx-table td { padding: 5px 8px; border-bottom: 1px solid #1e293b; }
   .badge-direct { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(234,179,8,.15); color:#fbbf24; border:1px solid rgba(234,179,8,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
+  .badge-cancelled { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(220,38,38,.12); color:#ef4444; border:1px solid rgba(220,38,38,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
   .tx-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
   .tx-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; }
   .tx-stat .label { font-size: 10px; color: var(--muted); }
@@ -213,6 +214,7 @@
   @media (max-width: 768px) {
     #app { padding: 8px !important; }
     .flex.items-center.justify-between.mb-3 { flex-direction: column; align-items: flex-start !important; gap: 8px; }
+    #app > .flex.items-center.justify-between.mb-3 > .flex.gap-2.items-center { width: 100%; flex-wrap: wrap; }
     .view-tabs { width: 100%; }
     .view-tab { flex: 1; text-align: center; }
     .filter-toggle-btn { display: block; }
