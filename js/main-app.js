@@ -2571,7 +2571,7 @@ function showParcelOverlay(map,x,overlay,big){
   const group=L.featureGroup();
   const parcelPopup=parcelPopupHtml(x,overlay);
   overlay.collections.forEach(fc=>{
-    L.geoJSON(fc,{style:{color:'#f59e0b',weight:big?3:2,opacity:.95,fillColor:'#fbbf24',fillOpacity:.18}})
+    L.geoJSON(fc,{style:{color:'#f59e0b',weight:3,opacity:1,fillColor:'#fbbf24',fillOpacity:.22}})
       .bindPopup(parcelPopup,{className:''}).addTo(group);
   });
   overlay.buildings.forEach(building=>{
@@ -2591,11 +2591,16 @@ function showParcelOverlay(map,x,overlay,big){
   group.addTo(map);
   const bounds=group.getBounds();
   if(!bounds.isValid()){ map.removeLayer(group); return false; }
-  L.marker(bounds.getCenter(),{
+  const parcelAnchor=L.latLng(bounds.getNorth(),bounds.getCenter().lng);
+  L.marker(parcelAnchor,{
     interactive:false,
     icon:L.divIcon({className:'parcel-label-host',html:parcelLabelHtml(x,overlay),iconSize:null,iconAnchor:[0,0]})
   }).addTo(group);
-  map.fitBounds(bounds.pad(big?.16:.28),{maxZoom:big?18:17,animate:!big});
+  map.fitBounds(bounds.pad(big?.16:.28),{
+    maxZoom:big?18:17,
+    animate:!big,
+    paddingTopLeft:[0,big?72:60]
+  });
   if(big) LPARCEL_BIG=group; else LPARCEL=group;
   return true;
 }
