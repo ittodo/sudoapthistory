@@ -2477,17 +2477,23 @@ function closeTxModal(fromPop){
 
 // --- 지도 ---
 let LMAP_BIG=null, LMARKER_BIG=null, curMapCoord=null, curMapEntry=null;
-let LPARCEL=null, LPARCEL_BIG=null, curParcelOverlay=null, mapSelectionToken=0;
+let LPARCEL=null, LPARCEL_BIG=null, LNEARBY_PARCELS=null, LNEARBY_PARCELS_BIG=null, curParcelOverlay=null, mapSelectionToken=0;
 const VWTILE='https://api.vworld.kr/req/wmts/1.0.0/'+VWORLD_KEY+'/Base/{z}/{y}/{x}.png';
 const VWORLD_DATA_DOMAIN='https://nodostream.com';
 const PARCEL_GEOMETRY_CACHE={};
 const BUILDING_GEOMETRY_CACHE={};
+const NEARBY_PARCEL_CACHE={};
+const NEARBY_RENDER_STATE={small:{timer:null,token:0},big:{timer:null,token:0}};
+let APARTMENT_PNU_SET=null;
 
 function initMap(){
   if(LMAP) return;
   LMAP=L.map('vmap',{center:[37.5665,126.978],zoom:12,zoomControl:false,attributionControl:false});
   L.tileLayer(VWTILE,{maxZoom:19,attribution:'V-World'}).addTo(LMAP);
   L.control.attribution({position:'bottomright',prefix:false}).addTo(LMAP);
+  LMAP.on('moveend',()=>{
+    if(curMapEntry&&curParcelOverlay) scheduleNearbyParcelOverlay(LMAP,curParcelOverlay,false);
+  });
 }
 
 const GEO_CACHE={};
@@ -2536,10 +2542,16 @@ function removeMapOverlay(map,big){
   if(!map) return;
   const marker=big?LMARKER_BIG:LMARKER;
   const parcel=big?LPARCEL_BIG:LPARCEL;
+  const nearby=big?LNEARBY_PARCELS_BIG:LNEARBY_PARCELS;
+  const nearbyState=big?NEARBY_RENDER_STATE.big:NEARBY_RENDER_STATE.small;
   if(marker&&map.hasLayer(marker)) map.removeLayer(marker);
   if(parcel&&map.hasLayer(parcel)) map.removeLayer(parcel);
-  if(big){ LMARKER_BIG=null; LPARCEL_BIG=null; }
-  else { LMARKER=null; LPARCEL=null; }
+  if(nearby&&map.hasLayer(nearby)) map.removeLayer(nearby);
+  clearTimeout(nearbyState.timer);
+  nearbyState.timer=null;
+  nearbyState.token++;
+  if(big){ LMARKER_BIG=null; LPARCEL_BIG=null; LNEARBY_PARCELS_BIG=null; }
+  else { LMARKER=null; LPARCEL=null; LNEARBY_PARCELS=null; }
 }
 
 function showMapMarker(map,coord,x,big){
@@ -2602,7 +2614,100 @@ function showParcelOverlay(map,x,overlay,big){
     paddingTopLeft:[0,big?72:60]
   });
   if(big) LPARCEL_BIG=group; else LPARCEL=group;
+  scheduleNearbyParcelOverlay(map,overlay,big);
   return true;
+}
+
+function getApartmentPnuSet(payload){
+  if(APARTMENT_PNU_SET) return APARTMENT_PNU_SET;
+  APARTMENT_PNU_SET=new Set();
+  Object.values(payload&&payload.d||{}).forEach(entry=>{
+    (entry&&entry.p||[]).forEach(pnu=>APARTMENT_PNU_SET.add(String(pnu)));
+  });
+  return APARTMENT_PNU_SET;
+}
+
+function nearbyParcelQueryBox(map){
+  if(!map||map.getZoom()<15) return null;
+  const bounds=map.getBounds(),center=map.getCenter();
+  const halfLat=Math.min((bounds.getNorth()-bounds.getSouth())/2,.0045);
+  const halfLng=Math.min((bounds.getEast()-bounds.getWest())/2,.006);
+  return [center.lng-halfLng,center.lat-halfLat,center.lng+halfLng,center.lat+halfLat];
+}
+
+function fetchNearbyParcelFeatures(map,selectedPnus){
+  const box=nearbyParcelQueryBox(map);
+  if(!box) return Promise.resolve([]);
+  const cacheKey=box.map(value=>value.toFixed(5)).join(',');
+  if(!NEARBY_PARCEL_CACHE[cacheKey]){
+    const fetchPage=page=>{
+      const params=new URLSearchParams({
+        service:'data',version:'2.0',request:'GetFeature',format:'json',size:'1000',page:String(page),
+        geometry:'true',attribute:'true',crs:'EPSG:4326',data:'LP_PA_CBND_BUBUN',key:VWORLD_KEY,
+        domain:VWORLD_DATA_DOMAIN,geomfilter:`BOX(${box.join(',')})`
+      });
+      return vworldJsonp('https://api.vworld.kr/req/data?'+params.toString(),12000);
+    };
+    NEARBY_PARCEL_CACHE[cacheKey]=(async()=>{
+      const first=await fetchPage(1);
+      const response=first&&first.response;
+      const firstCollection=response&&response.status==='OK'&&response.result&&response.result.featureCollection;
+      if(!firstCollection||!firstCollection.features){
+        console.warn('Nearby parcel geometry unavailable',response&&response.status,response&&response.error&&response.error.code);
+        return [];
+      }
+      const total=parseInt(response.record&&response.record.total||firstCollection.features.length,10);
+      const pages=Math.min(5,Math.ceil(total/1000));
+      const rest=pages>1?await Promise.all(Array.from({length:pages-1},(_,i)=>fetchPage(i+2))):[];
+      return firstCollection.features.concat(rest.flatMap(data=>{
+        const fc=data&&data.response&&data.response.result&&data.response.result.featureCollection;
+        return fc&&fc.features||[];
+      }));
+    })();
+  }
+  return NEARBY_PARCEL_CACHE[cacheKey].then(async features=>{
+    const payload=typeof loadParcels==='function'?await loadParcels():null;
+    const apartmentPnus=getApartmentPnuSet(payload);
+    const selected=new Set((selectedPnus||[]).map(String));
+    const seen=new Set();
+    return features.filter(feature=>{
+      const properties=feature&&feature.properties||{};
+      const pnu=String(properties.pnu||properties.PNU||'');
+      if(!pnu||seen.has(pnu)||selected.has(pnu)||!apartmentPnus.has(pnu)) return false;
+      seen.add(pnu);
+      return true;
+    });
+  });
+}
+
+function scheduleNearbyParcelOverlay(map,overlay,big){
+  if(!map||!overlay) return;
+  const state=big?NEARBY_RENDER_STATE.big:NEARBY_RENDER_STATE.small;
+  clearTimeout(state.timer);
+  const token=++state.token;
+  state.timer=setTimeout(async()=>{
+    const features=await fetchNearbyParcelFeatures(map,overlay.pnus).catch(error=>{
+      console.warn('Nearby apartment parcels unavailable',error&&error.message||error);
+      return [];
+    });
+    if(token!==state.token) return;
+    const previous=big?LNEARBY_PARCELS_BIG:LNEARBY_PARCELS;
+    if(previous&&map.hasLayer(previous)) map.removeLayer(previous);
+    if(!features.length){
+      if(big) LNEARBY_PARCELS_BIG=null; else LNEARBY_PARCELS=null;
+      return;
+    }
+    if(!map.getPane('nearbyApartmentParcels')){
+      const pane=map.createPane('nearbyApartmentParcels');
+      pane.style.zIndex='390';
+      pane.style.pointerEvents='none';
+    }
+    const group=L.geoJSON({type:'FeatureCollection',features},{
+      pane:'nearbyApartmentParcels',interactive:false,
+      style:{color:'#0f766e',weight:2,opacity:.9,fillColor:'#2dd4bf',fillOpacity:.12,dashArray:'5 4'}
+    }).addTo(map);
+    if(big) LNEARBY_PARCELS_BIG=group; else LNEARBY_PARCELS=group;
+  },450);
 }
 
 function ringArea(coords){
@@ -2781,6 +2886,7 @@ async function getParcelOverlay(x){
     return [];
   });
   return {
+    pnus:entry.p.slice(0,8),
     collections,
     buildings:[],
     buildingPromise,
@@ -2898,6 +3004,11 @@ function openMapModal(){
     LMAP_BIG=L.map('vmapBig',{center:curMapCoord||[37.5665,126.978],zoom:16,zoomControl:true,attributionControl:false});
     L.tileLayer(VWTILE,{maxZoom:19,attribution:'V-World'}).addTo(LMAP_BIG);
     L.control.attribution({position:'bottomright',prefix:false}).addTo(LMAP_BIG);
+    LMAP_BIG.on('moveend',()=>{
+      if(curMapEntry&&curParcelOverlay&&document.getElementById('mapModal').style.display!=='none'){
+        scheduleNearbyParcelOverlay(LMAP_BIG,curParcelOverlay,true);
+      }
+    });
   }
   setTimeout(()=>{
     LMAP_BIG.invalidateSize();
