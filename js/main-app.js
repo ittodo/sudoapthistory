@@ -2771,7 +2771,12 @@ async function getParcelOverlay(x){
   const fetched=await Promise.all(entry.p.slice(0,8).map(fetchParcelGeometry));
   const collections=fetched.filter(Boolean);
   if(!collections.length) return null;
-  const buildings=await matchApartmentBuildings(collections,entry.b||[]);
+  let buildings=[];
+  try{
+    buildings=await matchApartmentBuildings(collections,entry.b||[]);
+  }catch(error){
+    console.warn('Building overlay unavailable',error&&error.message||error);
+  }
   return {
     collections,
     buildings,
@@ -2854,6 +2859,9 @@ function showOnMap(x){
         if(!showParcelOverlay(LMAP_BIG,x,overlay,true)&&coord) showMapMarker(LMAP_BIG,coord,x,true);
       }
     },syncCoord?0:50);
+  }).catch(error=>{
+    console.error('Map overlay failed',error);
+    if(token===mapSelectionToken&&syncCoord) showMapMarker(LMAP,syncCoord,x,false);
   });
 }
 
