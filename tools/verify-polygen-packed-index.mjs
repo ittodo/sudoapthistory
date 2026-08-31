@@ -48,6 +48,11 @@ for (let index = 0; index < expectedRows.length; index += 997) {
   assert(loaded.d[index].as === expectedRows[index].as, `aptSeq mismatch at row ${index}`);
 }
 
+for (const expected of expectedRows.filter((row) => row.up)) {
+  assert(loaded.d[expected.i].up === true, `partial unit scope mismatch at row ${expected.i}`);
+  assert(loaded.d[expected.i].tu === expected.tu, `partial total units mismatch at row ${expected.i}`);
+}
+
 const siblingRow = loaded.d.find((row) => row.si && row.si.length > 1);
 if (siblingRow) {
   const expected = expectedRows[siblingRow.i].si;

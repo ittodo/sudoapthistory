@@ -44,6 +44,7 @@ class AptIndexLegacyRef {
   get j() { return cached(this, "j", () => this._ref.jibun); }
   get rd() { return cached(this, "rd", () => this._ref.roadAddress); }
   get tu() { return cached(this, "tu", () => optionalNumber(this._ref.totalUnits)); }
+  get up() { return Boolean(this._ref.unitPartial); }
   get si() {
     return cached(this, "si", () => {
       const ids = this._ref.siblingIds;

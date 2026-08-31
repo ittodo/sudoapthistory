@@ -1767,7 +1767,7 @@ function buildMerged(){
     }
     // 다평형 통합: 세대수(u) 우선 가중평균, 없으면 거래건수(t) 대체
     const totalT=siblings.reduce((s,x)=>s+(x.t||1),0);
-    const mwt=x=>(x.u||x.t||1);
+    const mwt=x=>(x.up?(x.t||1):(x.u||x.t||1));
     const wavg=(field)=>{
       const valid=siblings.filter(x=>x[field]!==null&&x[field]!==undefined);
       if(valid.length===0) return null;
@@ -1808,6 +1808,7 @@ function buildMerged(){
       pk:rep.pk, // 총 주차대수
       u:siblings.reduce((s,x)=>s+(x.u||0),0) || null, // 총 세대수
       tu:siblings[0].tu||null, // 단지 전체 세대수
+      up:Boolean(siblings[0].up), // 면적별 세대수는 대표 필지 범위
       ls:(()=>{
         const lsVals=siblings.map(x=>x.ls).filter(v=>v);
         if(lsVals.length===0) return null;
@@ -2078,7 +2079,7 @@ function showDetail(x){
   const isMerged=x._merged&&x.si&&x.si.length>1;
 
   document.getElementById('dn').textContent=x.n;
-  const unitStr=x.u?` | ${x.u.toLocaleString()}세대`:'';
+  const unitStr=x.u?` | ${x.u.toLocaleString()}세대${x.up?' (부분 대장)':''}`:'';
   const farStr=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr}${pkStr}`;
@@ -2091,8 +2092,8 @@ function showDetail(x){
     if(isMerged){
       // 통합 모드: "통합" 탭 + 개별 평형 탭
       const isAllActive=curDetailIdx===x.i&&!window._showingSingleArea;
-      const totalUnits=x.si.reduce((s,idx)=>{const sb=DI[idx];return s+(sb&&sb.u?sb.u:0);},0);
-      const totalUnitStr=totalUnits>0?` (${totalUnits.toLocaleString()}세대)`:'';
+      const totalUnits=x.up?(x.tu||0):x.si.reduce((s,idx)=>{const sb=DI[idx];return s+(sb&&sb.u?sb.u:0);},0);
+      const totalUnitStr=totalUnits>0?` (${totalUnits.toLocaleString()}세대${x.up?' · 면적별 부분 대장':''})`:'';
       tabs+=`<button class="area-tab ${isAllActive?'active':''}" onclick="showMergedDetail()">통합${totalUnitStr}</button>`;
       x.si.forEach(sibIdx=>{
         const sib=DI[sibIdx];
@@ -2164,8 +2165,8 @@ function switchAreaFromMerged(dataIdx){
   const mergedEntry=F.find(f=>f._merged&&f.si&&f.si.includes(dataIdx));
   const tabsEl=document.getElementById('areaTabs');
   if(mergedEntry&&mergedEntry.si){
-    const totalUnits2=mergedEntry.si.reduce((s,idx)=>{const sb=DI[idx];return s+(sb&&sb.u?sb.u:0);},0);
-    const totalUnitStr2=totalUnits2>0?` (${totalUnits2.toLocaleString()}세대)`:'';
+    const totalUnits2=mergedEntry.up?(mergedEntry.tu||0):mergedEntry.si.reduce((s,idx)=>{const sb=DI[idx];return s+(sb&&sb.u?sb.u:0);},0);
+    const totalUnitStr2=totalUnits2>0?` (${totalUnits2.toLocaleString()}세대${mergedEntry.up?' · 면적별 부분 대장':''})`:'';
     let tabs=`<button class="area-tab" onclick="showMergedDetail()">통합${totalUnitStr2}</button>`;
     mergedEntry.si.forEach(sibIdx=>{
       const sib=DI[sibIdx];
@@ -2178,7 +2179,7 @@ function switchAreaFromMerged(dataIdx){
   // 메트릭/차트는 개별 평형 것으로 표시
   const fm=(v,s='%')=>s==='%'?fmtSignedPct(v):fmtNum(v)+s;
   document.getElementById('dn').textContent=x.n;
-  const uStr2=x.u?` | ${x.u.toLocaleString()}세대`:'';
+  const uStr2=x.u?` | ${x.u.toLocaleString()}세대${x.up?' (부분 대장)':''}`:'';
   const farStr2=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr2=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
   document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}${pkStr2}`;
@@ -2522,23 +2523,28 @@ function vworldJsonp(url,timeoutMs=5000){
 }
 
 function buildingSummaryHtml(overlay){
-  if(!overlay||!overlay.buildingTotal) return '';
+  if(!overlay) return '';
+  if(overlay.scope==='representative_partial'&&overlay.complexTotal){
+    return ` · 단지 전체 ${overlay.complexBuildingCount.toLocaleString()}개동 · ${overlay.complexTotal.toLocaleString()}세대 (K-APT)`;
+  }
+  if(!overlay.buildingTotal) return '';
   return ` · ${overlay.buildingUnitCount.toLocaleString()}개동 · ${overlay.buildingTotal.toLocaleString()}세대`;
 }
 
 function parcelLabelHtml(x,overlay){
   const landArea=overlay.landArea, scope=overlay.scope;
   const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'면적 확인 중';
-  const note=scope==='trusted_parcels'?'연결 필지 합계':'대표 필지';
+  const note=scope==='trusted_parcels'?'연결 필지 합계':scope==='representative_partial'?'대표 필지 · 부분 대장':'대표 필지';
   return `<div class="parcel-label"><strong>대지 ${land}</strong><span>${note}${buildingSummaryHtml(overlay)}</span><span>전용 ${fmtArea(x.a)}</span></div>`;
 }
 
 function parcelPopupHtml(x,overlay){
   const landArea=overlay.landArea, scope=overlay.scope;
   const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'-';
-  const note=scope==='trusted_parcels'?'신뢰 연결 필지 합계':'대표 필지 기준';
-  const buildings=overlay.buildingTotal?`<br>${overlay.buildingUnitCount.toLocaleString()}개동 · ${overlay.buildingTotal.toLocaleString()}세대`:'';
-  return `<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>대지 ${land} (${note})${buildings}<br>선택 전용 ${fmtArea(x.a)}`;
+  const note=scope==='trusted_parcels'?'신뢰 연결 필지 합계':scope==='representative_partial'?'대표 필지 기준 · 부분 대장':'대표 필지 기준';
+  const buildings=overlay.buildingTotal?`<br>현재 선택 필지: ${overlay.buildingUnitCount.toLocaleString()}개동 · ${overlay.buildingTotal.toLocaleString()}세대 (건축물대장)`:'';
+  const complex=scope==='representative_partial'&&overlay.complexTotal?`<br>단지 전체: ${overlay.complexBuildingCount.toLocaleString()}개동 · ${overlay.complexTotal.toLocaleString()}세대 (K-APT)`:'';
+  return `<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>대지 ${land} (${note})${complex}${buildings}<br>선택 전용 ${fmtArea(x.a)}`;
 }
 
 function removeMapOverlay(map,big){
@@ -2893,8 +2899,12 @@ async function getParcelOverlay(x){
     collections,
     buildings:[],
     buildingPromise,
-    buildingUnitCount:(entry.b||[]).length,
-    buildingTotal:parseInt(entry.bt||0,10),
+    buildingUnitCount:parseInt(entry.rb||(entry.b||[]).length,10),
+    buildingTotal:parseInt(entry.rt||entry.bt||0,10),
+    complexBuildingCount:parseInt(entry.cb||0,10),
+    complexTotal:parseInt(entry.ct||0,10),
+    coverageRatio:parseFloat(entry.cv||0),
+    kaptCode:entry.cu||'',
     scope:entry.scope||'representative',
     landArea:collections.reduce((sum,fc)=>sum+featureCollectionArea(fc),0)
   };

@@ -140,6 +140,11 @@ function addLiquidity(scope, priceArr, volumeArr, yearsLen) {
 
 function addRow(scope, row, priceArr, volumeArr, yearsLen) {
   addTransactionCoverage(scope, volumeArr, yearsLen);
+  if (row.up) {
+    scope.coverage.rows += 1;
+    scope.coverage.missingUnitsRows += 1;
+    return;
+  }
   const units = Number(row.u || 0);
   scope.coverage.rows += 1;
   if (!Number.isFinite(units) || units <= 0) {
@@ -188,6 +193,7 @@ const extraPriceKeys = priceKeys.filter((key) => !indexKeys.has(key)).length;
 const missingPriceKeys = rows.filter((row) => !prices[String(row.i)]).length;
 const extraVolumeKeys = volumeKeys.filter((key) => !indexKeys.has(key)).length;
 const missingVolumeKeys = rows.filter((row) => !volumes[String(row.i)]).length;
+const partialUnitRowsExcluded = rows.filter((row) => row.up).length;
 const updatedYear = Number(String(indexData.meta?.updated || "").slice(0, 4));
 const latestCompleteYear = years.filter((year) => year < updatedYear).at(-1) || years.at(-1) || null;
 
@@ -225,6 +231,7 @@ const output = {
     volumeKeys: volumeKeys.length,
     extraVolumeKeys,
     missingVolumeKeys,
+    partialUnitRowsExcluded,
   },
   scopes,
 };

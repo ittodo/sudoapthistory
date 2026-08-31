@@ -46,6 +46,7 @@ function rowToSlim(row, index) {
     jibun: nullableString(row.j),
     roadAddress: nullableString(row.rd),
     totalUnits: nullableNumber(row.tu),
+    unitPartial: Number(row.up || 0),
     siblingIds: Array.isArray(row.si) && row.si.length ? row.si.join(",") : undefined,
   };
 }

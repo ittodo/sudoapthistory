@@ -80,6 +80,7 @@ function rowToSlim(row, index) {
     roadAddress: nullableString(row.rd),
     aptSeq: nullableString(row.as),
     totalUnits: nullableNumber(row.tu),
+    unitPartial: Number(row.up || 0),
     platArea: nullableNumber(row.pa),
     floorAreaRatio: nullableNumber(row.fr),
     parkingCount: nullableNumber(row.pk),
@@ -150,6 +151,7 @@ function buildPacked(rows) {
   const roadAddress = new Uint32Array(n);
   const aptSeq = new Uint32Array(n);
   const totalUnits = new Uint32Array(n);
+  const unitPartial = new Uint8Array(n);
   const platArea = new Float32Array(n);
   const floorAreaRatio = new Float32Array(n);
   const parkingCount = new Uint32Array(n);
@@ -185,6 +187,7 @@ function buildPacked(rows) {
     roadAddress[i] = intern(row.roadAddress);
     aptSeq[i] = intern(row.aptSeq);
     totalUnits[i] = u32(row.totalUnits);
+    unitPartial[i] = row.unitPartial ? 1 : 0;
     platArea[i] = f32(row.platArea);
     floorAreaRatio[i] = f32(row.floorAreaRatio);
     parkingCount[i] = u32(row.parkingCount);
@@ -201,7 +204,7 @@ function buildPacked(rows) {
   });
 
   const writer = new BinaryWriter();
-  writer.push(encoder.encode("NSPIv003"));
+  writer.push(encoder.encode("NSPIv004"));
   writer.u32(n);
   writer.u32(strings.length);
   writer.u32(siblingValues.length);
@@ -234,6 +237,7 @@ function buildPacked(rows) {
   writer.typedArray(roadAddress, 4);
   writer.typedArray(aptSeq, 4);
   writer.typedArray(totalUnits, 4);
+  writer.typedArray(unitPartial, 1);
   writer.typedArray(platArea, 4);
   writer.typedArray(floorAreaRatio, 4);
   writer.typedArray(parkingCount, 4);
