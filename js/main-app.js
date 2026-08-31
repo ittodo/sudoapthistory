@@ -2771,15 +2771,14 @@ async function getParcelOverlay(x){
   const fetched=await Promise.all(entry.p.slice(0,8).map(fetchParcelGeometry));
   const collections=fetched.filter(Boolean);
   if(!collections.length) return null;
-  let buildings=[];
-  try{
-    buildings=await matchApartmentBuildings(collections,entry.b||[]);
-  }catch(error){
+  const buildingPromise=matchApartmentBuildings(collections,entry.b||[]).catch(error=>{
     console.warn('Building overlay unavailable',error&&error.message||error);
-  }
+    return [];
+  });
   return {
     collections,
-    buildings,
+    buildings:[],
+    buildingPromise,
     buildingUnitCount:(entry.b||[]).length,
     buildingTotal:parseInt(entry.bt||0,10),
     scope:entry.scope||'representative',
@@ -2831,6 +2830,19 @@ async function getCoordAsync(x){
   return (GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
 }
 
+function renderMapSelection(token,x,coord,overlay){
+  if(token!==mapSelectionToken) return;
+  setTimeout(()=>{
+    if(token!==mapSelectionToken) return;
+    LMAP.invalidateSize();
+    if(!showParcelOverlay(LMAP,x,overlay,false)&&coord) showMapMarker(LMAP,coord,x,false);
+    if(document.getElementById('mapModal').style.display!=='none'&&LMAP_BIG){
+      LMAP_BIG.invalidateSize();
+      if(!showParcelOverlay(LMAP_BIG,x,overlay,true)&&coord) showMapMarker(LMAP_BIG,coord,x,true);
+    }
+  },0);
+}
+
 function showOnMap(x){
   const token=++mapSelectionToken;
   document.getElementById('mapWrap').style.display='block';
@@ -2846,22 +2858,27 @@ function showOnMap(x){
       showMapMarker(LMAP,syncCoord,x,false);
     },150);
   }
-  Promise.all([getCoordAsync(x),getParcelOverlay(x)]).then(([coord,overlay])=>{
+  getCoordAsync(x).then(coord=>{
     if(token!==mapSelectionToken) return;
     if(coord) curMapCoord=coord;
+    if(!curParcelOverlay&&coord) renderMapSelection(token,x,coord,null);
+  }).catch(error=>{
+    console.warn('Map coordinate unavailable',error&&error.message||error);
+  });
+  getParcelOverlay(x).then(overlay=>{
+    if(token!==mapSelectionToken) return;
     curParcelOverlay=overlay;
-    setTimeout(()=>{
-      if(token!==mapSelectionToken) return;
-      LMAP.invalidateSize();
-      if(!showParcelOverlay(LMAP,x,overlay,false)&&coord) showMapMarker(LMAP,coord,x,false);
-      if(document.getElementById('mapModal').style.display!=='none'&&LMAP_BIG){
-        LMAP_BIG.invalidateSize();
-        if(!showParcelOverlay(LMAP_BIG,x,overlay,true)&&coord) showMapMarker(LMAP_BIG,coord,x,true);
-      }
-    },syncCoord?0:50);
+    renderMapSelection(token,x,curMapCoord||syncCoord,overlay);
+    if(overlay&&overlay.buildingPromise){
+      overlay.buildingPromise.then(buildings=>{
+        if(token!==mapSelectionToken) return;
+        overlay.buildings=buildings;
+        renderMapSelection(token,x,curMapCoord||syncCoord,overlay);
+      });
+    }
   }).catch(error=>{
     console.error('Map overlay failed',error);
-    if(token===mapSelectionToken&&syncCoord) showMapMarker(LMAP,syncCoord,x,false);
+    if(token===mapSelectionToken&&syncCoord) renderMapSelection(token,x,syncCoord,null);
   });
 }
 
