@@ -2481,6 +2481,7 @@ let LPARCEL=null, LPARCEL_BIG=null, curParcelOverlay=null, mapSelectionToken=0;
 const VWTILE='https://api.vworld.kr/req/wmts/1.0.0/'+VWORLD_KEY+'/Base/{z}/{y}/{x}.png';
 const VWORLD_DATA_DOMAIN='https://nodostream.com';
 const PARCEL_GEOMETRY_CACHE={};
+const BUILDING_GEOMETRY_CACHE={};
 
 function initMap(){
   if(LMAP) return;
@@ -2498,11 +2499,11 @@ function getCoordSync(x){
   return GEO_CACHE[aptKey]||(GEO_DATA&&GEO_DATA[aptKey])||(GEO_DATA&&GEO_DATA[dongKey])||GEO_GU[x.g]||null;
 }
 
-function vworldJsonp(url){
+function vworldJsonp(url,timeoutMs=5000){
   return new Promise((resolve)=>{
     const cbName='_vwCb'+(++_jsonpId);
     const script=document.createElement('script');
-    const timeout=setTimeout(()=>{cleanup();resolve(null)},5000);
+    const timeout=setTimeout(()=>{cleanup();resolve(null)},timeoutMs);
     function cleanup(){clearTimeout(timeout);delete window[cbName];if(script.parentNode)script.parentNode.removeChild(script)}
     window[cbName]=function(data){cleanup();resolve(data)};
     script.src=url+'&callback='+cbName;
@@ -2511,16 +2512,24 @@ function vworldJsonp(url){
   });
 }
 
-function parcelLabelHtml(x,landArea,scope){
-  const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'면적 확인 중';
-  const note=scope==='trusted_parcels'?'연결 필지 합계':'대표 필지';
-  return `<div class="parcel-label"><strong>대지 ${land}</strong><span>${note} · 전용 ${fmtArea(x.a)}</span></div>`;
+function buildingSummaryHtml(overlay){
+  if(!overlay||!overlay.buildingTotal) return '';
+  return ` · ${overlay.buildingUnitCount.toLocaleString()}개동 · ${overlay.buildingTotal.toLocaleString()}세대`;
 }
 
-function parcelPopupHtml(x,landArea,scope){
+function parcelLabelHtml(x,overlay){
+  const landArea=overlay.landArea, scope=overlay.scope;
+  const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'면적 확인 중';
+  const note=scope==='trusted_parcels'?'연결 필지 합계':'대표 필지';
+  return `<div class="parcel-label"><strong>대지 ${land}</strong><span>${note}${buildingSummaryHtml(overlay)}</span><span>전용 ${fmtArea(x.a)}</span></div>`;
+}
+
+function parcelPopupHtml(x,overlay){
+  const landArea=overlay.landArea, scope=overlay.scope;
   const land=landArea>0?Math.round(landArea).toLocaleString()+'㎡':'-';
   const note=scope==='trusted_parcels'?'신뢰 연결 필지 합계':'대표 필지 기준';
-  return `<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>대지 ${land} (${note})<br>선택 전용 ${fmtArea(x.a)}`;
+  const buildings=overlay.buildingTotal?`<br>${overlay.buildingUnitCount.toLocaleString()}개동 · ${overlay.buildingTotal.toLocaleString()}세대`:'';
+  return `<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>대지 ${land} (${note})${buildings}<br>선택 전용 ${fmtArea(x.a)}`;
 }
 
 function removeMapOverlay(map,big){
@@ -2543,21 +2552,49 @@ function showMapMarker(map,coord,x,big){
   map.setView(coord,big?16:15,{animate:!big});
 }
 
+function buildingPopupHtml(building){
+  const p=building.feature.properties||{};
+  const floors=parseInt(p.grnd_flr||0,10);
+  const totalArea=parseFloat(p.totalarea||0);
+  return `<b>${escHtml(building.label)}</b><br>${building.households.toLocaleString()}세대`
+    +(floors>0?`<br>지상 ${floors.toLocaleString()}층`:'')
+    +(totalArea>0?`<br>연면적 ${Math.round(totalArea).toLocaleString()}㎡`:'');
+}
+
+function buildingLabelHtml(building){
+  return `<div class="building-label"><strong>${escHtml(building.label)}</strong><span>${building.households.toLocaleString()}세대</span></div>`;
+}
+
 function showParcelOverlay(map,x,overlay,big){
   if(!map||!overlay||!overlay.collections.length) return false;
   removeMapOverlay(map,big);
   const group=L.featureGroup();
+  const parcelPopup=parcelPopupHtml(x,overlay);
   overlay.collections.forEach(fc=>{
-    L.geoJSON(fc,{style:{color:'#f59e0b',weight:big?3:2,opacity:.95,fillColor:'#fbbf24',fillOpacity:.22}}).addTo(group);
+    L.geoJSON(fc,{style:{color:'#f59e0b',weight:big?3:2,opacity:.95,fillColor:'#fbbf24',fillOpacity:.18}})
+      .bindPopup(parcelPopup,{className:''}).addTo(group);
+  });
+  overlay.buildings.forEach(building=>{
+    const layer=L.geoJSON(building.feature,{
+      style:{color:'#2563eb',weight:big?2:1.4,opacity:1,fillColor:'#3b82f6',fillOpacity:big?.38:.3}
+    }).bindPopup(buildingPopupHtml(building),{className:''}).addTo(group);
+    if(big){
+      const buildingBounds=layer.getBounds();
+      if(buildingBounds.isValid()){
+        L.marker(buildingBounds.getCenter(),{
+          interactive:false,
+          icon:L.divIcon({className:'building-label-host',html:buildingLabelHtml(building),iconSize:null,iconAnchor:[0,0]})
+        }).addTo(group);
+      }
+    }
   });
   group.addTo(map);
   const bounds=group.getBounds();
   if(!bounds.isValid()){ map.removeLayer(group); return false; }
   L.marker(bounds.getCenter(),{
     interactive:false,
-    icon:L.divIcon({className:'parcel-label-host',html:parcelLabelHtml(x,overlay.landArea,overlay.scope),iconSize:null,iconAnchor:[0,0]})
+    icon:L.divIcon({className:'parcel-label-host',html:parcelLabelHtml(x,overlay),iconSize:null,iconAnchor:[0,0]})
   }).addTo(group);
-  group.bindPopup(parcelPopupHtml(x,overlay.landArea,overlay.scope),{className:''});
   map.fitBounds(bounds.pad(big?.16:.28),{maxZoom:big?18:17,animate:!big});
   if(big) LPARCEL_BIG=group; else LPARCEL=group;
   return true;
@@ -2586,6 +2623,128 @@ function featureCollectionArea(fc){
   return (fc&&fc.features||[]).reduce((sum,feature)=>sum+geometryArea(feature.geometry),0);
 }
 
+function visitCoordinates(value,callback){
+  if(!Array.isArray(value)||!value.length) return;
+  if(typeof value[0]==='number'){ callback(value); return; }
+  value.forEach(item=>visitCoordinates(item,callback));
+}
+
+function geometryCenterPoint(geometry){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  visitCoordinates(geometry&&geometry.coordinates,point=>{
+    minX=Math.min(minX,point[0]); minY=Math.min(minY,point[1]);
+    maxX=Math.max(maxX,point[0]); maxY=Math.max(maxY,point[1]);
+  });
+  return Number.isFinite(minX)?[(minX+maxX)/2,(minY+maxY)/2]:null;
+}
+
+function pointInRing(point,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+    const crosses=((yi>point[1])!==(yj>point[1]))
+      && point[0]<(xj-xi)*(point[1]-yi)/((yj-yi)||Number.EPSILON)+xi;
+    if(crosses) inside=!inside;
+  }
+  return inside;
+}
+
+function pointInPolygon(point,rings){
+  return !!(rings&&rings.length&&pointInRing(point,rings[0])&&!rings.slice(1).some(ring=>pointInRing(point,ring)));
+}
+
+function pointInGeometry(point,geometry){
+  if(!point||!geometry) return false;
+  if(geometry.type==='Polygon') return pointInPolygon(point,geometry.coordinates);
+  if(geometry.type==='MultiPolygon') return geometry.coordinates.some(rings=>pointInPolygon(point,rings));
+  return false;
+}
+
+function pointInParcelCollections(point,collections){
+  return collections.some(fc=>(fc.features||[]).some(feature=>pointInGeometry(point,feature.geometry)));
+}
+
+function parcelCollectionsBounds(collections){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  collections.forEach(fc=>(fc.features||[]).forEach(feature=>{
+    visitCoordinates(feature.geometry&&feature.geometry.coordinates,point=>{
+      minX=Math.min(minX,point[0]); minY=Math.min(minY,point[1]);
+      maxX=Math.max(maxX,point[0]); maxY=Math.max(maxY,point[1]);
+    });
+  }));
+  return Number.isFinite(minX)?[minX,minY,maxX,maxY]:null;
+}
+
+function normalizeDongKey(value){
+  const compact=String(value||'').replace(/[()\s]/g,'').toLowerCase();
+  if(!compact) return '';
+  const numeric=compact.match(/([a-z]?\d{1,4})동$/i);
+  if(numeric) return numeric[1].replace(/^0+(?=\d)/,'');
+  if(/^\d+$/.test(compact)) return compact.replace(/^0+(?=\d)/,'');
+  const named=compact.match(/^([a-z가-힣]+)동$/i);
+  return named?named[1]:compact;
+}
+
+function findBuildingUnit(properties,lookup){
+  for(const value of [properties.dong_nm,properties.bld_nm]){
+    const unit=lookup.get(normalizeDongKey(value));
+    if(unit) return unit;
+  }
+  return null;
+}
+
+async function fetchRawBuildingFeatures(collections){
+  const bounds=parcelCollectionsBounds(collections);
+  if(!bounds) return [];
+  const padded=[bounds[0]-.00005,bounds[1]-.00005,bounds[2]+.00005,bounds[3]+.00005];
+  const cacheKey=padded.map(value=>value.toFixed(6)).join(',');
+  if(BUILDING_GEOMETRY_CACHE[cacheKey]) return BUILDING_GEOMETRY_CACHE[cacheKey];
+  const fetchPage=async page=>{
+    const params=new URLSearchParams({
+      service:'data',version:'2.0',request:'GetFeature',format:'json',size:'1000',page:String(page),
+      geometry:'true',attribute:'true',crs:'EPSG:4326',data:'LT_C_BLDGINFO',key:VWORLD_KEY,
+      domain:VWORLD_DATA_DOMAIN,geomfilter:`BOX(${padded.join(',')})`
+    });
+    return vworldJsonp('https://api.vworld.kr/req/data?'+params.toString(),12000);
+  };
+  BUILDING_GEOMETRY_CACHE[cacheKey]=(async()=>{
+    const first=await fetchPage(1);
+    const response=first&&first.response;
+    const firstCollection=response&&response.status==='OK'&&response.result&&response.result.featureCollection;
+    if(!firstCollection||!firstCollection.features){
+      console.warn('Building geometry unavailable',response&&response.status,response&&response.error&&response.error.code);
+      return [];
+    }
+    const total=parseInt(response.record&&response.record.total||firstCollection.features.length,10);
+    const pages=Math.min(3,Math.ceil(total/1000));
+    const rest=pages>1?await Promise.all(Array.from({length:pages-1},(_,i)=>fetchPage(i+2))):[];
+    return firstCollection.features.concat(rest.flatMap(data=>{
+      const fc=data&&data.response&&data.response.result&&data.response.result.featureCollection;
+      return fc&&fc.features||[];
+    }));
+  })();
+  return BUILDING_GEOMETRY_CACHE[cacheKey];
+}
+
+async function matchApartmentBuildings(collections,unitRows){
+  if(!unitRows||!unitRows.length) return [];
+  const lookup=new Map(unitRows.map(item=>[
+    normalizeDongKey(item[0]),{label:String(item[0]),households:parseInt(item[1]||0,10)}
+  ]));
+  const features=await fetchRawBuildingFeatures(collections);
+  const matched=new Map();
+  features.forEach(feature=>{
+    const unit=findBuildingUnit(feature.properties||{},lookup);
+    const center=geometryCenterPoint(feature.geometry);
+    if(!unit||!center||!pointInParcelCollections(center,collections)) return;
+    const key=normalizeDongKey(unit.label);
+    const candidate={feature,label:unit.label,households:unit.households};
+    const existing=matched.get(key);
+    if(!existing||geometryArea(feature.geometry)>geometryArea(existing.feature.geometry)) matched.set(key,candidate);
+  });
+  return [...matched.values()];
+}
+
 function fetchParcelGeometry(pnu){
   if(PARCEL_GEOMETRY_CACHE[pnu]) return PARCEL_GEOMETRY_CACHE[pnu];
   const params=new URLSearchParams({
@@ -2612,8 +2771,12 @@ async function getParcelOverlay(x){
   const fetched=await Promise.all(entry.p.slice(0,8).map(fetchParcelGeometry));
   const collections=fetched.filter(Boolean);
   if(!collections.length) return null;
+  const buildings=await matchApartmentBuildings(collections,entry.b||[]);
   return {
     collections,
+    buildings,
+    buildingUnitCount:(entry.b||[]).length,
+    buildingTotal:parseInt(entry.bt||0,10),
     scope:entry.scope||'representative',
     landArea:collections.reduce((sum,fc)=>sum+featureCollectionArea(fc),0)
   };
