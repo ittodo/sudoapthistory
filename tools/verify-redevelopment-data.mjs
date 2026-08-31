@@ -12,6 +12,7 @@ const allowedStages = new Set(["planned", "approved", "construction", "completed
 const keyOf = (x) => `${x.r}|${x.g}|${x.d || ""}|${x.j || ""}`;
 const siteKeys = new Set(index.d.map(keyOf));
 const errors = [];
+const warnings = [];
 const relationIds = new Set();
 const evidenceIds = new Set(Object.keys(evidenceData.evidence || {}));
 
@@ -19,7 +20,10 @@ if (status.version !== 2) errors.push("building-status version must be 2");
 if (relationData.version !== 1) errors.push("redevelopment-relations version must be 1");
 
 for (const [key, item] of Object.entries(status.sites || {})) {
-  if (!siteKeys.has(key)) errors.push(`status site does not exist: ${key}`);
+  if (!siteKeys.has(key)) {
+    if (item.status === "active") errors.push(`active status site does not exist: ${key}`);
+    else warnings.push(`inactive status site is outside current trade index: ${key}`);
+  }
   if (!allowedStatuses.has(item.status)) errors.push(`invalid status ${item.status}: ${key}`);
   if (item.date && !/^\d{8}$/.test(item.date)) errors.push(`invalid date ${item.date}: ${key}`);
 }
@@ -43,7 +47,14 @@ for (const relation of relationData.relations || []) {
   const successorKeys = new Set();
   for (const item of predecessors) {
     if (!allowedScopes.has(item.scope)) errors.push(`invalid scope: ${relation.id}/${item.siteKey}`);
-    if (!siteKeys.has(item.siteKey)) errors.push(`predecessor does not exist: ${relation.id}/${item.siteKey}`);
+    if (!siteKeys.has(item.siteKey)) {
+      const historical = status.sites?.[item.siteKey];
+      if (!historical || historical.status === "active" || !historical.displayName) {
+        errors.push(`unresolved predecessor needs inactive status and displayName: ${relation.id}/${item.siteKey}`);
+      } else {
+        warnings.push(`historical predecessor is outside current trade index: ${relation.id}/${item.siteKey}`);
+      }
+    }
     if (predKeys.has(item.siteKey)) errors.push(`duplicate predecessor: ${relation.id}/${item.siteKey}`);
     predKeys.add(item.siteKey);
   }
@@ -62,4 +73,5 @@ if (errors.length) {
   console.error(errors.slice(0, 100).join("\n"));
   process.exit(1);
 }
-console.log(`[redevelopment] verified rows=${index.d.length} statuses=${Object.keys(status.sites || {}).length} relations=${(relationData.relations || []).length}`);
+if (warnings.length) console.warn(warnings.join("\n"));
+console.log(`[redevelopment] verified rows=${index.d.length} statuses=${Object.keys(status.sites || {}).length} relations=${(relationData.relations || []).length} warnings=${warnings.length}`);
