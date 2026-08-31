@@ -2767,9 +2767,11 @@ function fetchParcelGeometry(pnu){
 async function getParcelOverlay(x){
   const payload=typeof loadParcels==='function'?await loadParcels():null;
   const entry=payload&&payload.d&&payload.d[String(x.i)];
+  console.log('Parcel overlay lookup',x.i,!!entry);
   if(!entry||!entry.p||!entry.p.length) return null;
   const fetched=await Promise.all(entry.p.slice(0,8).map(fetchParcelGeometry));
   const collections=fetched.filter(Boolean);
+  console.log('Parcel geometry matched',x.i,collections.length);
   if(!collections.length) return null;
   const buildingPromise=matchApartmentBuildings(collections,entry.b||[]).catch(error=>{
     console.warn('Building overlay unavailable',error&&error.message||error);
