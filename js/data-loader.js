@@ -43,7 +43,9 @@
   window.loadParcels = async function(){
     if(PARCEL_DATA) return PARCEL_DATA;
     if(typeof PARCEL_PROMISE!=='undefined' && PARCEL_PROMISE) return PARCEL_PROMISE;
-    PARCEL_PROMISE=fetch(_base()+'data/parcels.json')
+    const version=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'';
+    const suffix=version?'?v='+encodeURIComponent(version):'';
+    PARCEL_PROMISE=fetch(_base()+'data/parcels.json'+suffix)
       .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
       .then(j=>{ PARCEL_DATA=j; console.log('Parcels loaded'); return j; })
       .catch(e=>{ PARCEL_PROMISE=null; console.warn('Parcel load failed',e); return null; });
