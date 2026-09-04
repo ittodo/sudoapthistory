@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>승인된 공동주택 단지</title>
+  <meta name="description" content="사용자가 승인한 아파트·연립·다세대 단지와 실거래 기록">
+  <link rel="stylesheet" href="css/kapt-v2.css?v=20260904">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>승인된 공동주택 단지</h1>
+      <p id="summary">데이터를 불러오는 중입니다.</p>
+    </div>
+    <a href="index.html" class="back-link">기존 화면</a>
+  </header>
+  <main>
+    <section class="filters" aria-label="단지 검색 조건">
+      <label class="search-label">단지 검색<input id="search" type="search" placeholder="단지명 또는 주소"></label>
+      <div class="segments" id="regions" role="group" aria-label="지역">
+        <button type="button" class="active" data-region="">전체</button>
+        <button type="button" data-region="서울">서울</button>
+        <button type="button" data-region="경기">경기</button>
+        <button type="button" data-region="인천">인천</button>
+      </div>
+      <label class="filter-select">주택 유형<select id="family"><option value="">전체</option><option value="apartment">아파트</option><option value="rowhouse">연립·다세대</option></select></label>
+      <label class="toggle"><input id="linkedOnly" type="checkbox"><span>거래 연결 단지만</span></label>
+    </section>
+    <div class="workspace">
+      <section class="list-pane" aria-label="K-APT 단지 목록">
+        <div class="list-head"><strong id="resultCount">0개</strong><select id="sort" aria-label="정렬"><option value="name">단지명순</option><option value="units">세대수순</option><option value="recent">최근 거래순</option></select></div>
+        <div id="complexList" class="complex-list"></div>
+      </section>
+      <section id="detail" class="detail-pane" aria-live="polite">
+        <div class="empty-state">목록에서 단지를 선택하세요.</div>
+      </section>
+    </div>
+  </main>
+  <script src="js/kapt-v2-app.js?v=20260904" type="module"></script>
+</body>
+</html>
