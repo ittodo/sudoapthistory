@@ -6,11 +6,12 @@ const price=value=>value==null?'없음':`${Number(value).toLocaleString('ko-KR',
 const date=value=>{const s=String(value||'');return /^\d{8}$/.test(s)?`${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`:'없음'};
 const address=value=>{try{const parsed=JSON.parse(value||'');return Array.isArray(parsed)?parsed.join(' · '):String(value||'')}catch{return String(value||'')}};
 const latest=item=>Math.max(0,...item.transactions.flatMap(group=>group.areas.map(row=>Number(row.latestDate)||0)));
+const rental=item=>item.publicationMode==='metadata_only'||item.tenure==='rental';
 
 async function loadData(){
   if('DecompressionStream' in window){
     try{
-      const response=await fetch('data/housing-v3/index.packed.bin?v=20260904');
+      const response=await fetch('data/housing-v3/index.packed.bin?v=20260905');
       if(response.ok){
         const packed=new Uint8Array(await response.arrayBuffer());
         const magic=new TextEncoder().encode('HSGV3Z1\0');
@@ -21,7 +22,7 @@ async function loadData(){
       }
     }catch(error){console.warn('공동주택 압축 데이터 fallback',error)}
   }
-  const response=await fetch('data/housing-v3/index.json?v=20260904');
+  const response=await fetch('data/housing-v3/index.json?v=20260905');
   if(!response.ok)throw new Error(`데이터 응답 ${response.status}`);
   return response.json();
 }
@@ -42,7 +43,7 @@ function filtered(){
 function renderList(){
   state.items=filtered();
   $('#resultCount').textContent=`${state.items.length.toLocaleString()}개`;
-  $('#complexList').innerHTML=state.items.map(item=>`<button type="button" class="complex-row ${item.id===state.selected?'active':''}" data-k="${esc(item.id)}"><span><span class="complex-name">${esc(item.name)}</span><span class="complex-address">${esc(address(item.roadAddress)||item.lotAddress||`${item.gu} ${item.dong}`)}</span></span><span class="complex-meta">${number(item.units)}세대<br><span class="badge family-${item.housingFamily}">${item.housingFamily==='rowhouse'?'연립·다세대':'아파트'}</span></span></button>`).join('')||'<div class="empty-state">조건에 맞는 단지가 없습니다.</div>';
+  $('#complexList').innerHTML=state.items.map(item=>`<button type="button" class="complex-row ${item.id===state.selected?'active':''}" data-k="${esc(item.id)}"><span><span class="complex-name">${esc(item.name)}</span><span class="complex-address">${esc(address(item.roadAddress)||item.lotAddress||`${item.gu} ${item.dong}`)}</span></span><span class="complex-meta">${number(item.units)}세대<br><span class="badge family-${item.housingFamily}">${item.housingFamily==='rowhouse'?'연립·다세대':'아파트'}</span>${rental(item)?'<br><span class="badge rental">임대</span>':''}</span></button>`).join('')||'<div class="empty-state">조건에 맞는 단지가 없습니다.</div>';
   $('#complexList').querySelectorAll('[data-k]').forEach(button=>button.addEventListener('click',()=>select(button.dataset.k)));
 }
 
@@ -56,7 +57,8 @@ function select(code){
 function renderDetail(item){
   if(!item){$('#detail').innerHTML='<div class="empty-state">목록에서 단지를 선택하세요.</div>';return}
   const groups=item.transactions.map(group=>`<div class="trade-group"><div class="trade-head"><div><strong>${esc(group.name)}</strong><br><small>${esc(group.key)}</small></div><small>${group.areas.length}개 면적</small></div><table class="area-table"><thead><tr><th>전용면적</th><th>최근가</th><th>거래량</th><th>최근 거래</th></tr></thead><tbody>${group.areas.map(row=>`<tr><td>${number(row.area)}㎡</td><td>${price(row.latestPrice)}</td><td>${number(row.volume)}건</td><td>${date(row.latestDate)}</td></tr>`).join('')}</tbody></table></div>`).join('');
-  $('#detail').innerHTML=`<div class="detail-title"><div><h2>${esc(item.name)}</h2><div class="detail-address">${esc(item.lotAddress||'지번 주소 없음')}<br>${esc(address(item.roadAddress)||'도로명 주소 없음')}</div></div><span class="badge family-${item.housingFamily}">${item.housingFamily==='rowhouse'?'연립·다세대':'아파트'}</span></div><div class="facts"><div class="fact"><span>세대수</span><strong>${number(item.units)}</strong></div><div class="fact"><span>필지</span><strong>${number(item.parcels.length)}</strong></div><div class="fact"><span>건축물대장</span><strong>${number(item.registry.length)}</strong></div><div class="fact"><span>공개 단지 ID</span><strong>${esc(item.id)}</strong></div></div><h3>연결된 거래기록</h3>${groups||'<div class="notice">승인된 거래기록이 없습니다.</div>'}`;
+  const tradeSection=rental(item)?'<div class="rental-notice"><strong>임대 단지</strong><span>임대 단지로 확인되어 매매 실거래 통계를 제공하지 않습니다.</span></div>':`<h3>연결된 거래기록</h3>${groups||'<div class="notice">승인된 거래기록이 없습니다.</div>'}`;
+  $('#detail').innerHTML=`<div class="detail-title"><div><h2>${esc(item.name)}</h2><div class="detail-address">${esc(item.lotAddress||'지번 주소 없음')}<br>${esc(address(item.roadAddress)||'도로명 주소 없음')}</div></div><div class="detail-badges"><span class="badge family-${item.housingFamily}">${item.housingFamily==='rowhouse'?'연립·다세대':'아파트'}</span>${rental(item)?'<span class="badge rental">임대</span>':''}</div></div><div class="facts"><div class="fact"><span>세대수</span><strong>${number(item.units)}</strong></div><div class="fact"><span>필지</span><strong>${number(item.parcels.length)}</strong></div><div class="fact"><span>건축물대장</span><strong>${number(item.registry.length)}</strong></div><div class="fact"><span>공개 단지 ID</span><strong>${esc(item.id)}</strong></div></div>${tradeSection}`;
 }
 
 function bind(){
