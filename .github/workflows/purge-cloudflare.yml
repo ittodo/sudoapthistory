@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Wait for Pages deployment
         if: github.event_name == 'push'
@@ -78,6 +78,8 @@ jobs:
 
       - name: Purge Cloudflare cache
         env:
+          PURGE_BASE_SHA: ${{ github.event.before }}
+          PURGE_HEAD_SHA: ${{ github.sha }}
           CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: |

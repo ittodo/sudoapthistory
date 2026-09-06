@@ -25,6 +25,7 @@ const routeDeps = [
       "data/volumes.json",
       "data/details.json",
       "data/geo.json",
+      "data/parcels.json",
       "data/polygen/",
     ],
   },
@@ -46,6 +47,7 @@ const routeDeps = [
       "data/volumes.json",
       "data/details.json",
       "data/geo.json",
+      "data/parcels.json",
       "data/polygen/",
     ],
   },
@@ -112,6 +114,16 @@ function git(args) {
 }
 
 function changedFromGit() {
+  const before = process.env.PURGE_BASE_SHA;
+  const after = process.env.PURGE_HEAD_SHA || "HEAD";
+  if (before && !/^0+$/.test(before)) {
+    // A multi-commit push must invalidate every changed public file, not only HEAD^.
+    git(["rev-parse", "--verify", `${before}^{commit}`]);
+    return git(["diff", "--name-only", before, after]).split(/\r?\n/).filter(Boolean);
+  }
+  if (before && /^0+$/.test(before)) {
+    return git(["ls-tree", "-r", "--name-only", after]).split(/\r?\n/).filter(Boolean);
+  }
   try {
     git(["rev-parse", "--verify", "HEAD^"]);
     return git(["diff", "--name-only", "HEAD^", "HEAD"]).split(/\r?\n/).filter(Boolean);
@@ -202,6 +214,9 @@ export function buildPurgePolicy(inputChanged) {
     }
     if (changed.includes("market/index.html") || changed.includes("data/market.json")) {
       urls.add(`${toUrl("data/market.json")}?v=${encodeURIComponent(version)}`);
+    }
+    if (changed.includes("data/parcels.json")) {
+      urls.add(`${toUrl("data/parcels.json")}?v=${encodeURIComponent(version)}`);
     }
   }
 
