@@ -47,7 +47,14 @@
     const suffix=version?'?v='+encodeURIComponent(version):'';
     PARCEL_PROMISE=fetch(_base()+'data/parcels.json'+suffix)
       .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-      .then(j=>{ PARCEL_DATA=j; console.log('Parcels loaded'); return j; })
+      .then(j=>{
+        const indexRows=Array.isArray(D)?D.length:null;
+        const parcelRows=Number(j&&j.meta&&j.meta.indexRows);
+        if(indexRows!==null&&parcelRows!==indexRows){
+          throw new Error('index row mismatch: '+parcelRows+' != '+indexRows);
+        }
+        PARCEL_DATA=j; console.log('Parcels loaded'); return j;
+      })
       .catch(e=>{ PARCEL_PROMISE=null; console.warn('Parcel load failed',e); return null; });
     return PARCEL_PROMISE;
   };
