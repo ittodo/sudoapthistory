@@ -10,6 +10,12 @@ spec.loader.exec_module(builder)
 
 
 class MapDataTests(unittest.TestCase):
+    def test_main_parcel_area_with_hole(self):
+        outer = [[0,0],[4,0],[4,4],[0,4],[0,0]]
+        hole = [[1,1],[2,1],[2,2],[1,2],[1,1]]
+        self.assertEqual(builder.geometry_area({'type':'Polygon','coordinates':[outer,hole]}),15)
+        self.assertEqual(builder.geometry_area({'type':'MultiPolygon','coordinates':[[outer],[hole]]}),17)
+
     def test_cancelled_and_same_day(self):
         rows = {'2026': [[8, 1, 120000, 4], [8, 2, 150000, 5, 2], [8, 1, 100000, 6, 1]]}
         self.assertEqual(builder.latest(rows), [20260801, 120000, 4, 0, 2])

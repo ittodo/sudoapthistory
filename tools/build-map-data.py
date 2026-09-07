@@ -52,6 +52,14 @@ def collection(raw):
     return raw.get('response', {}).get('result', {}).get('featureCollection', {})
 
 
+def geometry_area(geometry):
+    def ring_area(ring):
+        return abs(sum(p[0] * ring[(i+1) % len(ring)][1] - ring[(i+1) % len(ring)][0] * p[1]
+                       for i, p in enumerate(ring)) / 2) if ring else 0
+    polygons = geometry['coordinates'] if geometry['type'] == 'MultiPolygon' else [geometry['coordinates']]
+    return sum(max(0, ring_area(poly[0]) - sum(ring_area(r) for r in poly[1:])) for poly in polygons if poly)
+
+
 def parcel_centers(database, wanted):
     if not database or not Path(database).exists():
         return {}, {}
@@ -66,7 +74,8 @@ def parcel_centers(database, wanted):
                 lon = (min(p[0] for p in points) + max(p[0] for p in points)) / 2
                 lat = (min(p[1] for p in points) + max(p[1] for p in points)) / 2
                 if 33 < lat < 39.5 and 124 < lon < 132:
-                    result[pnu] = [round(lat, 6), round(lon, 6)]
+                    result[pnu] = {'coord': [round(lat, 6), round(lon, 6)],
+                                   'area': sum(geometry_area(f['geometry']) for f in fc['features'] if f.get('geometry'))}
                     geometries[pnu] = {'type': 'FeatureCollection', 'features': [
                         {'type': 'Feature', 'properties': {}, 'geometry': f['geometry']}
                         for f in fc['features'] if f.get('geometry')]}
@@ -127,8 +136,8 @@ def build(site, database=None, coordinate_cache=None):
             available = [centers[p] for p in pnus if p in centers]
             coord, coord_source = None, None
             if available:
-                # Anchor on an actual known parcel, never the midpoint between distant parcels.
-                coord, coord_source = available[0], 'parcel'
+                # Prefer the main land parcel over tiny detached subsidiary parcels.
+                coord, coord_source = max(available, key=lambda p: p['area'])['coord'], 'parcel'
             exact_address = address(rep)
             fallback = verified.get(exact_address)
             if not coord and fallback and fallback.get('address') == exact_address:

@@ -8,7 +8,7 @@ row order. Prices in transaction tuples are ten-thousand KRW; monthly chart
 values are hundred-million KRW. Direct trades remain visible with a badge.
 
 The index includes approved/published PNU membership without a member limit.
-Coordinates come from cached parcel geometry or an exact full-lot-address lookup.
+Coordinates come from the largest cached parcel geometry or an exact full-lot-address lookup.
 Legacy name-only/district coordinates are intentionally not used. Missing points
 remain searchable. Lifecycle exclusions match the screener, including partial
 and unknown predecessor scopes.
