@@ -6,7 +6,7 @@
   const filterKeys = ['aL','aH','pL','pH','uL','uH','bL','bH'];
   const regions = ['경기','서울','인천'];
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const money = value => value == null ? '거래 없음' : (value / 10000).toLocaleString('ko-KR',{maximumFractionDigits:2})+'억';
+  const money = value => value == null ? '거래 없음' : (value / 10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
   let map, markers, boundary, chart, payload, client, byId, filtered=[], matches=new Map();
   let selected=null, selectedArea=null, filters={}, restoring=false, detailToken=0, boundaryToken=0;
   let transactionRows=[], visibleTrades=30, searchTimer, toastTimer, renderFrame, tileFailed=false;
