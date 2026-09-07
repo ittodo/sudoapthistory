@@ -29,7 +29,7 @@ let TX_CACHE={};
 let DI=null;
 let curDetailIdx=null;
 let Y=[2006,2007,2008,2009,2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024,2025,2026]; // overwritten by meta.years
-const VWORLD_KEY='460574E9-772A-35FE-B547-1D551354ACF6';
+const VWORLD_KEY=window.NodoMapServices.key;
 let LMAP=null, LMARKER=null, GEO_DATA=null, PARCEL_DATA=null, PARCEL_PROMISE=null;
 const GEO_GU={"가평군":[37.8776,127.6018],"고양시 덕양구":[37.6101,126.8547],"고양시 일산동구":[37.657,126.7774],"고양시 일산서구":[37.7024,126.7282],"과천시":[37.418,126.9872],"광명시":[37.4238,126.87],"광주시":[37.4125,127.2641],"구리시":[37.6411,127.1312],"군포시":[37.3766,126.9451],"김포시":[37.6333,126.6751],"남양주시":[37.6387,127.2267],"동두천시":[37.9214,127.1156],"부천시 소사구":[37.4677,126.8061],"부천시 오정구":[37.5385,126.8211],"부천시 원미구":[37.5163,126.7799],"성남시 분당구":[37.3397,127.1295],"성남시 수정구":[37.4375,127.1063],"성남시 중원구":[37.4322,127.1934],"수원시 권선구":[37.2561,126.9841],"수원시 영통구":[37.2478,127.0532],"수원시 장안구":[37.3395,127.0106],"수원시 팔달구":[37.2796,127.0071],"시흥시":[37.3701,126.7595],"안산시 단원구":[37.3357,126.8368],"안산시 상록구":[37.3201,126.909],"안성시":[37.0213,127.2855],"안양시 동안구":[37.4142,126.9721],"안양시 만안구":[37.4078,126.9091],"양주시":[37.8382,127.0714],"양평군":[37.4752,127.4928],"여주시":[37.1944,127.5553],"연천군":[38.0244,127.0529],"오산시":[37.148,127.0486],"용인시 기흥구":[37.2195,127.1488],"용인시 수지구":[37.3499,127.0767],"용인시 처인구":[37.2477,127.2415],"의왕시":[37.3366,126.972],"의정부시":[37.7478,127.0521],"이천시":[37.2917,127.4761],"파주시":[37.7954,126.7573],"평택시":[37.0414,127.0885],"포천시":[37.8307,127.1828],"하남시":[37.5251,127.1693],"화성시 동탄구":[37.1843,127.0776],"화성시 만세구":[37.2151,126.8158],"화성시 병점구":[37.2211,127.0518],"화성시 효행구":[37.2308,126.9929],"강남구":[37.4829,127.0752],"강동구":[37.5797,127.1763],"강북구":[37.6189,127.0364],"강서구":[37.5649,126.8575],"관악구":[37.4753,126.9715],"광진구":[37.5569,127.1129],"구로구":[37.4861,126.8816],"금천구":[37.4823,126.8861],"노원구":[37.6202,127.1041],"도봉구":[37.6923,127.0478],"동대문구":[37.5764,127.0667],"동작구":[37.5161,126.9459],"마포구":[37.5513,126.9621],"서대문구":[37.5845,126.923],"서초구":[37.4616,127.0675],"성동구":[37.5577,127.0231],"성북구":[37.6067,127.0274],"송파구":[37.5031,127.1231],"양천구":[37.5473,126.8806],"영등포구":[37.5426,126.9019],"용산구":[37.5498,126.9728],"은평구":[37.6263,126.9201],"종로구":[37.5861,126.9854],"중구":[37.5654,127.0034],"중랑구":[37.6061,127.1144]};
 
@@ -2070,6 +2070,18 @@ function sd(i){
   saveHash();
 }
 
+function updateDetailMapLink(x){
+  const link=document.getElementById('detailMapLink');
+  if(!link)return;
+  const source=x.as?x:DI[x.i];
+  link.hidden=!source?.as;
+  if(source?.as){
+    const params=new URLSearchParams({a:source.as});
+    if(!x._merged)params.set('ar',source.a);
+    link.href=(window.APT_BASE||'')+'map/#'+params;
+  }
+}
+
 function showDetail(x){
   curDetailIdx=x.i;
   const dp=document.getElementById('dp');
@@ -2079,6 +2091,7 @@ function showDetail(x){
   const isMerged=x._merged&&x.si&&x.si.length>1;
 
   document.getElementById('dn').textContent=x.n;
+  updateDetailMapLink(x);
   const unitStr=x.u?` | ${x.u.toLocaleString()}세대${x.up?' (부분 대장)':''}`:'';
   const farStr=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
@@ -2179,6 +2192,7 @@ function switchAreaFromMerged(dataIdx){
   // 메트릭/차트는 개별 평형 것으로 표시
   const fm=(v,s='%')=>s==='%'?fmtSignedPct(v):fmtNum(v)+s;
   document.getElementById('dn').textContent=x.n;
+  updateDetailMapLink(x);
   const uStr2=x.u?` | ${x.u.toLocaleString()}세대${x.up?' (부분 대장)':''}`:'';
   const farStr2=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr2=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
@@ -2865,29 +2879,17 @@ async function matchApartmentBuildings(collections,unitRows){
 }
 
 function fetchParcelGeometry(pnu){
-  if(PARCEL_GEOMETRY_CACHE[pnu]) return PARCEL_GEOMETRY_CACHE[pnu];
-  const params=new URLSearchParams({
-    service:'data',version:'2.0',request:'GetFeature',format:'json',size:'10',page:'1',
-    geometry:'true',attribute:'false',crs:'EPSG:4326',data:'LP_PA_CBND_BUBUN',
-    key:VWORLD_KEY,domain:VWORLD_DATA_DOMAIN,attrfilter:'pnu:=:'+pnu
+  return window.NodoMapServices.parcel(pnu).catch(error=>{
+    console.warn('Parcel geometry unavailable',pnu,error.message);
+    return null;
   });
-  PARCEL_GEOMETRY_CACHE[pnu]=vworldJsonp('https://api.vworld.kr/req/data?'+params.toString())
-    .then(data=>{
-      const response=data&&data.response;
-      const fc=response&&response.status==='OK'&&response.result&&response.result.featureCollection;
-      if(!fc||!fc.features||!fc.features.length){
-        console.warn('Parcel geometry unavailable',pnu,response&&response.status,response&&response.error&&response.error.code);
-      }
-      return fc&&fc.features&&fc.features.length?fc:null;
-    });
-  return PARCEL_GEOMETRY_CACHE[pnu];
 }
 
 async function getParcelOverlay(x){
   const payload=typeof loadParcels==='function'?await loadParcels():null;
   const entry=payload&&payload.d&&payload.d[String(x.i)];
   if(!entry||!entry.p||!entry.p.length) return null;
-  const fetched=await Promise.all(entry.p.slice(0,8).map(fetchParcelGeometry));
+  const fetched=await Promise.all(entry.p.map(fetchParcelGeometry));
   const collections=fetched.filter(Boolean);
   if(!collections.length) return null;
   const buildingPromise=matchApartmentBuildings(collections,entry.b||[]).catch(error=>{
@@ -2895,7 +2897,7 @@ async function getParcelOverlay(x){
     return [];
   });
   return {
-    pnus:entry.p.slice(0,8),
+    pnus:entry.p.slice(),
     collections,
     buildings:[],
     buildingPromise,

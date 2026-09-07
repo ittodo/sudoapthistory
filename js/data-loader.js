@@ -5,6 +5,23 @@
 (function(){
   function _base(){ return (typeof window!=='undefined' && window.APT_BASE) || ''; }
 
+  // Content-verified, retryable client for pages that load detail files on demand.
+  window.createVerifiedDataClient = function(base, sources){
+    const pending=new Map();
+    return function(path){
+      const expected=sources[path];
+      if(!expected) return Promise.reject(new Error('연결된 상세 데이터가 없습니다.'));
+      if(!pending.has(path)) pending.set(path, fetch(base+path).then(async r=>{
+        if(!r.ok) throw new Error('데이터를 불러오지 못했습니다. 다시 시도해 주세요.');
+        const bytes=await r.arrayBuffer();
+        const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
+        if(hash!==expected) throw new Error('데이터가 업데이트되었습니다. 새로고침해 주세요.');
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }).catch(error=>{pending.delete(path);throw error;}));
+      return pending.get(path);
+    };
+  };
+
   window.loadMonthly = async function(gu){
     if(MONTHLY_CACHE[gu]) return MONTHLY_CACHE[gu];
     try{

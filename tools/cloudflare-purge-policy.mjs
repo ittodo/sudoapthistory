@@ -8,6 +8,12 @@ const baseUrl = process.env.NODO_BASE_URL || DEFAULT_BASE_URL;
 
 const routeDeps = [
   {
+    routes: ["/map/", "/map/index.html"],
+    patterns: ["map/index.html", "css/map.css", "js/map-app.js", "js/map-model.js",
+      "js/map-services.js", "js/data-loader.js", "js/calc-utils.js", "data/map/",
+      "data/tx/", "data/monthly/", "data/parcels.json"],
+  },
+  {
     routes: ["/", "/index.html"],
     patterns: [
       "index.html",

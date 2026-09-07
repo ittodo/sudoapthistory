@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const fs = require('node:fs');
+const {webcrypto} = require('node:crypto');
+const model = require('../js/map-model.js');
+const area=(i,a,date,price,flags=0)=>({i,a,latest:[date,price,10,flags,1]});
+const complex={id:'A',r:1,tu:500,b:2008,areas:[area(0,59,20260101,90000),area(1,84,20260201,150000)]};
+assert.equal(model.match(complex,{}).area.a,84,'latest trade selects area');
+assert.equal(model.match(complex,{aH:60,pH:10}).area.a,59,'price follows eligible area');
+assert.equal(model.match(complex,{pH:10}),null,'do not choose an older cheaper area to pass price filter');
+assert.equal(model.match({...complex,tu:null},{uL:1}),null);
+assert.equal(model.match({...complex,b:null},{bH:2020}),null);
+assert.equal(model.match(complex,{r:2}),null);
+assert.equal(model.latestArea([area(1,84,20260201,100000),area(0,59,20260201,95000)]).a,59);
+assert.equal(model.match({...complex,areas:[{i:0,a:59,latest:null}]},{}).area,null);
+assert.equal(model.match({...complex,areas:[{i:0,a:59,latest:null}]},{pH:100}),null);
+assert.equal(model.trades({'2026':[[1,2,5000,3,2,'26.01.03'],[2,3,6000,4,1]]})[0].flags,1);
+
+(async()=>{
+  const raw=JSON.stringify({entries:{'0':{}}});
+  const hash=Buffer.from(await webcrypto.subtle.digest('SHA-256',Buffer.from(raw))).toString('hex');
+  let count=0, fail=true;
+  const scope={window:{},TextDecoder,Uint8Array,crypto:webcrypto,fetch:async()=>{count++;if(fail)throw Error('offline');return {ok:true,arrayBuffer:async()=>Buffer.from(raw)};}};
+  vm.createContext(scope);vm.runInContext(fs.readFileSync(require.resolve('../js/data-loader.js'),'utf8'),scope);
+  const client=scope.window.createVerifiedDataClient('/',{'data/tx/A.json':hash});
+  await assert.rejects(client('data/tx/A.json'),/offline/);
+  fail=false;
+  const [a,b]=await Promise.all([client('data/tx/A.json'),client('data/tx/A.json')]);
+  assert.equal(a,b);assert.equal(count,2,'coalesce requests and allow retry');
+  const stale=scope.window.createVerifiedDataClient('/',{'data/tx/A.json':'0'.repeat(64)});
+  await assert.rejects(stale('data/tx/A.json'),/업데이트/);
+  await assert.rejects(client('unlisted'),/없습니다/);
+  console.log('Map selection, filter, tie, unavailable data, integrity and retry tests passed');
+})().catch(e=>{console.error(e);process.exitCode=1;});

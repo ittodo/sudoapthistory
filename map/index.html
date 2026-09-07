@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>아파트 지도 — 노도스트림</title>
+<meta name="description" content="서울·경기·인천 아파트를 지도에서 찾아보세요. 최근 실거래, 평형별 가격과 거래내역을 지도 옆에서 확인합니다.">
+<link rel="canonical" href="https://nodostream.com/map/">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../css/map.css?v=20260908-map1">
+<script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script defer src="../js/calc-utils.js?v=20260816-gap-recovery"></script>
+<script defer src="../js/data-loader.js?v=20260908-map1"></script>
+<script defer src="../js/map-model.js?v=20260908-map1"></script>
+<script defer src="../js/map-services.js?v=20260908-map1"></script>
+<script defer src="../js/map-app.js?v=20260908-map1"></script>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="../">nodostream<span>아파트 지도</span></a>
+  <nav aria-label="주 메뉴"><a href="../">스크리너</a><a class="active" aria-current="page" href="./">지도</a><a href="../compare/">지역 비교</a><a href="../market/">시장 동향</a><a href="../stats/">가격대 통계</a><a href="../trades/">실거래가</a></nav>
+</header>
+<section class="toolbar" aria-label="지도 검색과 필터">
+  <div class="search-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="search" type="search" placeholder="단지명, 지역명으로 찾기" aria-label="단지·지역 검색" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="searchResults"><div id="searchResults" role="listbox" hidden></div></div>
+  <select id="region" aria-label="지역"><option value="">수도권 전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select>
+  <button id="filterToggle" aria-expanded="false" aria-controls="filters">필터 <span id="filterCount"></span></button>
+  <button id="resetFilters">초기화</button>
+  <div class="legend"><span></span>최근 실거래 <small>매매 · 전용면적</small></div>
+</section>
+<form id="filters" hidden>
+  <fieldset><legend>전용면적 <span id="areaHint">㎡ · 평 환산</span></legend><input name="aL" type="number" min="0" placeholder="최소 ㎡" aria-label="최소 전용면적"><span>~</span><input name="aH" type="number" min="0" placeholder="최대 ㎡" aria-label="최대 전용면적"></fieldset>
+  <fieldset><legend>최근 실거래 (억)</legend><input name="pL" type="number" min="0" step="0.1" placeholder="최소" aria-label="최소 가격"><span>~</span><input name="pH" type="number" min="0" step="0.1" placeholder="최대" aria-label="최대 가격"></fieldset>
+  <fieldset><legend>단지 전체 세대수</legend><input name="uL" type="number" min="0" placeholder="최소" aria-label="최소 세대수"><span>~</span><input name="uH" type="number" min="0" placeholder="최대" aria-label="최대 세대수"></fieldset>
+  <fieldset><legend>준공연도</legend><input name="bL" type="number" min="1900" max="2100" placeholder="시작" aria-label="최소 준공연도"><span>~</span><input name="bH" type="number" min="1900" max="2100" placeholder="끝" aria-label="최대 준공연도"></fieldset>
+  <button type="submit" class="primary">적용</button><p id="filterError" role="alert"></p>
+</form>
+<main id="workspace">
+  <div id="map" aria-label="아파트 탐색 지도"></div>
+  <div class="map-status" id="mapStatus" role="status">지도를 준비하고 있습니다…</div>
+  <div class="map-actions"><button id="homeView" title="수도권 전체 보기" aria-label="수도권 전체 보기">전체</button><button id="share">공유</button></div>
+  <aside id="detail" class="detail" aria-label="선택 아파트 상세" hidden data-size="mid">
+    <div class="sheet-controls"><button data-size="collapsed" aria-label="상세 접기">접기</button><button data-size="mid" aria-label="상세 중간 높이">중간</button><button data-size="full" aria-label="상세 전체 높이">펼치기</button></div>
+    <div id="sheetHandle" class="sheet-handle" aria-hidden="true"><span></span></div>
+    <div class="detail-top"><div><p class="eyebrow">선택한 아파트</p><h1 id="detailName" tabindex="-1"></h1></div><button id="closeDetail" class="close" aria-label="상세 닫기">×</button></div>
+    <div class="detail-scroll">
+      <p id="detailAddress" class="muted"></p><div id="facts" class="facts"></div>
+      <p id="locationInfo" class="notice"></p>
+      <div class="section-label">평형 선택 <small>전용면적</small></div><div id="areas" class="areas"></div>
+      <section class="price-card"><div class="eyebrow">최근 실거래</div><div id="latestPrice" class="price"></div><div id="latestMeta" class="muted"></div><div id="latestNotice" class="notice"></div></section>
+      <p id="boundaryInfo" class="boundary-status"></p>
+      <section><h2>월별 가격 추이 <small>최근 5년 · 월평균</small></h2><div class="chart-wrap"><canvas id="priceChart" aria-label="월별 평균 실거래가 차트" role="img"></canvas><p id="chartStatus" role="status"></p></div></section>
+      <section><h2>실거래 내역 <small>해제 거래는 별도 표시</small></h2><div id="tradeStatus" role="status"></div><div id="tradeList"></div><button id="moreTrades" hidden>이전 거래 더 보기</button></section>
+      <a id="screenLink" class="detail-link" href="../">스크리너에서 자세히 보기 ↗</a>
+      <p id="dataStamp" class="footnote"></p>
+    </div>
+  </aside>
+  <div id="startup" class="startup"><div class="spinner"></div><h1>아파트를 지도에서 만나보세요</h1><p id="startupMessage">지도에 표시할 최근 거래를 불러오고 있습니다.</p><button id="retryStartup" hidden>다시 시도</button></div>
+</main>
+<div id="toast" role="status" hidden></div>
+</body></html>

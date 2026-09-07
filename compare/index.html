@@ -57,6 +57,7 @@
     </div>
     <div class="flex gap-2 items-center">
       <a href="../" class="pg-btn" style="text-decoration:none;color:#94a3b8;">아파트 스크리너</a>
+      <a href="../map/" class="pg-btn tab-btn" style="text-decoration:none;color:#93c5fd;">지도</a>
       <a href="../market/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">시장 동향</a>
       <a href="../stats/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">가격대 통계</a>
       <a href="../div/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">배당·소각</a>
@@ -115,6 +116,7 @@
           <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">&#10005;</button>
         </div>
         <div id="lifecycleInfo" class="lifecycle-info" style="display:none"></div>
+        <a id="detailMapLink" class="pg-btn" style="display:inline-block;margin-bottom:10px;color:#93c5fd" href="../map/">지도에서 보기 ↗</a>
         <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
         <div id="chartTabWrap" style="display:none;margin-bottom:4px">
@@ -184,7 +186,8 @@
   </div>
 </div>
 
-<script src="../js/main-app.js?v=20260903-vworld-key-v2"></script>
+<script src="../js/map-services.js?v=20260908-map1"></script>
+<script src="../js/main-app.js?v=20260908-map1"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="../js/supabase-init.js"></script>
 <script src="../js/comments.js"></script>
