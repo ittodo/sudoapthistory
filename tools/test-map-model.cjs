@@ -15,6 +15,11 @@ assert.equal(model.latestArea([area(1,84,20260201,100000),area(0,59,20260201,950
 assert.equal(model.match({...complex,areas:[{i:0,a:59,latest:null}]},{}).area,null);
 assert.equal(model.match({...complex,areas:[{i:0,a:59,latest:null}]},{pH:100}),null);
 assert.equal(model.trades({'2026':[[1,2,5000,3,2,'26.01.03'],[2,3,6000,4,1]]})[0].flags,1);
+const other={...complex,id:'B',tu:2000,areas:[area(2,59,20260201,50000)]};
+assert.deepEqual(model.clusterSummary([model.match(complex,{}),model.match(other,{})]),{count:2,pricedCount:2,average:100000});
+assert.equal(model.clusterSummary([model.match(complex,{aH:60}),model.match(other,{})]).average,70000,'area filter changes cluster average');
+assert.deepEqual(model.clusterSummary([{area:null},{area:{latest:[0,0]}}]),{count:2,pricedCount:0,average:null});
+assert.deepEqual(model.clusterSummary([model.match(other,{}),{area:null}]),{count:2,pricedCount:1,average:50000});
 
 (async()=>{
   const raw=JSON.stringify({entries:{'0':{}}});

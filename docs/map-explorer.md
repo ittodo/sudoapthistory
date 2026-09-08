@@ -7,6 +7,11 @@ cheaper area to make a complex pass. Same-day ties use area ascending and source
 row order. Prices in transaction tuples are ten-thousand KRW; monthly chart
 values are hundred-million KRW. Direct trades remain visible with a badge.
 
+Cluster bubbles show the complex count and the arithmetic mean of each member's
+eligible latest-trade price, rounded to one decimal in hundred-million KRW.
+Each complex contributes once; households and transaction counts do not weight
+the mean. Members without a valid price remain in the count but not the mean.
+
 The index includes approved/published PNU membership without a member limit.
 Coordinates come from the largest cached parcel geometry or an exact full-lot-address lookup.
 Legacy name-only/district coordinates are intentionally not used. Missing points

@@ -21,7 +21,12 @@
       date:Number(year)*10000+t[0]*100+t[1], price:t[2], floor:t[3], flags:t[4] || 0, cancelled:t[5] || '', order
     }))).sort((a,b) => b.date-a.date || a.order-b.order);
   }
-  const api = {latestArea, range, match, trades};
+  function clusterSummary(matches) {
+    const prices=matches.map(m=>m.area?.latest?.[1]).filter(p=>Number.isFinite(p)&&p>0);
+    return {count:matches.length, pricedCount:prices.length,
+      average:prices.length?prices.reduce((sum,p)=>sum+p,0)/prices.length:null};
+  }
+  const api = {latestArea, range, match, trades, clusterSummary};
   root.NodoMapModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

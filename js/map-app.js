@@ -61,7 +61,7 @@
     markers.clearLayers();
     const bounds=map.getBounds().pad(.08), zoom=map.getZoom(), buckets=new Map();
     let visible=0, located=0;
-    const cellW=zoom<15?95:100, cellH=zoom<15?85:58;
+    const cellW=zoom<15?120:110, cellH=zoom<15?85:64;
     for(const match of filtered) {
       const c=match.complex;
       if(!c.coord) continue;
@@ -78,7 +78,13 @@
     for(const group of buckets.values()) {
       if(group.length===1 && zoom>=14) {addApartment(group[0]);continue;}
       const center=group.reduce((v,m)=>[v[0]+m.complex.coord[0]/group.length,v[1]+m.complex.coord[1]/group.length],[0,0]);
-      const marker=L.marker(center,{icon:L.divIcon({className:'apt-marker',html:`<div class="cluster-label">${group.length.toLocaleString()}</div>`,iconSize:[46,44],iconAnchor:[23,22]}),title:`아파트 ${group.length}개, 확대 또는 목록 보기`}).addTo(markers);
+      const summary=model.clusterSummary(group);
+      const average=summary.average==null?'가격 없음':`평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
+      const title=`아파트 ${summary.count.toLocaleString()}개 · ${average} · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 최신 실거래 산술평균 · 면적 필터 반영 · 클릭하여 확대 또는 목록 보기`;
+      const point=map.project(group[0].complex.coord,zoom);
+      // Wide-area labels use the center of their grid cell to avoid covering each other.
+      const labelCenter=zoom<14?map.unproject([(Math.floor(point.x/cellW)+.5)*cellW,(Math.floor(point.y/cellH)+.5)*cellH],zoom):center;
+      const marker=L.marker(labelCenter,{icon:L.divIcon({className:'apt-marker',html:`<div class="cluster-label"><strong>${average}</strong><small>${summary.count.toLocaleString()}개 단지</small></div>`,iconSize:[96,52],iconAnchor:[48,26]}),title}).addTo(markers);
       marker.on('click',()=>{
         const same=group.every(m=>Math.abs(m.complex.coord[0]-center[0])<.00002&&Math.abs(m.complex.coord[1]-center[1])<.00002);
         if(zoom>=19 || same && zoom>=17) showOverlap(group,center);
