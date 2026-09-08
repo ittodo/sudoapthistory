@@ -26,7 +26,45 @@
     return {count:matches.length, pricedCount:prices.length,
       average:prices.length?prices.reduce((sum,p)=>sum+p,0)/prices.length:null};
   }
-  const api = {latestArea, range, match, trades, clusterSummary};
+  function regionLevel(zoom) { return zoom < 10 ? 'sido' : zoom < 13 ? 'sigungu' : zoom < 16 ? 'dong' : 'apartment'; }
+  function regionGroups(matches) {
+    const groups = new Map();
+    for (const match of matches) for (const id of match.complex.admin || []) {
+      if (!groups.has(id)) groups.set(id, []);
+      groups.get(id).push(match);
+    }
+    return groups;
+  }
+  // A click is a short stationary primary-pointer gesture. Dragging out and back is still a drag.
+  function createTapGuard() {
+    const pointers = new Set();
+    let current = null, ready = null;
+    function cancel() { current = null; ready = null; }
+    return {
+      begin(id, x, y, time, target, button = 0) {
+        pointers.add(id); ready = null;
+        if (pointers.size !== 1 || button !== 0) { current = null; return; }
+        current = {id, x, y, time, target, moved: false};
+      },
+      move(id, x, y) {
+        if (current?.id === id && Math.hypot(x-current.x, y-current.y) > 8) current.moved = true;
+      },
+      end(id, x, y, time) {
+        this.move(id, x, y);
+        const c = current;
+        pointers.delete(id);
+        ready = c?.id === id && !pointers.size && !c.moved && time-c.time >= 0 && time-c.time <= 350 ? {...c, ended: time} : null;
+        current = null;
+      },
+      cancel(id) { if (id != null) pointers.delete(id); cancel(); },
+      reset() { pointers.clear(); cancel(); },
+      accept(target, time) {
+        const c = ready; ready = null;
+        return !!c && c.target === target && time-c.ended >= 0 && time-c.ended < 700;
+      }
+    };
+  }
+  const api = {latestArea, range, match, trades, clusterSummary, regionLevel, regionGroups, createTapGuard};
   root.NodoMapModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

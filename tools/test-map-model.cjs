@@ -20,6 +20,28 @@ assert.deepEqual(model.clusterSummary([model.match(complex,{}),model.match(other
 assert.equal(model.clusterSummary([model.match(complex,{aH:60}),model.match(other,{})]).average,70000,'area filter changes cluster average');
 assert.deepEqual(model.clusterSummary([{area:null},{area:{latest:[0,0]}}]),{count:2,pricedCount:0,average:null});
 assert.deepEqual(model.clusterSummary([model.match(other,{}),{area:null}]),{count:2,pricedCount:1,average:50000});
+assert.deepEqual([7,9,10,12,13,15,16,19].map(model.regionLevel),['sido','sido','sigungu','sigungu','dong','dong','apartment','apartment']);
+const adminMatches=[model.match({...complex,admin:['11','11220','11220510']},{}),model.match({...other,admin:['11','11220','11220520']},{})];
+const groups=model.regionGroups(adminMatches);
+assert.equal(model.clusterSummary(groups.get('11220')).average,100000);
+assert.equal(groups.get('11220510').length,1,'different administrative dong never merge');
+assert.equal(groups.get('11').length,2,'each aptSeq contributes once at each level');
+const tap=model.createTapGuard();
+function gesture(duration,dx=0) {tap.begin(1,10,10,100,'dong');tap.end(1,10+dx,10,100+duration);return tap.accept('dong',100+duration);}
+assert.equal(gesture(350,8),true);
+assert.equal(gesture(351),false,'long stationary press is not region selection');
+assert.equal(gesture(50,9),false,'fast drag is not region selection');
+tap.begin(1,10,10,100,'dong');tap.move(1,30,10);tap.end(1,10,10,200);
+assert.equal(tap.accept('dong',200),false,'drag out and back remains a drag');
+tap.begin(1,10,10,100,'dong');tap.begin(2,10,10,120,'dong');tap.end(2,10,10,150);tap.end(1,10,10,170);
+assert.equal(tap.accept('dong',170),false,'pinch never clicks a region');
+tap.begin(1,10,10,100,'dong');tap.cancel(1);tap.end(1,10,10,150);
+assert.equal(tap.accept('dong',150),false,'cancel never clicks a region');
+tap.begin(1,10,10,100,'dong');tap.end(1,10,10,150);
+assert.equal(tap.accept('other',150),false,'release on another region does not select it');
+assert.equal(gesture(100),true);
+assert.equal(tap.accept('dong',200),false,'one gesture activates only once');
+tap.begin(1,10,10,100,'dong');tap.reset();assert.equal(gesture(100),true,'window blur cannot leave stuck pointer IDs');
 
 (async()=>{
   const raw=JSON.stringify({entries:{'0':{}}});

@@ -6,14 +6,15 @@
 <meta name="description" content="서울·경기·인천 아파트를 지도에서 찾아보세요. 최근 실거래, 평형별 가격과 거래내역을 지도 옆에서 확인합니다.">
 <link rel="canonical" href="https://nodostream.com/map/">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="../css/map.css?v=20260908-map2">
+<link rel="stylesheet" href="../css/map.css?v=20260908-map3">
 <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script defer src="../js/calc-utils.js?v=20260816-gap-recovery"></script>
 <script defer src="../js/data-loader.js?v=20260908-map1"></script>
-<script defer src="../js/map-model.js?v=20260908-map2"></script>
+<script defer src="../js/map-model.js?v=20260908-map3"></script>
 <script defer src="../js/map-services.js?v=20260908-map1"></script>
-<script defer src="../js/map-app.js?v=20260908-map2"></script>
+<script defer src="../js/map-regions.js?v=20260908-map3"></script>
+<script defer src="../js/map-app.js?v=20260908-map3"></script>
 </head>
 <body>
 <header class="site-header">
@@ -25,7 +26,7 @@
   <select id="region" aria-label="지역"><option value="">수도권 전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select>
   <button id="filterToggle" aria-expanded="false" aria-controls="filters">필터 <span id="filterCount"></span></button>
   <button id="resetFilters">초기화</button>
-  <div class="legend" title="묶음 가격은 면적 필터에 맞는 단지별 최신 실거래의 산술평균입니다. 가격이 없는 단지는 평균에서 제외합니다."><span></span>최근 실거래 <small>묶음은 단지 평균 · 매매</small></div>
+  <div class="legend" title="지역 전체에서 필터에 맞는 단지별 최신 실거래의 산술평균입니다. 가격이 없는 단지는 평균에서 제외합니다."><span></span>최근 실거래 <small>지역별 단지 평균 · 매매</small></div>
 </section>
 <form id="filters" hidden>
   <fieldset><legend>전용면적 <span id="areaHint">㎡ · 평 환산</span></legend><input name="aL" type="number" min="0" placeholder="최소 ㎡" aria-label="최소 전용면적"><span>~</span><input name="aH" type="number" min="0" placeholder="최대 ㎡" aria-label="최대 전용면적"></fieldset>
@@ -36,6 +37,7 @@
 </form>
 <main id="workspace">
   <div id="map" aria-label="아파트 탐색 지도"></div>
+  <div class="region-status"><strong id="regionMode"></strong> <a href="https://sgis.mods.go.kr/view/pss/dataProvdIntrcn" target="_blank" rel="noopener" title="경계 자료 출처">SGIS</a><small id="regionHint"></small><button id="retryRegions" hidden>경계 다시 시도</button></div>
   <div class="map-status" id="mapStatus" role="status">지도를 준비하고 있습니다…</div>
   <div class="map-actions"><button id="homeView" title="수도권 전체 보기" aria-label="수도권 전체 보기">전체</button><button id="share">공유</button></div>
   <aside id="detail" class="detail" aria-label="선택 아파트 상세" hidden data-size="mid">

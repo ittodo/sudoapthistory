@@ -88,7 +88,7 @@ def address(row):
     ] if s)
 
 
-def build(site, database=None, coordinate_cache=None):
+def build(site, database=None, coordinate_cache=None, admin_source=None):
     data = site / 'data'
     index = read(data / 'index.json')
     parcels = read(data / 'parcels.json')
@@ -153,10 +153,17 @@ def build(site, database=None, coordinate_cache=None):
                            'coord': coord, 'coordSource': coord_source, 'pnus': pnus,
                            'scope': 'approved' if entries and all(e.get('scope') == 'approved' for e in entries) else entries[0].get('scope', 'representative'),
                            'areas': areas, 'status': lifecycle})
+    admin = None
+    if admin_source:
+        from map_admin_data import build_admin
+        admin, hashes, _ = build_admin(site, output, admin_source)
+        sources.update(hashes)
     version = hashlib.sha256(json.dumps(sources, sort_keys=True).encode()).hexdigest()[:16]
     payload = {'meta': {'version': 1, 'sourceVersion': version, 'updated': index['meta']['updated'],
                         'indexRows': len(index['d']), 'sources': sources, 'complexes': len(output),
                         'located': sum(bool(c['coord']) for c in output)}, 'd': output}
+    if admin:
+        payload['admin'] = admin
     target = data / 'map/index.json'
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
@@ -171,6 +178,9 @@ def validate(site):
     ids = [c['id'] for c in payload['d']]
     if len(ids) != len(set(ids)):
         raise ValueError('Duplicate map aptSeq')
+    if payload.get('admin'):
+        from map_admin_data import validate_admin
+        validate_admin(payload)
     return {k: payload['meta'][k] for k in ('complexes', 'located', 'sourceVersion')}
 
 
@@ -179,11 +189,12 @@ if __name__ == '__main__':
     parser.add_argument('--site', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--database', type=Path)
     parser.add_argument('--coordinate-cache', type=Path)
+    parser.add_argument('--admin-source', type=Path)
     parser.add_argument('--unresolved', type=Path)
     parser.add_argument('--verify', action='store_true')
     args = parser.parse_args()
     if not args.verify:
-        _, unresolved = build(args.site, args.database, args.coordinate_cache)
+        _, unresolved = build(args.site, args.database, args.coordinate_cache, args.admin_source)
         if args.unresolved:
             args.unresolved.write_text(json.dumps(unresolved, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(validate(args.site), ensure_ascii=False))
