@@ -163,6 +163,11 @@ def build(site, database=None, coordinate_cache=None, admin_source=None):
                            'parcelBounds': parcel_bounds(pnus, geometries),
                            'scope': 'approved' if entries and all(e.get('scope') == 'approved' for e in entries) else entries[0].get('scope', 'representative'),
                            'areas': areas, 'status': lifecycle})
+    publication_path = data / 'housing-v3/index.json'
+    if publication_path.exists():
+        from map_complex_groups import merge_complexes
+        sources['data/housing-v3/index.json'] = sha(publication_path)
+        output = merge_complexes(output, read(publication_path), centers, geometries, parcel_bounds)
     admin = None
     if admin_source:
         from map_admin_data import build_admin
@@ -189,11 +194,34 @@ def validate(site):
     if len(ids) != len(set(ids)):
         raise ValueError('Duplicate map aptSeq')
     shards = {}
+    source_ids = set()
+    index_rows = {r['i']: r for r in read(site / 'data/index.json')['d']}
     for c in payload['d']:
+        members = c.get('memberSources', [{'id': c['id']}])
+        for member in members:
+            if member['id'] in source_ids:
+                raise ValueError('Duplicate grouped transaction source')
+            source_ids.add(member['id'])
+        for area in c['areas']:
+            for row in area.get('rows', [{'i': area['i'], 'id': c['id']} ]):
+                original = index_rows[row['i']]
+                if original['as'] != row['id'] or original['a'] != area['a']:
+                    raise ValueError('Grouped map area changed source identity')
         if c['g'] not in shards:
             shards[c['g']] = read(site / 'data/map/parcels' / (c['g'] + '.json'))
         if c.get('parcelBounds') != parcel_bounds(c['pnus'], shards[c['g']]):
             raise ValueError(f"Map parcel bounds mismatch: {c['id']}")
+    grouped = [c for c in payload['d'] if c.get('memberSources')]
+    if grouped:
+        publication = read(site / 'data/housing-v3/index.json')
+        approved = {g['id']: g for g in publication['complexes'] if g.get('housingFamily') == 'apartment'
+                    and g.get('publicationMode') == 'trade' and g.get('kaptCodes')}
+        if publication['meta'].get('approvedOnly') is not True:
+            raise ValueError('Unapproved map group source')
+        for c in grouped:
+            group = approved.get(c['publicationId'])
+            if not group or set(group['transactionKeys']) & source_ids != {m['id'] for m in c['memberSources']}:
+                raise ValueError('Map group differs from approved publication')
     if payload.get('admin'):
         from map_admin_data import validate_admin
         validate_admin(payload)

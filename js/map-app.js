@@ -129,7 +129,7 @@
     map.panBy(innerWidth<768?[0,map.getSize().y*.2]:[-200,0],{animate:false});
   }
   function select(id,area=null,push=true,focus=false) {
-    const match=matches.get(id);
+    const match=matches.get(byId.get(id)?.id||id);
     if(!match) {toast('현재 조건에서 해당 단지를 찾을 수 없습니다.');return;}
     selected=match.complex;
     selectedArea=match.areas.find(a=>a.a===area)||match.area||match.areas[0];
@@ -137,8 +137,8 @@
     if($('detail').dataset.size==='collapsed')$('detail').dataset.size='mid';
     $('detailName').textContent=selected.n;
     $('detailAddress').textContent=address(selected)+(selected.rd?' · '+selected.rd:'')+' · '+(regionView?.regionName(selected)?.split(' ').pop()||'행정동 확인 중');
-    $('facts').innerHTML=[selected.tu?`${selected.tu.toLocaleString()}세대`:'세대수 미확인',selected.b?`${selected.b}년 준공`:'준공연도 미확인',`${selected.areas.length}개 평형`].map(t=>`<span>${esc(t)}</span>`).join('');
-    $('locationInfo').textContent=selected.coord ? '' : '위치 확인 중 · 상세 정보는 확인할 수 있습니다.';
+    $('facts').innerHTML=[selected.tu?`${selected.tu.toLocaleString()}세대`:'세대수 미확인',selected.b?`${selected.buildYears?.length>1?selected.buildYears[0]+'~'+selected.buildYears.at(-1):selected.b}년 준공`:'준공연도 미확인',`${selected.areas.length}개 평형`].map(t=>`<span>${esc(t)}</span>`).join('');
+    $('locationInfo').textContent=[selected.coord?'':'위치 확인 중 · 상세 정보는 확인할 수 있습니다.',selected.memberSources?'K-APT 연결 확인 · '+selected.memberSources.map(m=>m.n).join(' + '):''].filter(Boolean).join(' · ');
     renderAreas();renderPrice();loadDetail();loadBoundary();
     if(focus){const before=restoring;restoring=true;focusOn(selected);restoring=before;}
     render();save(push);
@@ -151,10 +151,10 @@
   function renderPrice() {
     const trade=selectedArea.latest;
     $('latestPrice').textContent=money(trade?.[1]);
-    $('latestMeta').textContent=trade?`${fmtDate(trade[0])} · ${selectedArea.a}㎡ (${(selectedArea.a/3.3058).toFixed(1)}평) · ${trade[2]}층${trade[3]&1?' · 직거래':''}`:'해제되지 않은 거래가 없습니다.';
+    $('latestMeta').textContent=trade?`${fmtDate(trade[0])} · ${selectedArea.a}㎡ (${(selectedArea.a/3.3058).toFixed(1)}평) · ${trade[2]}층${selectedArea.sourceName?' · '+selectedArea.sourceName:''}${trade[3]&1?' · 직거래':''}`:'해제되지 않은 거래가 없습니다.';
     const sameDay=trade?selectedMatch().areas.reduce((n,a)=>n+(a.latest?.[0]===trade[0]?a.latest[4]:0),0):0;
     $('latestNotice').textContent=[sameDay>1?`같은 날짜 거래 ${sameDay}건 · 평형별 내역에서 확인하세요.`:'',trade && Date.now()-new Date(fmtDate(trade[0])).getTime()>365*86400000?'1년 이상 지난 거래입니다.':''].filter(Boolean).join(' ');
-    $('screenLink').href='../#'+new URLSearchParams({a:selected.id,ar:selectedArea.a});
+    $('screenLink').href='../#'+new URLSearchParams({a:selectedArea.sourceId||selected.id,ar:selectedArea.a});
     $('dataStamp').textContent=`데이터 기준 ${payload.meta.updated} · 국토교통부 실거래가\n말풍선은 최신 유효 거래, 차트는 월평균 가격입니다.`;
   }
   function retryMessage(target,error,retry) {
@@ -167,25 +167,27 @@
     if(chart){chart.destroy();chart=null;}
     $('priceChart').hidden=true;$('chartStatus').textContent='가격 추이를 불러오는 중…';
     $('tradeList').replaceChildren();$('tradeStatus').textContent='거래내역을 불러오는 중…';$('moreTrades').hidden=true;
-    const chartTask=client(`data/monthly/${c.g}.json`).then(data=>{
+    const combinedTask=area.rows?Promise.all([...new Set(area.rows.map(r=>r.g))].map(async g=>[g,await client(`data/tx/${g}.json`)])).then(entries=>model.combinedTrades(area,Object.fromEntries(entries))):null;
+    const stamp=payload.meta.updated.split('-').map(Number), monthCount=(stamp[0]-2006)*12+stamp[1];
+    const chartInput=combinedTask?combinedTask.then(rows=>model.monthlyTrades(rows,monthCount)):client(`data/monthly/${c.g}.json`).then(data=>data[String(area.i)]?.p);
+    const chartTask=chartInput.then(values=>{
       if(token!==detailToken)return;
-      const entry=data[String(area.i)], values=entry?.p;
       if(!values?.some(n=>n>0)){$('chartStatus').textContent='월별 거래 데이터가 없습니다.';return;}
       if(typeof Chart==='undefined')throw new Error('차트 도구를 불러오지 못했습니다. 새로고침해 주세요.');
-      const stamp=payload.meta.updated.split('-').map(Number), end=Math.min(values.length,(stamp[0]-2006)*12+stamp[1]);
+      const end=Math.min(values.length,monthCount);
       const start=Math.max(0,end-60), series=values.slice(start,end), labels=series.map((_,offset)=>`${2006+Math.floor((start+offset)/12)}.${String((start+offset)%12+1).padStart(2,'0')}`);
       $('priceChart').hidden=false;$('chartStatus').textContent='';
       chart=new Chart($('priceChart'),{type:'line',data:{labels,datasets:[{data:series.map(v=>v>0?v:null),borderColor:'#70b5ff',backgroundColor:'#60a5fa18',fill:true,borderWidth:2,pointRadius:2,pointHoverRadius:4,spanGaps:false,tension:.15}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:item=>`${item.parsed.y.toFixed(2)}억`}}},scales:{x:{ticks:{color:'#8c9fb7',maxTicksLimit:5,maxRotation:0},grid:{display:false}},y:{ticks:{color:'#8c9fb7',callback:v=>v+'억'},grid:{color:'#2c3d53'}}}}});
     }).catch(error=>{if(token===detailToken)retryMessage($('chartStatus'),error,loadDetail);});
-    const txTask=client(`data/tx/${c.g}.json`).then(data=>{
+    const txTask=(combinedTask||client(`data/tx/${c.g}.json`).then(data=>model.trades(data.entries?.[String(area.i)]))).then(rows=>{
       if(token!==detailToken)return;
-      transactionRows=model.trades(data.entries?.[String(area.i)]);visibleTrades=30;
+      transactionRows=rows;visibleTrades=30;
       $('tradeStatus').textContent=transactionRows.length?'':'거래내역이 없습니다.';renderTrades();
     }).catch(error=>{if(token===detailToken)retryMessage($('tradeStatus'),error,loadDetail);});
     await Promise.allSettled([chartTask,txTask]);
   }
   function renderTrades() {
-    $('tradeList').innerHTML=transactionRows.slice(0,visibleTrades).map(t=>`<div class="trade ${t.flags&2?'cancelled':''}"><div>${fmtDate(t.date)}${t.flags&1?'<span class="badge">직거래</span>':''}${t.flags&2?'<span class="badge cancelled">해제</span>':''}<small>${esc(t.floor)}층${t.cancelled?' · 해제일 '+esc(t.cancelled):''}</small></div><strong>${money(t.price)}</strong></div>`).join('');
+    $('tradeList').innerHTML=transactionRows.slice(0,visibleTrades).map(t=>`<div class="trade ${t.flags&2?'cancelled':''}"><div>${fmtDate(t.date)}${t.flags&1?'<span class="badge">직거래</span>':''}${t.flags&2?'<span class="badge cancelled">해제</span>':''}<small>${esc(t.floor)}층${t.sourceName?' · '+esc(t.sourceName):''}${t.cancelled?' · 해제일 '+esc(t.cancelled):''}</small></div><strong>${money(t.price)}</strong></div>`).join('');
     $('moreTrades').hidden=visibleTrades>=transactionRows.length;
   }
   async function loadBoundary() {
@@ -220,7 +222,7 @@
     const q=$('search').value.trim().toLocaleLowerCase(), box=$('searchResults');box.replaceChildren();
     if(!q){box.hidden=true;$('search').setAttribute('aria-expanded','false');return;}
     box.hidden=false;$('search').setAttribute('aria-expanded','true');
-    const found=filtered.filter(m=>(m.complex.n+' '+address(m.complex)+' '+m.complex.rd+' '+(regionView?.regionName(m.complex)||'')).toLocaleLowerCase().includes(q));
+    const found=filtered.filter(m=>(m.complex.n+' '+(m.complex.memberSources||[]).map(s=>s.n).join(' ')+' '+address(m.complex)+' '+m.complex.rd+' '+(regionView?.regionName(m.complex)||'')).toLocaleLowerCase().includes(q));
     const regional=found.filter(m=>(address(m.complex)+' '+(regionView?.regionName(m.complex)||'')).toLocaleLowerCase().includes(q)&&m.complex.coord);
     if(regional.length>1){const b=document.createElement('button');b.setAttribute('role','option');b.textContent=`‘${$('search').value.trim()}’ 지역 보기 · ${regional.length.toLocaleString()}개`;b.onclick=()=>{box.hidden=true;$('search').setAttribute('aria-expanded','false');close(false);map.fitBounds(L.latLngBounds(regional.map(m=>m.complex.coord)),{maxZoom:16,padding:[45,45]});save(true);};box.append(b);}
     found.slice(0,40).forEach(m=>{const c=m.complex,b=document.createElement('button');b.setAttribute('role','option');b.innerHTML=`${esc(c.n)}<small>${esc(address(c))}${c.coord?'':' · 위치 확인 중'}</small>`;b.onclick=()=>{box.hidden=true;$('search').setAttribute('aria-expanded','false');select(c.id,null,true,true);};box.append(b);});
@@ -238,7 +240,7 @@
     const state=parseState();filters=state.filters;syncForm();close(false);refilter();
     if(state.view)map.setView([state.view.lat,state.view.lng],state.view.z,{animate:false});
     else map.fitBounds([[36.87,126.36],[38.15,127.84]],{animate:false});
-    if(state.id){if(matches.has(state.id))select(state.id,state.area,false,!state.view);else toast('선택 단지가 없거나 현재 조건에서 제외되었습니다.');}
+    if(state.id){if(matches.has(byId.get(state.id)?.id||state.id))select(state.id,state.area,false,!state.view);else toast('선택 단지가 없거나 현재 조건에서 제외되었습니다.');}
     restoring=false;save();
   }
   function bind() {
@@ -280,7 +282,7 @@
       payload=await response.json();
       if(payload.meta?.version!==1 || !Array.isArray(payload.d))throw new Error('지도 데이터 형식을 확인할 수 없습니다.');
       if(!payload.admin?.regions?.length)throw new Error('지역 경계 데이터가 업데이트 중입니다. 잠시 후 다시 시도해 주세요.');
-      byId=new Map(payload.d.map(c=>[c.id,c]));
+      byId=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])]));
       client=createVerifiedDataClient('../',payload.meta.sources);
       if(!map){
         map=L.map('map',{center:[37.5,127],zoom:9,minZoom:7,maxZoom:19,zoomControl:false,maxBounds:[[32,123],[41,133]],maxBoundsViscosity:.7});

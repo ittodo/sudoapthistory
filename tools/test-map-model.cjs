@@ -27,6 +27,14 @@ assert.equal(model.clusterSummary(groups.get('11220')).average,100000);
 assert.equal(groups.get('11220510').length,1,'different administrative dong never merge');
 assert.equal(groups.get('11').length,2,'each aptSeq contributes once at each level');
 const tap=model.createTapGuard();
+const mergedRows=model.combinedTrades({rows:[{i:1,g:'gu',id:'A',n:'극동'},{i:2,g:'gu',id:'B',n:'임광'}]}, {
+  gu:{entries:{'1':{'2026':[[8,1,100000,1],[8,2,200000,2],[8,5,990000,3,2]]},'2':{'2026':[[8,3,300000,4,1]]}}}
+});
+assert.equal(mergedRows.length,4,'preserve original rows, including cancelled evidence');
+assert.equal(mergedRows[0].flags,2);
+assert.equal(mergedRows[1].sourceName,'임광');
+assert.equal(model.monthlyTrades(mergedRows,248)[247],20,'weight the monthly mean by valid transactions, not source averages');
+assert.equal(model.monthlyTrades(mergedRows,248)[246],0);
 assert.deepEqual([16,17,18,19,16].map(model.regionClickable),[true,false,false,false,true]);
 const polygon={type:'Polygon',coordinates:[[[0,0],[10,0],[10,10],[0,10],[0,0]],[[2,2],[4,2],[4,4],[2,4],[2,2]]]};
 assert.equal(model.geometryContains(polygon,[1,1]),true);

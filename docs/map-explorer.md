@@ -1,6 +1,30 @@
 # Apartment map
 
-`/map/` groups the existing area rows by `aptSeq`. The bubble and initial area
+`/map/` first groups the existing area rows by `aptSeq`. Approved K-APT publications
+in `data/housing-v3/index.json` can then combine multiple active transaction sources
+into one map complex. Only apartment/trade publications with K-APT codes qualify;
+shared names, addresses or PNUs alone never combine identities. The publication
+snapshot is hashed with the map inputs and supplied to map/parcel release builds.
+Ambiguous overlapping publications or cross-district groups fail the build.
+
+A presentation group uses the smallest existing aptSeq as its canonical ID and
+keeps every old aptSeq as an alias via `memberSources`. It shows the approved name,
+whole-complex units (never the sum of duplicated source counts), and the union of
+published parcel membership. Missing group units remain unknown. Construction
+years are shown as a range if needed; the oldest known year is used by the year
+filter. Administrative membership follows the verified representative parcel.
+
+Same-size existing map areas are combined into one area choice. `rows` retains
+all original row IDs, source aptSeq, district and name; the original index is
+untouched. `sourceId/sourceName` identifies the chosen latest trade for detail
+links. Latest ties use date then original row ID, with same-date counts summed.
+Group details load the referenced district transaction data once. Monthly values
+are recalculated from all non-cancelled trades (transaction-count weighted), not
+averaged from source monthly averages. Original source names appear on trades;
+identical-looking transactions in different sources are preserved without an
+unverified deduplication rule. Counts and regional price means count each approved
+group once. Original source-name searches and aptSeq/area links open that group.
+ The bubble and initial area
 selection use the latest non-cancelled trade among the areas allowed by the area
 filter. A price filter tests that latest trade; it must not select an older,
 cheaper area to make a complex pass. Same-day ties use area ascending and source
@@ -55,6 +79,7 @@ Build using the current release's static inputs:
 python tools/build-map-data.py --database D:/Work/15_26/snapshots/kapt_manual_review.db --coordinate-cache D:/Work/15_26/data/map_address_coordinates.json --admin-source D:/Work/15_26/data/map_admin_boundaries.json.gz
 python tools/build-map-data.py --verify
 node tools/test-map-model.cjs
+python tools/test-map-groups.py
 python tools/test-map-data.py
 python tools/test-map-admin.py
 ```

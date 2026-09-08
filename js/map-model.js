@@ -21,6 +21,18 @@
       date:Number(year)*10000+t[0]*100+t[1], price:t[2], floor:t[3], flags:t[4] || 0, cancelled:t[5] || '', order
     }))).sort((a,b) => b.date-a.date || a.order-b.order);
   }
+  function combinedTrades(area, datasets) {
+    return area.rows.flatMap(row=>trades(datasets[row.g]?.entries?.[String(row.i)]).map(t=>({...t,sourceId:row.id,sourceName:row.n,row:row.i})))
+      .sort((a,b)=>b.date-a.date || a.row-b.row || a.order-b.order);
+  }
+  function monthlyTrades(rows, length) {
+    const sums=Array(length).fill(0), counts=Array(length).fill(0);
+    for(const t of rows) {
+      const year=Math.floor(t.date/10000), month=Math.floor(t.date/100)%100, index=(year-2006)*12+month-1;
+      if(!(t.flags&2) && t.price>0 && index>=0 && index<length){sums[index]+=t.price;counts[index]++;}
+    }
+    return sums.map((sum,i)=>counts[i]?sum/counts[i]/10000:0);
+  }
   function clusterSummary(matches) {
     const prices=matches.map(m=>m.area?.latest?.[1]).filter(p=>Number.isFinite(p)&&p>0);
     return {count:matches.length, pricedCount:prices.length,
@@ -92,7 +104,7 @@
       }
     };
   }
-  const api = {latestArea, range, match, trades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
+  const api = {latestArea, range, match, trades, combinedTrades, monthlyTrades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
   root.NodoMapModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);
