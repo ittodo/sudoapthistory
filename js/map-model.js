@@ -27,6 +27,34 @@
       average:prices.length?prices.reduce((sum,p)=>sum+p,0)/prices.length:null};
   }
   function regionLevel(zoom) { return zoom < 10 ? 'sido' : zoom < 13 ? 'sigungu' : zoom < 16 ? 'dong' : 'apartment'; }
+  function regionClickable(zoom) { return zoom < 17; }
+  function geometryContains(geometry, point) {
+    const [x,y] = point;
+    function ringContains(ring) {
+      let inside = false;
+      for (let i=0,j=ring.length-1;i<ring.length;j=i++) {
+        const [ax,ay]=ring[j], [bx,by]=ring[i];
+        const cross=(x-ax)*(by-ay)-(y-ay)*(bx-ax);
+        if (Math.abs(cross)<1e-12 && x>=Math.min(ax,bx) && x<=Math.max(ax,bx) && y>=Math.min(ay,by) && y<=Math.max(ay,by)) return true;
+        if ((ay>y)!==(by>y) && x<(bx-ax)*(y-ay)/(by-ay)+ax) inside=!inside;
+      }
+      return inside;
+    }
+    const polygons=geometry.type==='MultiPolygon'?geometry.coordinates:geometry.type==='Polygon'?[geometry.coordinates]:[];
+    return polygons.some(rings=>rings.length && ringContains(rings[0]) && !rings.slice(1).some(ringContains));
+  }
+  // One pointer owner for region polygons, apartment polygons and price labels.
+  function bindMapTap(map) {
+    const tap=createTapGuard(), container=map.getContainer();
+    container.addEventListener('pointerdown',e=>tap.begin(e.pointerId,e.clientX,e.clientY,e.timeStamp,e.target.closest?.('[data-map-target]')?.dataset.mapTarget,e.button),true);
+    window.addEventListener('pointermove',e=>tap.move(e.pointerId,e.clientX,e.clientY),true);
+    window.addEventListener('pointerup',e=>tap.end(e.pointerId,e.clientX,e.clientY,e.timeStamp),true);
+    window.addEventListener('pointercancel',e=>tap.cancel(e.pointerId),true);
+    window.addEventListener('blur',()=>tap.reset());
+    container.addEventListener('wheel',()=>tap.cancel(),{capture:true,passive:true});
+    map.on('dragstart zoomstart',()=>tap.cancel());
+    return tap;
+  }
   function regionGroups(matches) {
     const groups = new Map();
     for (const match of matches) for (const id of match.complex.admin || []) {
@@ -64,7 +92,7 @@
       }
     };
   }
-  const api = {latestArea, range, match, trades, clusterSummary, regionLevel, regionGroups, createTapGuard};
+  const api = {latestArea, range, match, trades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
   root.NodoMapModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

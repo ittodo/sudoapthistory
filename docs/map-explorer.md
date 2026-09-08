@@ -15,7 +15,13 @@ Totals use every filtered member of the region, independent of viewport, selecti
 or detail area. Zoom 7–9 shows sido, 10–12 sigungu (including non-autonomous gu),
 13–15 administrative eup/myeon/dong, and 16–19 individual apartments. No grid
 aggregation remains. Dense labels are offset or hidden, but every boundary remains
-clickable and exposes its own name/price on hover; zooming reveals more labels.
+clickable below zoom 17 and exposes its own name/price on hover; zooming reveals more labels.
+At zoom 17–19, regional paths are non-interactive and activation is also guarded,
+including keyboard input. Zooming back below 17 restores regional interaction.
+Region activation fits the complete official bounds, with 24px padding plus the
+visible detail panel. The full mobile sheet collapses before fitting. There is no
+next-level minimum: a large region can remain at the same level or zoom out. A
+300ms flight saves one history entry after completion; back restores the prior view.
 
 Thin boundaries use one pinned SGIS 2025 vintage, including parent codes/names.
 The public SGIS map uses the same year. Current address text and 2025 boundaries
@@ -33,7 +39,9 @@ cover every shard and the release fingerprint includes the raw snapshot.
 Region boundaries and labels share a pointer guard: <=350ms, maximum movement <=8px,
 one primary pointer. Long holds, fast drags, movement out/back, pinches, wheel/zoom,
 pointer cancellation and duplicate clicks cannot activate a region. No pointer capture
-or preventDefault interferes with Leaflet panning. Keyboard Enter remains supported.
+or preventDefault interferes with Leaflet panning. A single pointer guard is shared
+by region paths, apartment paths and price markers. Keyboard Enter/Space on price
+and region markers remain supported where enabled.
 
 The index includes approved/published PNU membership without a member limit.
 Coordinates come from the largest cached parcel geometry or an exact full-lot-address lookup.
@@ -54,8 +62,22 @@ python tools/test-map-admin.py
 `data/map/index.json` carries SHA-256 hashes of its source files and regional
 parcel shards. Detail requests verify their bytes before resolving row IDs.
 A mixed release prompts refresh instead of displaying another apartment's data.
-The initial page fetches the map index and visible boundary shards. Monthly, transaction and cached
-parcel data load per selected district and are coalesced in memory. Missing
+The initial page fetches the map index and visible administrative boundary shards.
+From zoom 13, it also fetches cached parcel shards only for filtered complexes
+whose `parcelBounds` intersects the viewport. Bounds include all cached PNU geometry,
+not just the representative coordinate, and are checked by the builder verifier.
+Monthly and transaction data still load only upon selection. Parcel requests are
+coalesced and cached; stale render completions cannot redraw an old viewport.
+
+`js/map-parcels.js` keeps one visible layer per PNU. Unselected parcels have a 1px
+teal stroke and transparent fill; selected parcels use the existing 3px highlight.
+Both the stroke and interior select an apartment without panning or zooming. Shared
+PNU owners and overlapping polygons open a choice list without merging aptSeq IDs;
+polygon holes are excluded. Closing detail restores thin outlines. Below zoom 13,
+only the selected complex remains eligible for boundary rendering. Unselected
+complexes use static cache only; selected missing parcels retain the existing
+V-World fallback. All published parcel members and representative scope survive.
+Parcel and price selection take precedence over regional interaction. Missing
 cached parcels fall back to the shared V-World service with bounded concurrency.
 Neither building approvals nor trade databases are modified by the builder.
 

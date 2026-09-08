@@ -10,6 +10,14 @@ spec.loader.exec_module(builder)
 
 
 class MapDataTests(unittest.TestCase):
+    def test_bounds_include_all_parcels_and_polygons(self):
+        def fc(rings):
+            return {'features': [{'geometry': {'type': 'Polygon', 'coordinates': [rings]}}]}
+        parcels = {'a': fc([[127,37],[127.1,37],[127,37.1],[127,37]]),
+                   'b': fc([[128,38],[128.2,38],[128,38.2],[128,38]])}
+        self.assertEqual(builder.parcel_bounds(['a','b','missing'], parcels), [[37,127],[38.2,128.2]])
+        self.assertIsNone(builder.parcel_bounds(['missing'], parcels))
+
     def test_main_parcel_area_with_hole(self):
         outer = [[0,0],[4,0],[4,4],[0,4],[0,0]]
         hole = [[1,1],[2,1],[2,2],[1,2],[1,1]]

@@ -27,6 +27,13 @@ assert.equal(model.clusterSummary(groups.get('11220')).average,100000);
 assert.equal(groups.get('11220510').length,1,'different administrative dong never merge');
 assert.equal(groups.get('11').length,2,'each aptSeq contributes once at each level');
 const tap=model.createTapGuard();
+assert.deepEqual([16,17,18,19,16].map(model.regionClickable),[true,false,false,false,true]);
+const polygon={type:'Polygon',coordinates:[[[0,0],[10,0],[10,10],[0,10],[0,0]],[[2,2],[4,2],[4,4],[2,4],[2,2]]]};
+assert.equal(model.geometryContains(polygon,[1,1]),true);
+assert.equal(model.geometryContains(polygon,[3,3]),false,'a courtyard hole does not select the enclosing apartment');
+assert.equal(model.geometryContains(polygon,[10,5]),true,'boundary is selectable');
+assert.equal(model.geometryContains(polygon,[11,5]),false);
+assert.equal(model.geometryContains({type:'MultiPolygon',coordinates:[polygon.coordinates,[[[20,20],[21,20],[21,21],[20,20]]]]},[20.8,20.2]),true);
 function gesture(duration,dx=0) {tap.begin(1,10,10,100,'dong');tap.end(1,10+dx,10,100+duration);return tap.accept('dong',100+duration);}
 assert.equal(gesture(350,8),true);
 assert.equal(gesture(351),false,'long stationary press is not region selection');

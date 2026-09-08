@@ -1,28 +1,21 @@
 /* Region totals never depend on the viewport or on the apartment detail selection. */
 (function(root) {
   'use strict';
-  function create({map, payload, client, navigate, report}) {
+  function create({map, payload, client, tap, navigate, report}) {
     const model = root.NodoMapModel, meta = payload.admin;
     const regions = new Map(meta.regions.map(r => [r.id, r]));
     let groups = new Map(), summaries = new Map(), filterRegion = null, token = 0;
     const cache = new Map(), loading = new Map();
     map.createPane('regions'); map.getPane('regions').style.zIndex = '350';
     const polygons = L.layerGroup().addTo(map), labels = L.layerGroup().addTo(map), leaders = L.layerGroup().addTo(map);
-    const tap = model.createTapGuard(), container = map.getContainer();
-    const target = e => e.target.closest?.('[data-region-id]')?.dataset.regionId;
-    container.addEventListener('pointerdown', e => tap.begin(e.pointerId,e.clientX,e.clientY,e.timeStamp,target(e),e.button), true);
-    window.addEventListener('pointermove', e => tap.move(e.pointerId,e.clientX,e.clientY), true);
-    window.addEventListener('pointerup', e => tap.end(e.pointerId,e.clientX,e.clientY,e.timeStamp), true);
-    window.addEventListener('pointercancel', e => tap.cancel(e.pointerId), true);
-    window.addEventListener('blur', () => tap.reset());
-    container.addEventListener('wheel', () => tap.cancel(), {capture:true,passive:true});
-    map.on('dragstart zoomstart', () => tap.cancel());
+    const container = map.getContainer();
     const escape = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     function activate(region, event) {
+      if (!model.regionClickable(map.getZoom())) return;
       const e = event.originalEvent;
       const focus = e?.target.closest?.('.region-marker') ? region.coord : event.latlng;
       if (e?.type === 'keydown' && (e.key === 'Enter' || e.key === ' ')) navigate(region,focus);
-      else if (e && tap.accept(region.id, e.timeStamp)) navigate(region,focus);
+      else if (e && tap.accept('region:'+region.id, e.timeStamp)) navigate(region,focus);
     }
     function bindLayer(layer, region) {
       layer.on('click', e => activate(region,e));
@@ -33,12 +26,12 @@
         }
       });
       const element = layer.getElement();
-      if (element) element.dataset.regionId = region.id;
+      if (element) {element.dataset.regionId = region.id; element.dataset.mapTarget = 'region:'+region.id;}
     }
     function describe(region) {
       const summary = summaries.get(region.id) || {average:null,count:0,pricedCount:0};
       const average = summary.average == null ? '가격 없음' : `평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
-      return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 최신 실거래 산술평균 · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 확대`};
+      return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 최신 실거래 산술평균 · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 전체 범위 보기`};
     }
     function fetchShard(path) {
       if (!loading.has(path)) loading.set(path, client(path).then(data => {
@@ -49,6 +42,7 @@
     }
     function draw() {
       const zoom = map.getZoom(), mode = model.regionLevel(zoom), level = mode === 'apartment' ? 'dong' : mode;
+      map.getPane('regions').classList.toggle('regions-disabled',!model.regionClickable(zoom));
       const bounds = map.getBounds().pad(.1);
       const visible = [...regions.values()].filter(r => r.level === level &&
         (filterRegion == null || r.id.startsWith(['31','11','23'][filterRegion])) && L.latLngBounds(r.bounds).intersects(bounds));
@@ -56,7 +50,7 @@
       const paths = [...new Set(visible.map(r => r.shard))];
       const wanted = new Set(visible.map(r => r.id));
       for (const path of paths) if (cache.has(path)) {
-        L.geoJSON(cache.get(path), {pane:'regions', bubblingMouseEvents:false,
+        L.geoJSON(cache.get(path), {pane:'regions', bubblingMouseEvents:false, interactive:model.regionClickable(zoom),
           filter:f => wanted.has(f.properties.id),
           style:{color:'#416687',weight:mode === 'apartment' ? .8 : 1.3,opacity:.75,fillColor:'#60a5fa',fillOpacity:.025},
           onEachFeature(f,layer) {

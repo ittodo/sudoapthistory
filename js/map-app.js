@@ -7,7 +7,7 @@
   const regions = ['경기','서울','인천'];
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = value => value == null ? '거래 없음' : (value / 10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
-  let map, markers, boundary, chart, payload, client, byId, regionView, filtered=[], matches=new Map();
+  let map, markers, chart, payload, client, byId, regionView, parcelView, tap, navigationDone, filtered=[], matches=new Map();
   let selected=null, selectedArea=null, filters={}, restoring=false, detailToken=0, boundaryToken=0;
   let transactionRows=[], visibleTrades=30, searchTimer, toastTimer, renderFrame, tileFailed=false;
   const storageKey='nodoMapView';
@@ -63,6 +63,7 @@
     const bounds=map.getBounds().pad(.08), zoom=map.getZoom();
     let visible=0, located=0;
     regionView?.render();
+    parcelView?.render(filtered,selected);
     for(const match of filtered) {
       const c=match.complex;
       if(!c.coord) continue;
@@ -75,23 +76,37 @@
     const unmapped=filtered.filter(m=>(m.complex.admin||[]).length<3).length;
     $('mapStatus').textContent=`현재 영역 ${visible.toLocaleString()}개 · 조건 일치 ${filtered.length.toLocaleString()}개${located<filtered.length?' · 위치 확인 중 '+(filtered.length-located).toLocaleString()+'개':''}${unmapped?' · 행정동 확인 중 '+unmapped.toLocaleString()+'개':''}`;
   }
-  function navigateRegion(region,position) {
-    const z=map.getZoom(), next=z<10?10:z<13?13:z<16?16:Math.min(19,z+1);
-    const ceiling=z<10?12:z<13?15:19;
-    const box=L.latLngBounds(region.bounds), fitZoom=map.getBoundsZoom(box,false,L.point(80,100));
-    const targetZoom=z>=16?next:Math.max(next,Math.min(ceiling,fitZoom));
+  function cancelNavigation() {
+    const before=restoring;restoring=true;
+    if(navigationDone){map.off('moveend',navigationDone);navigationDone=null;}
+    map.stop();restoring=before;
+  }
+  function navigateRegion(region) {
+    if(!model.regionClickable(map.getZoom()))return;
+    cancelNavigation();map.closePopup();
+    const detail=$('detail'), mobile=innerWidth<768;
+    if(mobile && !detail.hidden && detail.dataset.size==='full') {
+      detail.style.transition='none';detail.dataset.size='collapsed';
+      void detail.offsetHeight;detail.style.transition='';
+    }
+    const rect=map.getContainer().getBoundingClientRect(), panel=detail.getBoundingClientRect();
+    const left=!mobile&&!detail.hidden?Math.max(0,panel.right-rect.left):0;
+    const bottom=mobile&&!detail.hidden?Math.max(0,rect.bottom-panel.top):0;
+    const options={paddingTopLeft:[left+24,24],paddingBottomRight:[24,bottom+24],maxZoom:19,duration:.3};
     restoring=true;
-    map.closePopup();
-    map.setView(z>=16||fitZoom<next?position||region.coord:box.getCenter(),targetZoom,{animate:false});
-    restoring=false;save(true);
-    if(z===19)toast(region.fullName);
+    navigationDone=()=>{map.off('moveend',navigationDone);navigationDone=null;restoring=false;save(true);};
+    map.once('moveend',navigationDone);
+    map.flyToBounds(L.latLngBounds(region.bounds),options);
   }
   function addApartment(match,isSelected=false) {
     const c=match.complex, a=isSelected?selectedArea:match.area, trade=a?.latest;
     const stale=trade && Date.now()-new Date(fmtDate(trade[0])).getTime()>365*86400000;
     const label=`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
     const marker=L.marker(c.coord,{icon:L.divIcon({className:'apt-marker',html:label,iconSize:[98,46],iconAnchor:[49,23]}),zIndexOffset:isSelected?1000:0,title:`${c.n} · ${a?fmtArea(a.a):''} · 최근 실거래 ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`}).addTo(markers);
-    marker.on('click',()=>{
+    marker.getElement().dataset.mapTarget='apt:'+c.id;
+    const activate=event=>{
+      const e=event.originalEvent;
+      if(e?.type!=='keydown' && !tap.accept('apt:'+c.id,e?.timeStamp))return;
       const point=map.latLngToContainerPoint(c.coord);
       const near=filtered.filter(m=>{
         if(!m.complex.coord)return false;
@@ -99,7 +114,9 @@
         return Math.abs(p.x-point.x)<90&&Math.abs(p.y-point.y)<42;
       });
       if(near.length>1)showOverlap(near,c.coord);else select(c.id,null,true,false);
-    });
+    };
+    marker.on('click',activate);
+    marker.on('keydown',event=>{const e=event.originalEvent;if(!e.repeat&&['Enter',' '].includes(e.key)){L.DomEvent.stop(e);activate(event);}});
   }
   function showOverlap(group,center) {
     const el=document.createElement('div');el.className='overlap-list';
@@ -173,10 +190,9 @@
   }
   async function loadBoundary() {
     const token=++boundaryToken,c=selected;
-    if(boundary){boundary.remove();boundary=null;}
     if(!c.pnus.length){$('boundaryInfo').textContent='확인된 필지 경계가 없습니다.';return;}
     $('boundaryInfo').textContent='선택 단지의 필지 경계를 불러오는 중…';
-    const features=[], failed=[];
+    const failed=[];
     let cached={};
     try{cached=await client(`data/map/parcels/${c.g}.json`);}catch(error){
       if(token!==boundaryToken)return;
@@ -188,16 +204,16 @@
       const group=c.pnus.slice(i,i+4);
       const results=await Promise.allSettled(group.map(p=>cached[p]?Promise.resolve(cached[p]):services.parcel(p)));
       if(token!==boundaryToken)return;
-      results.forEach((r,j)=>{if(r.status==='fulfilled')features.push(...r.value.features);else failed.push(group[j]);});
+      results.forEach((r,j)=>{if(r.status==='fulfilled'){parcelView.acceptParcel(group[j],r.value);}else failed.push(group[j]);});
     }
-    if(features.length)boundary=L.geoJSON({type:'FeatureCollection',features},{interactive:false,style:{color:'#14b8a6',weight:3,fillColor:'#2dd4bf',fillOpacity:.16}}).addTo(map);
+    parcelView.render(filtered,selected);
     const label=c.scope.startsWith('representative')?'대표 필지':'공개된 단지 필지';
     $('boundaryInfo').textContent=`${label} ${c.pnus.length-failed.length}/${c.pnus.length}개 표시${failed.length?' · 일부 경계를 불러오지 못했습니다.':''}`;
     if(failed.length){const button=document.createElement('button');button.textContent='경계 재시도';button.onclick=loadBoundary;$('boundaryInfo').append(button);}
   }
   function close(push=true) {
     selected=null;selectedArea=null;++detailToken;++boundaryToken;
-    if(chart){chart.destroy();chart=null;}if(boundary){boundary.remove();boundary=null;}
+    if(chart){chart.destroy();chart=null;}
     $('detail').hidden=true;$('workspace').classList.remove('has-selection');render();save(push);
   }
   function search() {
@@ -218,7 +234,7 @@
     $('filterError').textContent='';restoring=true;filters=next;syncForm();refilter();search();restoring=false;save(true);
   }
   function restore() {
-    if(!payload)return;restoring=true;
+    if(!payload)return;cancelNavigation();restoring=true;
     const state=parseState();filters=state.filters;syncForm();close(false);refilter();
     if(state.view)map.setView([state.view.lat,state.view.lng],state.view.z,{animate:false});
     else map.fitBounds([[36.87,126.36],[38.15,127.84]],{animate:false});
@@ -270,14 +286,20 @@
         map=L.map('map',{center:[37.5,127],zoom:9,minZoom:7,maxZoom:19,zoomControl:false,maxBounds:[[32,123],[41,133]],maxBoundsViscosity:.7});
         L.tileLayer(services.tileURL,{maxZoom:19,attribution:'© V-World'}).on('tileerror',()=>{if(!tileFailed){tileFailed=true;toast('배경 지도를 불러오지 못했습니다. 검색과 상세 조회는 사용할 수 있습니다.');}}).addTo(map);
         L.control.zoom({position:'topright'}).addTo(map);
+        tap=model.bindMapTap(map);
         markers=L.layerGroup().addTo(map);map.on('moveend',()=>{scheduleRender();save();});bind();
       }
-      if(!regionView)regionView=NodoMapRegions.create({map,payload,client,navigate:navigateRegion,report(status,year){
+      if(!regionView)regionView=NodoMapRegions.create({map,payload,client,tap,navigate:navigateRegion,report(status,year){
         const mode={sido:'시·도',sigungu:'시·군·구',dong:'행정동·읍·면',apartment:'개별 단지'}[model.regionLevel(map.getZoom())];
         $('regionMode').textContent=`${mode} · 경계 ${year}년 기준`;
-        $('regionHint').textContent=status==='loading'?'경계를 불러오는 중…':status==='error'?'일부 경계를 불러오지 못했습니다.':'짧게 누르면 확대 · 끌면 지도 이동';
+        $('regionHint').textContent=status==='loading'?'경계를 불러오는 중…':status==='error'?'일부 경계를 불러오지 못했습니다.':(model.regionClickable(map.getZoom())?'지역을 짧게 누르면 전체 범위 보기 · 끌면 지도 이동':'단지 선택 가능 · 지역 클릭 꺼짐');
         $('retryRegions').hidden=status!=='error';
       }});
+      if(!parcelView)parcelView=NodoMapParcels.create({map,client,tap,
+        choose(group,point){if(group.length>1)showOverlap(group,point);else if(group.length)select(group[0].complex.id,null,true,false);},
+        report(status){$('parcelHint').textContent=status==='loading'?'단지 경계를 불러오는 중…':status==='error'?'일부 단지 경계를 불러오지 못했습니다.':'';$('retryParcels').hidden=status!=='error';}
+      });
+      $('retryParcels').onclick=()=>parcelView.render(filtered,selected);
       $('retryRegions').onclick=()=>regionView.render();
       restore();$('startup').hidden=true;
     } catch(error) {

@@ -52,6 +52,15 @@ def collection(raw):
     return raw.get('response', {}).get('result', {}).get('featureCollection', {})
 
 
+def parcel_bounds(pnus, geometries):
+    points = [p for pnu in pnus for f in geometries.get(pnu, {}).get('features', [])
+              for p in coordinates(f.get('geometry', {}).get('coordinates', []))]
+    if not points:
+        return None
+    return [[min(p[1] for p in points), min(p[0] for p in points)],
+            [max(p[1] for p in points), max(p[0] for p in points)]]
+
+
 def geometry_area(geometry):
     def ring_area(ring):
         return abs(sum(p[0] * ring[(i+1) % len(ring)][1] - ring[(i+1) % len(ring)][0] * p[1]
@@ -151,6 +160,7 @@ def build(site, database=None, coordinate_cache=None, admin_source=None):
                            'j': rep.get('j', ''), 'rd': rep.get('rd', ''), 'b': rep.get('b'),
                            'tu': max((r.get('tu') or 0 for r in rows), default=0) or None,
                            'coord': coord, 'coordSource': coord_source, 'pnus': pnus,
+                           'parcelBounds': parcel_bounds(pnus, geometries),
                            'scope': 'approved' if entries and all(e.get('scope') == 'approved' for e in entries) else entries[0].get('scope', 'representative'),
                            'areas': areas, 'status': lifecycle})
     admin = None
@@ -178,6 +188,12 @@ def validate(site):
     ids = [c['id'] for c in payload['d']]
     if len(ids) != len(set(ids)):
         raise ValueError('Duplicate map aptSeq')
+    shards = {}
+    for c in payload['d']:
+        if c['g'] not in shards:
+            shards[c['g']] = read(site / 'data/map/parcels' / (c['g'] + '.json'))
+        if c.get('parcelBounds') != parcel_bounds(c['pnus'], shards[c['g']]):
+            raise ValueError(f"Map parcel bounds mismatch: {c['id']}")
     if payload.get('admin'):
         from map_admin_data import validate_admin
         validate_admin(payload)
