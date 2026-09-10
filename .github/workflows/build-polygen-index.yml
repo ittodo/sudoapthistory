@@ -13,8 +13,11 @@ on:
       - tools/build-packed-index.mjs
       - tools/build-polygen-browser.mjs
       - tools/build-polygen-index.mjs
+      - tools/generate-polygen-types.ps1
+      - tools/resolve-polygen.ps1
       - tools/verify-polygen-packed-index.mjs
       - tools/verify-polygen-index.ts
+      - polygen.lock.json
       - .github/workflows/build-polygen-index.yml
   pull_request:
     paths:
@@ -25,8 +28,11 @@ on:
       - tools/build-packed-index.mjs
       - tools/build-polygen-browser.mjs
       - tools/build-polygen-index.mjs
+      - tools/generate-polygen-types.ps1
+      - tools/resolve-polygen.ps1
       - tools/verify-polygen-packed-index.mjs
       - tools/verify-polygen-index.ts
+      - polygen.lock.json
       - .github/workflows/build-polygen-index.yml
 
 permissions:
@@ -35,10 +41,6 @@ permissions:
 concurrency:
   group: polygen-index-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  POLYGEN_VERSION: "v0.1.8"
-  POLYGEN_RELEASE_TAG: "gui-v0.1.8"
 
 jobs:
   build:
@@ -58,24 +60,9 @@ jobs:
       - name: Install build tools
         run: npm install --no-save esbuild tsx typescript @types/node
 
-      - name: Download PolyGen release
-        run: |
-          mkdir -p .polygen
-          curl -L "https://github.com/ittodo/PolyGen/releases/download/${POLYGEN_RELEASE_TAG}/PolyGen-${POLYGEN_VERSION}-linux.tar.gz" -o .polygen/polygen.tar.gz
-          tar -xzf .polygen/polygen.tar.gz -C .polygen
-          chmod +x ".polygen/PolyGen-${POLYGEN_VERSION}-linux/polygen"
-          ".polygen/PolyGen-${POLYGEN_VERSION}-linux/polygen" --version || true
-
-      - name: Generate PolyGen TypeScript
-        run: |
-          repo_root="$PWD"
-          polygen_dir="$PWD/.polygen/PolyGen-${POLYGEN_VERSION}-linux"
-          cd "$polygen_dir"
-          ./polygen generate \
-            --schema-path "$repo_root/schemas/nodostream.poly" \
-            --lang typescript \
-            --output-dir "$repo_root/js/generated" \
-            --templates-dir "$polygen_dir/templates"
+      - name: Generate locked PolyGen TypeScript
+        shell: pwsh
+        run: ./tools/generate-polygen-types.ps1
 
       - name: Build browser binary refs
         run: node tools/build-polygen-browser.mjs
@@ -88,6 +75,10 @@ jobs:
 
       - name: Verify PolyGen row refs
         run: npx tsx tools/verify-polygen-index.ts
+
+      - name: Check committed generated artifacts
+        if: github.event_name == 'pull_request'
+        run: git diff --exit-code -- data/polygen/index.meta.json data/polygen/index.packed.bin js/generated/browser/nodostream_binary_refs.js
 
       - name: Report artifact sizes
         run: |

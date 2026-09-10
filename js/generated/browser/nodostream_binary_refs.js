@@ -4,7 +4,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 
 // js/generated/typescript/binary_ref.ts
 var MAGIC = new Uint8Array([80, 71, 66, 82, 69, 70, 49, 0]);
-var VERSION = 1;
+var VERSION = 2;
 var textEncoder = new TextEncoder();
 var textDecoder = new TextDecoder();
 var BinaryDocumentOwner = class {
@@ -713,6 +713,7 @@ var nodostream_apt_AptIndexRowRefTable = class _nodostream_apt_AptIndexRowRefTab
         for (const offset of offsets) writer.writeI32(offset);
       }
     }
+    writer.writeI32(0);
     writer.writeI32(cursor);
     for (const row of rows) writer.writeRaw(row.bytes);
   }
@@ -772,6 +773,8 @@ var nodostream_apt_AptIndexRowRefTable = class _nodostream_apt_AptIndexRowRefTab
         byRegion.set(key, offsets);
       }
     }
+    const searchIndexCount = reader.readI32();
+    if (searchIndexCount !== 0) throw new Error(`Unexpected search index count for nodostream.apt.AptIndexRow: ${searchIndexCount}.`);
     const rowBlockLength = reader.readI32();
     if (rowBlockLength < 0) throw new Error("Negative row block length.");
     const rowBlockStart = reader.position();

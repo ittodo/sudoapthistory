@@ -4,15 +4,15 @@
 
 ## 전제
 
-여기서 `polygen`은 `D:\Work\PolyGen` 프로젝트를 의미한다.
+여기서 `polygen`은 `polygen.lock.json`에 고정된 PolyGen 릴리스를 의미한다.
 
 확인한 사실:
 
 - `D:\Work\PolyGen`은 `.poly` 스키마를 SSOT로 삼아 TypeScript/C#/Rust/C++/Go 코드를 생성하는 코드 생성기다.
 - 현재 TypeScript 생성은 인터페이스, enum, Zod 검증을 지원한다.
 - `.poly` 문법에는 `@load(csv/json)`, `@cache`, `@datasource`, `@pack`이 있다.
-- CLI는 `cargo run -- generate --schema-path <schema.poly> --lang typescript --output-dir <dir>` 형태로 실행된다.
-- `D:\Work\sudoapthistory`는 정적 HTML/JS/JSON 사이트이며 루트에 별도 빌드 파이프라인이 없다.
+- CLI는 잠금 파일로 해석한 실행 파일을 통해 `polygen generate --schema-path <schema.poly> --lang typescript --output-dir <dir>` 형태로 실행된다.
+- `D:\Work\sudoapthistory`는 정적 HTML/JS/JSON 사이트이며 PolyGen 산출물은 GitHub Actions에서 재생성·검증한다.
 
 이 플랜의 핵심은 polygen을 “런타임 다운로드 도구”로 쓰는 것이 아니라, nodostream 데이터 스키마와 타입/검증/로더를 생성하는 도구로 붙이는 것이다. 페이지 속도는 생성된 스키마를 기준으로 JSON을 더 작게 쪼개고, 첫 화면에서 필요한 데이터만 받게 만들어서 올린다.
 
@@ -159,14 +159,11 @@ namespace nodostream.apt {
 ### 1단계: polygen을 사이트에 “읽기 전용 생성 도구”로 연결
 
 1. `schemas/nodostream.poly` 추가.
-2. `D:\Work\PolyGen`에서 TypeScript 산출물을 생성하는 명령을 문서화한다.
+2. 잠금 파일의 버전과 SHA-256을 검증한 뒤 TypeScript 산출물을 생성한다.
 
 ```powershell
-cd D:\Work\PolyGen
-cargo run -- generate `
-  --schema-path D:\Work\sudoapthistory\schemas\nodostream.poly `
-  --lang typescript `
-  --output-dir D:\Work\sudoapthistory\js\generated
+cd D:\Work\sudoapthistory
+.\tools\generate-polygen-types.ps1
 ```
 
 3. 산출물은 처음에는 런타임에 직접 import하지 않고, 타입/검증/스키마 문서로만 사용한다.
@@ -274,11 +271,13 @@ polygen은 다운로드 자체를 빠르게 만드는 마법 버튼은 아니지
 - `data/polygen/index.packed.bin`
 - `.github/workflows/build-polygen-index.yml`
 
-로딩 순서:
+현재 로딩 순서:
 
-1. `data/polygen/index.packed.bin`
-2. 실패 시 `data/polygen/index.slim.bin`
-3. 실패 시 기존 `data/index.json`
+1. 수작성 컬럼형 포맷인 `data/polygen/index.packed.bin`
+2. 실패 시 기존 `data/index.json`
+
+PolyGen row-ref 형식인 `data/polygen/index.slim.bin`은 CI 검증용이며 현재 배포 런타임
+fallback에는 포함하지 않는다.
 
 크기 비교:
 
@@ -296,10 +295,13 @@ polygen은 다운로드 자체를 빠르게 만드는 마법 버튼은 아니지
 
 GitHub Actions:
 
-- `Build PolyGen index` 워크플로는 `ittodo/PolyGen`의 `gui-v0.1.8` Linux release asset을 다운로드한다.
+- `Build PolyGen index` 워크플로와 로컬 생성은 모두 `polygen.lock.json`을 읽는다.
+- 현재 잠금 버전은 `gui-v0.1.9`이며, OS별 릴리스 자산의 SHA-256을 검증한 뒤 사용자 캐시에 설치한다.
+- 개발 중인 소스를 시험할 때만 `POLYGEN_BIN`과 필요 시 `POLYGEN_ROOT` 또는 `POLYGEN_TEMPLATES_DIR`을 명시적으로 설정한다.
 - CI에서 `polygen generate`를 실행해 TypeScript binary ref 산출물을 재생성한다.
 - `esbuild`로 `js/generated/browser/nodostream_binary_refs.js`를 만든다.
 - `node tools/build-polygen-index.mjs`로 row-ref 바이너리와 packed 바이너리를 모두 생성한다.
+- pull request에서는 추적 중인 브라우저 번들·메타데이터·packed 바이너리가 재생성 결과와 다르면 실패한다.
 - PR에서는 생성과 검증만 수행한다.
 - `main` push에서는 `data/polygen/index.meta.json`, `data/polygen/index.packed.bin`, `js/generated/browser/nodostream_binary_refs.js`가 달라진 경우 bot 커밋으로 다시 push한다.
 - `Purge Cloudflare` 워크플로는 `main` push마다 Pages 배포 완료를 기다린 뒤 Cloudflare purge를 실행한다.
