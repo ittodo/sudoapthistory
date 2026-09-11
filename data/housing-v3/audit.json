@@ -1,21 +1,21 @@
 {
   "reviewSource": "kapt_manual_review.db",
   "tradeSource": "housing_trade_api_full.db",
-  "publications": 6013,
+  "publications": 6066,
   "families": {
-    "apartment": 6010,
-    "rowhouse": 3
+    "apartment": 6054,
+    "rowhouse": 12
   },
   "publicationModes": {
-    "trade": 6004,
-    "metadata_only": 9
+    "trade": 6044,
+    "metadata_only": 22
   },
   "missingTransactionKeys": [],
   "confirmedAbsentTransactionKeys": [],
   "foreignKeyCheck": [],
   "pass": true,
-  "jsonBytes": 13214028,
-  "packedBytes": 1527733,
-  "sha256": "671b18c77ebb72686fc3f391a0094c54546488fe29b98c091b453a9b24cdc704",
+  "jsonBytes": 13381526,
+  "packedBytes": 1545004,
+  "sha256": "a980c2dae5d532d2897904358588568c0eac64abc3f1e16669fb48915e29d463",
   "packedParity": true
 }
