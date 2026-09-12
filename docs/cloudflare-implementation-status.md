@@ -5,6 +5,22 @@
 
 ## 외부 상태
 
+### 2026-09-13 첫 시험 배포와 공개 확인
+
+- [Staging 실행 #1](https://github.com/ittodo/sudoapthistory/actions/runs/34716869968)의
+  `ad539e7ef884a339aa7a2922e0839049cb04fdef`에서 D1 초기 스키마 적용과
+  정적 파일 2,982개 업로드, Worker 배포가 성공했다.
+- Worker 버전: `8b95ced7-d7c0-45c2-99eb-5ce3629c3b95`, DB schemaVersion: `1`.
+- 배포 완료 직후 약 0.1초 만에 시작한 공개 검사는 `/deployment.json` 404로 실패했다.
+  이후 같은 SHA·같은 로컬 manifest로 전체 공개 검사를 재실행해 성공했다.
+  초기 공개 반영 지연으로 추정하며 파일 누락이나 토큰 권한 부족 증거는 없다.
+- 실제 공개 검증 성공: Git SHA, Worker 버전, DB 스키마, manifest 해시,
+  대표 HTML/JSON 바이트 해시 및 없는 JSON 404.
+- CLI 공개 검증에 10초 간격 최대 7회, 전체 180초 제한을 추가했다.
+  매 시도는 전체 검증을 다시 수행하며 지속적인 SHA/해시 불일치나 404는 실패한다.
+- 기존 회원 데이터 이관·Google 로그인 활성화·운영 도메인/과금 변경은 하지 않았다.
+  GitHub 실행 자체는 최초 검증 실패로 빨간 상태이며, 로컬 재검증 성공과 구분한다.
+
 ### 2026-09-13 무료 시험 배포 준비
 
 - 운영 main 대신 `cloudflare-staging` 브랜치를 사용한다. 기존 Pages는 유지한다.

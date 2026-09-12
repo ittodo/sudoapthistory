@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {verify} from './verify-cloudflare-deployment.mjs';
+import {verify,verifyWithRetry} from './verify-cloudflare-deployment.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 test('public verification binds health, release, manifest and sample bytes to SHA',async()=>{
   const sha='a'.repeat(40), content='fixture';
@@ -24,4 +24,33 @@ test('public verification binds health, release, manifest and sample bytes to SH
     badBytes=true;await assert.rejects(verify('https://fixture.invalid',sha),/Public hash mismatch/);badBytes=false;
     missing404=false;await assert.rejects(verify('https://fixture.invalid',sha),/must be 404/);
   } finally {globalThis.fetch=original;}
+});
+
+test('deployment propagation retries are bounded and never hide persistent failures',async()=>{
+  let calls=0,sleeps=0;const messages=[];
+  const options={attempts:3,intervalMs:0,sleep:async()=>{sleeps++;},onRetry:m=>messages.push(m)};
+  const result={gitSha:'a'.repeat(40)};
+  assert.deepEqual(await verifyWithRetry('https://fixture.invalid',result.gitSha,undefined,{
+    ...options,check:async()=>{if(++calls<3)throw new Error('Public check failed: 404 /deployment.json');return result;}
+  }),result);
+  assert.equal(calls,3);assert.equal(sleeps,2);assert.equal(messages.length,2);
+  for(const message of ['Public check failed: 404 /deployment.json','Deployment/health SHA mismatch','Manifest hash mismatch','Missing JSON must be 404']) {
+    calls=0;
+    await assert.rejects(verifyWithRetry('https://fixture.invalid',result.gitSha,undefined,{
+      ...options,check:async()=>{calls++;throw new Error(message);}
+    }),error=>error.message===message);
+    assert.equal(calls,3);
+  }
+});
+
+test('verification deadline aborts an in-flight request',async()=>{
+  await assert.rejects(verifyWithRetry('https://fixture.invalid','a'.repeat(40),undefined,{
+    timeoutMs:10,onRetry:()=>{},
+    check:async(_origin,_sha,_manifest,{signal})=>{
+      await new Promise((resolve,reject)=>{
+        const timer=setTimeout(resolve,1000);
+        signal.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason);},{once:true});
+      });
+    }
+  }),{name:'TimeoutError'});
 });

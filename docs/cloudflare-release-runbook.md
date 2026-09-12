@@ -16,6 +16,7 @@
 - 토큰 `nodostream-staging-github-actions`는 지정한 Cloudflare 계정의 `Workers Scripts:Edit`, `D1:Edit`만 포함한다. DNS·결제·R2·계정 관리 권한은 없다. **권한 범위는 특정 Worker/DB 하나가 아니라 해당 계정의 Workers·D1이다.** 만료일은 미지정이며 필요 종료 시 폐기/갱신한다. 토큰 원문은 GitHub 환경 secret에만 저장했고 로컬 파일·Git·채팅 출력에는 기록하지 않았다. 실제 API 인증 성공과 배포 성공은 아직 시험하지 않았다.
 - `npm ci`, `npm run typecheck`, `npm run test:api`, `node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs`, `npm run build`를 실행한다. build는 cloudflare/dist/public만 생성한다.
 - 검증된 커밋을 시험 브랜치로 push하고 checks 성공 후 사용자가 GitHub의 Review deployments에서 승인한다. 같은 SHA health·manifest·대표 JSON/HTML 해시·없는 JSON 404가 성공해야 한다.
+- 배포 완료 응답 직후에는 공개 반영이 늦을 수 있다. 공개 검증 CLI는 10초 간격 최대 7회, 전체 180초 안에서 전체 검사를 재시도한다. 지속적인 오류는 실패로 유지하며, 재시도 경고는 stderr에만 기록해 성공 artifact JSON에 섞이지 않는다. DB 재생성·초기화나 검증 생략으로 해결하지 않는다.
 - health의 실제 Worker version_metadata ID도 확인해 Git SHA·자산 manifest 해시·DB schemaVersion과 함께 `verified-release.json` CI artifact에 기록한다. 로컬 placeholder 버전은 운영 검증 성공으로 인정하지 않는다.
 - 운영용 HTML/JS는 자산 build에서만 deployment-version.js를 head 첫 부분에 넣는다. 동일 출처 data JSON GET에 배포 SHA query가 추가되며 원본 JSON 바이트는 바뀌지 않는다.
 
