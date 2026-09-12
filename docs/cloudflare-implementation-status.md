@@ -5,6 +5,24 @@
 
 ## 외부 상태
 
+### 2026-09-13 배포 권한 연결 완료
+
+사용자 승인 후 Cloudflare 토큰 `nodostream-staging-github-actions`를
+생성하고 `ittodo/sudoapthistory`의 `cloudflare-staging` 환경에
+`CLOUDFLARE_API_TOKEN` secret으로 저장했다. 같은 환경에
+`CLOUDFLARE_ACCOUNT_ID` variable도 설정했다.
+
+- 권한: 지정 계정의 Workers Scripts 편집·D1 편집 두 가지.
+- DNS·결제·R2·계정 관리 권한 없음. 특정 시험 DB 하나로 제한되는 토큰은 아님.
+- 만료일 미지정. 종료 시 폐기 또는 갱신 필요.
+- GitHub 환경 사용에 소유자 `ittodo` 승인 필요, 관리자 우회 불가.
+- 토큰 원문은 파일·Git·채팅 출력에 기록하지 않았고 임시 브라우저 작업 변수도 비웠다.
+- UI에서 Cloudflare 토큰 활성 상태 및 GitHub secret 저장을 확인했다.
+  실제 API 권한 행사·배포·원격 스키마 적용은 실행하지 않았다.
+- 시험 배포 활성화 설정·시험 URL은 미설정. 운영 도메인·과금·Google 설정은 그대로다.
+
+### 초기 구현 당시 상태 (위 연결 완료 전)
+
 운영 배포·DNS·Google 설정·Supabase·Cloudflare 과금·GitHub secrets·
 실제 예약 작업은 변경하지 않았다. 기존 데이터를 내보내거나 복사하지
 않았고 수집 DB를 백업·변경하지 않았다.
