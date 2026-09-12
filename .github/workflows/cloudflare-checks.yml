@@ -1,0 +1,21 @@
+name: Cloudflare Checks
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['cloudflare/**', 'tools/**', 'js/**', '**/*.html', 'package*.json', 'wrangler.jsonc', '.github/workflows/cloudflare-*.yml']
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck && npm run test:api
+      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs
+      - run: npm run build
+      - run: npx wrangler deploy --dry-run --outdir cloudflare/dist/worker

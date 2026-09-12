@@ -197,12 +197,9 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <div class="footer-disclaimer">데이터 출처: DART 공시 기반 · 투자 참고용으로만 활용하세요</div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="/js/supabase-init.js"></script>
+<script src="/js/auth-client.js"></script>
 <script>
 // ── 설정 ────────────────────────────────────────────────────────────────
-const SUPABASE_URL      = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
 
 // ── 상태 ────────────────────────────────────────────────────────────────
 let currentCode = '';
@@ -226,22 +223,12 @@ async function init() {
     return;
   }
 
-  // supabase-init.js의 공유 클라이언트 재사용 (세션 공유를 위해)
-  // 직접 createClient 하면 세션이 없는 별도 인스턴스가 생성되어 RLS 차단됨
-  sb = window.__supabaseClient || null;
-  if (!sb && window.supabase && window.supabase.createClient) {
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  }
-  if (sb) {
-    // getSession()은 localStorage에서 직접 읽음 — getUser()는 네트워크 검증으로 PKCE 타이밍 시 실패 가능
-    const { data: { session } } = await sb.auth.getSession();
-    currentUser = session ? session.user : null;
-
-    // 로그인/로그아웃 이벤트 시 currentUser + myVotes 최신화
-    sb.auth.onAuthStateChange((event, session) => {
-      currentUser = session ? session.user : null;
-      loadTags(); // myVotes도 함께 갱신
-    });
+  sb = window.NodoAPI;
+  try {
+    currentUser = (await sb.getState()).session?.user || null;
+    sb.onChange(() => { currentUser = null; loadTags(); });
+  } catch (e) {
+    document.getElementById('tagSectionNote').textContent = '로그인 상태 확인 실패: ' + e.message;
   }
 
   try {
@@ -362,12 +349,7 @@ function renderDividends(events) {
 
 // ── 로그인 유도 ───────────────────────────────────────────────────────
 function requireLogin(msg) {
-  // js/comments.js의 로그인 모달이 있으면 활용, 없으면 안내 메시지
-  if (typeof openLoginModal === 'function') {
-    openLoginModal(msg);
-  } else {
-    alert((msg || '로그인이 필요합니다.') + '\n\n로그인 후 이용해 주세요.');
-  }
+  if (confirm((msg || '로그인이 필요합니다.') + '\n구글 로그인으로 이동할까요?')) window.NodoAPI.login();
 }
 
 // ── 태그 노출 여부 ────────────────────────────────────────────────────
@@ -399,32 +381,16 @@ async function loadTags() {
   }
 
   try {
-    const { data: stockTags, error } = await sb
-      .from('stock_tags')
-      .select('id, tag_id, tags(id, name, slug, category, status, upvotes, downvotes, color, created_at)')
-      .eq('ticker', currentCode);
-
-    if (error) throw error;
-
-    // 내 투표 조회 (로그인 시에만) — 전역 myVotes 갱신
-    myVotes = {};
-    if (currentUser && stockTags && stockTags.length) {
-      const tagIds = stockTags.map(st => st.tag_id).filter(Boolean);
-      if (tagIds.length) {
-        const { data: votes } = await sb
-          .from('tag_votes')
-          .select('tag_id, vote_type')
-          .eq('user_id', currentUser.id)
-          .in('tag_id', tagIds);
-        if (votes) votes.forEach(v => { myVotes[v.tag_id] = v.vote_type; });
-      }
-    }
-
-    renderTags(stockTags || []);
+    const result = await sb.request('/api/stocks/' + encodeURIComponent(currentCode) + '/tags');
+    myVotes = result.votes || {};
+    renderTags(result.data || []);
   } catch(e) {
     const staticTags = (stockInfo && stockInfo.tags) ? stockInfo.tags : [];
-    if (staticTags.length > 0) { renderStaticTags(staticTags); }
-    else { container.innerHTML = `<div class="tags-empty">태그 로딩 실패: ${escHtml(e.message)}</div>`; }
+    if (staticTags.length > 0) renderStaticTags(staticTags);
+    else container.innerHTML = '';
+    const error = document.createElement('div');
+    error.className = 'tags-empty'; error.textContent = '사용자 태그 로딩 실패: ' + e.message;
+    container.appendChild(error);
   }
 }
 
@@ -465,7 +431,7 @@ function renderTags(stockTags) {
     const name  = escHtml(tag.name || '?');
     const ups   = tag.upvotes || 0;
     const myV   = myVotes[st.tag_id] || '';
-    const colorStyle = tag.color ? `border-color:${tag.color}40;color:${tag.color};` : '';
+    const colorStyle = /^#[0-9a-f]{6}$/i.test(tag.color || '') ? `border-color:${tag.color}40;color:${tag.color};` : '';
     html += `<span class="tag-chip" style="${colorStyle}">
       <span>${name}</span>
       <button class="vote-btn ${myV==='up'?'voted-up':''}" onclick="castVote(${st.tag_id},'up')" title="추천">▲</button>
@@ -476,53 +442,31 @@ function renderTags(stockTags) {
   html += '</div>';
 
   container.innerHTML = html;
+  // Generated public tags remain visible even when new community tags exist.
+  const publicTags = (stockInfo.tags || []).filter(t => !visible.some(st => st.tags.name === (typeof t === 'string' ? t : t.name)));
+  if (publicTags.length) {
+    const staticRow = document.createElement('div');
+    staticRow.innerHTML = publicTags.map(t => `<span class="tag-chip cat-theme">${escHtml(typeof t === 'string' ? t : t.name || '')}</span>`).join('');
+    container.appendChild(staticRow);
+  }
 }
 
 // ── 투표 (토글/방향 전환) ──────────────────────────────────────────────
 // - 같은 방향 재클릭 → DELETE (취소)
 // - 반대 방향 클릭   → DELETE 후 INSERT (전환)
 // - 첫 클릭         → INSERT
+const pendingVotes = new Set();
 async function castVote(tagId, voteType) {
-  if (!sb) return;
-  if (!currentUser) {
-    requireLogin('태그 추천은 로그인 후 이용 가능합니다.');
-    return;
-  }
+  if (!currentUser) { requireLogin('태그 추천은 로그인 후 이용 가능합니다.'); return; }
+  if (pendingVotes.has(tagId)) return;
+  pendingVotes.add(tagId);
   try {
-    const existing = myVotes[tagId]; // 현재 내 투표 상태
-
-    if (existing) {
-      // 기존 투표 삭제 (토글 취소 or 방향 전환 전처리)
-      const { error: delErr } = await sb.from('tag_votes')
-        .delete()
-        .eq('tag_id', tagId)
-        .eq('user_id', currentUser.id);
-      if (delErr && delErr.code !== 'PGRST116') {
-        if (delErr.code === '42501') { requireLogin('세션이 만료됐습니다. 다시 로그인해 주세요.'); return; }
-        console.warn('투표 삭제 실패:', delErr.code, delErr.message);
-        await loadTags(); return;
-      }
-    }
-
-    if (existing !== voteType) {
-      // 같은 방향 재클릭이 아닐 때만 INSERT (취소가 아닌 경우)
-      const { error: insErr } = await sb.from('tag_votes').insert({
-        tag_id:    tagId,
-        user_id:   currentUser.id,
-        vote_type: voteType
-      });
-      if (insErr) {
-        if (insErr.code === '42501') { requireLogin('세션이 만료됐습니다. 다시 로그인해 주세요.'); return; }
-        console.warn('투표 실패:', insErr.code, insErr.message);
-      }
-    }
-
-    // 트리거(trg_tag_vote_counts)가 tags.upvotes/downvotes 자동 갱신
+    await sb.request('/api/tags/' + encodeURIComponent(tagId) + '/vote', {
+      method: 'PUT', body: JSON.stringify({ vote: myVotes[tagId] === voteType ? null : voteType })
+    });
     await loadTags();
-  } catch(e) {
-    console.warn('투표 예외:', e.message);
-    await loadTags();
-  }
+  } catch (e) { alert('투표 실패: ' + e.message); }
+  finally { pendingVotes.delete(tagId); }
 }
 
 // ── 태그 추가 ─────────────────────────────────────────────────────────
@@ -543,45 +487,7 @@ async function submitTag() {
   if (btn) btn.disabled = true;
 
   try {
-    const slug = name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9가-힣\-]/g, '')
-      .slice(0, 40)
-      + '-' + Date.now().toString(36);
-
-    // tags INSERT (status='official' — 즉시 노출)
-    const { data: tagData, error: tagErr } = await sb
-      .from('tags')
-      .insert({
-        name,
-        slug,
-        category: 'custom',
-        status:   'official',
-        is_auto:  false,
-        ip_hash:  null
-      })
-      .select('id')
-      .single();
-
-    if (tagErr) {
-      if (tagErr.code === '23505') { alert('이미 존재하는 태그 이름입니다.'); return; }
-      throw tagErr;
-    }
-
-    // stock_tags 연결
-    const { error: stErr } = await sb
-      .from('stock_tags')
-      .insert({ ticker: currentCode, tag_id: tagData.id });
-
-    if (stErr && stErr.code !== '23505') throw stErr;
-
-    // 본인 upvote 자동 1회 부여
-    await sb.from('tag_votes').insert({
-      tag_id:    tagData.id,
-      user_id:   currentUser.id,
-      vote_type: 'up'
-    });
+    await sb.create('/api/stocks/' + encodeURIComponent(currentCode) + '/tags', { name });
 
     input.value = '';
     await loadTags();

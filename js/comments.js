@@ -10,12 +10,10 @@
   'use strict';
 
   // ─── 설정 ────────────────────────────────────────────────────────────────
-  const SUPABASE_URL = 'https://gvhwaeoyxkmdquxkumkh.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_NW9SJO3uG_fLbhlNywuuow_KsqD1N9J';
   const PAGE_SIZE = 20;
 
   // ─── 상태 ────────────────────────────────────────────────────────────────
-  let _supabase  = null;
+  let _client = null;
   let _session   = null;
   let _profile   = null;
   let _isAdmin   = false;
@@ -26,167 +24,39 @@
   let _editingId  = null;
   let _likedSet   = new Set(); // 로그인 유저가 좋아요한 댓글 ID Set
 
-  // ─── Supabase API 래퍼 ──────────────────────────────────────────────────
+  // Same-origin API; existing rendering contract remains unchanged.
+  let _loadedLikes = new Set();
   const api = {
-    async getSession() {
-      const { data } = await _supabase.auth.getSession();
-      return data.session;
-    },
-
-    async signInWithGoogle() {
-      const { error } = await _supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: location.origin + location.pathname }
-      });
-      if (error) throw error;
-    },
-
-    async signOut() {
-      const { error } = await _supabase.auth.signOut();
-      if (error) throw error;
-    },
-
-    async getProfile(userId) {
-      const { data, error } = await _supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      if (error && error.code !== 'PGRST116') throw error;
-      return data;
-    },
-
-    async upsertProfile(userId, nickname) {
-      const { data, error } = await _supabase
-        .from('profiles')
-        .upsert({ user_id: userId, nickname }, { onConflict: 'user_id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-
+    async getSession() { return (await _client.getState()).session; },
+    async signInWithGoogle() { _client.login(); },
+    async signOut() { await _client.logout(); },
+    async getProfile() { return (await _client.getState()).profile; },
+    async upsertProfile(userId, nickname) { return _client.saveProfile(nickname); },
     async isNicknameAvailable(nickname) {
-      const { data, error } = await _supabase.rpc('is_nickname_available', { p_nickname: nickname });
-      if (error) throw error;
-      return data;
+      return (await _client.request('/api/profile?nickname=' + encodeURIComponent(nickname))).available;
     },
-
-    /**
-     * 최상위 댓글(parent_id IS NULL)을 페이지네이션으로 가져오고,
-     * 해당 댓글들의 대댓글을 한 번에 fetch해 인터리브 반환.
-     * 반환: { data: Comment[], count: number(최상위 댓글 수) }
-     */
     async listComments(pageId, offset, limit) {
-      const SELECT_FIELDS = `
-        id, content, created_at, updated_at, parent_id, user_id,
-        profiles!inner(nickname, avatar_url),
-        comment_likes(count)
-      `;
-
-      // 1. 최상위 댓글
-      const { data: topLevel, error, count } = await _supabase
-        .from('comments')
-        .select(SELECT_FIELDS, { count: 'exact' })
-        .eq('page_id', pageId)
-        .is('parent_id', null)
-        .is('deleted_at', null)
-        .is('moderated_at', null)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-      if (error) throw error;
-
-      if (!topLevel || !topLevel.length) return { data: [], count: count || 0 };
-
-      // 2. 대댓글
-      const topIds = topLevel.map(c => c.id);
-      const { data: replies, error: rErr } = await _supabase
-        .from('comments')
-        .select(SELECT_FIELDS)
-        .in('parent_id', topIds)
-        .is('deleted_at', null)
-        .is('moderated_at', null)
-        .order('created_at', { ascending: true });
-      if (rErr) throw rErr;
-
-      // 3. 부모 댓글 뒤에 대댓글 삽입
-      const replyMap = {};
-      (replies || []).forEach(r => {
-        if (!replyMap[r.parent_id]) replyMap[r.parent_id] = [];
-        replyMap[r.parent_id].push(r);
-      });
-
-      const merged = [];
-      topLevel.forEach(c => {
-        merged.push(c);
-        if (replyMap[c.id]) merged.push(...replyMap[c.id]);
-      });
-
-      return { data: merged, count: count || 0 };
+      const result = await _client.request('/api/comments?' + new URLSearchParams({ page_id: pageId, offset, limit }));
+      _loadedLikes = new Set(result.data.filter(c => c.liked).map(c => c.id));
+      return result;
     },
-
     async insertComment(pageId, userId, content, parentId = null) {
-      const { data, error } = await _supabase
-        .from('comments')
-        .insert({ page_id: pageId, user_id: userId, content, parent_id: parentId })
-        .select(`
-          id, content, created_at, updated_at, parent_id, user_id,
-          profiles!inner(nickname, avatar_url),
-          comment_likes(count)
-        `)
-        .single();
-      if (error) throw error;
-      return data;
+      return (await _client.create('/api/comments', { page_id: pageId, content, parent_id: parentId })).data;
     },
-
+    async listReplies(parentId, offset) {
+      return _client.request('/api/comments/' + encodeURIComponent(parentId) + '/replies?' + new URLSearchParams({ offset, limit: PAGE_SIZE }));
+    },
     async updateComment(id, content) {
-      const { data, error } = await _supabase
-        .from('comments')
-        .update({ content, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select(`
-          id, content, created_at, updated_at, parent_id, user_id,
-          profiles!inner(nickname, avatar_url),
-          comment_likes(count)
-        `)
-        .single();
-      if (error) throw error;
-      return data;
+      return (await _client.request('/api/comments/' + encodeURIComponent(id), {
+        method: 'PATCH', body: JSON.stringify({ content }) })).data;
     },
-
     async softDeleteComment(id) {
-      const { error } = await _supabase.rpc('soft_delete_comment', { comment_id: id });
-      if (error) throw error;
+      await _client.request('/api/comments/' + encodeURIComponent(id), { method: 'DELETE', body: '{}' });
     },
-
-    /** 로그인 유저가 좋아요한 댓글 ID Set 반환 */
-    async getUserLikes(commentIds) {
-      if (!_session || !commentIds.length) return new Set();
-      const { data, error } = await _supabase
-        .from('comment_likes')
-        .select('comment_id')
-        .eq('user_id', _session.user.id)
-        .in('comment_id', commentIds);
-      if (error) return new Set();
-      return new Set((data || []).map(r => r.comment_id));
-    },
-
-    /** 추천 토글: isLiked=true → 취소, false → 추천 */
+    async getUserLikes(commentIds) { return new Set(commentIds.filter(id => _loadedLikes.has(id))); },
     async toggleLike(commentId, isLiked) {
-      if (!_session) throw new Error('로그인이 필요합니다.');
-      if (isLiked) {
-        const { error } = await _supabase
-          .from('comment_likes')
-          .delete()
-          .eq('comment_id', commentId)
-          .eq('user_id', _session.user.id);
-        if (error) throw error;
-      } else {
-        const { error } = await _supabase
-          .from('comment_likes')
-          .insert({ comment_id: commentId, user_id: _session.user.id });
-        if (error) throw error;
-      }
+      await _client.request('/api/comments/' + encodeURIComponent(commentId) + '/like', {
+        method: 'PUT', body: JSON.stringify({ liked: !isLiked }) });
     }
   };
 
@@ -580,6 +450,10 @@
     title.className = 'nds-c-title';
     title.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
     _container.appendChild(title);
+    const notice = document.createElement('p');
+    notice.style.cssText = 'color:#94a3b8;font-size:12px;';
+    notice.textContent = '새 서비스는 신규 가입으로 시작하며 기존 댓글·닉네임·추천은 이전되지 않습니다.';
+    _container.appendChild(notice);
 
     // 인증 바
     _container.appendChild(renderAuthBar());
@@ -675,10 +549,10 @@
       <p>댓글 작성을 위해 닉네임을 설정해주세요. (최초 1회)</p>
       <div class="nds-nick-row">
         <input class="nds-input" id="nds-nick-input" type="text"
-          placeholder="닉네임 (2~30자)" maxlength="30" autocomplete="off">
+          placeholder="닉네임 (2~20자)" maxlength="20" autocomplete="off">
         <button class="nds-btn nds-btn-primary" id="nds-nick-save">저장</button>
       </div>
-      <div class="nds-nick-hint">영문, 한글, 숫자, _, - 사용 가능 / 2~30자</div>
+      <div class="nds-nick-hint">영문, 한글, 숫자, _, - 사용 가능 / 2~20자</div>
     `;
 
     setTimeout(() => {
@@ -688,7 +562,7 @@
 
       saveBtn.onclick = async () => {
         const val = input.value.trim();
-        if (val.length < 2) { showToast('닉네임은 2자 이상이어야 합니다.', true); return; }
+        if (val.length < 2 || val.length > 20) { showToast('닉네임은 2~20자여야 합니다.', true); return; }
         if (!/^[가-힣a-zA-Z0-9_\-]+$/.test(val)) {
           showToast('사용할 수 없는 문자가 포함되어 있습니다.', true); return;
         }
@@ -987,21 +861,9 @@
       submitBtn.disabled = true;
       submitBtn.textContent = '저장 중...';
       try {
-        const newReply = await api.insertComment(_pageId, _session.user.id, content, parentId);
+        await api.insertComment(_pageId, _session.user.id, content, parentId);
         formWrap.remove();
-
-        // 대댓글 DOM 삽입 (기존 대댓글 뒤)
-        const parentElInList = list.querySelector(`[data-id="${parentId}"]`);
-        let ins = parentElInList;
-        let nx = ins.nextElementSibling;
-        while (nx && nx.dataset.parentId == parentId) { ins = nx; nx = nx.nextElementSibling; }
-
-        const replyEl = renderComment(newReply, true);
-        ins.insertAdjacentElement('afterend', replyEl);
-
-        _totalCount++;
-        const titleEl = _container.querySelector('.nds-c-title');
-        if (titleEl) titleEl.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
+        await refreshList();
         showToast('답글이 등록되었습니다.');
       } catch (e) {
         showToast(e.message, true);
@@ -1015,11 +877,7 @@
     if (!confirm('댓글을 삭제하시겠습니까?')) return;
     try {
       await api.softDeleteComment(id);
-      const el = _container.querySelector(`[data-id="${id}"]`);
-      if (el) el.remove();
-      _totalCount = Math.max(0, _totalCount - 1);
-      const titleEl = _container.querySelector('.nds-c-title');
-      if (titleEl) titleEl.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
+      await refreshList();
       showToast('댓글이 삭제되었습니다.');
     } catch (e) {
       showToast(e.message, true);
@@ -1059,6 +917,7 @@
         list.appendChild(renderComment(c, isOwn));
       });
       listWrap.appendChild(list);
+      appendReplyButtons(list, data);
 
       if (_totalCount > _offset) {
         appendMoreBtn(listWrap);
@@ -1071,6 +930,33 @@
   async function refreshList() {
     const listWrap = document.getElementById('nds-list-wrap');
     if (listWrap) await renderList(listWrap);
+  }
+
+  function appendReplyButtons(list, data) {
+    for (const parent of data.filter(c => !c.parent_id)) {
+      let offset = data.filter(c => c.parent_id === parent.id).length;
+      if (!(parent.reply_count > offset)) continue;
+      const btn = document.createElement('button');
+      btn.className = 'nds-btn nds-btn-sm nds-more-replies';
+      btn.textContent = '답글 더보기 (' + (parent.reply_count - offset) + '개 남음)';
+      let anchor = list.querySelector('[data-id="' + parent.id + '"]');
+      while (anchor.nextElementSibling?.dataset.parentId == parent.id) anchor = anchor.nextElementSibling;
+      anchor.insertAdjacentElement('afterend', btn);
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const result = await api.listReplies(parent.id, offset);
+          result.data.forEach(reply => {
+            if (reply.liked) _likedSet.add(reply.id);
+            if (!list.querySelector('[data-id="' + reply.id + '"]')) btn.insertAdjacentElement('beforebegin', renderComment(reply, _session?.user.id === reply.user_id));
+          });
+          offset += result.data.length;
+          if (offset >= result.count || !result.data.length) btn.remove();
+          else btn.textContent = '답글 더보기 (' + (result.count - offset) + '개 남음)';
+        } catch (e) { showToast(e.message, true); }
+        finally { btn.disabled = false; }
+      };
+    }
   }
 
   function appendMoreBtn(listWrap) {
@@ -1100,6 +986,7 @@
           const isOwn = _session && _session.user.id === c.user_id;
           list.appendChild(renderComment(c, isOwn));
         });
+        appendReplyButtons(list, data);
 
         if (_totalCount <= _offset) {
           wrap.remove();
@@ -1144,34 +1031,19 @@
 
     injectStyles();
 
-    if (typeof window.supabase === 'undefined') {
-      console.error('[comments.js] Supabase SDK가 로드되지 않았습니다.');
+    _client = window.NodoAPI;
+    try {
+      const auth = await _client.getState();
+      _session = auth.session;
+      _profile = auth.profile;
+      _isAdmin = !!auth.isAdmin;
+    } catch (error) {
+      _container.textContent = '로그인 상태를 확인하지 못했습니다. 새로고침해 주세요. ' + error.message;
       return;
     }
-
-    _supabase = window.__supabaseClient;
-
-    _session = await api.getSession();
-    if (_session) {
-      _profile = await api.getProfile(_session.user.id);
-      const { data: adminFlag } = await _supabase.rpc('is_admin');
-      _isAdmin = !!adminFlag;
-    }
-
-    _supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
-        _session = session;
-        _profile = await api.getProfile(session.user.id);
-        const { data: adminFlag } = await _supabase.rpc('is_admin');
-        _isAdmin = !!adminFlag;
-        render();
-      } else if (event === 'SIGNED_OUT') {
-        _session = null;
-        _profile = null;
-        _isAdmin = false;
-        _likedSet = new Set();
-        render();
-      }
+    _client.onChange(() => {
+      _session = null; _profile = null; _isAdmin = false; _likedSet = new Set();
+      render();
     });
 
     render();
@@ -1179,7 +1051,7 @@
 
   // ─── 페이지 ID 변경 (SPA 상세 패널용) ──────────────────────────────────────
   async function changePageId(newPageId) {
-    if (!_supabase) return;
+    if (!_client) return;
     _pageId = newPageId;
     _offset = 0;
     _totalCount = 0;
@@ -1189,7 +1061,7 @@
 
   // ─── 컨테이너 변경 (전역↔상세 패널 전환용) ──────────────────────────────────
   async function changeContainer(containerSelector, newPageId) {
-    if (!_supabase) return;
+    if (!_client) return;
     const newContainer = document.querySelector(containerSelector);
     if (!newContainer) {
       console.error('[comments.js] 컨테이너를 찾을 수 없습니다:', containerSelector);

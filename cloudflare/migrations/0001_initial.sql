@@ -1,0 +1,18 @@
+PRAGMA foreign_keys = ON;
+CREATE TABLE users (id TEXT PRIMARY KEY, google_sub TEXT NOT NULL UNIQUE, email TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user','admin')), created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE profiles (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, nickname TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK(length(nickname) BETWEEN 2 AND 20), avatar_url TEXT);
+CREATE TABLE sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL, authenticated_at INTEGER NOT NULL, reauthenticated_at INTEGER);
+CREATE INDEX sessions_expiry ON sessions(expires_at);
+CREATE TABLE oauth_states (state_hash TEXT PRIMARY KEY, verifier TEXT NOT NULL, nonce TEXT NOT NULL, return_to TEXT NOT NULL, expires_at INTEGER NOT NULL, reauth_user TEXT REFERENCES users(id) ON DELETE CASCADE, session_hash TEXT);
+CREATE INDEX oauth_states_expiry ON oauth_states(expires_at);
+CREATE TABLE comments (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT REFERENCES users(id) ON DELETE SET NULL, page_id TEXT NOT NULL, content TEXT NOT NULL CHECK(length(content)<=1000), parent_id INTEGER REFERENCES comments(id), created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT, deleted_at TEXT, moderated_at TEXT, moderation_reason TEXT, request_key TEXT UNIQUE, request_hash TEXT);
+CREATE INDEX comments_page ON comments(page_id,parent_id,created_at);
+CREATE INDEX comments_user ON comments(user_id);
+CREATE TABLE comment_likes (comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, PRIMARY KEY(comment_id,user_id));
+CREATE TABLE tags (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL COLLATE NOCASE UNIQUE CHECK(length(name) BETWEEN 2 AND 30),slug TEXT NOT NULL UNIQUE,category TEXT NOT NULL DEFAULT 'custom',status TEXT NOT NULL DEFAULT 'official',color TEXT,created_by TEXT REFERENCES users(id) ON DELETE SET NULL,created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+CREATE TABLE stock_tags (id INTEGER PRIMARY KEY AUTOINCREMENT,ticker TEXT NOT NULL,tag_id INTEGER NOT NULL REFERENCES tags(id),UNIQUE(ticker,tag_id));
+CREATE TABLE tag_votes (tag_id INTEGER NOT NULL REFERENCES tags(id),user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,vote_type TEXT NOT NULL CHECK(vote_type IN ('up','down')),PRIMARY KEY(tag_id,user_id));
+CREATE TABLE rate_limits (key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires_at INTEGER NOT NULL);
+CREATE INDEX rate_limits_expiry ON rate_limits(expires_at);
+CREATE TABLE schema_metadata (version INTEGER PRIMARY KEY);
+INSERT INTO schema_metadata(version) VALUES(1);

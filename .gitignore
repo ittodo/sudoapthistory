@@ -1,5 +1,12 @@
 .claude/
 .env
+/node_modules/
+/.wrangler/
+/.dev.vars*
+/cloudflare/dist/
+/cloudflare/node_modules/
+/cloudflare/.wrangler/
+/cloudflare/.dev.vars*
 # Retired company outputs: producers must use data/earnings only.
 /data/div/
 /div/data/

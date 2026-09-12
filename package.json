@@ -1,0 +1,7 @@
+{
+  "name": "nodostream-cloudflare", "private": true, "type": "module",
+  "scripts": {"build": "node tools/build-cloudflare-assets.mjs", "typecheck": "tsc --noEmit", "test:api": "tsx --test cloudflare/test/*.test.ts"},
+  "dependencies": {"oauth4webapi": "^3.8.0"},
+  "overrides": {"undici": "^7.29.0", "sharp": "^0.35.4"},
+  "devDependencies": {"@cloudflare/workers-types": "^5.20260911.1", "typescript": "^5.9.2", "tsx": "^4.20.5", "miniflare": "^4.20250906.0", "wrangler": "^4.34.0", "@types/node": "^22.18.0", "esbuild": "^0.25.9"}
+}

@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   purge:
+    if: vars.NODESTREAM_DEPLOYMENT_PROVIDER != 'cloudflare'
     runs-on: ubuntu-latest
 
     steps:

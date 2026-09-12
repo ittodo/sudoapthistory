@@ -340,10 +340,10 @@
       <label class="form-label" for="nick-input">새 닉네임</label>
       <div class="form-row">
         <input type="text" id="nick-input" class="form-input"
-          placeholder="닉네임 (2~30자)" maxlength="30" autocomplete="off">
+          placeholder="닉네임 (2~20자)" maxlength="20" autocomplete="off">
         <button class="btn btn-primary" id="btn-nick-save">저장</button>
       </div>
-      <div class="form-hint">영문, 한글, 숫자, _, - 사용 가능 / 2~30자</div>
+      <div class="form-hint">영문, 한글, 숫자, _, - 사용 가능 / 2~20자</div>
     </div>
   </div>
 
@@ -385,13 +385,13 @@
 <!-- 토스트 -->
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="/js/supabase-init.js"></script>
+<p role="note" style="max-width:680px;margin:16px auto;padding:12px;color:#94a3b8;">새 서비스는 신규 가입으로 시작합니다. 기존 닉네임·댓글·추천·사용자 태그는 이전되지 않습니다.</p>
+<script src="/js/auth-client.js"></script>
 <script>
 (function () {
   'use strict';
 
-  const sb = window.__supabaseClient;
+  const client = window.NodoAPI;
 
   // ── 토스트 ──────────────────────────────────────────────────────────────
   let _toastTimer = null;
@@ -412,20 +412,9 @@
 
   // ── 초기화 ──────────────────────────────────────────────────────────────
   async function init() {
-    const { data } = await sb.auth.getSession();
-    _session = data.session;
-
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
-        _session = session;
-        _profile = await fetchProfile(session.user.id);
-        showMain();
-      } else if (event === 'SIGNED_OUT') {
-        _session = null;
-        _profile = null;
-        showLoginGate();
-      }
-    });
+    const auth = await client.getState();
+    _session = auth.session;
+    client.onChange(() => { _session = null; _profile = null; showLoginGate(); });
 
     if (_session) {
       _profile = await fetchProfile(_session.user.id);
@@ -435,15 +424,7 @@
     }
   }
 
-  async function fetchProfile(userId) {
-    const { data, error } = await sb
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    if (error && error.code !== 'PGRST116') console.error(error);
-    return data;
-  }
+  async function fetchProfile() { return (await client.getState()).profile; }
 
   // ── 화면 전환 ────────────────────────────────────────────────────────────
   function showLoginGate() {
@@ -493,7 +474,7 @@
     const btn = document.getElementById('btn-nick-save');
     const val = input.value.trim();
 
-    if (val.length < 2) { showToast('닉네임은 2자 이상이어야 합니다.', 'error'); return; }
+    if (val.length < 2 || val.length > 20) { showToast('닉네임은 2~20자여야 합니다.', 'error'); return; }
     if (!/^[가-힣a-zA-Z0-9_\-]+$/.test(val)) {
       showToast('사용할 수 없는 문자가 포함되어 있습니다.', 'error'); return;
     }
@@ -505,20 +486,7 @@
     btn.textContent = '확인 중...';
 
     try {
-      // 중복 체크
-      const { data: avail, error: rpcErr } = await sb.rpc('is_nickname_available', { p_nickname: val });
-      if (rpcErr) throw rpcErr;
-      if (!avail) { showToast('이미 사용 중인 닉네임입니다.', 'error'); return; }
-
-      // 저장
-      const { data, error } = await sb
-        .from('profiles')
-        .upsert({ user_id: _session.user.id, nickname: val }, { onConflict: 'user_id' })
-        .select()
-        .single();
-      if (error) throw error;
-
-      _profile = data;
+      _profile = await client.saveProfile(val);
       renderProfile();
       showToast('닉네임이 변경되었습니다.', 'success');
     } catch (e) {
@@ -535,8 +503,7 @@
     btn.disabled = true;
     btn.textContent = '처리 중...';
     try {
-      const { error } = await sb.auth.signOut();
-      if (error) throw error;
+      await client.logout();
       // onAuthStateChange에서 showLoginGate 호출됨
     } catch (e) {
       showToast(e.message, 'error');
@@ -559,28 +526,23 @@
     btn.disabled = true;
     btn.textContent = '처리 중...';
     try {
-      const { error } = await sb.rpc('delete_account');
-      if (error) throw error;
+      await client.request('/api/account', { method: 'DELETE', body: '{}' });
       closeDeleteModal();
       showToast('계정이 삭제되었습니다.', 'success');
       // 로그아웃 후 메인으로
-      await sb.auth.signOut();
+      // Deletion already invalidates all sessions on the server.
       setTimeout(() => { location.href = '/'; }, 1500);
     } catch (e) {
-      showToast(e.message || '탈퇴 처리 중 오류가 발생했습니다.', 'error');
+      if (e.code === 'REAUTH_REQUIRED') {
+        if (confirm('안전한 탈퇴를 위해 구글 계정을 다시 확인해야 합니다. 인증 후 탈퇴 버튼을 다시 눌러 주세요.')) client.login(true);
+      } else showToast(e.message || '탈퇴 처리 중 오류가 발생했습니다.', 'error');
       btn.disabled = false;
       btn.textContent = '탈퇴하기';
     }
   }
 
   // ── 이벤트 바인딩 ────────────────────────────────────────────────────────
-  document.getElementById('btn-google-login').onclick = async () => {
-    const { error } = await sb.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: location.origin + location.pathname }
-    });
-    if (error) showToast(error.message, 'error');
-  };
+  document.getElementById('btn-google-login').onclick = () => client.login();
 
   document.getElementById('btn-nick-save').onclick = handleNickSave;
   document.getElementById('nick-input').addEventListener('keydown', e => {
@@ -598,7 +560,7 @@
   };
 
   // 시작
-  init();
+  init().catch(e => { showLoginGate(); showToast(e.message, 'error'); });
 })();
 </script>
 </body>

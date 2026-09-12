@@ -495,8 +495,7 @@ body {
 <!-- Toast -->
 <div class="adm-toast" id="adm-toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="/js/supabase-init.js"></script>
+<script src="/js/auth-client.js"></script>
 <script>
 (function () {
   'use strict';
@@ -550,23 +549,11 @@ body {
 
   // ── 초기화 ────────────────────────────────────────────────────────────────
   async function init() {
-    sb = window.__supabaseClient;
+    sb = window.NodoAPI;
 
-    // getSession() 완료 후 리스너 등록 → SIGNED_IN 이중 호출 방지
-    const { data } = await sb.auth.getSession();
-    session = data.session;
-
-    sb.auth.onAuthStateChange(async (event, sess) => {
-      if (event === 'SIGNED_IN') {
-        // 이미 앱 화면이 표시된 경우 중복 실행 방지
-        if (!document.getElementById('screen-app').classList.contains('hidden')) return;
-        session = sess;
-        await checkAdminAndLoad();
-      } else if (event === 'SIGNED_OUT') {
-        session = null;
-        showScreen('screen-login');
-      }
-    });
+    const auth = await sb.getState();
+    session = auth.session;
+    sb.onChange(() => { session = null; showScreen('screen-login'); });
 
     if (!session) {
       showScreen('screen-login');
@@ -577,8 +564,7 @@ body {
 
   async function checkAdminAndLoad() {
     try {
-      const { data: isAdmin, error } = await sb.rpc('is_admin');
-      if (error) throw error;
+      const { isAdmin } = await sb.getState();
       if (!isAdmin) {
         showScreen('screen-noaccess');
         return;
@@ -595,75 +581,18 @@ body {
 
   // ── 데이터 로드 ───────────────────────────────────────────────────────────
   async function loadStats() {
-    console.log('[admin] loadStats: admin_get_stats 호출 중...');
-    const { data, error } = await sb.rpc('admin_get_stats');
-    console.log('[admin] loadStats 결과:', { data, error });
-
-    if (error) {
-      console.error('[admin] admin_get_stats 오류:', error);
-      toast('통계 로드 실패: ' + error.message, true);
-      // 실패 시 admin_list_comments fallback으로 카운트 계산
-      await loadStatsFallback();
-      return;
-    }
-
-    // RETURNS TABLE은 배열, 혹시 단일 객체로 올 경우도 대비
-    const s = (Array.isArray(data) ? data[0] : data) || {};
-    console.log('[admin] 통계 파싱:', s);
-
-    console.log('[admin] s keys:', Object.keys(s), 'len:', Object.keys(s).length);
-    if (!s || Object.keys(s).length === 0) {
-      console.warn('[admin] admin_get_stats: 빈 응답', data);
-      await loadStatsFallback();
-      return;
-    }
-
-    console.log('[admin] DOM 업데이트 시작 — total:', s.total, 'active:', s.active, 'moderated:', s.moderated, 'deleted:', s.deleted);
-    const elTotal = document.getElementById('s-total');
-    const elNormal = document.getElementById('s-normal');
-    const elMod = document.getElementById('s-moderated');
-    const elDel = document.getElementById('s-deleted');
-    console.log('[admin] 요소 조회:', { elTotal, elNormal, elMod, elDel });
-    if (elTotal) elTotal.textContent = s.total ?? '—';
-    if (elNormal) elNormal.textContent = s.active ?? '—';
-    if (elMod) elMod.textContent = s.moderated ?? '—';
-    if (elDel) elDel.textContent = s.deleted ?? '—';
-    console.log('[admin] DOM 업데이트 완료');
-  }
-
-  async function loadStatsFallback() {
-    console.log('[admin] loadStatsFallback: admin_list_comments 4회 호출로 집계');
-    try {
-      const [rAll, rNormal, rMod, rDel] = await Promise.all([
-        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'all',       p_page_id: null }),
-        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'normal',    p_page_id: null }),
-        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'moderated', p_page_id: null }),
-        sb.rpc('admin_list_comments', { p_limit: 1, p_offset: 0, p_status: 'deleted',   p_page_id: null }),
-      ]);
-      console.log('[admin] fallback 결과:', { rAll, rNormal, rMod, rDel });
-      const cnt = r => parseInt(r.data?.[0]?.total_count ?? 0, 10);
-      document.getElementById('s-total').textContent     = cnt(rAll);
-      document.getElementById('s-normal').textContent    = cnt(rNormal);
-      document.getElementById('s-moderated').textContent = cnt(rMod);
-      document.getElementById('s-deleted').textContent   = cnt(rDel);
-    } catch (e) {
-      console.error('[admin] loadStatsFallback 오류:', e);
-      ['s-total','s-normal','s-moderated','s-deleted'].forEach(id => {
-        document.getElementById(id).textContent = 'ERR';
-      });
+    const stats = await sb.request('/api/admin/stats');
+    for (const [id, key] of [['s-total','total'], ['s-normal','active'], ['s-moderated','moderated'], ['s-deleted','deleted']]) {
+      document.getElementById(id).textContent = stats[key] ?? '—';
     }
   }
 
   async function loadComments() {
-    const { data, error } = await sb.rpc('admin_list_comments', {
-      p_limit:   PAGE_SIZE,
-      p_offset:  currentPage * PAGE_SIZE,
-      p_status:  filterStatus,
-      p_page_id: filterPageId || null
-    });
-    if (error) { toast(error.message, true); comments = []; totalCount = 0; return; }
-    comments   = data || [];
-    totalCount = parseInt(comments[0]?.total_count ?? 0, 10);
+    const result = await sb.request('/api/admin/comments?' + new URLSearchParams({
+      limit: PAGE_SIZE, offset: currentPage * PAGE_SIZE, status: filterStatus, page_id: filterPageId || ''
+    }));
+    comments = result.data;
+    totalCount = result.count;
   }
 
   // ── 댓글 목록 렌더링 ──────────────────────────────────────────────────────
@@ -818,12 +747,9 @@ body {
     confirmBtn.textContent = '처리 중...';
 
     try {
-      const { error } = await sb.rpc('admin_moderate_comment', {
-        p_comment_id: moderatingId,
-        p_category:   category,
-        p_detail:     detail
+      await sb.request('/api/admin/comments/' + encodeURIComponent(moderatingId) + '/moderation', {
+        method: 'PUT', body: JSON.stringify({ hidden: true, category, detail })
       });
-      if (error) throw error;
 
       closeModModal();
       toast('댓글이 숨김 처리되었습니다.');
@@ -841,8 +767,9 @@ body {
   async function handleRestore(id) {
     if (!confirm('이 댓글의 숨김을 해제하고 복원하시겠습니까?')) return;
     try {
-      const { error } = await sb.rpc('admin_restore_comment', { p_comment_id: id });
-      if (error) throw error;
+      await sb.request('/api/admin/comments/' + encodeURIComponent(id) + '/moderation', {
+        method: 'PUT', body: JSON.stringify({ hidden: false })
+      });
       toast('댓글이 복원되었습니다.');
       await loadStats();
       await loadComments();
@@ -855,25 +782,21 @@ body {
   // ── 필터 / 탭 ─────────────────────────────────────────────────────────────
   async function applyFilter() {
     currentPage = 0;
-    await loadComments();
-    renderCommentList();
+    try { await loadComments(); renderCommentList(); } catch (e) { toast(e.message, true); }
   }
 
   // ── 이벤트 바인딩 ─────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
-    init();
+    init().catch(e => { showScreen('screen-login'); toast(e.message, true); });
 
     // 로그인
     document.getElementById('login-btn').onclick = () => {
-      sb.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: location.origin + location.pathname }
-      });
+      sb.login();
     };
 
     // 로그아웃
-    document.getElementById('logout-btn').onclick = () => sb.auth.signOut();
-    document.getElementById('logout-noaccess-btn').onclick = () => sb.auth.signOut();
+    document.getElementById('logout-btn').onclick = () => sb.logout().catch(e => toast(e.message, true));
+    document.getElementById('logout-noaccess-btn').onclick = () => sb.logout().catch(e => toast(e.message, true));
 
     // 탭 클릭
     document.querySelectorAll('.tab').forEach(tab => {
@@ -906,18 +829,16 @@ body {
     document.getElementById('pg-prev').onclick = async () => {
       if (currentPage > 0) {
         currentPage--;
-        await loadComments();
-        renderCommentList();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        try { await loadComments(); renderCommentList(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        catch (e) { currentPage++; toast(e.message, true); }
       }
     };
     document.getElementById('pg-next').onclick = async () => {
       const totalPages = Math.ceil(totalCount / PAGE_SIZE);
       if (currentPage < totalPages - 1) {
         currentPage++;
-        await loadComments();
-        renderCommentList();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        try { await loadComments(); renderCommentList(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+        catch (e) { currentPage--; toast(e.message, true); }
       }
     };
 

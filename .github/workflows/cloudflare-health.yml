@@ -1,0 +1,21 @@
+name: Cloudflare Health
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */6 * * *'
+permissions:
+  contents: read
+jobs:
+  check:
+    if: vars.CLOUDFLARE_MONITOR_ENABLED == 'true' && vars.NODESTREAM_DEPLOYMENT_PROVIDER == 'cloudflare'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Health and explicitly supplied budget estimate
+        env:
+          ORIGIN: https://nodostream.com
+          MONTHLY_ESTIMATE_USD: ${{ vars.CLOUDFLARE_MONTHLY_ESTIMATE_USD }}
+        run: node tools/cloudflare-health-check.mjs
