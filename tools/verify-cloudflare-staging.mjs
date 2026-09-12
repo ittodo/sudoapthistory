@@ -15,7 +15,10 @@ export function verifyStaging(config, env) {
   assert.equal(config.route, undefined);
   assert.equal(config.limits?.cpu_ms, undefined, 'Use the free plan CPU limit');
   assert.equal(config.vars.SITE_ORIGIN, origin);
-  assert.equal(config.vars.AUTH_ENABLED, 'false', 'Google setup requires a separate review');
+  assert.ok(['true','false'].includes(config.vars.AUTH_ENABLED), 'Explicit authentication mode required');
+  if(config.vars.AUTH_ENABLED==='true') assert.equal(config.vars.GOOGLE_CLIENT_ID,
+    '221788330191-cf33apf0s7jcpqh2kc527k2mg4ng7kgh.apps.googleusercontent.com',
+    'Only the reviewed Google client may be enabled');
   assert.equal(config.vars.MAINTENANCE, 'true');
   assert.deepEqual(config.d1_databases, [{
     binding: 'DB', database_name: 'nodostream-staging',

@@ -1,6 +1,6 @@
 # Cloudflare 새 서비스 배포 실행서
 
-현재 상태는 **로컬 구현·시험 준비**다. 무료 시험 D1 `nodostream-staging`은 생성했으며 테이블·데이터는 아직 없다. 2026-09-13 사용자 승인 후 GitHub `cloudflare-staging` 환경에 Workers·D1 배포 토큰과 계정 식별자를 저장했다. 운영 설정·DNS·운영 D1·Google OAuth는 변경하지 않았다.
+현재 상태는 **무료 시험 배포 성공·Google 로그인 활성화 준비**다. 시험 D1 스키마와 Worker 배포·공개 검증은 성공했다. 사용자 승인 후 기존 Google 클라이언트에 시험 callback과 새 비밀키를 추가했고, 새 비밀키는 시험 Worker의 암호화 Secret에만 저장했다. 운영 DNS·운영 D1·요금제 및 기존 Supabase callback/키는 변경하지 않았다.
 기존 Supabase 데이터는 가져오지 않는다. 기존 기업·부동산 공개 JSON과 수집 DB는 유지한다.
 
 ## 1. 안전한 시험 배포
@@ -9,8 +9,8 @@
 - 구현 커밋은 `cloudflare-staging` 브랜치에만 push한다. 이 브랜치 push가 Staging workflow를 실행하며, main/Pages는 변경하지 않는다. workflow_dispatch는 기본 브랜치에 workflow가 등록된 뒤 사용할 수 있으므로 초기 배포는 push 트리거를 사용한다.
 - 계정·요금제를 확인한다. 자동 유료 전환을 하지 않는다. 무료 staging에서 CPU 한도를 검증하고 유료 production 가입은 별도 승인을 받는다.
 - 빈 staging D1은 생성 완료했다(`636d41b6-3ed7-4f6d-8f0b-823324c4ccad`). 중복 생성하지 않는다. SITE_ORIGIN은 계정의 Workers 하위 도메인에 따른 `https://nodostream-staging.sksk17.workers.dev`로 설정하고 실제 배포 후 검증한다. production binding은 별개로 남긴다.
-- Staging workflow는 검사 성공과 환경 승인 이후, 고정된 시험 계정·DB·URL·브랜치·로그인 비활성·점검 모드를 검사한다. 이 검사를 통과한 **기존 시험 DB에만** `wrangler d1 migrations apply nodostream-staging --remote`로 미적용 스키마를 적용한다. DB 생성·데이터 가져오기·운영 migration은 하지 않는다. Production workflow는 여전히 자동 migration하지 않는다.
-- Google client ID/secret은 안전한 Workers secret 입력으로 등록한다. 채팅·Git·명령 기록에 실제 secret을 넣지 않는다. 기존 Google 프로젝트에 staging callback을 추가하되 기존 Supabase callback을 제거하지 않는다.
+- Staging workflow는 검사 성공과 환경 승인 이후, 고정된 시험 계정·DB·URL·브랜치·점검 모드를 검사한다. 로그인 활성화 시 승인된 Google client ID를 검사한다. 이 검사를 통과한 **기존 시험 DB에만** `wrangler d1 migrations apply nodostream-staging --remote`로 미적용 스키마를 적용한다. DB 생성·데이터 가져오기·운영 migration은 하지 않는다. Production workflow는 여전히 자동 migration하지 않는다.
+- 공개 Google client ID는 시험 wrangler 설정에 기록하고 실제 비밀키는 Workers Secret으로만 등록한다. 채팅·Git·명령 기록에 실제 secret을 넣지 않는다. 기존 Google 프로젝트의 staging callback 및 Supabase callback을 함께 유지한다. 로그인 활성화 커밋 배포 후 자동 검사는 인증 시작까지만 확인하고, 실제 로그인은 사용자가 직접 수행한다.
 - `cloudflare-staging` GitHub environment에 최소 권한 Cloudflare token, 계정 ID 및 staging origin을 설정한다. 환경 변수 `CLOUDFLARE_STAGING_ENABLED=true`를 배포 단계에서 검사한다. 승인 전에는 환경 변수를 읽을 수 없으므로 job 조건에서 이 값을 사용하지 않는다.
 - 2026-09-13 연결: environment secret `CLOUDFLARE_API_TOKEN`, environment variables `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STAGING_ORIGIN`, `CLOUDFLARE_STAGING_ENABLED`. 환경 승인자는 `ittodo`이며 관리자 우회는 비활성화했다. 본인 실행의 본인 승인은 허용하므로 소유자가 시험 배포를 승인할 수 있다.
 - 토큰 `nodostream-staging-github-actions`는 지정한 Cloudflare 계정의 `Workers Scripts:Edit`, `D1:Edit`만 포함한다. DNS·결제·R2·계정 관리 권한은 없다. **권한 범위는 특정 Worker/DB 하나가 아니라 해당 계정의 Workers·D1이다.** 만료일은 미지정이며 필요 종료 시 폐기/갱신한다. 토큰 원문은 GitHub 환경 secret에만 저장했고 로컬 파일·Git·채팅 출력에는 기록하지 않았다. 실제 API 인증 성공과 배포 성공은 아직 시험하지 않았다.

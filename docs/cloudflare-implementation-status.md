@@ -5,6 +5,26 @@
 
 ## 외부 상태
 
+### 2026-09-13 시험 Google 로그인 연결
+
+- [Staging 실행 #2](https://github.com/ittodo/sudoapthistory/actions/runs/34717387572)는
+  검사·배포·공개 검증·artifact 저장까지 성공했다.
+- 사용자 승인으로 기존 Google `nodostream` 클라이언트에 시험 callback
+  `https://nodostream-staging.sksk17.workers.dev/auth/callback`을 추가·저장했다.
+  기존 Supabase callback은 유지했다.
+- 별도 승인 후 Google client secret 하나를 추가하여 시험 Worker의
+  `GOOGLE_CLIENT_SECRET` 암호화 Secret으로 저장·적용했다. 기존 키는 유지했다.
+  새 키 원문은 Git·로컬 파일·채팅 출력에 기록하지 않았고 브라우저 임시 변수도 비웠다.
+- 후속 진행 요청에 따라 공개 client ID와 `AUTH_ENABLED=true`를 시험 설정에만 반영했다.
+  실제 활성화는 이 커밋의 GitHub 환경 승인 및 배포 성공 후다.
+- `MAINTENANCE=true`는 유지한다. 현재 점검 모드는 프로필 변경·로그아웃·탈퇴를
+  포함한 API 쓰기도 차단하므로 이번 단계는 신규 로그인과 세션 조회만 시험한다.
+- 첫 로그인부터 시험 D1에 신규 회원·세션이 생성된다. DB 초기화나 자동 관리자
+  지정은 하지 않는다. 운영 DB·도메인·요금제·운영 인증 활성화는 변경하지 않았다.
+- 배포 후 로그인 시작 검사에서 Google 목적지·client ID·callback·PKCE·state·nonce·
+  보안 쿠키를 확인한다. Google로 리디렉션을 따라가거나 사용자를 대신해 로그인하지 않는다.
+  실제 동의 화면·코드 교환·회원 생성은 사용자 직접 로그인 후 별도 검증한다.
+
 ### 2026-09-13 첫 시험 배포와 공개 확인
 
 - [Staging 실행 #1](https://github.com/ittodo/sudoapthistory/actions/runs/34716869968)의

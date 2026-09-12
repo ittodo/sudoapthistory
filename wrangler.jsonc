@@ -7,7 +7,7 @@
   "version_metadata":{"binding":"CF_VERSION_METADATA"},
   "triggers": {"crons":["17 * * * *"]},
   "assets": {"directory":"cloudflare/dist/public","binding":"ASSETS","run_worker_first":["/api/*","/auth/*"],"not_found_handling":"none"},
-  "vars": {"SITE_ORIGIN":"https://nodostream-staging.sksk17.workers.dev","RELEASE_SHA":"unreleased","MAINTENANCE":"true","AUTH_ENABLED":"false"},
+  "vars": {"SITE_ORIGIN":"https://nodostream-staging.sksk17.workers.dev","RELEASE_SHA":"unreleased","MAINTENANCE":"true","AUTH_ENABLED":"true","GOOGLE_CLIENT_ID":"221788330191-cf33apf0s7jcpqh2kc527k2mg4ng7kgh.apps.googleusercontent.com"},
   "d1_databases": [{"binding":"DB","database_name":"nodostream-staging","database_id":"636d41b6-3ed7-4f6d-8f0b-823324c4ccad","migrations_dir":"cloudflare/migrations"}],
   "env": {"production": {
     "name":"nodostream","workers_dev":false,
