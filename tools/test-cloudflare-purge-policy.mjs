@@ -32,6 +32,13 @@ try {
   }));
   assert.deepEqual(result.changed, ['data/parcels.json', 'data/prices.json']);
   assert.ok(result.urls.includes('https://nodostream.com/data/parcels.json?v=v1'));
+  writeFileSync(join(root, 'data/서울 종로.json'), '{}');
+  git('add', '.'); git('commit', '-m', 'Korean filename');
+  const korean = JSON.parse(execFileSync(process.execPath, [script, '--json'], {
+    cwd: root, encoding: 'utf8', env: { ...process.env, PURGE_BASE_SHA: head, PURGE_HEAD_SHA: 'HEAD' },
+  }));
+  assert.deepEqual(korean.changed, ['data/서울 종로.json']);
+  assert.ok(korean.urls.includes('https://nodostream.com/data/%EC%84%9C%EC%9A%B8%20%EC%A2%85%EB%A1%9C.json'));
   assert.throws(() => execFileSync(process.execPath, [script, '--json'], {
     cwd: root, stdio: 'pipe', env: { ...process.env, PURGE_BASE_SHA: 'bad-ref' },
   }));

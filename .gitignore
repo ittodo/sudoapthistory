@@ -1,5 +1,11 @@
 .claude/
 .env
+# Retired company outputs: producers must use data/earnings only.
+/data/div/
+/div/data/
+/data/**/*.bak
+/data/**/*.tmp
+/data/**/*.part
 __pycache__/
 data/market/*
 !data/market/2026-*/

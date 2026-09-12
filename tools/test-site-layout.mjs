@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, unlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { inspectLayout, forbiddenReason } from './verify-site-layout.mjs';
+const root = mkdtempSync(join(tmpdir(), 'site-layout-'));
+const git = (...args) => execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+const put = (name, data = '{}') => { mkdirSync(join(root, name, '..'), { recursive: true }); writeFileSync(join(root, name), data); };
+try {
+  git('init'); git('config', 'user.name', 'Test'); git('config', 'user.email', 'test@example.invalid');
+  put('data/earnings/005930.json'); put('data/tx/서울 종로.json');
+  git('add', '.'); git('commit', '-m', 'base');
+  const first = inspectLayout({ root });
+  assert.equal(first.count, 2); assert.equal(first.violations.length, 0); assert.equal(first.duplicateFiles, 1);
+  assert.equal(inspectLayout({ root }).manifestSha256, first.manifestSha256);
+  assert.equal(inspectLayout({ root, ref: 'HEAD' }).count, 2);
+  assert.equal(inspectLayout({ root, staged: true }).bytes, 4);
+  put('.gitignore', 'data/div/\n'); put('data/div/005930.json');
+  assert.equal(inspectLayout({ root }).violations[0].path, 'data/div/005930.json');
+  assert.equal(inspectLayout({ source: root }).violations.length, 1);
+  assert.equal(forbiddenReason('data/earnings/earnings/1.json'), 'nested-earnings');
+  assert.equal(forbiddenReason('data/index.json.bak'), 'temporary-output');
+  const script = resolve('tools/verify-site-layout.mjs');
+  assert.equal(spawnSync(process.execPath, [script, '--root', root]).status, 1);
+  assert.equal(spawnSync(process.execPath, [script, '--root', root, '--allow-existing-legacy']).status, 0);
+  git('add', '-f', 'data/div/005930.json');
+  assert.equal(inspectLayout({ root, staged: true }).violations.length, 1);
+  put('.gitignore', 'data/div/\ndata/*.bak\n'); put('data/index.json.bak');
+  assert.equal(inspectLayout({ root }).violations.length, 2);
+  const link = join(root, 'data/link');
+  symlinkSync(join(root, 'data/earnings'), link, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => inspectLayout({ source: root }), /Symlink|Non-regular/);
+  unlinkSync(link);
+  console.log('Site layout modes, ignored retired outputs, Korean paths and audit tests passed');
+} finally { rmSync(root, { recursive: true, force: true }); }

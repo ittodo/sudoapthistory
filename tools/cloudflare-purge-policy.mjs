@@ -125,16 +125,16 @@ function changedFromGit() {
   if (before && !/^0+$/.test(before)) {
     // A multi-commit push must invalidate every changed public file, not only HEAD^.
     git(["rev-parse", "--verify", `${before}^{commit}`]);
-    return git(["diff", "--name-only", before, after]).split(/\r?\n/).filter(Boolean);
+    return git(["diff", "--name-only", "-z", before, after]).split('\0').filter(Boolean);
   }
   if (before && /^0+$/.test(before)) {
-    return git(["ls-tree", "-r", "--name-only", after]).split(/\r?\n/).filter(Boolean);
+    return git(["ls-tree", "-r", "--name-only", "-z", after]).split('\0').filter(Boolean);
   }
   try {
     git(["rev-parse", "--verify", "HEAD^"]);
-    return git(["diff", "--name-only", "HEAD^", "HEAD"]).split(/\r?\n/).filter(Boolean);
+    return git(["diff", "--name-only", "-z", "HEAD^", "HEAD"]).split('\0').filter(Boolean);
   } catch {
-    return git(["ls-tree", "-r", "--name-only", "HEAD"]).split(/\r?\n/).filter(Boolean);
+    return git(["ls-tree", "-r", "--name-only", "-z", "HEAD"]).split('\0').filter(Boolean);
   }
 }
 
