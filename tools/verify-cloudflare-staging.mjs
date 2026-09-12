@@ -19,7 +19,9 @@ export function verifyStaging(config, env) {
   if(config.vars.AUTH_ENABLED==='true') assert.equal(config.vars.GOOGLE_CLIENT_ID,
     '221788330191-cf33apf0s7jcpqh2kc527k2mg4ng7kgh.apps.googleusercontent.com',
     'Only the reviewed Google client may be enabled');
-  assert.equal(config.vars.MAINTENANCE, 'true');
+  assert.ok(['true','false'].includes(config.vars.MAINTENANCE), 'Explicit maintenance mode required');
+  assert.equal(config.env.production.vars.MAINTENANCE,'true','Production must remain in maintenance');
+  assert.equal(config.env.production.vars.AUTH_ENABLED,'false','Production login is not approved');
   assert.deepEqual(config.d1_databases, [{
     binding: 'DB', database_name: 'nodostream-staging',
     database_id: '636d41b6-3ed7-4f6d-8f0b-823324c4ccad',

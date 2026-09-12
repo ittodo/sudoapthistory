@@ -13,6 +13,9 @@ test('staging guard rejects production, disabled and misconfigured targets', () 
   verifyStaging(config, env);
   const disabled=structuredClone(config);disabled.vars.AUTH_ENABLED='false';
   verifyStaging(disabled,env);
+  const paused=structuredClone(config);paused.vars.MAINTENANCE='true';
+  verifyStaging(paused,env);
+  assert.equal(config.vars.MAINTENANCE,'false');
   assert.equal(config.env.production.vars.AUTH_ENABLED,'false');
   for (const change of [
     {GITHUB_REF: 'refs/heads/main'}, {CLOUDFLARE_STAGING_ENABLED: ''},
@@ -22,7 +25,10 @@ test('staging guard rejects production, disabled and misconfigured targets', () 
     c => c.d1_databases[0].database_id = 'production',
     c => c.d1_databases.push({...c.d1_databases[0]}),
     c => c.routes = ['nodostream.com/*'], c => c.route = 'nodostream.com/*',
-    c => c.vars.AUTH_ENABLED = 'invalid', c => c.vars.MAINTENANCE = 'false',
+    c => c.vars.AUTH_ENABLED = 'invalid', c => c.vars.MAINTENANCE = 'invalid',
+    c => delete c.vars.MAINTENANCE,
+    c => c.env.production.vars.MAINTENANCE = 'false',
+    c => c.env.production.vars.AUTH_ENABLED = 'true',
     c => c.vars.GOOGLE_CLIENT_ID = 'other-client', c => delete c.vars.GOOGLE_CLIENT_ID,
     c => c.limits = {cpu_ms: 50}, c => c.vars.SITE_ORIGIN = 'https://nodostream.com',
     c => c.name = 'nodostream'
