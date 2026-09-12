@@ -5,6 +5,7 @@ import { resolve, relative, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export function forbiddenReason(name) {
+  if (name === 'data/.company-export.json') return 'producer-completion-record';
   if (/^(data\/div|div\/data)(\/|$)/i.test(name)) return 'retired-output';
   if (/(^|\/)earnings\/earnings(\/|$)/i.test(name)) return 'nested-earnings';
   if (/^(data|div)\//i.test(name) && /(?:\.bak|\.tmp|\.part|~)$/i.test(name)) return 'temporary-output';
@@ -57,6 +58,9 @@ export function inspectLayout({ root = process.cwd(), source, staged = false, re
       if (!stat.isFile()) throw new Error(`Non-regular site artifact: ${name}`);
       return { path: name, bytes: stat.size, hash: createHash('sha256').update(readFileSync(path)).digest('hex'), hashAlgorithm: 'sha256' };
     });
+    // Completion is a producer receipt, not a public asset. Validate its path
+    // safety above, but only permit/exclude it in a non-Git prepared source tree.
+    if (source) files = files.filter(file => file.path !== 'data/.company-export.json');
   }
   files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
   const violations = files.flatMap(file => {

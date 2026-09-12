@@ -26,6 +26,10 @@ try {
   assert.equal(spawnSync(process.execPath, [script, '--root', root, '--allow-existing-legacy']).status, 0);
   git('add', '-f', 'data/div/005930.json');
   assert.equal(inspectLayout({ root, staged: true }).violations.length, 1);
+  put('data/.company-export.json');
+  assert.ok(inspectLayout({ root }).violations.some(f => f.reason === 'producer-completion-record'));
+  assert.ok(!inspectLayout({ source: root }).files.some(f => f.path === 'data/.company-export.json'));
+  unlinkSync(join(root, 'data/.company-export.json'));
   put('.gitignore', 'data/div/\ndata/*.bak\n'); put('data/index.json.bak');
   assert.equal(inspectLayout({ root }).violations.length, 2);
   const link = join(root, 'data/link');
