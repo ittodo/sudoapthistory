@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SOURCE_SHA: 3e3d9b73eeeb8ace6a750ac8c3d08ac0874c0af8
+      SOURCE_SHA: 3bacc213fa2138da500cc793abddb81667d36c4a
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_PRODUCTION_D1_ID: ${{ vars.CLOUDFLARE_PRODUCTION_D1_ID }}
       CLOUDFLARE_WORKERS_PLAN: ${{ vars.CLOUDFLARE_WORKERS_PLAN }}
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: 3e3d9b73eeeb8ace6a750ac8c3d08ac0874c0af8
+          ref: 3bacc213fa2138da500cc793abddb81667d36c4a
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -76,7 +76,7 @@ jobs:
           for(const name of ['GOOGLE_CLIENT_SECRET','WITHDRAWAL_ENCRYPTION_KEY'])assert.equal(binding(name)?.type,'secret_text',`Missing ${name}`);
           const versions=(await api('/workers/scripts/nodostream/deployments')).deployments[0].versions;
           assert.equal(versions.length,1);assert.equal(versions[0].percentage,100);
-          assert.equal(versions[0].version_id,'3154ab82-ffb6-46f0-8030-02039235115b','Only the previously verified private release may be replaced');
+          assert.equal(versions[0].version_id,'460c5f03-bc92-4858-8ba3-530b9b9c9e4f','Only the previously verified private release may be replaced');
           assert.deepEqual((await db('SELECT name FROM d1_migrations ORDER BY id')).map(r=>r.name),['0001_initial.sql','0002_withdrawal_requests.sql']);
           const normalize=s=>s.trim().replace(/;$/,'').replace(/\s+/g,' ');
           const fixture=new DatabaseSync(':memory:');
@@ -95,7 +95,7 @@ jobs:
       - name: Upload Worker and assets without public routes
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler deploy --env production --var RELEASE_SHA:$SOURCE_SHA --var WITHDRAWAL_ENABLED:true
+        run: npx wrangler deploy --env production --var RELEASE_SHA:$SOURCE_SHA --var WITHDRAWAL_ENABLED:true --var AUTH_ENABLED:true --var MAINTENANCE:false
       - name: Verify schema 2, empty data, secret preservation and private deployment
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -114,7 +114,7 @@ jobs:
           for(const t of tables)assert.equal(counts[t],0,`Unexpected production data in ${t}`);
           assert.deepEqual(await db('PRAGMA foreign_key_check'),[]);
           const settings=await api('/workers/scripts/nodostream/settings');const binding=name=>settings.bindings.find(b=>b.name===name);
-          assert.equal(binding('AUTH_ENABLED')?.text,'false');assert.equal(binding('MAINTENANCE')?.text,'true');
+          assert.equal(binding('AUTH_ENABLED')?.text,'true');assert.equal(binding('MAINTENANCE')?.text,'false');
           assert.equal(binding('WITHDRAWAL_ENABLED')?.text,'true');assert.equal(binding('RELEASE_SHA')?.text,process.env.SOURCE_SHA);
           assert.equal(binding('DB')?.id,process.env.CLOUDFLARE_PRODUCTION_D1_ID);
           assert.equal(binding('SITE_ORIGIN')?.text,'https://nodostream.com');
@@ -122,14 +122,14 @@ jobs:
           for(const name of ['GOOGLE_CLIENT_SECRET','WITHDRAWAL_ENCRYPTION_KEY'])assert.equal(binding(name)?.type,'secret_text',`Missing ${name}`);
           const domains=await api('/workers/domains');assert.equal(domains.some(d=>d.service==='nodostream'),false);
           const versions=(await api('/workers/scripts/nodostream/deployments')).deployments[0].versions;
-          assert.equal(versions.length,1);assert.equal(versions[0].percentage,100);assert.notEqual(versions[0].version_id,'3154ab82-ffb6-46f0-8030-02039235115b');
+          assert.equal(versions.length,1);assert.equal(versions[0].percentage,100);assert.notEqual(versions[0].version_id,'460c5f03-bc92-4858-8ba3-530b9b9c9e4f');
           const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/nodostream/subdomain`,{headers:{Authorization:`Bearer ${process.env.CLOUDFLARE_API_TOKEN}`}});
           assert.equal(r.ok,true,`Worker verification HTTP ${r.status}`);
           const j=await r.json(); assert.equal(j.success,true);
           assert.equal(j.result.enabled,false); assert.equal(j.result.previews_enabled,false);
           const release=JSON.parse(readFileSync('cloudflare/dist/public/deployment.json','utf8'));
           assert.equal(release.gitSha,process.env.SOURCE_SHA);
-          writeFileSync('cloudflare/dist/prepared-production.json',JSON.stringify({sourceSha:process.env.SOURCE_SHA,workerVersionId:versions[0].version_id,workersDev:false,previewUrls:false,schemaVersion:2,authEnabled:false,maintenance:true,withdrawalEnabled:true,publicCutover:false,release},null,2));
+          writeFileSync('cloudflare/dist/prepared-production.json',JSON.stringify({sourceSha:process.env.SOURCE_SHA,workerVersionId:versions[0].version_id,workersDev:false,previewUrls:false,schemaVersion:2,authEnabled:true,maintenance:false,withdrawalEnabled:true,publicCutover:false,release},null,2));
           console.log(JSON.stringify({workerVersionId:versions[0].version_id,schemaVersion:2,emptyUserTables:tables.length,publicCutover:false}));
           console.log('Schema 2 production upload prepared. Public addresses disabled; DNS and billing unchanged.');
           NODE
