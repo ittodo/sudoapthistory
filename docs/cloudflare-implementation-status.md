@@ -5,6 +5,72 @@
 
 ## 외부 상태
 
+### 2026-09-13 운영 전용 Google 클라이언트·암호화 비밀 설정 완료
+
+- 사용자 승인 후 동일 nodostream 프로젝트에 웹 클라이언트 `nodostream-production`을 생성했다.
+  공개 ID는 `221788330191-fs4kij4ft29g9bq93qmg3kh6sbjiclr4.apps.googleusercontent.com`이다.
+  callback은 `https://nodostream.com/auth/callback` 하나이며 JavaScript origin은 추가하지 않았다.
+- 발급된 비밀키를 운영 Worker `nodostream`의 `GOOGLE_CLIENT_SECRET`에만 입력했다.
+  대시보드에서 유형 '비밀', 값 '암호화된 값'을 확인했다. 공개 GOOGLE_CLIENT_ID도 함께 저장했다.
+  비밀값은 Git·문서·로컬 파일에 저장하지 않았고 생성 창을 닫고 작업 변수도 비웠다.
+- 설정 적용 후 활성 Worker 버전은 대시보드 단축 ID `370c158d`다. 기존 코드/자산 배포에서
+  인증 변수만 추가했으며 AUTH_ENABLED=false·MAINTENANCE=true, DNS·요금제·기존/시험 키는 유지했다.
+- 로컬 wrangler 운영 공개 ID와 허용 ID 검사를 갱신했다. 운영 안전 테스트 4개 통과,
+  시험용 공유 클라이언트를 운영 인증에 사용하는 경우 거부하는 회귀 검사를 추가했다.
+  이 로컬 설정 변경은 아직 커밋/push하지 않았다. 준비 workflow의 고정 소스는 종전 SHA다.
+- Google 브랜딩/개인정보 페이지·승인 도메인 최종 확인·게시 상태 정리는 남았다.
+  운영 로그인이나 쓰기를 활성화하지 않았고 실제 운영 Google 로그인 성공을 검증한 것은 아니다.
+
+### 2026-09-13 정식 Google 로그인 설정 읽기 전용 점검
+
+- computer-use로 nodostream 프로젝트를 확인했다. 기존 OAuth 웹 클라이언트에는 Supabase callback과
+  staging callback만 있으며 `https://nodostream.com/auth/callback`은 없다.
+- 브랜딩의 앱 이름은 nodostream.com이며 홈페이지·개인정보처리방침·서비스 약관 URL은 비어 있다.
+  승인 도메인은 기존 Supabase 도메인과 sksk17.workers.dev이며 nodostream.com은 없다.
+- 사용자 유형 External, 게시 상태 Testing. 브랜딩 설정 완료가 필요하다는 안내와 함께 앱 게시 버튼 비활성.
+  기본 OIDC 로그인의 예외 적용 여부/전체 사용자 접근 가능성을 이 화면만으로 단정하지 않는다.
+- 기존 OAuth 비밀키 2개 모두 활성이고 추가 버튼은 비활성이다. 과거 값은 다시 조회할 수 없다.
+  기존 Supabase/시험 키를 중지·삭제하지 않았고, 새 callback·도메인·브랜딩·게시 상태도 변경하지 않았다.
+- 저장소에는 개인정보처리방침 페이지가 없다. policy.html은 부동산 정책 페이지이므로 개인정보 링크로 사용하지 않는다.
+- 기존 키를 사용자가 별도로 보관했다면 안전한 입력으로 운영 연결이 가능하다. 그렇지 않으면 같은 Google
+  프로젝트에 운영 전용 OAuth 클라이언트를 추가하는 방안을 제안한다. 새 클라이언트 발급은 사용자 확인 전이다.
+  새 ID를 선택할 경우 운영 허용 ID 검사도 명시적으로 갱신하고 시험 클라이언트는 그대로 유지해야 한다.
+- 최신 main 936500d4의 Pages·캐시 작업 모두 성공 확인. 초기 ee7f4bba 캐시 작업은 실패 기록이 남아 있다.
+
+### 2026-09-13 운영 Worker 비공개 배포 성공
+
+- main push 및 자동 운영 업로드를 사용자가 명시적으로 승인한 뒤 준비 전용 workflow만 main에 반영했다.
+  `831fb291` 대비 main `936500d4`의 변경은 `.github/workflows/cloudflare-prepare-production.yml` 한 파일이다.
+  기존 사이트 소스·공개 데이터·DNS·요금제는 변경하지 않았다.
+- 첫 실행 `34732192593`은 Worker 업로드 및 공개 주소 비활성 검사는 성공했으나,
+  빌드가 기본 GITHUB_SHA(main)를 사용해 자산 SHA가 고정 소스 SHA와 달라 최종 검사에서 실패했다.
+  준비 버전 `b450cf28-05bc-4991-97d7-b43c8765160a`만 교체하도록 제한하고 빌드 SHA를 수정했다.
+- [수정 실행 34732319750](https://github.com/ittodo/sudoapthistory/actions/runs/34732319750) 전체 성공.
+  Worker `nodostream`, 버전 `e690997c-d363-415a-b6f8-6040d5d072ef`,
+  소스·자산 SHA `665f3ebbb6062c9cf65282a54f1c04b58704fd08`.
+- 운영 대상/무료/비공개 설정 검사, 타입·API·도구 테스트, 정적 빌드, 운영 스키마 1·사용자 테이블 0건
+  조회, 업로드, workers.dev=false·previews_enabled=false API 검증 및 결과 artifact 저장 모두 성공했다.
+  AUTH=false·MAINTENANCE=true, 운영 D1·ASSETS 연결. 시간당 정리 cron은 배포 설정대로 등록됐다.
+- 현재 공개 도메인은 기존 사이트를 제공한다. 공개 운영 로그인·게시판 종단 간 시험은 아직 아니며,
+  Google 운영 비밀 설정/callback/공개 상태 확인 및 전환 시각 승인이 남아 있다.
+- 준비 workflow는 일반 운영 배포용이 아니다. 성공 후 재실행하면 고정 이전 버전 검사에서 중단한다.
+  향후 main/staging 통합 시 이 파일을 보존하거나 명시적으로 종료하며, 초기 DB 이력 정합화도 별도로 한다.
+- 동반 Pages/캐시 작업은 별도 확인 대상이다. 첫 main SHA의 Pages 실행을 기다리는 캐시 작업이 남아 있어,
+  운영 Worker 준비 성공과 기존 캐시 작업 전체 완료를 혼동하지 않는다.
+
+### 2026-09-13 비공개 운영 준비 workflow 작성 — main push 안전 검토 차단
+
+- 원격 main `831fb291` 기반 별도 worktree `D:/Work/nodostream-production-prep`에서
+  `.github/workflows/cloudflare-prepare-production.yml`만 추가했다. 기존 사이트 파일 차이 0개.
+  로컬 커밋 `ee7f4bba22b7111172885d120b96172926ebc337`이며 아직 원격 main에 반영되지 않았다.
+- 고정 소스 `665f3ebbb6062c9cf65282a54f1c04b58704fd08`은 시험 브랜치에 push했다.
+  준비 workflow는 main에서만 운영 환경을 사용하며 DB 0건·스키마 1·정확한 계정/DB/free·
+  AUTH=false·MAINTENANCE=true·workers_dev/preview_urls=false·route 없음 등을 검사한다.
+  이미 nodostream Worker가 있으면 중단하며, 자동 DB migration이나 DNS/결제 변경은 없다.
+- YAML 구문 및 운영 안전 테스트 3개 통과. main 추가가 기존 Pages/캐시 작업을 유발할 수 있음을 안내했다.
+- `git push origin HEAD:main`은 자동 안전 검토가 실제 main push와 그에 따른 운영 업로드의
+  명시적 승인을 요구하며 차단했다. 우회하지 않았으며 운영 Worker 업로드는 아직 미실시다.
+
 ### 2026-09-13 운영 스키마 적용·Worker 로컬 준비
 
 - 운영 UUID `ca03a96c-acb0-4a10-8615-503df3dc5b74` 콘솔에서 시스템 `_cf_KV`만 있음을 확인한 뒤

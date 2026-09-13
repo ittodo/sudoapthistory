@@ -23,8 +23,17 @@ test('production gate fails closed for unprepared, cross-environment and unappro
 test('production gate requires separate paid, authentication and write approvals',()=>{
  const c=fixture();c.env.production.limits={cpu_ms:50};
  verifyProduction(c,contract,{...env,CLOUDFLARE_WORKERS_PLAN:'paid',CLOUDFLARE_PAID_APPROVED:'true'});
- delete c.env.production.limits;c.env.production.vars.AUTH_ENABLED='true';c.env.production.vars.GOOGLE_CLIENT_ID=source.vars.GOOGLE_CLIENT_ID;
+ delete c.env.production.limits;c.env.production.vars.AUTH_ENABLED='true';c.env.production.vars.GOOGLE_CLIENT_ID=source.env.production.vars.GOOGLE_CLIENT_ID;
  const auth={...env,CLOUDFLARE_PRODUCTION_AUTH_APPROVED:'true'};verifyProduction(c,contract,auth);
  c.env.production.vars.MAINTENANCE='false';assert.throws(()=>verifyProduction(c,contract,auth));
  verifyProduction(c,contract,{...auth,CLOUDFLARE_PRODUCTION_WRITES_APPROVED:'true'});
+});
+
+test('production authentication rejects the shared staging Google client',()=>{
+ const c=fixture();c.env.production.vars.AUTH_ENABLED='true';
+ const auth={...env,CLOUDFLARE_PRODUCTION_AUTH_APPROVED:'true'};
+ assert.notEqual(c.env.production.vars.GOOGLE_CLIENT_ID,source.vars.GOOGLE_CLIENT_ID);
+ verifyProduction(c,contract,auth);
+ c.env.production.vars.GOOGLE_CLIENT_ID=source.vars.GOOGLE_CLIENT_ID;
+ assert.throws(()=>verifyProduction(c,contract,auth));
 });

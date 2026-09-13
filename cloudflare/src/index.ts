@@ -1,4 +1,5 @@
 import {auth} from './auth';
+import {moderationCutoff,purgeExpiredComments} from './comment-retention';
 import {Env,HttpError,json,body,text,session,hash,cookie,setCookie,now,rate} from './shared';
 type Row=Record<string,any>;
 const statement=(env:Env,sql:string,...values:any[])=>env.DB.prepare(sql).bind(...values);
@@ -80,8 +81,15 @@ async function route(r:Request,env:Env):Promise<Response>{
    return json({ok:true,liked:b.liked,count:(await first(env,'SELECT count(*) count FROM comment_likes WHERE comment_id=?',id))!.count});
   }
   if(!comment[2]&&(method==='PATCH'||method==='DELETE')){
-   const b=method==='PATCH'?await body(r):{};const row=method==='PATCH'?await first(env,`UPDATE comments AS c SET content=?,updated_at=? WHERE id=? AND user_id=? AND ${visible} RETURNING id`,text(b.content,1,1000),timestamp(),id,uid):await first(env,'UPDATE comments SET deleted_at=? WHERE id=? AND user_id=? AND deleted_at IS NULL RETURNING id',timestamp(),id,uid);
-   if(!row)throw notFound();return method==='DELETE'?json({ok:true}):json({data:shape((await first(env,commentSelect+' WHERE c.id=?',uid,id))!)});
+   if(method==='DELETE'){
+    const results=await env.DB.batch([
+     statement(env,'DELETE FROM comment_likes WHERE comment_id IN (SELECT id FROM comments WHERE id=? AND user_id=? AND deleted_at IS NULL)',id,uid),
+     statement(env,"UPDATE comments SET content='',user_id=NULL,request_key=NULL,request_hash=NULL,moderation_reason=NULL,updated_at=NULL,deleted_at=? WHERE id=? AND user_id=? AND deleted_at IS NULL RETURNING id",timestamp(),id,uid)
+    ]);
+    if(!results[1].results.length)throw notFound();return json({ok:true});
+   }
+   const b=await body(r);const row=await first(env,`UPDATE comments AS c SET content=?,updated_at=? WHERE id=? AND user_id=? AND ${visible} RETURNING id`,text(b.content,1,1000),timestamp(),id,uid);
+   if(!row)throw notFound();return json({data:shape((await first(env,commentSelect+' WHERE c.id=?',uid,id))!)});
   }
  }
  const stock=path.match(/^\/api\/stocks\/(\d{6})\/tags$/);
@@ -111,12 +119,12 @@ async function route(r:Request,env:Env):Promise<Response>{
   }
   const moderation=path.match(/^\/api\/admin\/comments\/(\d+)\/moderation$/);if(moderation&&method==='PUT'){
    const b=await body(r);if(typeof b.hidden!=='boolean')throw new HttpError(400,'INVALID_INPUT','숨김 상태가 필요합니다.');const reason=b.hidden?JSON.stringify({category:text(b.category,1,100),detail:typeof b.detail==='string'?text(b.detail||' ',0,1000):''}):null;
-   const changed=await first(env,'UPDATE comments SET moderated_at=?,moderation_reason=? WHERE id=? AND deleted_at IS NULL RETURNING id',b.hidden?timestamp():null,reason,Number(moderation[1]));if(!changed)throw notFound();return json({ok:true});
+   const changed=await first(env,'UPDATE comments SET moderated_at=CASE WHEN ? THEN COALESCE(moderated_at,?) ELSE NULL END,moderation_reason=? WHERE id=? AND deleted_at IS NULL AND (moderated_at IS NULL OR moderated_at>?) RETURNING id',b.hidden?1:0,timestamp(),reason,Number(moderation[1]),moderationCutoff());if(!changed)throw notFound();return json({ok:true});
   }
  }
  throw notFound();
 }
 export default {
  async fetch(r:Request,env:Env){try{const response=await route(r,env);if(new URL(r.url).pathname.startsWith('/auth/'))response.headers.set('Referrer-Policy','no-referrer');return response}catch(error){if(error instanceof HttpError)return json({error:{code:error.code,message:error.message}},error.status);if(error instanceof Error&&error.message.includes('UNIQUE constraint'))return json({error:{code:'CONFLICT',message:'이미 사용 중인 값입니다.'}},409);return json({error:{code:'INTERNAL',message:'요청을 처리할 수 없습니다.'}},500)}},
- async scheduled(_event:ScheduledEvent,env:Env){await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
+ async scheduled(_event:ScheduledEvent,env:Env){await purgeExpiredComments(env.DB);await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
 };

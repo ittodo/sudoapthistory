@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash,generateKeyPairSync,sign} from 'node:crypto';
 import {build} from 'esbuild';
 import {Miniflare,createFetchMock} from 'miniflare';
+import {purgeExpiredComments,moderationCutoff} from '../src/comment-retention';
 
 const origin='https://test.example';
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
@@ -53,6 +54,8 @@ test('deleted roots mask private content but preserve reply pagination and owner
  await s.db.prepare("INSERT INTO comments(user_id,page_id,content) VALUES('a','deleted','secret root')").run();
  for(let i=0;i<5;i++)await s.db.prepare("INSERT INTO comments(user_id,page_id,content,parent_id) VALUES('b','deleted',?,1)").bind('reply '+i).run();
  assert.equal((await s.request('/api/comments/1','DELETE',undefined,a)).status,200);
+ const erased=await s.db.prepare('SELECT content,user_id,request_key,request_hash,updated_at,moderation_reason FROM comments WHERE id=1').first();
+ assert.deepEqual(erased,{content:'',user_id:null,request_key:null,request_hash:null,updated_at:null,moderation_reason:null});
  const list=await (await s.request('/api/comments?page_id=deleted')).json() as any;
  assert.equal(list.count,1);assert.equal(list.data.length,4);assert.equal(list.data[0].reply_count,5);
  assert.equal(list.data[0].content,'삭제된 댓글입니다.');assert.equal(list.data[0].profiles.nickname,'삭제된 댓글');
@@ -69,6 +72,36 @@ test('deleted roots mask private content but preserve reply pagination and owner
  for(let id=2;id<=6;id++)assert.equal((await s.request('/api/comments/'+id,'DELETE',undefined,b)).status,200);
  assert.deepEqual((await (await s.request('/api/comments?page_id=deleted')).json() as any).data,[]);
  assert.equal((await s.request('/api/comments/1/replies')).status,404);
+ }finally{await s.mf.dispose()}
+});
+test('moderation retention preserves replies, expires at 30 days, and cannot be extended by retries',async()=>{
+ const s=await setup();try{
+ const a=await s.user('a'),b=await s.user('b'),admin=await s.user('admin','admin');
+ await s.db.prepare("INSERT INTO comments(user_id,page_id,content) VALUES('a','retention','root')").run();
+ await s.db.prepare("INSERT INTO comments(user_id,page_id,content,parent_id) VALUES('b','retention','reply',1)").run();
+ await s.request('/api/comments/1/like','PUT',{liked:true},b);
+ assert.equal((await s.request('/api/comments/1','DELETE',undefined,b)).status,404);
+ assert.equal((await s.db.prepare('SELECT count(*) n FROM comment_likes').first() as any).n,1);
+ await s.request('/api/admin/comments/1/moderation','PUT',{hidden:true,category:'spam'},admin);
+ const initial=(await s.db.prepare('SELECT moderated_at FROM comments WHERE id=1').first() as any).moderated_at;
+ await s.request('/api/admin/comments/1/moderation','PUT',{hidden:true,category:'spam'},admin);
+ assert.equal((await s.db.prepare('SELECT moderated_at FROM comments WHERE id=1').first() as any).moderated_at,initial);
+ assert.equal((await s.request('/api/admin/comments/1/moderation','PUT',{hidden:false},admin)).status,200);
+ const time=Date.now(),cutoff=moderationCutoff(time);
+ await s.db.prepare('UPDATE comments SET moderated_at=?,moderation_reason=? WHERE id=1').bind(cutoff,JSON.stringify({category:'test'})).run();
+ await s.db.prepare("INSERT INTO comments(user_id,page_id,content,moderated_at) VALUES('a','retention','not expired',?)").bind(new Date(Date.parse(cutoff)+60000).toISOString()).run();
+ assert.equal((await s.request('/api/admin/comments/1/moderation','PUT',{hidden:false},admin)).status,404);
+ assert.equal((await s.request('/api/admin/comments/1/moderation','PUT',{hidden:true,category:'retry'},admin)).status,404);
+ await purgeExpiredComments(s.db as any,time);
+ const root=await s.db.prepare('SELECT * FROM comments WHERE id=1').first() as any;
+ assert.equal(root.content,'');assert.equal(root.user_id,null);assert.equal(root.moderation_reason,null);assert.equal(root.moderated_at,cutoff);assert.ok(root.deleted_at);
+ assert.equal((await s.db.prepare('SELECT count(*) n FROM comment_likes').first() as any).n,0);
+ assert.equal((await s.db.prepare('SELECT content FROM comments WHERE id=2').first() as any).content,'reply');
+ assert.equal((await s.db.prepare('SELECT content FROM comments WHERE id=3').first() as any).content,'not expired');
+ assert.deepEqual((await (await s.request('/api/comments?page_id=retention')).json() as any).data,[]);
+ assert.equal((await s.request('/api/admin/comments/1/moderation','PUT',{hidden:false},admin)).status,404);
+ await purgeExpiredComments(s.db as any,time);
+ assert.equal((await s.db.prepare('SELECT count(*) n FROM comments').first() as any).n,3);
  }finally{await s.mf.dispose()}
 });
 test('tags atomic and idempotent, direction change, account cascade and quota boundaries',async()=>{

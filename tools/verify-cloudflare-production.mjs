@@ -20,7 +20,7 @@ export function verifyProduction(config, contract, env) {
   for (const key of ['AUTH_ENABLED', 'MAINTENANCE']) assert.ok(['true','false'].includes(prod.vars[key]));
   if (prod.vars.AUTH_ENABLED === 'true') {
     assert.equal(env.CLOUDFLARE_PRODUCTION_AUTH_APPROVED, 'true');
-    assert.equal(prod.vars.GOOGLE_CLIENT_ID, '221788330191-cf33apf0s7jcpqh2kc527k2mg4ng7kgh.apps.googleusercontent.com');
+    assert.equal(prod.vars.GOOGLE_CLIENT_ID, '221788330191-fs4kij4ft29g9bq93qmg3kh6sbjiclr4.apps.googleusercontent.com');
   }
   if (prod.vars.MAINTENANCE === 'false') {
     assert.equal(env.CLOUDFLARE_PRODUCTION_WRITES_APPROVED, 'true');

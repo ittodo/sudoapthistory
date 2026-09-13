@@ -876,7 +876,7 @@
   }
 
   async function handleDelete(id) {
-    if (!confirm('댓글을 삭제하시겠습니까?')) return;
+    if (!confirm('댓글 본문과 작성자 정보를 삭제합니다. 복원할 수 없으며 다른 회원의 답글은 유지됩니다. 삭제하시겠습니까?')) return;
     try {
       await api.softDeleteComment(id);
       await refreshList();

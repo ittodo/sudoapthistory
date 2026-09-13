@@ -647,8 +647,8 @@ body {
 
     // 상태 결정
     let status = 'normal';
-    if (c.deleted_at)   status = 'deleted';
     if (c.moderated_at) status = 'moderated';
+    if (c.deleted_at)   status = 'deleted';
 
     const badgeClass = { normal:'badge-normal', moderated:'badge-moderated', deleted:'badge-deleted' }[status];
     const badgeLabel = { normal:'정상', moderated:'숨김', deleted:'삭제됨' }[status];
@@ -672,8 +672,10 @@ body {
     let actionHtml = '';
     if (status === 'normal') {
       actionHtml = `<button class="btn btn-sm btn-orange js-moderate" data-id="${c.id}">숨기기</button>`;
-    } else if (status === 'moderated') {
+    } else if (status === 'moderated' && Date.now() - Date.parse(c.moderated_at) < 30 * 86400000) {
       actionHtml = `<button class="btn btn-sm btn-green js-restore" data-id="${c.id}">복원</button>`;
+    } else if (status === 'moderated') {
+      actionHtml = '<span>보관 기간 만료 · 복원 불가 · 정리 대기</span>';
     }
 
     const contentPreview = c.content.length > 300

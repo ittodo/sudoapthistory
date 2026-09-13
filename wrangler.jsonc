@@ -13,7 +13,7 @@
     "name":"nodostream","workers_dev":false,"preview_urls":false,
     "version_metadata":{"binding":"CF_VERSION_METADATA"},
     "triggers":{"crons":["17 * * * *"]},
-    "vars":{"SITE_ORIGIN":"https://nodostream.com","RELEASE_SHA":"unreleased","MAINTENANCE":"true","AUTH_ENABLED":"false"},
+    "vars":{"SITE_ORIGIN":"https://nodostream.com","RELEASE_SHA":"unreleased","MAINTENANCE":"true","AUTH_ENABLED":"false","GOOGLE_CLIENT_ID":"221788330191-fs4kij4ft29g9bq93qmg3kh6sbjiclr4.apps.googleusercontent.com"},
     "d1_databases":[{"binding":"DB","database_name":"nodostream-production","database_id":"ca03a96c-acb0-4a10-8615-503df3dc5b74","migrations_dir":"cloudflare/migrations"}]
   }}
 }

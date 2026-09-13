@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
 import {publicAsset,runtime,injection} from './build-cloudflare-assets.mjs';
 test('allowlist preserves public assets but excludes internal files',()=>{
   for(const p of ['data/earnings/000020.json','data/tx/고양시 덕양구.json','data/polygen/index.packed.bin','index.html','js/main-app.js','policy.html'])assert.equal(publicAsset(p),true,p);
   for(const p of ['docs/secret.html','supabase/schema.sql','.env','data/private.db','data/foo.json.bak','tools/tool.js','cloudflare/src/index.js','data/div/a.json','data/.company-export.json','data/credentials.json','data/logs/a.json'])assert.equal(publicAsset(p),false,p);
+});
+test('unapproved privacy drafts stay out of public assets and do not load external resources',()=>{
+  for(const path of ['docs/privacy-preview.html','docs/privacy-policy-draft.md','docs/google-production-branding-checklist.md'])assert.equal(publicAsset(path),false,path);
+  const html=readFileSync(new URL('../docs/privacy-preview.html',import.meta.url),'utf8');
+  assert.match(html,/noindex,nofollow/);
+  assert.match(html,/아직 시행되지 않았습니다/);
+  assert.doesNotMatch(html,/<(?:script|iframe|img|link)\b/i);
 });
 test('runtime versions only same-origin data GETs, preserving init',async()=>{
   const calls=[];const context={URL,Request,location:{href:'https://nodostream.com/map/',origin:'https://nodostream.com'},window:{fetch:(...args)=>calls.push(args)}};
