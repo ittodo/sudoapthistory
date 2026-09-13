@@ -2,14 +2,18 @@ import * as oauth from 'oauth4webapi';
 import {Env,HttpError,hash,token,now,cookie,setCookie,rate,session} from './shared';
 import {withdrawalEnabled,withdrawalIntent,finishWithdrawalAuth,identityHash} from './withdrawal';
 import {expireAccounts,issueRecovery} from './account-lifecycle';
+import {ageConfirmation,AGE_NONCE_PREFIX,clearAgeCookie} from './age-confirmation';
 const server:oauth.AuthorizationServer={issuer:'https://accounts.google.com',authorization_endpoint:'https://accounts.google.com/o/oauth2/v2/auth',token_endpoint:'https://oauth2.googleapis.com/token',jwks_uri:'https://www.googleapis.com/oauth2/v3/certs',id_token_signing_alg_values_supported:['RS256']};
 export async function auth(r:Request,env:Env){
- const url=new URL(r.url);if(r.method!=='GET')throw new HttpError(405,'METHOD','지원하지 않는 요청입니다.');
+ const url=new URL(r.url);if(r.method!=='GET'&&!(url.pathname==='/auth/google'&&r.method==='POST'))throw new HttpError(405,'METHOD','지원하지 않는 요청입니다.');
  if(env.AUTH_ENABLED!=='true'||!env.GOOGLE_CLIENT_ID||!env.GOOGLE_CLIENT_SECRET)throw new HttpError(503,'AUTH_UNCONFIGURED','로그인 준비 중입니다.');
  const client:oauth.Client={client_id:env.GOOGLE_CLIENT_ID,id_token_signed_response_alg:'RS256'};
  if(url.pathname==='/auth/google'){
-  await rate(env.DB,'oauth:'+await hash(r.headers.get('CF-Connecting-IP')||'local'),20,60);
-  const state=oauth.generateRandomState(),nonce=oauth.generateRandomNonce(),verifier=oauth.generateRandomCodeVerifier();
+  const rechecking=url.searchParams.get('reauth')==='1';
+  await rate(env.DB,(!rechecking&&r.method==='GET'?'age-gate:':'oauth:')+await hash(r.headers.get('CF-Connecting-IP')||'local'),20,60);
+  if(rechecking&&r.method!=='GET')throw new HttpError(405,'METHOD','지원하지 않는 요청입니다.');
+  if(!rechecking){const gate=await ageConfirmation(r,env);if(gate)return gate;}
+  const state=oauth.generateRandomState(),nonce=(rechecking?'':AGE_NONCE_PREFIX)+oauth.generateRandomNonce(),verifier=oauth.generateRandomCodeVerifier();
   let returnTo=url.searchParams.get('returnTo')||'/';if(!returnTo.startsWith('/')||returnTo.startsWith('//')||returnTo.includes('\\'))returnTo='/';
   const reauth=url.searchParams.get('reauth')==='1';const current=reauth?await session(r,env):null;if(reauth&&!current)throw new HttpError(401,'AUTH_REQUIRED','로그인이 필요합니다.');
   const withdrawal=url.searchParams.get('withdrawal')==='1'?await withdrawalIntent(r,env):null;
@@ -17,12 +21,13 @@ export async function auth(r:Request,env:Env){
   await env.DB.prepare('INSERT INTO oauth_states(state_hash,verifier,nonce,return_to,expires_at,reauth_user,session_hash) VALUES(?,?,?,?,?,?,?)').bind(await hash(state),verifier,nonce,returnTo,now()+600,current?.id??null,current?await hash(cookie(r,'__Host-nodo_session')):null).run();
   if(withdrawal)await env.DB.prepare('UPDATE oauth_states SET withdrawal_id=? WHERE state_hash=?').bind(withdrawal,await hash(state)).run();
   const destination=new URL(server.authorization_endpoint!);destination.search=new URLSearchParams({client_id:client.client_id,redirect_uri:env.SITE_ORIGIN+'/auth/callback',response_type:'code',scope:'openid email profile',state,nonce,code_challenge:await oauth.calculatePKCECodeChallenge(verifier),code_challenge_method:'S256',...(reauth?{prompt:'select_account'}:{})}).toString();
-  return new Response(null,{status:302,headers:{Location:destination.href,'Set-Cookie':setCookie('__Host-nodo_oauth',state,600),'Cache-Control':'no-store'}});
+  const headers=new Headers({Location:destination.href,'Set-Cookie':setCookie('__Host-nodo_oauth',state,600),'Cache-Control':'no-store'});headers.append('Set-Cookie',clearAgeCookie());return new Response(null,{status:302,headers});
  }
  if(url.pathname!=='/auth/callback')throw new HttpError(404,'NOT_FOUND','찾을 수 없습니다.');
  const state=cookie(r,'__Host-nodo_oauth');if(!state||url.searchParams.get('state')!==state)throw new HttpError(400,'OAUTH_STATE','로그인을 다시 시작해 주세요.');
  const stored=await env.DB.prepare(`DELETE FROM oauth_states WHERE state_hash=? AND expires_at>? RETURNING verifier,nonce,return_to,reauth_user,session_hash${withdrawalEnabled(env)?',withdrawal_id':''}`).bind(await hash(state),now()).first<{verifier:string,nonce:string,return_to:string,reauth_user:string|null,session_hash:string|null,withdrawal_id?:string|null}>();
  if(!stored)throw new HttpError(400,'OAUTH_STATE','로그인이 만료되었습니다.');
+ if(!stored.reauth_user&&!stored.nonce.startsWith(AGE_NONCE_PREFIX))throw new HttpError(403,'AGE_CONFIRMATION_REQUIRED','만 14세 이상 확인 후 로그인을 다시 시작해 주세요.');
  try {
   const params=oauth.validateAuthResponse(server,client,url,state);
   const response=await oauth.authorizationCodeGrantRequest(server,client,oauth.ClientSecretPost(env.GOOGLE_CLIENT_SECRET),params,env.SITE_ORIGIN+'/auth/callback',stored.verifier);

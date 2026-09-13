@@ -3,6 +3,15 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 // Start only; do not follow Google redirects, sign in, or log OAuth secrets.
+export async function startWithAgeConfirmation(request,origin,path='/auth/google?returnTo=%2Faccount%2F'){
+  const gate=await request(origin+path,{redirect:'manual',signal:AbortSignal.timeout(30000)});
+  assert.equal(gate.status,200,'Age confirmation must precede Google login');
+  assert.equal(gate.headers.get('Cache-Control'),'no-store');
+  const html=await gate.text();assert.match(html,/name="age14" value="yes" required/);
+  const csrf=html.match(/name="csrf" value="([a-f0-9]{64})"/)?.[1];assert.ok(csrf);
+  const cookie=gate.headers.get('Set-Cookie')?.match(/__Host-nodo_age=[^;]+/)?.[0];assert.ok(cookie);
+  return request(origin+path,{method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000),headers:{Origin:origin,Cookie:cookie,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,age14:'yes'}).toString()});
+}
 export function validateAuthStart(response,origin,clientId) {
   assert.equal(response.status,302,'Google login must be configured and enabled');
   const destination=new URL(response.headers.get('Location'));
@@ -25,7 +34,7 @@ if(process.argv[1]===fileURLToPath(import.meta.url)) {
     assert.equal(config.name,'nodostream-staging');
     const origin=config.vars.SITE_ORIGIN;
     assert.equal(origin,'https://nodostream-staging.sksk17.workers.dev');
-    const response=await fetch(origin+'/auth/google?returnTo=%2Faccount%2F',{redirect:'manual',signal:AbortSignal.timeout(30000)});
+    const response=await startWithAgeConfirmation(fetch,origin);
     validateAuthStart(response,origin,config.vars.GOOGLE_CLIENT_ID);
     console.log('Staging Google login start verified. Interactive login and token exchange remain to be tested.');
   }catch {console.error('Staging Google login start failed; check client configuration, secret and redirect settings.');process.exitCode=1;}

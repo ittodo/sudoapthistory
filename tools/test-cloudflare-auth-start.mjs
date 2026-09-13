@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateAuthStart} from './verify-cloudflare-auth-start.mjs';
+import {validateAuthStart,startWithAgeConfirmation} from './verify-cloudflare-auth-start.mjs';
+
+test('login smoke explicitly submits the age confirmation and rejects a missing gate',async()=>{
+ const origin='https://fixture.invalid',csrf='a'.repeat(64);let calls=0;
+ const response=await startWithAgeConfirmation(async(url,options)=>{
+  calls++;assert.equal(new URL(url).origin,origin);
+  if(calls===1)return new Response(`<input name="csrf" value="${csrf}"><input type="checkbox" name="age14" value="yes" required>`,{headers:{'Cache-Control':'no-store','Set-Cookie':'__Host-nodo_age=fixture; Secure; HttpOnly; Path=/'}});
+  assert.equal(options.method,'POST');assert.equal(options.headers.Origin,origin);
+  assert.equal(options.headers.Cookie,'__Host-nodo_age=fixture');
+  assert.equal(new URLSearchParams(options.body).get('age14'),'yes');
+  assert.equal(new URLSearchParams(options.body).get('csrf'),csrf);
+  return new Response(null,{status:302});
+ },origin);
+ assert.equal(calls,2);assert.equal(response.status,302);
+ await assert.rejects(startWithAgeConfirmation(async()=>new Response(null,{status:302}),origin));
+});
 
 test('login smoke test checks client, callback, cookie and PKCE without following redirects',()=>{
   const origin='https://fixture.invalid',client='fixture-client',state='s'.repeat(43);

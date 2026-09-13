@@ -5,6 +5,68 @@
 
 ## 외부 상태
 
+### 2026-09-13 정식 Google 로그인·개인정보 안내 점검
+
+- Google nodostream 프로젝트 관리 화면을 읽기 전용으로 확인했다. 앱 이름 nodostream.com, 지원/개발자 연락처 기존 주소, 승인 도메인 nodostream.com 및 기존 Supabase/시험 호스트 유지.
+- 홈페이지·개인정보·약관 URL은 비어 있다. 대상은 외부/테스트 중이며 ‘앱 게시’ 버튼이 비활성이고 Branding 설정 완료 안내가 표시된다.
+- 데이터 액세스의 비민감/민감/제한 범위 목록은 모두 비어 있다. 서버가 실제 요청하는 openid/email/profile과 콘솔의 선언을 일치시킬 준비가 필요하다. Gmail/Drive 등 추가 권한은 요청하지 않는다.
+- 공식 Google 문서에는 기본 신원 범위만 쓰는 앱의 테스트 사용자 허용 목록 예외가 있으므로 ‘테스트 중이라 일반 Google 계정은 모두 차단’이라고 단정하지 않는다. https://developers.google.com/identity/protocols/oauth2/production-readiness/overview
+- 개인정보 초안의 실제 운영주체 명칭·미성년자 정책·국외 처리/광고 설정·시행일이 미확정이다. nodostream.com 표시명만으로 실제 운영주체를 임의 확정하지 않는다.
+- 이 점검으로 외부 설정을 저장하거나 방침을 공개하지 않았다. 먼저 실제 운영주체 확인이 필요하다. 법적 검토 완료로 표시하지 않는다.
+
+### 2026-09-13 비공개 운영 스키마 2 배포 완료
+
+- [운영 준비 실행 34739371718](https://github.com/ittodo/sudoapthistory/actions/runs/34739371718) 모든 단계 성공. API/보안 시험 15개, 도구 시험 19개 재통과.
+- 스키마 1 원본 정의/초기 적용 이력/운영 빈 상태/기존 설정 버전/비밀 키 이름을 검사한 뒤 미적용 `0002_withdrawal_requests.sql`만 적용했다. 초기 migration을 재실행하거나 회원 데이터를 복사하지 않았다.
+- 운영 Worker `3154ab82-ffb6-46f0-8030-02039235115b`, 소스 `ab2ce3925792c65d3be4a529b085ebb46a40a2a4`, 스키마 2.
+- 공개 자산 2,980개, manifest SHA256 `e6b4086617d313642895002886fbec4f05da8abe948c4e5b80ffa1e4a1a68cc7`. 배포 기록과 manifest는 Actions artifact에 저장했다.
+- 배포 후 원격 확인: 0001/0002 이력, 스키마 2, 사용자 관련 12개 테이블 0건, foreign_key_check 이상 없음.
+- AUTH_ENABLED=false, MAINTENANCE=true, WITHDRAWAL_ENABLED=true. 운영 전용 Google client ID·D1 binding·Google/탈퇴 secret 이름이 유지됐고 secret 원문은 조회하지 않았다.
+- workers.dev/preview 비활성, 맞춤 도메인 없음. DNS·요금제·인증/쓰기 공개를 변경하지 않았다. 운영 HTTP 기능 시험은 비공개이므로 실시하지 않았다.
+- 같은 main 커밋의 기존 Pages 배포/Purge/레이아웃 검사도 모두 성공했다. 기존 사이트 화면·데이터 파일은 수정하지 않았다.
+- 이 준비 workflow는 이미 바뀐 버전/스키마를 다시 초기 상태로 가정하지 않도록 재실행 시 차단된다. 다음 준비 배포는 현재 상태 기준으로 갱신해야 한다.
+
+### 2026-09-13 비공개 운영 스키마 2 배포 시작
+
+- 사용자 승인 후 준비 worktree에서 workflow만 갱신해 main에 `8d83efd297ad376746128c59829293249b39372c`를 push했다. 공개 HTML/JSON/provider 계약은 변경하지 않았다.
+- 고정 배포 소스는 실제 시험 통과 커밋 `ab2ce3925792c65d3be4a529b085ebb46a40a2a4`다.
+- [운영 준비 실행 34739371718](https://github.com/ittodo/sudoapthistory/actions/runs/34739371718)에서 검사 → 비공개/키/초기 스키마/이력/0건 확인 → 미적용 0002 적용 → 인증/쓰기 차단 유지 배포 → 스키마/비밀 보존/주소 차단을 검증한다.
+- 아직 실행 중이며 완료 여부는 아래 후속 결과로 확인한다. main push로 기존 Pages/Purge도 실행되지만 공개 파일 바이트는 변경하지 않았다.
+
+### 2026-09-13 운영 탈퇴 암호화 키 등록 완료
+
+- 사용자 등록 승인 후 운영 Worker `nodostream`에 `WITHDRAWAL_ENCRYPTION_KEY`를 비밀 값으로 등록했다.
+- 운영용 32바이트 난수를 새로 생성했다. 시험 키 및 Google client secret을 재사용하지 않았다. 원문은 출력/파일/Git에 기록하지 않았고 등록 후 작업 메모리 참조를 제거했다.
+- 관리 화면의 해당 키 ‘비밀 / 암호화된 값’ 및 활성 버전 `63cd1cea`(트래픽 100%)를 확인했다. 기존 Google 비밀키는 열거나 변경하지 않았다.
+- 키 등록에 따른 설정 버전만 배포했다. 소스 SHA는 기존 `665f3ebbb6062c9cf65282a54f1c04b58704fd08`, DB 스키마는 1이다. 30일 탈퇴/복구 운영 코드·스키마 2는 아직 미적용이다.
+- AUTH_ENABLED=false, MAINTENANCE=true를 유지했고 공개 workers.dev·preview 비활성, 맞춤 도메인/라우팅 없음도 재확인했다. DNS·결제·요금제 변경 없음.
+- 다음은 검증된 스키마 2 및 호환 Worker의 비공개 운영 준비 배포다. 구 초기 준비 workflow는 이전 버전만 허용하므로 그대로 재실행하지 않는다.
+
+### 2026-09-13 운영 초기 migration 이력 정합화 완료
+
+- Cloudflare 운영 D1 `ca03a96c-acb0-4a10-8615-503df3dc5b74`에서 sqlite_master를 읽어 초기 SQL의 11개 테이블과 5개 인덱스 정의를 대조했다. 일치하며 migration 이력 테이블은 없었다.
+- 스키마 1, users/profiles/sessions/oauth_states/comments/comment_likes/tags/stock_tags/tag_votes/rate_limits 모두 0건을 재확인했다.
+- 설치된 Wrangler의 이력 테이블 정의(id AUTOINCREMENT, name UNIQUE, applied_at DEFAULT CURRENT_TIMESTAMP NOT NULL)에 맞춰 d1_migrations를 생성했다.
+- 검증된 기존 0001_initial.sql의 이력만 1건 등록했다. id=1, applied_at=`2026-09-13 04:48:20` UTC. 기존 0001 재실행, 데이터 삭제/복사, 되감기는 없다.
+- 운영 Worker 설정에서 AUTH_ENABLED=false, MAINTENANCE=true와 기존 운영 Google secret만 존재함을 확인했다. WITHDRAWAL_ENCRYPTION_KEY는 아직 없다.
+- 스키마 2·새 운영 Worker는 아직 미적용이다. 운영 전용 암호화 키 저장 전 사용자 확인 단계에서 중단한다. DNS·요금제 변경 없음.
+
+### 2026-09-13 실제 탈퇴·복구 시험 사용자 확인
+
+- 사용자가 시험 계정 탈퇴 후 Google 연결 관리에서 연결 해제를 직접 확인했다.
+- 같은 계정의 명시적 복구 성공 및 기존 닉네임·댓글·추천 복원을 사용자 확인했다.
+- 실제 계정의 날짜 조작이나 운영 데이터 이관은 하지 않았다. 운영 준비를 이어가도록 사용자 승인했다.
+
+### 2026-09-13 회원 탈퇴 유예·복구 시험 배포 완료
+
+- 커밋 `ab2ce3925792c65d3be4a529b085ebb46a40a2a4`, [시험 배포 34736814809](https://github.com/ittodo/sudoapthistory/actions/runs/34736814809) 전체 성공.
+- 시험 D1 스키마 2 적용, 시험 전용 암호화 secret 준비, Worker 배포·공개 SHA/manifest 검증·Google 로그인 시작 검사 통과.
+- 공개 확인: Worker `fb9d3e4e-eb9a-4db1-b8ec-46e9deb4d392`, 스키마 2, maintenance false.
+- `/api/account/recovery`는 비인증 상태에서 가능 여부 false와 null만 반환하며 no-store다. 계정 화면 30일/복구 문구와 HTML 재검증 캐시도 확인했다.
+- 가상 API/보안 15개·도구 19개 통과. 실제 Google 계정 철회/명시적 복구는 사용자의 전용 시험 계정 확인이 남았다.
+- 운영 Worker/D1 초기 migration 이력·DNS·요금제는 이번 시험 배포에서 변경하지 않았다. 운영 반영은 실제 시험 검증 뒤 진행한다.
+- 이 결과 기록은 배포 후 로컬 문서 갱신이다.
+
 ### 2026-09-13 회원 탈퇴 30일 유예·복구 로컬 구현
 
 - 즉시 회원 삭제 미배포안을 30일 상태 전환·Google 필수 철회·명시적 복구로 교체했다.

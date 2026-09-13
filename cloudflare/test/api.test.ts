@@ -25,9 +25,38 @@ async function setup(maintenance=false){
   return {...headers,Cookie:headers.Cookie+'; '+receipt.cookie};
  }
  async function user(id:string,role='user',age=0){const raw='session-token-'+id;await db.batch([db.prepare('INSERT INTO users(id,google_sub,email,role) VALUES(?,?,?,?)').bind(id,'google-'+id,id+'@example.test',role),db.prepare('INSERT INTO profiles(user_id,nickname) VALUES(?,?)').bind(id,'닉네임'+id),db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at,authenticated_at,reauthenticated_at) VALUES(?,?,?,?,?)').bind(digest(raw),id,Math.floor(Date.now()/1000)+604800,Math.floor(Date.now()/1000)-age,Math.floor(Date.now()/1000)-age)]);return {Cookie:'__Host-nodo_session='+raw,'X-CSRF-Token':digest('csrf:'+raw),Origin:origin}}
- async function request(path:string,method='GET',data?:unknown,headers:Record<string,string>={}){return mf.dispatchFetch(origin+path,{method,redirect:'manual',headers:{...headers,...(data===undefined?{}:{'Content-Type':'application/json'})},body:data===undefined?undefined:JSON.stringify(data)})}
+ async function request(path:string,method='GET',data?:unknown,headers:Record<string,string>={}){
+  if(method==='GET'&&path.startsWith('/auth/google')&&new URL(origin+path).searchParams.get('reauth')!=='1'){
+   const gate=await mf.dispatchFetch(origin+path,{redirect:'manual'});if(gate.status!==200)return gate;
+   const html=await gate.text(),csrf=html.match(/name="csrf" value="([a-f0-9]{64})"/)![1],Cookie=gate.headers.get('set-cookie')!.match(/__Host-nodo_age=[^;]+/)![0];
+   return mf.dispatchFetch(origin+path,{method:'POST',redirect:'manual',headers:{Origin:origin,Cookie,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,age14:'yes'}).toString()});
+  }
+  return mf.dispatchFetch(origin+path,{method,redirect:'manual',headers:{...headers,...(data===undefined?{}:{'Content-Type':'application/json'})},body:data===undefined?undefined:JSON.stringify(data)})}
  return {mf,db,user,request,mock,options,withdrawal};
 }
+test('age self-declaration is unchecked, server-enforced and bound to OAuth state',async()=>{
+ const s=await setup();try{
+  const path=origin+'/auth/google?returnTo=%2Faccount%2F';
+  const gate=await s.mf.dispatchFetch(path,{redirect:'manual'});assert.equal(gate.status,200);assert.equal(gate.headers.get('cache-control'),'no-store');
+  const html=await gate.text();assert.match(html,/name="age14" value="yes" required/);assert.doesNotMatch(html,/\bchecked\b/);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM oauth_states').first() as any).n,0);
+  const csrf=html.match(/name="csrf" value="([a-f0-9]{64})"/)![1],Cookie=gate.headers.get('set-cookie')!.match(/__Host-nodo_age=[^;]+/)![0];
+  const post=(data:string,extra:Record<string,string>={})=>s.mf.dispatchFetch(path,{method:'POST',redirect:'manual',headers:{Origin:origin,Cookie,'Content-Type':'application/x-www-form-urlencoded',...extra},body:data});
+  assert.equal((await post(new URLSearchParams({csrf}).toString())).status,400);
+  assert.equal((await post(new URLSearchParams({csrf,age14:'no'}).toString())).status,400);
+  assert.equal((await post(new URLSearchParams({csrf,age14:'yes'}).toString(),{Cookie:''})).status,403);
+  assert.equal((await post(new URLSearchParams({csrf,age14:'yes'}).toString(),{Origin:'https://evil.invalid'})).status,403);
+  assert.equal((await post('x'.repeat(16385))).status,413);
+  const passed=await post(new URLSearchParams({csrf,age14:'yes'}).toString());assert.equal(passed.status,302);
+  const dest=new URL(passed.headers.get('location')!),state=dest.searchParams.get('state')!;
+  assert.ok(dest.searchParams.get('nonce')!.startsWith('age14-v1:'));
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM users').first() as any).n,0);
+  await s.db.prepare('UPDATE oauth_states SET nonce=? WHERE state_hash=?').bind('legacy-nonce',digest(state)).run();
+  assert.equal((await s.mf.dispatchFetch(origin+'/auth/callback?code=fake&state='+state,{headers:{Cookie:'__Host-nodo_oauth='+state}})).status,403);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM users').first() as any).n,0);
+ }finally{await s.mf.dispose();}
+});
+
 test('session CSRF, ownership, replies, idempotency, moderation and account deletion',async()=>{
  const s=await setup();try{
  const a=await s.user('a'),b=await s.user('b'),admin=await s.user('admin','admin');
