@@ -28,8 +28,12 @@ const expectedRows = json.d || [];
 const loaderUrl = pathToFileURL(resolve(repoRoot, "js/polygen-packed-index-loader.js")).href;
 const { loadPackedAptIndex } = await import(loaderUrl);
 const loaded = await loadPackedAptIndex("");
+const expectedById = new Map(expectedRows.map((row) => [Number(row.i), row]));
+const loadedById = new Map(loaded.d.map((row) => [Number(row.i), row]));
 
 assert(loaded.d.length === expectedRows.length, "row count mismatch");
+assert(expectedById.size === expectedRows.length, "duplicate expected row id");
+assert(loadedById.size === loaded.d.length, "duplicate packed row id");
 
 const first = loaded.d[0];
 assert(first.i === (expectedRows[0].i ?? 0), "first id mismatch");
@@ -52,13 +56,14 @@ for (let index = 0; index < expectedRows.length; index += 997) {
 }
 
 for (const expected of expectedRows.filter((row) => row.up)) {
-  assert(loaded.d[expected.i].up === true, `partial unit scope mismatch at row ${expected.i}`);
-  assert(loaded.d[expected.i].tu === expected.tu, `partial total units mismatch at row ${expected.i}`);
+  const actual = loadedById.get(Number(expected.i));
+  assert(actual?.up === true, `partial unit scope mismatch at row ${expected.i}`);
+  assert(actual?.tu === expected.tu, `partial total units mismatch at row ${expected.i}`);
 }
 
 const siblingRow = loaded.d.find((row) => row.si && row.si.length > 1);
 if (siblingRow) {
-  const expected = expectedRows[siblingRow.i].si;
+  const expected = expectedById.get(Number(siblingRow.i)).si;
   assert(siblingRow.si.length === expected.length, "sibling count mismatch");
   assert(siblingRow.si.every((value, index) => value === expected[index]), "sibling values mismatch");
 }
