@@ -17,6 +17,7 @@ export function verifyProduction(config, contract, env) {
   assert.equal(prod.workers_dev, false);
   assert.equal(prod.preview_urls, false, 'Production preview URLs must stay disabled');
   assert.equal(prod.vars?.SITE_ORIGIN, 'https://nodostream.com');
+  assert.equal(prod.vars.WITHDRAWAL_ENABLED, 'true', 'Keep the approved withdrawal and recovery flow enabled');
   for (const key of ['AUTH_ENABLED', 'MAINTENANCE']) assert.ok(['true','false'].includes(prod.vars[key]));
   if (prod.vars.AUTH_ENABLED === 'true') {
     assert.equal(env.CLOUDFLARE_PRODUCTION_AUTH_APPROVED, 'true');
@@ -34,7 +35,8 @@ export function verifyProduction(config, contract, env) {
   assert.equal(prod.route, undefined);
   assert.equal(config.route, undefined);
   assert.equal(config.routes?.length ?? 0, 0);
-  for (const route of prod.routes || []) assert.deepEqual(route, {pattern:'nodostream.com', custom_domain:true});
+  // Custom Domain is managed in the dashboard. CI must not publish DNS/routes.
+  assert.equal(prod.routes, undefined, 'Preserve the dashboard-managed Custom Domain');
   assert.ok(['free','paid'].includes(env.CLOUDFLARE_WORKERS_PLAN), 'Explicit plan decision required');
   if (env.CLOUDFLARE_WORKERS_PLAN === 'free') assert.equal(prod.limits?.cpu_ms, undefined, 'Free plan uses its default CPU limit');
   else {

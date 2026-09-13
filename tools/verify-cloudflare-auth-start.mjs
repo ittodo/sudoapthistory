@@ -35,10 +35,13 @@ if(process.argv[1]===fileURLToPath(import.meta.url)) {
   try {
     const config=JSON.parse(readFileSync('wrangler.jsonc','utf8'));
     assert.equal(config.name,'nodostream-staging');
-    const origin=config.vars.SITE_ORIGIN;
-    assert.equal(origin,'https://nodostream-staging.sksk17.workers.dev');
+    const production=process.argv[2]==='--production';
+    assert.ok(process.argv[2]===undefined || production);
+    const target=production?config.env.production:config;
+    const origin=target.vars.SITE_ORIGIN;
+    assert.equal(origin,production?'https://nodostream.com':'https://nodostream-staging.sksk17.workers.dev');
     const response=await startWithAgeConfirmation(fetch,origin);
-    validateAuthStart(response,origin,config.vars.GOOGLE_CLIENT_ID);
-    console.log('Staging Google login start verified. Interactive login and token exchange remain to be tested.');
-  }catch {console.error('Staging Google login start failed; check client configuration, secret and redirect settings.');process.exitCode=1;}
+    validateAuthStart(response,origin,target.vars.GOOGLE_CLIENT_ID);
+    console.log('Google login start verified. This does not sign in or exchange tokens.');
+  }catch {console.error('Google login start failed; check client configuration, secret and redirect settings.');process.exitCode=1;}
 }

@@ -44,6 +44,8 @@ jobs:
         run: npx wrangler deploy --env production --var RELEASE_SHA:$GITHUB_SHA
       - name: Verify same SHA and public bytes
         run: node tools/verify-cloudflare-deployment.mjs https://nodostream.com "$GITHUB_SHA" cloudflare/dist/public/deployment-manifest.json > cloudflare/dist/verified-release.json
+      - name: Verify production authentication remains available
+        run: node tools/verify-cloudflare-auth-start.mjs --production
       - uses: actions/upload-artifact@v4
         with:
           name: cloudflare-production-${{ github.sha }}
