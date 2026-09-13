@@ -52,7 +52,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck && npm run test:api
       - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs
-      - run: npm run build
+      - run: GITHUB_SHA="$SOURCE_SHA" npm run build
       - name: Require initialized empty production DB before upload
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -68,7 +68,10 @@ jobs:
           const scripts=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts`,{headers:{Authorization:`Bearer ${process.env.CLOUDFLARE_API_TOKEN}`}});
           assert.equal(scripts.ok,true,`Worker inventory HTTP ${scripts.status}`);
           const inventory=await scripts.json(); assert.equal(inventory.success,true);
-          assert.equal(inventory.result.some(s=>s.id==='nodostream'),false,'Existing production Worker requires review; do not overwrite');
+          assert.equal(inventory.result.some(s=>s.id==='nodostream'),true,'Expected prepared Worker missing');
+          const activeResponse=await fetch(`https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/nodostream/deployments`,{headers:{Authorization:`Bearer ${process.env.CLOUDFLARE_API_TOKEN}`}});
+          assert.equal(activeResponse.ok,true); const active=await activeResponse.json(); assert.equal(active.success,true);
+          assert.deepEqual(active.result.deployments[0].versions,[{version_id:'b450cf28-05bc-4991-97d7-b43c8765160a',percentage:100}],'Only the just-created preparation version may be replaced');
           console.log('Schema 1, all user tables empty. No migrations or data writes performed.');
           NODE
       - name: Upload Worker and assets without public routes
