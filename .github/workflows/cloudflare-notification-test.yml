@@ -1,0 +1,19 @@
+name: Cloudflare Notification Test (intentional failure)
+run-name: Notification drill - expected failure, no deployment
+on:
+  push:
+    branches: [cloudflare-notification-test]
+    paths: ['.github/workflows/cloudflare-notification-test.yml']
+permissions: {}
+jobs:
+  notification-only:
+    if: github.ref == 'refs/heads/cloudflare-notification-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Expected failure for notification delivery test
+        shell: bash
+        run: |
+          echo '::error title=Notification delivery drill::Intentional test failure. No site, deployment, database, secrets, or billing changes.'
+          echo 'Expected failure: notification delivery drill only.' >> "$GITHUB_STEP_SUMMARY"
+          exit 1
