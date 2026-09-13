@@ -41,7 +41,34 @@ test('session CSRF, ownership, replies, idempotency, moderation and account dele
  assert.equal((await s.db.prepare('SELECT content FROM comments WHERE id=?').bind(replyId).first() as any).content,'답글');
  assert.equal((await s.db.prepare('SELECT content FROM comments WHERE id=?').bind(root).first() as any).content,'');
  assert.equal(await s.db.prepare('SELECT * FROM users WHERE id=?').bind('a').first(),null);
- assert.deepEqual((await (await s.request('/api/comments?page_id=test')).json() as any).data,[]);
+ const after=await (await s.request('/api/comments?page_id=test')).json() as any;
+ assert.equal(after.count,1);assert.equal(after.data.length,2);
+ assert.equal(after.data[0].is_deleted,true);assert.equal(after.data[0].content,'삭제된 댓글입니다.');
+ assert.equal(after.data[0].user_id,null);assert.equal(after.data[1].content,'답글');
+ }finally{await s.mf.dispose()}
+});
+test('deleted roots mask private content but preserve reply pagination and owner actions',async()=>{
+ const s=await setup();try{
+ const a=await s.user('a'),b=await s.user('b'),admin=await s.user('admin','admin');
+ await s.db.prepare("INSERT INTO comments(user_id,page_id,content) VALUES('a','deleted','secret root')").run();
+ for(let i=0;i<5;i++)await s.db.prepare("INSERT INTO comments(user_id,page_id,content,parent_id) VALUES('b','deleted',?,1)").bind('reply '+i).run();
+ assert.equal((await s.request('/api/comments/1','DELETE',undefined,a)).status,200);
+ const list=await (await s.request('/api/comments?page_id=deleted')).json() as any;
+ assert.equal(list.count,1);assert.equal(list.data.length,4);assert.equal(list.data[0].reply_count,5);
+ assert.equal(list.data[0].content,'삭제된 댓글입니다.');assert.equal(list.data[0].profiles.nickname,'삭제된 댓글');
+ assert.equal(JSON.stringify(list).includes('secret root'),false);assert.equal(list.data[0].user_id,null);
+ const rest=await (await s.request('/api/comments/1/replies?offset=3')).json() as any;
+ assert.equal(rest.count,5);assert.equal(rest.data.length,2);
+ assert.equal((await s.request('/api/comments/1/like','PUT',{liked:true},b)).status,404);
+ assert.equal((await s.request('/api/comments/1','PATCH',{content:'revive'},a)).status,404);
+ assert.equal((await s.request('/api/comments','POST',{page_id:'deleted',content:'new',parent_id:1},{...b,'Idempotency-Key':'deleted-root-new-reply'})).status,404);
+ assert.equal((await s.request('/api/comments/2','PATCH',{content:'edited reply'},b)).status,200);
+ assert.equal((await s.request('/api/comments/2/like','PUT',{liked:true},a)).status,200);
+ await s.request('/api/admin/comments/2/moderation','PUT',{hidden:true,category:'test'},admin);
+ assert.equal((await (await s.request('/api/comments/1/replies')).json() as any).count,4);
+ for(let id=2;id<=6;id++)assert.equal((await s.request('/api/comments/'+id,'DELETE',undefined,b)).status,200);
+ assert.deepEqual((await (await s.request('/api/comments?page_id=deleted')).json() as any).data,[]);
+ assert.equal((await s.request('/api/comments/1/replies')).status,404);
  }finally{await s.mf.dispose()}
 });
 test('tags atomic and idempotent, direction change, account cascade and quota boundaries',async()=>{

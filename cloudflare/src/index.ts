@@ -5,9 +5,11 @@ const statement=(env:Env,sql:string,...values:any[])=>env.DB.prepare(sql).bind(.
 const first=(env:Env,sql:string,...values:any[])=>statement(env,sql,...values).first<Row>();
 const all=async(env:Env,sql:string,...values:any[])=>(await statement(env,sql,...values).all<Row>()).results;
 const timestamp=()=>new Date().toISOString();
-const visible="c.deleted_at IS NULL AND c.moderated_at IS NULL AND (c.parent_id IS NULL OR EXISTS(SELECT 1 FROM comments p WHERE p.id=c.parent_id AND p.deleted_at IS NULL AND p.moderated_at IS NULL))";
+const visible="c.deleted_at IS NULL AND c.moderated_at IS NULL AND (c.parent_id IS NULL OR EXISTS(SELECT 1 FROM comments p WHERE p.id=c.parent_id AND p.moderated_at IS NULL))";
+// Deleted roots are placeholders only while a visible reply survives. Moderation still hides the thread.
+const rootVisible="c.moderated_at IS NULL AND (c.deleted_at IS NULL OR EXISTS(SELECT 1 FROM comments child WHERE child.parent_id=c.id AND child.deleted_at IS NULL AND child.moderated_at IS NULL))";
 const commentSelect=`SELECT c.*,p.nickname,p.avatar_url,(SELECT count(*) FROM comment_likes l WHERE l.comment_id=c.id) like_count,EXISTS(SELECT 1 FROM comment_likes l WHERE l.comment_id=c.id AND l.user_id=?) liked FROM comments c LEFT JOIN profiles p ON p.user_id=c.user_id`;
-const shape=(row:Row)=>({id:row.id,user_id:row.user_id,page_id:row.page_id,content:row.content,parent_id:row.parent_id,created_at:row.created_at,updated_at:row.updated_at,profiles:{nickname:row.nickname||'탈퇴한 회원',avatar_url:row.avatar_url||null},comment_likes:[{count:row.like_count}],liked:!!row.liked});
+const shape=(row:Row)=>({id:row.id,user_id:row.deleted_at?null:row.user_id,page_id:row.page_id,content:row.deleted_at?'삭제된 댓글입니다.':row.content,is_deleted:!!row.deleted_at,parent_id:row.parent_id,created_at:row.created_at,updated_at:row.deleted_at?null:row.updated_at,profiles:{nickname:row.deleted_at?'삭제된 댓글':row.nickname||'탈퇴한 회원',avatar_url:row.deleted_at?null:row.avatar_url||null},comment_likes:[{count:row.deleted_at?0:row.like_count}],liked:!row.deleted_at&&!!row.liked});
 function integer(value:string|null,fallback:number,max:number){if(value===null)return fallback;const n=Number(value);if(!Number.isSafeInteger(n)||n<0||n>max)throw new HttpError(400,'INVALID_INPUT','잘못된 범위입니다.');return n}
 const notFound=()=>new HttpError(404,'NOT_FOUND','찾을 수 없습니다.');
 async function route(r:Request,env:Env):Promise<Response>{
@@ -39,8 +41,8 @@ async function route(r:Request,env:Env):Promise<Response>{
  }
  if(path==='/api/comments'&&method==='GET'){
   const page=text(url.searchParams.get('page_id'),1,200),offset=integer(url.searchParams.get('offset'),0,1000000),limit=integer(url.searchParams.get('limit'),20,100)||20;
-  const roots=await all(env,commentSelect+` WHERE c.page_id=? AND c.parent_id IS NULL AND ${visible} ORDER BY c.created_at DESC,c.id DESC LIMIT ? OFFSET ?`,uid,page,limit,offset);
-  const count=await first(env,`SELECT count(*) count FROM comments c WHERE c.page_id=? AND c.parent_id IS NULL AND ${visible}`,page);
+  const roots=await all(env,commentSelect+` WHERE c.page_id=? AND c.parent_id IS NULL AND ${rootVisible} ORDER BY c.created_at DESC,c.id DESC LIMIT ? OFFSET ?`,uid,page,limit,offset);
+  const count=await first(env,`SELECT count(*) count FROM comments c WHERE c.page_id=? AND c.parent_id IS NULL AND ${rootVisible}`,page);
   const preview=roots.length?Math.min(3,Math.floor((100-roots.length)/roots.length)):0;
   let replies:Row[]=[],counts:Row[]=[];
   if(roots.length){
@@ -52,7 +54,7 @@ async function route(r:Request,env:Env):Promise<Response>{
  }
  const repliesPath=path.match(/^\/api\/comments\/(\d+)\/replies$/);
  if(repliesPath&&method==='GET'){
-  const id=Number(repliesPath[1]);if(!await first(env,`SELECT c.id FROM comments c WHERE c.id=? AND c.parent_id IS NULL AND ${visible}`,id))throw notFound();
+  const id=Number(repliesPath[1]);if(!await first(env,`SELECT c.id FROM comments c WHERE c.id=? AND c.parent_id IS NULL AND ${rootVisible}`,id))throw notFound();
   const data=await all(env,commentSelect+` WHERE c.parent_id=? AND ${visible} ORDER BY c.created_at,c.id LIMIT ? OFFSET ?`,uid,id,integer(url.searchParams.get('limit'),20,100)||20,integer(url.searchParams.get('offset'),0,1000000));
   return json({data:data.map(shape),count:(await first(env,`SELECT count(*) count FROM comments c WHERE c.parent_id=? AND ${visible}`,id))!.count});
  }

@@ -647,6 +647,8 @@
   }
 
   function renderComment(c, isOwn) {
+    const isDeleted = !!c.is_deleted;
+    isOwn = isOwn && !isDeleted;
     const el = document.createElement('div');
     const isReply = !!c.parent_id;
     el.className = 'nds-comment' + (isReply ? ' nds-reply' : '');
@@ -669,7 +671,7 @@
     const likeSvgFill = isLiked ? 'currentColor' : 'none';
 
     // 답글 버튼: 최상위 댓글 + 로그인 + 닉네임 있을 때만
-    const replyBtnHtml = (!isReply && _session && _profile?.nickname)
+    const replyBtnHtml = (!isDeleted && !isReply && _session && _profile?.nickname)
       ? `<button class="nds-btn nds-btn-sm nds-reply-btn" data-id="${c.id}">답글</button>`
       : '';
 
@@ -682,7 +684,7 @@
       </div>
       <div class="nds-comment-body" id="nds-body-${c.id}">${esc(c.content)}</div>
       <div class="nds-comment-footer">
-        <button class="nds-like-btn${isLiked ? ' liked' : ''}" data-id="${c.id}" ${likeDisabled}>
+        ${isDeleted ? '' : `<button class="nds-like-btn${isLiked ? ' liked' : ''}" data-id="${c.id}" ${likeDisabled}>
           <svg width="12" height="12" viewBox="0 0 24 24"
                fill="${likeSvgFill}" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
@@ -690,7 +692,7 @@
             <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
           </svg>
           <span class="nds-like-count">${likeCount > 0 ? likeCount : ''}</span>
-        </button>
+        </button>`}
         ${replyBtnHtml}
       </div>
     `;

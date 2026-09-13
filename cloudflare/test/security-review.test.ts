@@ -68,7 +68,12 @@ test('independent security regression: access control, private fields and erasur
     const erased = await db.prepare('SELECT * FROM comments WHERE id=?').bind(root.id).first() as any;
     assert.equal(erased.content,''); assert.equal(erased.user_id,null);
     assert.equal(erased.request_key,null); assert.equal(erased.request_hash,null);
-    assert.equal((await (await request('/api/comments?page_id=test')).json() as any).data.length,0,'erased parent remains hidden with descendants');
+    const erasedPublic = await (await request('/api/comments?page_id=test')).json() as any;
+    assert.equal(erasedPublic.data.length,4,'erased parent placeholder preserves reply preview');
+    assert.equal(erasedPublic.data[0].is_deleted,true);
+    assert.equal(erasedPublic.data[0].user_id,null);
+    assert.equal(erasedPublic.data[0].content,'삭제된 댓글입니다.');
+    assert.equal((await (await request('/api/comments/'+root.id+'/replies?offset=3')).json() as any).data.length,3);
     const expired = await request('/api/session','alice');
     assert.equal((await expired.json() as any).session,null,'account erasure invalidates all sessions');
   } finally { await mf.dispose(); }
