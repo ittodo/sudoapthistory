@@ -50,7 +50,10 @@ Workers 버전은 코드·정적 자산·바인딩을 포함하지만 D1 데이�
 
 ## 운영 배포 환경에 필요한 명시 설정
 
-기존 `cloudflare-production` 환경 승인 절차를 유지한다. 배포 토큰은 DNS·결제 권한을 요구하지 않는다.
+사용자 승인으로 `cloudflare-production` 환경을 생성했다. Required reviewers·Wait timer는 비활성,
+허용 브랜치는 `main` 하나다. 시험 환경도 수동 승인 없이 `cloudflare-staging` 브랜치만 허용한다.
+두 환경 모두 관리자 우회는 비활성이다. 운영 환경의 비밀 설정·활성화 변수는 아직 등록하지 않았다.
+매회 배포 승인은 없지만 최초 공개 전환 확인은 별개로 유지한다. 배포 토큰은 DNS·결제 권한을 요구하지 않는다.
 
 - `CLOUDFLARE_PRODUCTION_ENABLED=true`: 준비 완료 후 운영 배포 허용
 - `NODESTREAM_DEPLOYMENT_PROVIDER=cloudflare`: 커밋의 provider 계약과 함께 전환
