@@ -1,5 +1,7 @@
 # 개인정보 공개 전 결정 사항
 
+> 후속 상태: 승인된 안내 공개, Google 앱 프로덕션 게시, 운영 도메인 연결을 완료했다. 아래 실행 전/미공개 문구는 당시 기록이며 [최신 전환 기록](cloudflare-production-cutover-2026-09-13.md)이 우선한다.
+
 ## 2026-09-13 실제 콘솔 확인
 
 - 사용자가 별도 Cloudflare 문의를 생략하고 확인된 범위로 진행하도록 지시했으며, 작성된 privacy.html의 공개를 명시적으로 승인했다. 공개 main 5dcd4d88, 시험 소스 3bacc213. 공개 /privacy.html HTTP 200 확인. 기존 Cloudflare 이메일 난독화로 전송 HTML은 원본과 바이트가 다르다.

@@ -2,6 +2,8 @@
 
 2026-09-13 운영 전환 후 설정. 실제 실행 결과는 전환 기록에 별도로 남긴다.
 
+연결 검증 완료: 시험 `34747744688`, 운영 `34747848391`, Health `34747944425` 성공. 두 생성기의 실제 운영 배포/공개 파일 검증도 성공했다. [상세 결과](cloudflare-production-cutover-2026-09-13.md).
+
 - `main` push → Cloudflare Production: 운영 환경 검사 → 타입·기능·자산 검사 → Worker/정적 자산 배포 → 같은 SHA·manifest·공개 파일 해시·없는 JSON 404 확인 → Google 로그인 시작 확인.
 - `cloudflare-staging` push → Cloudflare Staging: 시험 DB와 Worker만 사용한다. 운영 활성화 여부는 시험 대상 검사의 조건이 아니다.
 - 운영 배포는 DB migration, 데이터 초기화, secret 생성/교체를 하지 않는다. 현재 D1과 기존 회원/관리자/세션을 보존한다. 스키마 변경은 별도 절차가 필요하다.
