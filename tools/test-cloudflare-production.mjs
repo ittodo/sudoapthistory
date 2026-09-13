@@ -8,6 +8,7 @@ const contract={schema:1,provider:'cloudflare',productionOrigin:'https://nodostr
 const env={GITHUB_REF:'refs/heads/main',CLOUDFLARE_PRODUCTION_ENABLED:'true',NODESTREAM_DEPLOYMENT_PROVIDER:'cloudflare',CLOUDFLARE_ACCOUNT_ID:'90ef0cc5b9fc89e9005b5ca905ae2b6e',CLOUDFLARE_PRODUCTION_D1_ID:'11111111-2222-4333-8444-555555555555',CLOUDFLARE_WORKERS_PLAN:'free'};
 function fixture(){const c=structuredClone(source);delete c.env.production.limits;c.env.production.d1_databases[0].database_id=env.CLOUDFLARE_PRODUCTION_D1_ID;return c;}
 test('committed production settings remain free and inactive until cutover',()=>{
+ assert.equal(source.env.production.preview_urls,false);
  assert.equal(source.env.production.limits?.cpu_ms,undefined);
  assert.equal(source.env.production.vars.AUTH_ENABLED,'false');
  assert.equal(source.env.production.vars.MAINTENANCE,'true');

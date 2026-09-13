@@ -15,6 +15,7 @@ export function verifyProduction(config, contract, env) {
   const prod = config.env?.production;
   assert.equal(prod?.name, 'nodostream');
   assert.equal(prod.workers_dev, false);
+  assert.equal(prod.preview_urls, false, 'Production preview URLs must stay disabled');
   assert.equal(prod.vars?.SITE_ORIGIN, 'https://nodostream.com');
   for (const key of ['AUTH_ENABLED', 'MAINTENANCE']) assert.ok(['true','false'].includes(prod.vars[key]));
   if (prod.vars.AUTH_ENABLED === 'true') {

@@ -5,6 +5,71 @@
 
 ## 외부 상태
 
+### 2026-09-13 운영 스키마 적용·Worker 로컬 준비
+
+- 운영 UUID `ca03a96c-acb0-4a10-8615-503df3dc5b74` 콘솔에서 시스템 `_cf_KV`만 있음을 확인한 뒤
+  `cloudflare/migrations/0001_initial.sql`의 DDL과 스키마 버전 1만 적용했다.
+- 적용 후 schema_version=1, users/profiles/sessions/oauth_states/comments/comment_likes/tags/
+  stock_tags/tag_votes/rate_limits 모두 0건임을 조회로 확인했다. 기존/시험 데이터 가져오기는 없다.
+- 콘솔 직접 적용이므로 Wrangler의 `d1_migrations` 이력은 아직 등록하지 않았다.
+  운영에서 `migrations apply`를 무작정 실행하지 말고 스키마 대조 후 초기 이력을 정합화해야 한다.
+- 운영 `preview_urls=false`를 명시하고 배포 검사에도 추가했다. 운영 안전 테스트 3개와 정적 빌드 통과.
+  Wrangler production dry-run에서 운영 DB·ASSETS 바인딩과 AUTH=false/MAINTENANCE=true 확인.
+  최초 dry-run은 로컬 로그 디렉터리 권한 문제로 실패했고 작업 산출물 경로로 로그 위치를 바꾼 뒤 통과했다.
+- 실제 운영 Worker 업로드는 아직 하지 않았다. 기존 운영 workflow는 공개 전환 계약 및 공개 URL 검증을
+  요구하므로 준비 단계에 그대로 사용하지 않는다. 운영 환경은 main만 허용하며 토큰 추출/권한 완화는 하지 않았다.
+  기존 사이트 파일을 건드리지 않는 main의 준비 전용 workflow 추가가 다음 확인 지점이다.
+
+### 2026-09-13 운영 배포 토큰·GitHub 환경 저장 완료
+
+- 사용자 승인 후 `nodostream-production-github-actions` 토큰을 생성했다.
+  해당 Cloudflare 계정 하나의 Workers Scripts Edit·D1 Edit만 포함한다.
+  DNS·결제·R2·토큰 관리 권한은 없다. 계정 범위 권한이므로 시험 Worker/DB에도 접근 가능하다.
+  별도 만료일·IP 제한은 설정하지 않았다.
+- computer-use로 GitHub `cloudflare-production` 환경의 `CLOUDFLARE_API_TOKEN` 암호화 저장을 확인했다.
+  토큰은 Git·로컬 파일에 기록하지 않았고 도구 출력에서 마스킹했으며, 전달 후 임시 변수와 생성 화면을 정리했다.
+- 같은 환경에 `CLOUDFLARE_ACCOUNT_ID=90ef0cc5b9fc89e9005b5ca905ae2b6e`,
+  `CLOUDFLARE_PRODUCTION_D1_ID=ca03a96c-acb0-4a10-8615-503df3dc5b74`,
+  `CLOUDFLARE_WORKERS_PLAN=free` 저장을 확인했다. 무료 변수는 승인 기록이며 요금제 변경 명령이 아니다.
+- 기존 main 브랜치 제한·자동 배포 보호 설정은 유지했다. 운영 활성화·인증·쓰기 승인 변수는 등록하지 않았다.
+  토큰을 사용한 실제 운영 배포 검증·DB 스키마 적용·Google 운영 비밀 설정은 아직 미실시다.
+  DNS·요금제·기존 토큰·시험 배포를 변경하지 않았다.
+
+### 2026-09-13 빈 운영 D1 생성 — 배포 자격 증명 준비 전
+
+- computer-use로 승인 계정에 `nodostream-production` D1을 생성했다.
+  UUID: `ca03a96c-acb0-4a10-8615-503df3dc5b74`. 생성 직후 테이블 0·쿼리 0·쓴 행 0 확인.
+- 시험 DB와 별개이며 Supabase/시험 데이터 복사 없이 생성했다. 아직 스키마 적용 전이다.
+- 로컬 wrangler 운영 DB placeholder를 실제 UUID로 교체했다. 운영 `workers_dev=false`,
+  `AUTH_ENABLED=false`, `MAINTENANCE=true`, 무료 CPU 기본값과 배포 공급자 차단은 유지했다.
+- 운영 토큰 발급·GitHub 운영 비밀 설정·변수 저장, 스키마 적용, Worker 최초 배포는 아직 수행하지 않았다.
+  DNS·Google callback·유료 가입·시험 DB는 변경하지 않았다.
+
+### 2026-09-13 알림 전용 실패 시험 — 사용자 수신 확인 완료
+
+- 배포와 분리된 `cloudflare-notification-test` 브랜치의 커밋 `4a1fb28438c9c3af56eb0f03adc0b7eaab71e3ed`를 push했다.
+  전용 workflow는 해당 브랜치·해당 파일 변경에만 실행되며 checkout·비밀 설정·배포·DB 접근 없이 의도적으로 실패한다.
+- [시험 실행 34730803930](https://github.com/ittodo/sudoapthistory/actions/runs/34730803930)이
+  `failure`로 종료됐다. 실행 주체는 `ittodo`다. 실제 장애나 배포 실패를 유발하지 않았다.
+- 사용자가 2026-09-13 “알림 왔어”라고 실제 수신을 확인했다. 알림 전용 실패 시험의 전달 확인 완료다.
+  수신 채널(웹/이메일)은 구분 확인하지 않았다. 모든 장애 알림·예약 실행의 전달까지 검증한 것은 아니다.
+  개인 알림 설정은 변경하지 않았으며 예약 상태 점검의 활성화·수신 대상 검증은 별도다.
+- 시험 브랜치는 운영·시험 배포 브랜치에 병합하지 않았다. 작업 디렉터리는 `cloudflare-staging`으로 복귀했다.
+
+### 2026-09-13 실제 시험 Worker 복구·복귀 검증
+
+- 자동 시험 배포 `34729975446`의 checks/deploy 성공을 확인했다. 수동 승인 없이 배포 단계에 진입했다.
+- 사용자 승인으로 computer-use를 사용해 `nodostream-staging`만
+  `d1131b70-c5f8-4a2d-be5b-28c880a28df0` → `c1e4667f-9f9b-4475-b49e-5237c6da1b48` →
+  `d1131b70-c5f8-4a2d-be5b-28c880a28df0` 순서로 복구 후 최신 버전으로 승격했다.
+- 두 커밋(`f79a98f4`, `24d50891`)의 Worker 코드·마이그레이션·댓글 프런트엔드 차이가 없음을 사전 확인했다.
+- 각 단계에서 공개 health와 deployment.json의 SHA가 해당 버전으로 바뀌고 스키마 1이 유지됐다.
+  공개 댓글 #6(삭제 표시)·#7(다른 회원 답글), 태그 #1 및 추천/비추천 0/0이 유지됐다.
+- 최신 복귀 후 루트 HTML 200, 존재하지 않는 JSON 404, 브라우저 새로고침 후 운영자 세션 유지와
+  새 시험 댓글 저장을 확인했다. 이전 버전에서 별도 로그인·새 쓰기를 실행한 것은 아니다.
+- D1 되감기·초기화·데이터 이관·DNS·결제·운영 사이트 변경은 하지 않았다.
+  이번 검사는 실제 버전 전환 및 대표 공개 항목 검사이며 전체 자산 해시 재검사나 DB 전수 대조는 아니다.
+
 ### 2026-09-13 시험·운영 자동 배포 정책 적용
 
 - 사용자가 시험·운영 모두 수동 승인 없이 자동 배포하도록 요청하고 보호 규칙 변경을 최종 승인했다.

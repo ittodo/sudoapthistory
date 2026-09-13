@@ -10,10 +10,10 @@
   "vars": {"SITE_ORIGIN":"https://nodostream-staging.sksk17.workers.dev","RELEASE_SHA":"unreleased","MAINTENANCE":"false","AUTH_ENABLED":"true","GOOGLE_CLIENT_ID":"221788330191-cf33apf0s7jcpqh2kc527k2mg4ng7kgh.apps.googleusercontent.com"},
   "d1_databases": [{"binding":"DB","database_name":"nodostream-staging","database_id":"636d41b6-3ed7-4f6d-8f0b-823324c4ccad","migrations_dir":"cloudflare/migrations"}],
   "env": {"production": {
-    "name":"nodostream","workers_dev":false,
+    "name":"nodostream","workers_dev":false,"preview_urls":false,
     "version_metadata":{"binding":"CF_VERSION_METADATA"},
     "triggers":{"crons":["17 * * * *"]},
     "vars":{"SITE_ORIGIN":"https://nodostream.com","RELEASE_SHA":"unreleased","MAINTENANCE":"true","AUTH_ENABLED":"false"},
-    "d1_databases":[{"binding":"DB","database_name":"nodostream-production","database_id":"00000000-0000-0000-0000-000000000000","migrations_dir":"cloudflare/migrations"}]
+    "d1_databases":[{"binding":"DB","database_name":"nodostream-production","database_id":"ca03a96c-acb0-4a10-8615-503df3dc5b74","migrations_dir":"cloudflare/migrations"}]
   }}
 }
