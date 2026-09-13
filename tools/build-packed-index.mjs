@@ -54,7 +54,7 @@ function nullableString(value) {
   return value === null || value === undefined || value === "" ? undefined : String(value);
 }
 
-function rowToSlim(row, index) {
+export function rowToSlim(row, index) {
   const id = Number(row.i ?? index);
   return {
     id,
@@ -79,6 +79,7 @@ function rowToSlim(row, index) {
     jibun: nullableString(row.j),
     roadAddress: nullableString(row.rd),
     aptSeq: nullableString(row.as),
+    complexId: nullableString(row.ci),
     totalUnits: nullableNumber(row.tu),
     unitPartial: Number(row.up || 0),
     platArea: nullableNumber(row.pa),
@@ -114,7 +115,7 @@ function parseSiblings(value) {
   return value.split(",").map((part) => Number(part)).filter(Number.isFinite);
 }
 
-function buildPacked(rows) {
+export function buildPacked(rows) {
   const strings = [];
   const stringIds = new Map();
 
@@ -150,6 +151,7 @@ function buildPacked(rows) {
   const jibun = new Uint32Array(n);
   const roadAddress = new Uint32Array(n);
   const aptSeq = new Uint32Array(n);
+  const complexId = new Uint32Array(n);
   const totalUnits = new Uint32Array(n);
   const unitPartial = new Uint8Array(n);
   const platArea = new Float32Array(n);
@@ -186,6 +188,7 @@ function buildPacked(rows) {
     jibun[i] = intern(row.jibun);
     roadAddress[i] = intern(row.roadAddress);
     aptSeq[i] = intern(row.aptSeq);
+    complexId[i] = intern(row.complexId);
     totalUnits[i] = u32(row.totalUnits);
     unitPartial[i] = row.unitPartial ? 1 : 0;
     platArea[i] = f32(row.platArea);
@@ -204,7 +207,7 @@ function buildPacked(rows) {
   });
 
   const writer = new BinaryWriter();
-  writer.push(encoder.encode("NSPIv004"));
+  writer.push(encoder.encode("NSPIv005"));
   writer.u32(n);
   writer.u32(strings.length);
   writer.u32(siblingValues.length);
@@ -236,6 +239,7 @@ function buildPacked(rows) {
   writer.typedArray(jibun, 4);
   writer.typedArray(roadAddress, 4);
   writer.typedArray(aptSeq, 4);
+  writer.typedArray(complexId, 4);
   writer.typedArray(totalUnits, 4);
   writer.typedArray(unitPartial, 1);
   writer.typedArray(platArea, 4);
@@ -253,15 +257,17 @@ function buildPacked(rows) {
   return { bytes: writer.toBytes(), stringCount: strings.length, siblingRefCount: siblingValues.length };
 }
 
-const source = JSON.parse(readFileSync(sourcePath, "utf8"));
-const rows = (source.d || source.data || []).map(rowToSlim);
-const packed = buildPacked(rows);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const source = JSON.parse(readFileSync(sourcePath, "utf8"));
+  const rows = (source.d || source.data || []).map(rowToSlim);
+  const packed = buildPacked(rows);
 
-mkdirSync(outDir, { recursive: true });
-writeFileSync(metaOut, JSON.stringify(source.meta || {}), "utf8");
-writeFileSync(slimOut, JSON.stringify({ meta: source.meta || {}, rows }), "utf8");
-writeFileSync(packedOut, packed.bytes);
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(metaOut, JSON.stringify(source.meta || {}), "utf8");
+  writeFileSync(slimOut, JSON.stringify({ meta: source.meta || {}, rows }), "utf8");
+  writeFileSync(packedOut, packed.bytes);
 
-console.log(`[polygen] wrote index.meta.json ${source.meta ? "ok" : "empty"}`);
-console.log(`[polygen] wrote index.slim.json rows=${rows.length}`);
-console.log(`[polygen] wrote index.packed.bin ${packed.bytes.byteLength} bytes, strings=${packed.stringCount}, siblingRefs=${packed.siblingRefCount}`);
+  console.log(`[polygen] wrote index.meta.json ${source.meta ? "ok" : "empty"}`);
+  console.log(`[polygen] wrote index.slim.json rows=${rows.length}`);
+  console.log(`[polygen] wrote index.packed.bin ${packed.bytes.byteLength} bytes, strings=${packed.stringCount}, siblingRefs=${packed.siblingRefCount}`);
+}

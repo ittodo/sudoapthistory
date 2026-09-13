@@ -334,8 +334,8 @@ var BinaryRefRowBuilder = class {
 // js/generated/typescript/nodostream_binary_refs.ts
 var nodostream_apt_AptIndexRowRef = class {
   constructor(owner, rowOffset) {
-    __publicField(this, "owner", owner);
-    __publicField(this, "rowOffset", rowOffset);
+    this.owner = owner;
+    this.rowOffset = rowOffset;
   }
   requiredFieldOffset(fieldIndex) {
     return BinaryRefFormat.requireFieldOffset(this.owner.bytes, this.rowOffset, fieldIndex);
@@ -484,22 +484,44 @@ var nodostream_apt_AptIndexRowRef = class {
     const o = this.optionalFieldOffset(20);
     return o < 0 ? void 0 : BinaryRefFormat.readUtf8String(this.owner.bytes, o);
   }
-  get hasTotalUnits() {
+  get hasAptSeq() {
     return this.optionalFieldOffset(21) >= 0;
   }
-  get totalUnits() {
+  get aptSeqUtf8() {
     const o = this.optionalFieldOffset(21);
-    return o < 0 ? void 0 : BinaryRefFormat.readU32(this.owner.bytes, o);
+    return o < 0 ? new Uint8Array() : BinaryRefFormat.readLengthPrefixedBytes(this.owner.bytes, o);
   }
-  get hasSiblingIds() {
+  get aptSeq() {
+    const o = this.optionalFieldOffset(21);
+    return o < 0 ? void 0 : BinaryRefFormat.readUtf8String(this.owner.bytes, o);
+  }
+  get hasComplexId() {
     return this.optionalFieldOffset(22) >= 0;
   }
-  get siblingIdsUtf8() {
+  get complexIdUtf8() {
     const o = this.optionalFieldOffset(22);
     return o < 0 ? new Uint8Array() : BinaryRefFormat.readLengthPrefixedBytes(this.owner.bytes, o);
   }
-  get siblingIds() {
+  get complexId() {
     const o = this.optionalFieldOffset(22);
+    return o < 0 ? void 0 : BinaryRefFormat.readUtf8String(this.owner.bytes, o);
+  }
+  get hasTotalUnits() {
+    return this.optionalFieldOffset(23) >= 0;
+  }
+  get totalUnits() {
+    const o = this.optionalFieldOffset(23);
+    return o < 0 ? void 0 : BinaryRefFormat.readU32(this.owner.bytes, o);
+  }
+  get hasSiblingIds() {
+    return this.optionalFieldOffset(24) >= 0;
+  }
+  get siblingIdsUtf8() {
+    const o = this.optionalFieldOffset(24);
+    return o < 0 ? new Uint8Array() : BinaryRefFormat.readLengthPrefixedBytes(this.owner.bytes, o);
+  }
+  get siblingIds() {
+    const o = this.optionalFieldOffset(24);
     return o < 0 ? void 0 : BinaryRefFormat.readUtf8String(this.owner.bytes, o);
   }
   toOwned() {
@@ -525,6 +547,8 @@ var nodostream_apt_AptIndexRowRef = class {
     if (this.unitCount !== void 0) obj.unitCount = this.unitCount;
     if (this.jibun !== void 0) obj.jibun = this.jibun;
     if (this.roadAddress !== void 0) obj.roadAddress = this.roadAddress;
+    if (this.aptSeq !== void 0) obj.aptSeq = this.aptSeq;
+    if (this.complexId !== void 0) obj.complexId = this.complexId;
     if (this.totalUnits !== void 0) obj.totalUnits = this.totalUnits;
     if (this.siblingIds !== void 0) obj.siblingIds = this.siblingIds;
     return obj;
@@ -532,7 +556,7 @@ var nodostream_apt_AptIndexRowRef = class {
 };
 var nodostream_apt_AptIndexRowRefCodec = class {
   static writeRow(obj) {
-    const builder = new BinaryRefRowBuilder(23);
+    const builder = new BinaryRefRowBuilder(25);
     builder.setField(0, (w) => {
       w.writeU32(obj.id);
     });
@@ -610,12 +634,20 @@ var nodostream_apt_AptIndexRowRefCodec = class {
     if (roadAddressValue !== void 0 && roadAddressValue !== null) builder.setField(20, (w) => {
       BinaryRefFormat.writeString(w, roadAddressValue);
     });
+    const aptSeqValue = obj.aptSeq;
+    if (aptSeqValue !== void 0 && aptSeqValue !== null) builder.setField(21, (w) => {
+      BinaryRefFormat.writeString(w, aptSeqValue);
+    });
+    const complexIdValue = obj.complexId;
+    if (complexIdValue !== void 0 && complexIdValue !== null) builder.setField(22, (w) => {
+      BinaryRefFormat.writeString(w, complexIdValue);
+    });
     const totalUnitsValue = obj.totalUnits;
-    if (totalUnitsValue !== void 0 && totalUnitsValue !== null) builder.setField(21, (w) => {
+    if (totalUnitsValue !== void 0 && totalUnitsValue !== null) builder.setField(23, (w) => {
       w.writeU32(totalUnitsValue);
     });
     const siblingIdsValue = obj.siblingIds;
-    if (siblingIdsValue !== void 0 && siblingIdsValue !== null) builder.setField(22, (w) => {
+    if (siblingIdsValue !== void 0 && siblingIdsValue !== null) builder.setField(24, (w) => {
       BinaryRefFormat.writeString(w, siblingIdsValue);
     });
     return builder.toUint8Array();
@@ -623,11 +655,11 @@ var nodostream_apt_AptIndexRowRefCodec = class {
 };
 var nodostream_apt_AptIndexRowRefTable = class _nodostream_apt_AptIndexRowRefTable {
   constructor(owner, rowOffsets, byId, byGu, byRegion) {
-    __publicField(this, "owner", owner);
-    __publicField(this, "rowOffsets", rowOffsets);
-    __publicField(this, "byId", byId);
-    __publicField(this, "byGu", byGu);
-    __publicField(this, "byRegion", byRegion);
+    this.owner = owner;
+    this.rowOffsets = rowOffsets;
+    this.byId = byId;
+    this.byGu = byGu;
+    this.byRegion = byRegion;
   }
   get count() {
     return this.rowOffsets.length;
@@ -798,8 +830,8 @@ var nodostream_apt_AptIndexRowRefTable = class _nodostream_apt_AptIndexRowRefTab
 };
 var NodostreamBinaryRefContext = class _NodostreamBinaryRefContext {
   constructor(owner, AptIndexRows) {
-    __publicField(this, "owner", owner);
-    __publicField(this, "AptIndexRows", AptIndexRows);
+    this.owner = owner;
+    this.AptIndexRows = AptIndexRows;
   }
   static openBinary(input) {
     const owner = new BinaryDocumentOwner(input);

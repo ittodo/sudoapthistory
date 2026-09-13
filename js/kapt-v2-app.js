@@ -48,10 +48,12 @@ function renderList(){
 }
 
 function select(code){
-  state.selected=code;
-  history.replaceState(null,'',`#k=${encodeURIComponent(code)}`);
+  const item=state.data.complexes.find(value=>value.id===code||(value.legacyIds||[]).includes(code));
+  const canonical=item?.id||code;
+  state.selected=canonical;
+  history.replaceState(null,'',`#k=${encodeURIComponent(canonical)}`);
   renderList();
-  renderDetail(state.data.complexes.find(item=>item.id===code));
+  renderDetail(item);
 }
 
 function renderDetail(item){
@@ -78,7 +80,7 @@ async function start(){
     renderList();
     const params=new URLSearchParams(location.hash.slice(1));
     const initial=params.get('k');
-    if(initial&&state.data.complexes.some(item=>item.id===initial))select(initial);
+    if(initial&&state.data.complexes.some(item=>item.id===initial||(item.legacyIds||[]).includes(initial)))select(initial);
   }catch(error){
     $('#summary').textContent='승인된 공동주택 데이터가 아직 준비되지 않았습니다.';
     $('#complexList').innerHTML=`<div class="empty-state">${esc(error.message)}</div>`;

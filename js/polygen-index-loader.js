@@ -43,6 +43,8 @@ class AptIndexLegacyRef {
   get u() { return cached(this, "u", () => optionalNumber(this._ref.unitCount)); }
   get j() { return cached(this, "j", () => this._ref.jibun); }
   get rd() { return cached(this, "rd", () => this._ref.roadAddress); }
+  get as() { return cached(this, "as", () => optionalString(this._ref.aptSeq)); }
+  get ci() { return cached(this, "ci", () => optionalString(this._ref.complexId)); }
   get tu() { return cached(this, "tu", () => optionalNumber(this._ref.totalUnits)); }
   get up() { return Boolean(this._ref.unitPartial); }
   get si() {

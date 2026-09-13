@@ -25,6 +25,8 @@ namespace nodostream.apt {
         unit_count: u32?;
         jibun: string?;
         road_address: string?;
+        apt_seq: string?;
+        complex_id: string?;
         total_units: u32?;
         sibling_ids: string?;
     }

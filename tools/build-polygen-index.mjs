@@ -45,6 +45,8 @@ function rowToSlim(row, index) {
     unitCount: nullableNumber(row.u),
     jibun: nullableString(row.j),
     roadAddress: nullableString(row.rd),
+    aptSeq: nullableString(row.as),
+    complexId: nullableString(row.ci),
     totalUnits: nullableNumber(row.tu),
     unitPartial: Number(row.up || 0),
     siblingIds: Array.isArray(row.si) && row.si.length ? row.si.join(",") : undefined,

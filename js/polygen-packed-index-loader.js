@@ -1,6 +1,7 @@
 const MAGIC_V2 = "NSPIv002";
 const MAGIC_V3 = "NSPIv003";
 const MAGIC_V4 = "NSPIv004";
+const MAGIC_V5 = "NSPIv005";
 const textDecoder = new TextDecoder();
 
 function align(offset, bytes) {
@@ -70,6 +71,7 @@ class PackedAptIndexRow {
   get j() { return optionalStringValue(this._table.strings, this._table.jibun[this._index]); }
   get rd() { return optionalStringValue(this._table.strings, this._table.roadAddress[this._index]); }
   get as() { return optionalStringValue(this._table.strings, this._table.aptSeq[this._index]); }
+  get ci() { return optionalStringValue(this._table.strings, this._table.complexId[this._index]); }
   get tu() { return u32(this._table.totalUnits[this._index]); }
   get up() { return Boolean(this._table.unitPartial[this._index]); }
   get pa() { return f32(this._table.platArea[this._index], 2); }
@@ -90,13 +92,14 @@ class PackedAptIndexRow {
   }
 }
 
-function parsePacked(buffer) {
+export function parsePacked(buffer) {
   const bytes = new Uint8Array(buffer);
   if (bytes.byteLength < 20) throw new Error("Packed index is too small.");
   const magic = textDecoder.decode(bytes.subarray(0, 8));
-  if (magic !== MAGIC_V2 && magic !== MAGIC_V3 && magic !== MAGIC_V4) throw new Error(`Unexpected packed index magic: ${magic}`);
-  const hasAptSeq = magic === MAGIC_V3 || magic === MAGIC_V4;
-  const hasUnitPartial = magic === MAGIC_V4;
+  if (magic !== MAGIC_V2 && magic !== MAGIC_V3 && magic !== MAGIC_V4 && magic !== MAGIC_V5) throw new Error(`Unexpected packed index magic: ${magic}`);
+  const hasAptSeq = magic === MAGIC_V3 || magic === MAGIC_V4 || magic === MAGIC_V5;
+  const hasUnitPartial = magic === MAGIC_V4 || magic === MAGIC_V5;
+  const hasComplexId = magic === MAGIC_V5;
 
   const view = new DataView(buffer);
   const rowCount = view.getUint32(8, true);
@@ -142,6 +145,7 @@ function parsePacked(buffer) {
     jibun: typed(Uint32Array, rowCount, 4),
     roadAddress: typed(Uint32Array, rowCount, 4),
     aptSeq: hasAptSeq ? typed(Uint32Array, rowCount, 4) : new Uint32Array(rowCount),
+    complexId: hasComplexId ? typed(Uint32Array, rowCount, 4) : new Uint32Array(rowCount),
     totalUnits: typed(Uint32Array, rowCount, 4),
     unitPartial: hasUnitPartial ? typed(Uint8Array, rowCount, 1) : new Uint8Array(rowCount),
     platArea: typed(Float32Array, rowCount, 4),
