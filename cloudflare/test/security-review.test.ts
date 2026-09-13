@@ -3,17 +3,21 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { build } from 'esbuild';
-import { Miniflare } from 'miniflare';
+import { Miniflare,createFetchMock } from 'miniflare';
+import {readyWithdrawal,withdrawalKey} from './withdrawal-fixture';
+import {purgeAccounts,RECOVERY_SECONDS} from '../src/account-lifecycle';
 
 const digest = (s:string) => createHash('sha256').update(s).digest('hex');
 const origin = 'https://nodostream.com';
 
 test('independent security regression: access control, private fields and erasure', async () => {
   const bundle = await build({ entryPoints: ['cloudflare/src/index.ts'], bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022' });
-  const mf = new Miniflare({ modules: true, script: bundle.outputFiles[0].text, compatibilityDate: '2026-08-01', d1Databases: ['DB'], bindings: { SITE_ORIGIN: origin, MAINTENANCE: 'false', RELEASE_SHA: 'test', GOOGLE_CLIENT_ID: 'test', GOOGLE_CLIENT_SECRET: 'test' } });
+  const mock=createFetchMock();mock.disableNetConnect();mock.get('https://oauth2.googleapis.com').intercept({path:'/revoke',method:'POST'}).reply(200,'');
+  const mf = new Miniflare({ modules: true, script: bundle.outputFiles[0].text, compatibilityDate: '2026-08-01', d1Databases: ['DB'],fetchMock:mock, bindings: { SITE_ORIGIN: origin, MAINTENANCE: 'false', RELEASE_SHA: 'test', GOOGLE_CLIENT_ID: 'test', GOOGLE_CLIENT_SECRET: 'test',WITHDRAWAL_ENABLED:'true',WITHDRAWAL_ENCRYPTION_KEY:withdrawalKey } });
   try {
     const db = await mf.getD1Database('DB');
     await db.exec(readFileSync('cloudflare/migrations/0001_initial.sql', 'utf8'));
+    for(const sql of readFileSync('cloudflare/migrations/0002_withdrawal_requests.sql','utf8').split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
     const now = Math.floor(Date.now()/1000);
     for (const [id,role] of [['alice','user'],['bob','user'],['admin','admin']]) {
       await db.prepare('INSERT INTO users(id,google_sub,email,role) VALUES(?,?,?,?)').bind(id, 'google-'+id, id+'@example.invalid', role).run();
@@ -62,7 +66,9 @@ test('independent security regression: access control, private fields and erasur
     await db.prepare('UPDATE sessions SET reauthenticated_at=? WHERE user_id=?').bind(now-601,'alice').run();
     assert.equal((await request('/api/account','alice','DELETE',{})).status,403,'old session requires reauthentication');
     await db.prepare('UPDATE sessions SET reauthenticated_at=? WHERE user_id=?').bind(now,'alice').run();
-    assert.equal((await request('/api/account','alice','DELETE',{})).status,200);
+    const receipt=await readyWithdrawal(db,origin,'alice','token-alice');
+    assert.equal((await request('/api/account','alice','DELETE',{}, {Cookie:'__Host-nodo_session=token-alice; '+receipt.cookie})).status,200);
+    await purgeAccounts(db as any,Math.floor(Date.now()/1000)+RECOVERY_SECONDS);
     assert.equal(await db.prepare('SELECT id FROM users WHERE id=?').bind('alice').first(),null);
     assert.equal((await db.prepare('SELECT content FROM comments WHERE id=?').bind(reply.id).first() as any).content,'bob reply','other authors replies must survive');
     const erased = await db.prepare('SELECT * FROM comments WHERE id=?').bind(root.id).first() as any;

@@ -12,14 +12,14 @@ test('public verification binds health, release, manifest and sample bytes to SH
   globalThis.fetch=async(input)=>{
     const url=new URL(input);let body=content,status=200;
     if(url.pathname==='/deployment.json')body=JSON.stringify(release);
-    else if(url.pathname==='/api/health')body=JSON.stringify({gitSha:badHealth?'b'.repeat(40):sha,status:'ok',workerVersionId:'fixture-worker-version',schemaVersion:1});
+    else if(url.pathname==='/api/health')body=JSON.stringify({gitSha:badHealth?'b'.repeat(40):sha,status:'ok',workerVersionId:'fixture-worker-version',schemaVersion:2});
     else if(url.pathname==='/deployment-manifest.json')body=manifest;
     else if(url.pathname.startsWith('/data/__migration_missing_'))status=missing404?404:200;
     else if(badBytes)body='stale';
     const response=new Response(body,{status});Object.defineProperty(response,'url',{value:url.href});return response;
   };
   try {
-    assert.deepEqual(await verify('https://fixture.invalid',sha),{...release,workerVersionId:'fixture-worker-version',schemaVersion:1});
+    assert.deepEqual(await verify('https://fixture.invalid',sha),{...release,workerVersionId:'fixture-worker-version',schemaVersion:2});
     badHealth=true;await assert.rejects(verify('https://fixture.invalid',sha),/SHA mismatch/);badHealth=false;
     badBytes=true;await assert.rejects(verify('https://fixture.invalid',sha),/Public hash mismatch/);badBytes=false;
     missing404=false;await assert.rejects(verify('https://fixture.invalid',sha),/must be 404/);

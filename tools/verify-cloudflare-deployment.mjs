@@ -11,6 +11,7 @@ export async function verify(origin,sha,localManifest,{signal}={}) {
   const release=JSON.parse(await get(`${url.origin}/deployment.json?v=${sha}`,signal));
   const health=JSON.parse(await get(`${url.origin}/api/health?v=${sha}`,signal));
   if(release.gitSha!==sha||health.gitSha!==sha||health.status!=='ok')throw new Error('Deployment/health SHA mismatch');
+  if(health.schemaVersion!==2)throw new Error('Account recovery schema version 2 is required');
   if(typeof health.workerVersionId!=='string'||!health.workerVersionId||health.workerVersionId==='local')throw new Error('Actual Worker version ID missing');
   const raw=await get(`${url.origin}/deployment-manifest.json?v=${sha}`,signal);
   if(hash(raw)!==release.assetManifestSha256)throw new Error('Manifest hash mismatch');

@@ -15,6 +15,7 @@ const runtime = new Miniflare({
 const db=await runtime.getD1Database('DB');
 const sql=await readFile('cloudflare/migrations/0001_initial.sql','utf8');
 for(const statement of sql.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(statement).run();
+for(const statement of (await readFile('cloudflare/migrations/0002_withdrawal_requests.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(statement).run();
 const digest=(value)=>createHash('sha256').update(value).digest('hex');
 const expires=Math.floor(Date.now()/1000)+3600;
 await db.batch([

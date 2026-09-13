@@ -433,6 +433,7 @@ body {
       <button class="tab" data-status="normal">정상</button>
       <button class="tab" data-status="moderated">숨김</button>
       <button class="tab" data-status="deleted">삭제됨</button>
+      <button class="tab" data-status="withdrawn">탈퇴 보관 중</button>
     </div>
     <div class="page-filter">
       <input type="text" id="page-filter-input" placeholder="페이지 ID 필터 (예: /market/)">
@@ -647,11 +648,12 @@ body {
 
     // 상태 결정
     let status = 'normal';
+    if (c.author_status && c.author_status !== 'active') status = 'withdrawn';
     if (c.moderated_at) status = 'moderated';
     if (c.deleted_at)   status = 'deleted';
 
-    const badgeClass = { normal:'badge-normal', moderated:'badge-moderated', deleted:'badge-deleted' }[status];
-    const badgeLabel = { normal:'정상', moderated:'숨김', deleted:'삭제됨' }[status];
+    const badgeClass = { normal:'badge-normal', moderated:'badge-moderated', deleted:'badge-deleted', withdrawn:'badge-deleted' }[status];
+    const badgeLabel = { normal:'정상', moderated:'숨김', deleted:'삭제됨', withdrawn:'탈퇴 보관 중' }[status];
 
     card.className = `adm-card status-${status}`;
     card.dataset.id = c.id;

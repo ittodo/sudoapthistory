@@ -360,7 +360,7 @@
   <div class="card danger-zone">
     <div class="card-title">위험 구역</div>
     <div class="warn-box">
-      탈퇴 시 <strong>계정 정보와 본인 댓글 본문이 삭제</strong>되며 복구할 수 없습니다. 다른 회원의 답글과 연결용 삭제 표시는 유지됩니다.
+      탈퇴 시 계정 사용을 중지하고 <strong>30일 동안 복구 목적으로 보관</strong>합니다. 이 기간 안에 같은 Google 계정으로 인증하고 탈퇴 취소를 확인하면 기존 닉네임·댓글·추천·태그 투표가 복구됩니다. 30일이 지나면 복구할 수 없으며 새 회원으로 가입합니다.
     </div>
     <button class="btn btn-danger" id="btn-delete-account">회원 탈퇴</button>
   </div>
@@ -373,16 +373,34 @@
     <div class="modal-title">회원 탈퇴 확인</div>
     <div class="modal-body">
       정말로 탈퇴하시겠습니까?<br>
-      <strong>본인 댓글 본문과 계정 정보가 삭제</strong>되며, 이 작업은 되돌릴 수 없습니다. 다른 회원의 답글은 삭제하지 않습니다.
+      <strong>계정은 30일간 탈퇴 대기로 전환</strong>됩니다. 그 안에 같은 Google 계정으로 인증하고 복구를 확인하면 기존 정보를 되살릴 수 있습니다. 30일 경과 후에는 영구 삭제되며 복구할 수 없습니다. 직접 삭제한 댓글·관리자 숨김은 복구로 되돌리지 않으며 다른 회원의 답글은 삭제하지 않습니다.
+      <p>Google 권한 철회도 함께 요청합니다. 같은 Google 프로젝트를 쓰는 기존·시험·운영 서비스의 권한에 영향이 있을 수 있으며, Google 계정 자체를 삭제하는 것은 아닙니다.</p>
+      <p id="withdrawal-help">먼저 Google에서 동일 계정을 확인한 뒤 이 창으로 돌아옵니다.</p>
     </div>
     <div class="modal-footer">
       <button class="btn" id="btn-cancel-delete">취소</button>
-      <button class="btn btn-danger-solid" id="btn-confirm-delete">탈퇴하기</button>
+      <button class="btn btn-danger-solid" id="btn-confirm-delete">Google 본인 확인</button>
     </div>
   </div>
 </div>
 
 <!-- 토스트 -->
+<section id="withdrawal-result" class="container" role="status" hidden>
+  <h2>탈퇴 처리 결과</h2>
+  <p id="withdrawal-result-text"></p>
+  <p><a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Google 연결 관리에서 확인</a></p>
+  <button class="btn" id="withdrawal-check">결과 다시 확인</button>
+  <p><a href="/">사이트 홈으로</a></p>
+</section>
+<section id="recovery-panel" class="container" hidden>
+  <h2>탈퇴 취소 및 계정 복구</h2>
+  <p id="recovery-text" role="status"></p>
+  <p>복구하면 기존 닉네임·댓글·추천·태그 투표가 다시 반영됩니다. 직접 삭제한 댓글이나 관리자 숨김은 복원하지 않으며 관리자 권한은 별도 재지정이 필요합니다.</p>
+  <button class="btn" id="recovery-confirm">탈퇴 취소 및 계정 복구</button>
+  <button class="btn" id="recovery-cancel">복구하지 않기</button>
+  <p>복구를 취소해도 방금 Google에서 허용한 연결은 남을 수 있습니다. <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Google 연결 관리</a></p>
+  <a href="/">홈으로</a>
+</section>
 <div class="toast" id="toast"></div>
 
 <p role="note" style="max-width:680px;margin:16px auto;padding:12px;color:#94a3b8;">새 서비스는 신규 가입으로 시작합니다. 기존 닉네임·댓글·추천·사용자 태그는 이전되지 않습니다.</p>
@@ -409,9 +427,16 @@
   // ── 상태 ────────────────────────────────────────────────────────────────
   let _session = null;
   let _profile = null;
+  let withdrawalReady = false;
+  let withdrawalBusy = false;
+  let recoveryCsrf = null;
+  const deadlineText = seconds => new Intl.DateTimeFormat('ko-KR',{dateStyle:'long',timeStyle:'long',timeZone:'Asia/Seoul'}).format(new Date(seconds*1000));
 
   // ── 초기화 ──────────────────────────────────────────────────────────────
   async function init() {
+    const phase=new URLSearchParams(location.search).get('withdrawal');
+    if(new URLSearchParams(location.search).get('recovery')==='confirm'){await showRecovery();return;}
+    if(phase==='result'){await checkWithdrawalResult();return;}
     const auth = await client.getState();
     _session = auth.session;
     client.onChange(() => { _session = null; _profile = null; showLoginGate(); });
@@ -419,6 +444,11 @@
     if (_session) {
       _profile = await fetchProfile(_session.user.id);
       showMain();
+      if(phase==='confirm'){
+        const result=await client.request('/api/account/withdrawal/status');
+        withdrawalReady=result.status==='ready';
+        openDeleteModal();
+      }
     } else {
       showLoginGate();
     }
@@ -514,30 +544,76 @@
 
   // ── 회원 탈퇴 ────────────────────────────────────────────────────────────
   function openDeleteModal() {
+    document.getElementById('btn-confirm-delete').textContent=withdrawalReady?'30일 탈퇴 대기 및 Google 권한 철회':'Google 본인 확인';
+    document.getElementById('withdrawal-help').textContent=withdrawalReady?'동일 계정 확인이 끝났습니다. 아래 버튼을 누르면 계정이 중지되며 30일 복구 기간이 시작됩니다.':'먼저 Google에서 동일 계정을 확인한 뒤 이 창으로 돌아옵니다.';
     document.getElementById('modal-delete').classList.add('show');
   }
 
   function closeDeleteModal() {
+    if(withdrawalBusy)return;
     document.getElementById('modal-delete').classList.remove('show');
+    if(withdrawalReady){withdrawalReady=false;client.request('/api/account/withdrawal/cancel',{method:'POST',body:'{}'}).catch(()=>{});}
+  }
+
+  function renderWithdrawalResult(result) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('login-gate').style.display='none';
+    document.getElementById('main-content').style.display='none';
+    document.getElementById('modal-delete').classList.remove('show');
+    document.getElementById('withdrawal-result').hidden=false;
+    document.getElementById('withdrawal-result-text').textContent=result.accountWithdrawn
+      ? (result.googleRevocation==='succeeded'?'계정이 30일 탈퇴 대기로 전환되었고 Google OAuth 권한 철회도 성공했습니다. Google 연결 화면의 반영은 시간이 걸릴 수 있습니다.':'계정은 중지되었지만 Google 권한 철회는 확인하지 못했습니다. 전체 처리가 완료된 상태가 아닙니다. Google 연결 관리에서 직접 확인해 주세요.')+(result.recoveryDeadline?' 복구 마감: '+deadlineText(result.recoveryDeadline)+'. 마감 전 같은 Google 계정으로 인증하고 복구를 확인하면 기존 정보가 복구됩니다.':'')
+      : '탈퇴 완료를 확인하지 못했습니다. 처리 중이거나 결과 확인 기간이 지났을 수 있습니다. 결과 다시 확인 또는 sksk17@gmail.com으로 문의해 주세요. 확인을 위해 새로 가입할 필요는 없습니다.';
+  }
+  async function checkWithdrawalResult(){
+    try{renderWithdrawalResult(await client.request('/api/account/withdrawal/status'));}
+    catch{renderWithdrawalResult({accountWithdrawn:false});}
+  }
+  async function showRecovery(){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('login-gate').style.display='none';
+    document.getElementById('main-content').style.display='none';
+    document.getElementById('recovery-panel').hidden=false;
+    document.getElementById('recovery-confirm').disabled=true;
+    try{
+      const result=await client.request('/api/account/recovery');recoveryCsrf=result.csrfToken;
+      document.getElementById('recovery-text').textContent=result.recoverable?'복구 마감: '+deadlineText(result.recoveryDeadline)+'. 인증만으로는 복구되지 않습니다. 아래에서 명시적으로 확인해 주세요.':'복구할 수 없거나 확인 기간이 지났습니다. 마감 이후에는 기존 계정이 복원되지 않으며, 다시 로그인하여 신규 가입할 수 있습니다.';
+      document.getElementById('recovery-confirm').disabled=!result.recoverable;
+    }catch{document.getElementById('recovery-text').textContent='복구 가능 여부를 확인하지 못했습니다. 새로고침하여 다시 확인해 주세요.';}
+  }
+  async function recoveryAction(action){
+    document.getElementById('recovery-confirm').disabled=true;
+    document.getElementById('recovery-cancel').disabled=true;
+    try{
+      const response=await fetch('/api/account/recovery/'+action,{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-CSRF-Token':recoveryCsrf||''},body:'{}'});
+      const result=await response.json();if(!response.ok)throw new Error(result.error?.message||'결과를 확인하지 못했습니다.');
+      if(action==='confirm'){location.assign('/account/');return;}
+      document.getElementById('recovery-text').textContent='복구를 취소했습니다. 계정은 탈퇴 대기로 유지됩니다. Google 연결은 별도로 확인해 주세요.';
+    }catch(e){document.getElementById('recovery-text').textContent=e.message+' 새로고침하여 계정 상태를 확인해 주세요.';}
   }
 
   async function handleDeleteAccount() {
     const btn = document.getElementById('btn-confirm-delete');
     btn.disabled = true;
     btn.textContent = '처리 중...';
+    withdrawalBusy=true;
     try {
-      await client.request('/api/account', { method: 'DELETE', body: '{}' });
-      closeDeleteModal();
-      showToast('계정이 삭제되었습니다.', 'success');
-      // 로그아웃 후 메인으로
-      // Deletion already invalidates all sessions on the server.
-      setTimeout(() => { location.href = '/'; }, 1500);
+      if(!withdrawalReady){
+        const prepared=await client.request('/api/account/withdrawal/start',{method:'POST',body:'{}'});
+        location.assign(prepared.authorizationUrl);return;
+      }
+      history.replaceState(null,'','/account/?withdrawal=result');
+      const result=await client.request('/api/account/withdrawal/confirm', { method: 'POST', body: '{}' });
+      withdrawalReady=false;renderWithdrawalResult(result);
     } catch (e) {
       if (e.code === 'REAUTH_REQUIRED') {
-        if (confirm('안전한 탈퇴를 위해 구글 계정을 다시 확인해야 합니다. 인증 후 탈퇴 버튼을 다시 눌러 주세요.')) client.login(true);
-      } else showToast(e.message || '탈퇴 처리 중 오류가 발생했습니다.', 'error');
+        withdrawalReady=false;history.replaceState(null,'','/account/');openDeleteModal();showToast(e.message,'error');
+      } else if(new URLSearchParams(location.search).get('withdrawal')==='result')await checkWithdrawalResult();
+      else showToast(e.message || '탈퇴 처리 중 오류가 발생했습니다.', 'error');
+    } finally {
+      withdrawalBusy=false;
       btn.disabled = false;
-      btn.textContent = '탈퇴하기';
+      btn.textContent = withdrawalReady?'30일 탈퇴 대기 및 Google 권한 철회':'Google 본인 확인';
     }
   }
 
@@ -553,6 +629,9 @@
   document.getElementById('btn-delete-account').onclick = openDeleteModal;
   document.getElementById('btn-cancel-delete').onclick = closeDeleteModal;
   document.getElementById('btn-confirm-delete').onclick = handleDeleteAccount;
+  document.getElementById('withdrawal-check').onclick=checkWithdrawalResult;
+  document.getElementById('recovery-confirm').onclick=()=>recoveryAction('confirm');
+  document.getElementById('recovery-cancel').onclick=()=>recoveryAction('cancel');
 
   // 모달 배경 클릭 닫기
   document.getElementById('modal-delete').onclick = (e) => {
