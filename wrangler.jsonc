@@ -13,7 +13,6 @@
     "name":"nodostream","workers_dev":false,
     "version_metadata":{"binding":"CF_VERSION_METADATA"},
     "triggers":{"crons":["17 * * * *"]},
-    "limits":{"cpu_ms":50},
     "vars":{"SITE_ORIGIN":"https://nodostream.com","RELEASE_SHA":"unreleased","MAINTENANCE":"true","AUTH_ENABLED":"false"},
     "d1_databases":[{"binding":"DB","database_name":"nodostream-production","database_id":"00000000-0000-0000-0000-000000000000","migrations_dir":"cloudflare/migrations"}]
   }}

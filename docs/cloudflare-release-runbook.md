@@ -28,7 +28,7 @@
 운영 배포는 `verify-cloudflare-production.mjs`의 계정·빈 운영 DB ID·요금제·인증·쓰기
 승인 검사를 통과해야 한다. 필요한 환경 변수는 운영 준비 현황 문서를 참조한다.
 
-1. 사용자와 전환 시간·유료 승인·최초 관리자 계정을 확인한다. Google 공개 동의 화면과 개인정보 안내를 승인한다.
+1. 운영은 사용자 승인에 따라 무료로 시작한다. 전환 시간·최초 관리자 계정을 확인하고 Google 공개 동의 화면과 개인정보 안내를 승인한다. 향후 유료 전환은 별도 승인이 필요하다.
 2. production D1을 **새로** 생성하고 binding ID를 설정한다. 빈 DB에 migration을 적용한다. production secrets와 Google callback `https://nodostream.com/auth/callback`을 등록한다.
 3. 기존 Supabase 쓰기와 태그 자동 작성 경로를 차단한다. 확인되지 않은 쓰기 경로가 있으면 전환을 중지한다. companysearch tracked Go/Python/PowerShell 코드에는 Supabase 호출이 발견되지 않았으나 다른 서비스는 별도 감사한다.
 4. 기존 GitHub Pages 자동 배포를 설정에서 중지한다. 이 단계는 repository YAML guard만으로 대체할 수 없다. 기존 Pages 공개 결과는 새 도메인이 준비될 때까지 유지한다.
