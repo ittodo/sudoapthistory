@@ -1,6 +1,9 @@
 # Cloudflare 새 서비스 배포 실행서
 
-현재 상태는 **무료 시험 배포 성공·Google 로그인 활성화 준비**다. 시험 D1 스키마와 Worker 배포·공개 검증은 성공했다. 사용자 승인 후 기존 Google 클라이언트에 시험 callback과 새 비밀키를 추가했고, 새 비밀키는 시험 Worker의 암호화 Secret에만 저장했다. 운영 DNS·운영 D1·요금제 및 기존 Supabase callback/키는 변경하지 않았다.
+현재 상태는 **무료 시험 배포 및 주요 사용자·관리자 기능 시험 완료, 운영 전환 준비 중**이다.
+최신 확인과 미완료 항목은 [운영 준비 현황](cloudflare-production-readiness.md)을 따른다.
+시험 D1 스키마와 Worker 배포·공개 검증은 성공했다. 시험 callback과 암호화 Secret이 적용돼 있다.
+운영 DNS·운영 D1·요금제 및 기존 Supabase callback/키는 변경하지 않았다.
 기존 Supabase 데이터는 가져오지 않는다. 기존 기업·부동산 공개 JSON과 수집 DB는 유지한다.
 
 ## 1. 안전한 시험 배포
@@ -21,6 +24,9 @@
 - 운영용 HTML/JS는 자산 build에서만 deployment-version.js를 head 첫 부분에 넣는다. 동일 출처 data JSON GET에 배포 SHA query가 추가되며 원본 JSON 바이트는 바뀌지 않는다.
 
 ## 2. 운영 전환 체크리스트
+
+운영 배포는 `verify-cloudflare-production.mjs`의 계정·빈 운영 DB ID·요금제·인증·쓰기
+승인 검사를 통과해야 한다. 필요한 환경 변수는 운영 준비 현황 문서를 참조한다.
 
 1. 사용자와 전환 시간·유료 승인·최초 관리자 계정을 확인한다. Google 공개 동의 화면과 개인정보 안내를 승인한다.
 2. production D1을 **새로** 생성하고 binding ID를 설정한다. 빈 DB에 migration을 적용한다. production secrets와 Google callback `https://nodostream.com/auth/callback`을 등록한다.

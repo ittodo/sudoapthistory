@@ -22,6 +22,17 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Verify explicitly approved production target and plan
+        env:
+          NODESTREAM_DEPLOYMENT_PROVIDER: ${{ vars.NODESTREAM_DEPLOYMENT_PROVIDER }}
+          CLOUDFLARE_PRODUCTION_ENABLED: ${{ vars.CLOUDFLARE_PRODUCTION_ENABLED }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PRODUCTION_D1_ID: ${{ vars.CLOUDFLARE_PRODUCTION_D1_ID }}
+          CLOUDFLARE_WORKERS_PLAN: ${{ vars.CLOUDFLARE_WORKERS_PLAN }}
+          CLOUDFLARE_PAID_APPROVED: ${{ vars.CLOUDFLARE_PAID_APPROVED }}
+          CLOUDFLARE_PRODUCTION_AUTH_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_AUTH_APPROVED }}
+          CLOUDFLARE_PRODUCTION_WRITES_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_WRITES_APPROVED }}
+        run: node tools/verify-cloudflare-production.mjs
       - run: npm run typecheck && npm run test:api
       - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
