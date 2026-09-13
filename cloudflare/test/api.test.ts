@@ -39,6 +39,7 @@ test('age self-declaration is unchecked, server-enforced and bound to OAuth stat
   const path=origin+'/auth/google?returnTo=%2Faccount%2F';
   const gate=await s.mf.dispatchFetch(path,{redirect:'manual'});assert.equal(gate.status,200);assert.equal(gate.headers.get('cache-control'),'no-store');
   assert.equal(gate.headers.get('referrer-policy'),'same-origin');
+  assert.equal(gate.headers.get('content-security-policy')?.split(';').map(x=>x.trim()).find(x=>x.startsWith('form-action ')),"form-action 'self' https://accounts.google.com");
   const html=await gate.text();assert.match(html,/name="age14" value="yes" required/);assert.doesNotMatch(html,/\bchecked\b/);
   assert.equal((await s.db.prepare('SELECT count(*) n FROM oauth_states').first() as any).n,0);
   const csrf=html.match(/name="csrf" value="([a-f0-9]{64})"/)![1],Cookie=gate.headers.get('set-cookie')!.match(/__Host-nodo_age=[^;]+/)![0];
@@ -47,6 +48,9 @@ test('age self-declaration is unchecked, server-enforced and bound to OAuth stat
   assert.equal((await post(new URLSearchParams({csrf,age14:'no'}).toString())).status,400);
   assert.equal((await post(new URLSearchParams({csrf,age14:'yes'}).toString(),{Cookie:''})).status,403);
   for(const Origin of ['null',''])assert.equal((await post(new URLSearchParams({csrf,age14:'yes'}).toString(),{Origin})).status,403);
+  const failed=await post(new URLSearchParams({csrf,age14:'yes'}).toString(),{Cookie:''});
+  assert.equal(failed.headers.get('content-type'),'application/json; charset=utf-8');
+  assert.equal((await failed.json() as any).error.message,'연령 확인 화면을 다시 열어 주세요.');
   assert.equal((await post(new URLSearchParams({csrf,age14:'yes'}).toString(),{Origin:'https://evil.invalid'})).status,403);
   assert.equal((await post('x'.repeat(16385))).status,413);
   const passed=await post(new URLSearchParams({csrf,age14:'yes'}).toString());assert.equal(passed.status,302);

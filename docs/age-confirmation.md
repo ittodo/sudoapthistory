@@ -2,6 +2,10 @@
 
 ## 출처 오류 수정
 
+두 번째 사용자 시험에서 첫 제출 후 이동 없음, 재제출 CSRF 오류 및 모바일 한글 깨짐이 보고됐다. `form-action 'self'`가 Google로 향하는 제출 후 redirect까지 차단할 수 있는데 첫 응답에서 연령 쿠키는 이미 제거되는 흐름이었다. 확인 화면의 form-action에 정확한 `https://accounts.google.com`만 추가하고 동일 출처·CSRF 검사는 유지한다. JSON 응답에 UTF-8 charset을 명시한다. 공개 확인기에 CSP 허용 목록 검사를, API 시험에 동일 정책과 한국어 오류 인코딩 검사를 추가한다. 자동 HTTP 검증은 실제 모바일 브라우저 상호작용 시험을 대체하지 않는다.
+
+참고: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/form-action
+
 최초 시험 배포 후 사용자가 ORIGIN 오류를 보고했다. 인증 경로 공통 `Referrer-Policy: no-referrer`가 네이티브 HTML 폼 POST의 Origin을 null로 만들어 서버 동일 출처 검사와 충돌했다. `/auth/google`의 GET 200 확인 화면만 `same-origin`으로 변경하고, Google 이동·callback은 `no-referrer`를 유지한다. null·빈 값·외부 Origin 허용 예외는 추가하지 않는다. API 시험과 공개 배포 확인기에 최종 응답 정책 검사를 추가했다. 기존 확인 화면은 새로 열어야 변경된 정책이 적용된다.
 
 참고: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy

@@ -6,7 +6,7 @@ test('login smoke explicitly submits the age confirmation and rejects a missing 
  const origin='https://fixture.invalid',csrf='a'.repeat(64);let calls=0;
  const response=await startWithAgeConfirmation(async(url,options)=>{
   calls++;assert.equal(new URL(url).origin,origin);
-  if(calls===1)return new Response(`<input name="csrf" value="${csrf}"><input type="checkbox" name="age14" value="yes" required>`,{headers:{'Cache-Control':'no-store','Referrer-Policy':'same-origin','Set-Cookie':'__Host-nodo_age=fixture; Secure; HttpOnly; Path=/'}});
+  if(calls===1)return new Response(`<input name="csrf" value="${csrf}"><input type="checkbox" name="age14" value="yes" required>`,{headers:{'Content-Security-Policy':"form-action 'self' https://accounts.google.com",'Cache-Control':'no-store','Referrer-Policy':'same-origin','Set-Cookie':'__Host-nodo_age=fixture; Secure; HttpOnly; Path=/'}});
   assert.equal(options.method,'POST');assert.equal(options.headers.Origin,origin);
   assert.equal(options.headers.Cookie,'__Host-nodo_age=fixture');
   assert.equal(new URLSearchParams(options.body).get('age14'),'yes');

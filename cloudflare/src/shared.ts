@@ -3,7 +3,7 @@ export class HttpError extends Error { constructor(public status:number, public 
 export const now=()=>Math.floor(Date.now()/1000);
 export const hash=async(value:string)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export const token=()=>crypto.randomUUID()+crypto.randomUUID();
-export const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});
+export const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});
 export const cookie=(r:Request,name:string)=>r.headers.get('Cookie')?.split(';').map(s=>s.trim()).find(s=>s.startsWith(name+'='))?.slice(name.length+1) || '';
 export const setCookie=(name:string,value:string,age:number)=>`${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${age}`;
 export async function body(r:Request):Promise<Record<string,unknown>> {
