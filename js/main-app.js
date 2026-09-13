@@ -2438,7 +2438,7 @@ function renderTxModal(x){
 
   const filtered=txModalMonth===0?txs:txs.filter(t=>t[0]===txModalMonth);
 
-  const activeFiltered=filtered.filter(t=>!((Number(t[4])||0)&2));
+  const activeFiltered=filtered.filter(t=>!((Number(t[4])||0)&6));
   if(activeFiltered.length>0){
     const prices=activeFiltered.map(t=>t[2]);
     const avg=Math.round(prices.reduce((a,b)=>a+b,0)/prices.length);
@@ -2456,30 +2456,38 @@ function renderTxModal(x){
 
   if(filtered.length>0){
     let rows='';
+    let previousActivePrice=null;
     filtered.forEach((t,i)=>{
       const price=(t[2]/10000).toFixed(2);
+      const flags=Number(t[4])||0;
+      const isCancelled=Boolean(flags&2);
+      const isMissing=Boolean(flags&4);
       let diff='';
-      if(i>0){
-        const prev=filtered[i-1][2];
-        const d=t[2]-prev;
+      if(!isCancelled&&!isMissing&&previousActivePrice!==null){
+        const d=t[2]-previousActivePrice;
         if(d!==0){
-          const pct=(d/prev*100).toFixed(1);
+          const pct=(d/previousActivePrice*100).toFixed(1);
           const cls=d>0?'up':'dn';
           diff=`<span class="${cls}">${d>0?'+':''}${pct}%</span>`;
         }
       }
-      const flags=Number(t[4])||0;
+      if(!isCancelled&&!isMissing) previousActivePrice=t[2];
       const directBadge=(flags&1)?'<span class="badge-direct">직거래</span>':'';
-      const cancelledBadge=(flags&2)?'<span class="badge-cancelled">해제'+(t[5]?' '+t[5]:'')+'</span>':'';
-      rows+=`<tr>
-        <td>${t[0]}\uC6D4 ${t[1]}\uC77C${directBadge}${cancelledBadge}</td>
+      const status=isCancelled
+        ? `<span class="badge-cancelled">해제${t[5]?' '+t[5]:''}</span>`
+        : isMissing
+          ? '<span class="badge-missing">사라짐</span>'
+          : '<span class="badge-normal">정상</span>';
+      rows+=`<tr class="${isCancelled?'tx-cancelled':isMissing?'tx-missing':''}">
+        <td>${t[0]}\uC6D4 ${t[1]}\uC77C${directBadge}</td>
         <td style="font-weight:600">${price}\uC5B5</td>
         <td>${t[3]?t[3]+'\uCE35':'-'}</td>
+        <td>${status}</td>
         <td>${diff}</td>
       </tr>`;
     });
     document.getElementById('txTableWrap').innerHTML=`<table class="tx-table">
-      <thead><tr><th>\uACC4\uC57D\uC77C</th><th>\uAC70\uB798\uAE08\uC561</th><th>\uCE35</th><th>\uC804\uAC74\uB300\uBE44</th></tr></thead>
+      <thead><tr><th>\uACC4\uC57D\uC77C</th><th>\uAC70\uB798\uAE08\uC561</th><th>\uCE35</th><th>\uC0C1\uD0DC</th><th>\uC804\uAC74\uB300\uBE44</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   } else {

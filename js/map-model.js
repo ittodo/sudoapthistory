@@ -29,7 +29,7 @@
     const sums=Array(length).fill(0), counts=Array(length).fill(0);
     for(const t of rows) {
       const year=Math.floor(t.date/10000), month=Math.floor(t.date/100)%100, index=(year-2006)*12+month-1;
-      if(!(t.flags&2) && t.price>0 && index>=0 && index<length){sums[index]+=t.price;counts[index]++;}
+      if(!(t.flags&6) && t.price>0 && index>=0 && index<length){sums[index]+=t.price;counts[index]++;}
     }
     return sums.map((sum,i)=>counts[i]?sum/counts[i]/10000:0);
   }

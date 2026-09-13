@@ -81,6 +81,10 @@
   .tx-table td { padding: 5px 8px; border-bottom: 1px solid #1e293b; }
   .badge-direct { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(234,179,8,.15); color:#fbbf24; border:1px solid rgba(234,179,8,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
   .badge-cancelled { display:inline-block; font-size:9px; padding:1px 5px; border-radius:99px; background:rgba(220,38,38,.12); color:#ef4444; border:1px solid rgba(220,38,38,.3); margin-left:4px; font-weight:600; vertical-align:middle; }
+  .badge-missing { display:inline-block; font-size:9px; padding:1px 5px; border-radius:4px; background:rgba(217,119,6,.12); color:#f59e0b; border:1px solid rgba(217,119,6,.35); font-weight:600; vertical-align:middle; }
+  .badge-normal { color:#94a3b8; font-size:10px; }
+  .tx-table tr.tx-missing td { color:#94a3b8; }
+  .tx-table tr.tx-missing td:nth-child(2) { text-decoration:line-through; }
   .tx-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
   .tx-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; text-align: center; }
   .tx-stat .label { font-size: 10px; color: var(--muted); }

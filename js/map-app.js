@@ -187,7 +187,7 @@
     await Promise.allSettled([chartTask,txTask]);
   }
   function renderTrades() {
-    $('tradeList').innerHTML=transactionRows.slice(0,visibleTrades).map(t=>`<div class="trade ${t.flags&2?'cancelled':''}"><div>${fmtDate(t.date)}${t.flags&1?'<span class="badge">직거래</span>':''}${t.flags&2?'<span class="badge cancelled">해제</span>':''}<small>${esc(t.floor)}층${t.sourceName?' · '+esc(t.sourceName):''}${t.cancelled?' · 해제일 '+esc(t.cancelled):''}</small></div><strong>${money(t.price)}</strong></div>`).join('');
+    $('tradeList').innerHTML=transactionRows.slice(0,visibleTrades).map(t=>`<div class="trade ${t.flags&2?'cancelled':t.flags&4?'missing':''}"><div>${fmtDate(t.date)}${t.flags&1?'<span class="badge">직거래</span>':''}${t.flags&2?'<span class="badge cancelled">해제</span>':t.flags&4?'<span class="badge missing">사라짐</span>':''}<small>${esc(t.floor)}층${t.sourceName?' · '+esc(t.sourceName):''}${t.cancelled?' · 해제일 '+esc(t.cancelled):''}</small></div><strong>${money(t.price)}</strong></div>`).join('');
     $('moreTrades').hidden=visibleTrades>=transactionRows.length;
   }
   async function loadBoundary() {
