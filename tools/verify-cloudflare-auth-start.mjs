@@ -7,6 +7,7 @@ export async function startWithAgeConfirmation(request,origin,path='/auth/google
   const gate=await request(origin+path,{redirect:'manual',signal:AbortSignal.timeout(30000)});
   assert.equal(gate.status,200,'Age confirmation must precede Google login');
   assert.equal(gate.headers.get('Cache-Control'),'no-store');
+  assert.equal(gate.headers.get('Referrer-Policy'),'same-origin','Native form submission must retain same-origin Origin');
   const html=await gate.text();assert.match(html,/name="age14" value="yes" required/);
   const csrf=html.match(/name="csrf" value="([a-f0-9]{64})"/)?.[1];assert.ok(csrf);
   const cookie=gate.headers.get('Set-Cookie')?.match(/__Host-nodo_age=[^;]+/)?.[0];assert.ok(cookie);

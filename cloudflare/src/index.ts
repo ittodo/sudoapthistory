@@ -133,6 +133,10 @@ async function route(r:Request,env:Env):Promise<Response>{
  throw notFound();
 }
 export default {
- async fetch(r:Request,env:Env){try{const response=await route(r,env);if(new URL(r.url).pathname.startsWith('/auth/'))response.headers.set('Referrer-Policy','no-referrer');return response}catch(error){if(error instanceof HttpError)return json({error:{code:error.code,message:error.message}},error.status);if(error instanceof Error&&error.message.includes('UNIQUE constraint'))return json({error:{code:'CONFLICT',message:'이미 사용 중인 값입니다.'}},409);return json({error:{code:'INTERNAL',message:'요청을 처리할 수 없습니다.'}},500)}},
+ async fetch(r:Request,env:Env){try{const response=await route(r,env);const path=new URL(r.url).pathname;
+  // Native form POSTs use Origin: null under no-referrer. Only the age form
+  // needs same-origin; Google redirects and callbacks must still leak no URL.
+  if(path.startsWith('/auth/'))response.headers.set('Referrer-Policy',path==='/auth/google'&&r.method==='GET'&&response.status===200?'same-origin':'no-referrer');
+  return response}catch(error){if(error instanceof HttpError)return json({error:{code:error.code,message:error.message}},error.status);if(error instanceof Error&&error.message.includes('UNIQUE constraint'))return json({error:{code:'CONFLICT',message:'이미 사용 중인 값입니다.'}},409);return json({error:{code:'INTERNAL',message:'요청을 처리할 수 없습니다.'}},500)}},
  async scheduled(_event:ScheduledEvent,env:Env){await cleanWithdrawals(env);await purgeAccounts(env.DB);await purgeExpiredComments(env.DB);await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
 };

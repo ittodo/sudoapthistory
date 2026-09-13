@@ -1,5 +1,11 @@
 # 만 14세 이상 자기확인
 
+## 출처 오류 수정
+
+최초 시험 배포 후 사용자가 ORIGIN 오류를 보고했다. 인증 경로 공통 `Referrer-Policy: no-referrer`가 네이티브 HTML 폼 POST의 Origin을 null로 만들어 서버 동일 출처 검사와 충돌했다. `/auth/google`의 GET 200 확인 화면만 `same-origin`으로 변경하고, Google 이동·callback은 `no-referrer`를 유지한다. null·빈 값·외부 Origin 허용 예외는 추가하지 않는다. API 시험과 공개 배포 확인기에 최종 응답 정책 검사를 추가했다. 기존 확인 화면은 새로 열어야 변경된 정책이 적용된다.
+
+참고: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy
+
 사용자가 선택한 방식: Google 로그인 전에 체크되지 않은 필수 확인란을 표시한다.
 생년월일을 수집하거나 실제 연령을 인증하지 않는다. 거짓 선택을 막을 수는 없다.
 
@@ -13,4 +19,6 @@
 
 검증: 미체크·위조 출처·쿠키 누락·과대 본문·미확인 OAuth callback 차단, 체크 후 OAuth 시작, 기존 가입·탈퇴·복구·권한 시험.
 
-2026-09-13 로컬 검증 결과: 타입 검사 통과, API·보안 시험 16개 통과, 로그인 배포 확인기 시험 2개 통과, 정적 빌드 2,980개 파일 검증 통과. 아직 이 변경은 시험·운영 환경에 배포하지 않았다.
+2026-09-13 로컬 검증 결과: 타입 검사 통과, API·보안 시험 16개 통과, 로그인 배포 확인기 시험 2개 통과, 정적 빌드 2,980개 파일 검증 통과.
+
+2026-09-13 시험 배포 완료: 소스 `aae96cae`, GitHub Actions 실행 `34741879182`의 checks/deploy 성공. 공개 배포 검증과 연령 확인 화면 제출 후 Google 로그인 시작 검증 통과. 시험 주소는 https://nodostream-staging.sksk17.workers.dev 이며 실제 Google 계정 로그인은 자동 수행하지 않았다. 운영 Worker·도메인은 변경하지 않았다.
