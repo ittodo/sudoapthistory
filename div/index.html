@@ -695,14 +695,15 @@ function renderTrade(){
   const summary=tradeObj(tradeData.latest_total,tradeData.summary,tradeData.overview,tradeData.latest,tradeData.total,tradeData.totals,monthObj,tradeData);
   const motie=tradeObj(tradeData.motie,tradeData.quick,tradeData.preliminary,tradeData.flash,summary);
   const hs=tradeObj(tradeData.hs,tradeData.hs_detail,tradeData.customs,tradeData.confirmed,summary);
-  const overviewMonth=tradeFirstValue(TR_MONTH_KEYS,summary,tradeData,motie,monthObj);
+  const periodView=tradePeriodPresentation(tradeData,summary);
+  const overviewMonth=periodView.totalLabel;
   const hsMonth=tradeData.hs_basis_month_label||tradeFirstValue(TR_HS_MONTH_KEYS,hs,tradeData);
-  const exportEntry=tradeFirstEntry(TR_EXPORT_KEYS,summary,tradeData,motie,monthObj);
-  const importEntry=tradeFirstEntry(TR_IMPORT_KEYS,summary,tradeData,motie,monthObj);
-  const balanceEntry=tradeFirstEntry(TR_BALANCE_KEYS,summary,tradeData,motie,monthObj);
+  const exportEntry=tradeFirstEntry(TR_EXPORT_KEYS,periodView.total,summary,tradeData,motie,monthObj);
+  const importEntry=tradeFirstEntry(TR_IMPORT_KEYS,periodView.total,summary,tradeData,motie,monthObj);
+  const balanceEntry=tradeFirstEntry(TR_BALANCE_KEYS,periodView.total,summary,tradeData,motie,monthObj);
 
   stats.innerHTML=`
-    <div class="stat-card"><div class="label">최신 총괄월</div><div class="value">${esc(overviewMonth||'-')}</div><div class="sub">속보/잠정 기준</div></div>
+    <div class="stat-card"><div class="label">총괄 집계 기간</div><div class="value">${esc(overviewMonth||'-')}</div><div class="sub">${esc(periodView.totalNote)}</div></div>
     <div class="stat-card"><div class="label">수출</div><div class="value" style="color:var(--accent)">${fmtTradeAmount(exportEntry?.value,exportEntry?.key)}</div></div>
     <div class="stat-card"><div class="label">수입</div><div class="value" style="color:var(--gold)">${fmtTradeAmount(importEntry?.value,importEntry?.key)}</div></div>
     <div class="stat-card"><div class="label">무역수지</div><div class="value" style="color:${tradeNumber(balanceEntry?.value)<0?'var(--dn)':'var(--green)'}">${fmtTradeAmount(balanceEntry?.value,balanceEntry?.key)}</div></div>
@@ -714,7 +715,7 @@ function renderTrade(){
   const hsRows=tradeHsGroupRows(tradeData,hs,monthObj);
   content.innerHTML=`
     <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
-      <div class="label" style="margin-bottom:8px;">속보 히스토리(1·11·21·월말)</div>
+      <div class="label" style="margin-bottom:8px;">속보 히스토리(1~10일·1~20일·월 전체)</div>
       <div class="table-scroll">
         <table>
           <thead><tr><th>발표일</th><th>기간</th><th style="text-align:right">수출</th><th style="text-align:right">YoY</th><th style="text-align:right">수입</th><th style="text-align:right">YoY</th><th style="text-align:right">무역수지</th><th style="text-align:right">반도체</th></tr></thead>
@@ -723,7 +724,8 @@ function renderTrade(){
       </div>
     </div>
     <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
-      <div class="label" style="margin-bottom:8px;">주요 수출품(속보/잠정)</div>
+      <div class="label" style="margin-bottom:8px;">주요 수출품(속보/잠정) · ${esc(periodView.itemsLabel)}</div>
+      <div class="trade-note" style="margin-bottom:8px;">${esc(periodView.itemsSource)}</div>
       <div class="table-scroll">
         <table>
           <thead><tr><th>품목</th><th style="text-align:right">수출</th><th style="text-align:right">YoY</th></tr></thead>
@@ -740,7 +742,7 @@ function renderTrade(){
         </table>
       </div>
     </div>
-    <div class="trade-note">속보 품목은 MOTIE 발표 기준, HS 그룹은 관세청 HS 확정/상세 기준이라 월과 분류가 다를 수 있음.${renderTradeNotes(tradeData.notes)}</div>
+    <div class="trade-note">총괄·속보 품목·HS 상세는 집계 기간과 분류가 다를 수 있습니다. 각 영역의 기준 기간을 확인해 주세요.${renderTradeNotes(tradeData.notes)}</div>
   `;
 }
 
@@ -754,6 +756,26 @@ const TR_BALANCE_KEYS=['balance','trade_balance','tradeBalance','surplus','net_e
 const TR_MOM_KEYS=['mom','mom_pct','mom_percent','month_over_month','growth_mom','export_mom','exports_mom','MoM','전월비'];
 const TR_YOY_KEYS=['yoy','yoy_pct','yoy_percent','year_over_year','growth_yoy','export_yoy','exports_yoy','YoY','전년비'];
 
+// Keep amounts and labels tied to the same source period; a monthly NEWT row
+// does not identify its last included day and must not imply a completed month.
+function tradePeriodPresentation(root,summary){
+  const snapshots=Array.isArray(root.release_snapshots)?root.release_snapshots:[];
+  const exact=snapshots.filter(r=>String(r.source||'').startsWith('CUSTOMS_PRLST')&&/^\d{4}-\d{2}-\d{2}$/.test(r.period_start||'')&&/^\d{4}-\d{2}-\d{2}$/.test(r.period_end||'')&&r.period_end>=r.period_start)
+    .slice().sort((a,b)=>b.period_end.localeCompare(a.period_end));
+  const latest=exact[0];
+  const sourceName=source=>String(source||'').startsWith('CUSTOMS_PRLST')?'관세청 수출입 속보':String(source||'').startsWith('CUSTOMS_NEWT')?'관세청 월별 총괄':String(source||'').startsWith('MOTIE')?'산업통상자원부 발표':'원본 자료';
+  const label=row=>row.period_label?(`${row.period_start.slice(0,4)}년 ${row.period_label}`).replace(/^(\d{4})년 \1년 /,'$1년 '):`${row.period_start} ~ ${row.period_end}`;
+  const items=Array.isArray(root.release_items)?root.release_items:[];
+  const item=items[0]||{};
+  const itemPeriod=exact.find(r=>String(item.source||'').startsWith('CUSTOMS_PRLST')&&r.period_start===item.date&&r.release_type===item.release_type);
+  return {
+    total:latest||summary,
+    totalLabel:latest?label(latest):(summary.month_label||summary.date||'기준월 미확인'),
+    totalNote:latest?`${sourceName(latest.source)} · ${latest.release_type==='confirmed'?'확정':'잠정'}`:`${sourceName(summary.source)} · ${summary.release_type==='confirmed'?'확정 월 전체':'잠정 누계(집계 종료일 미확인, 월 전체 확정치 아님)'}`,
+    itemsLabel:itemPeriod?label(itemPeriod):(item.month_label||item.date||'기준 기간 미확인'),
+    itemsSource:`${sourceName(item.source)}${itemPeriod?'':' · 세부 집계 기간 미확인'}`
+  };
+}
 function tradeObj(...items){for(const item of items){if(item&&typeof item==='object'&&!Array.isArray(item))return item;}return{};}
 function tradeArr(...items){for(const item of items){if(Array.isArray(item))return item;}return[];}
 function tradeLatestObjFromArray(items){
