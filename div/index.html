@@ -697,7 +697,6 @@ function renderTrade(){
   const hs=tradeObj(tradeData.hs,tradeData.hs_detail,tradeData.customs,tradeData.confirmed,summary);
   const periodView=tradePeriodPresentation(tradeData,summary);
   const overviewMonth=periodView.totalLabel;
-  const hsMonth=tradeData.hs_basis_month_label||tradeFirstValue(TR_HS_MONTH_KEYS,hs,tradeData);
   const exportEntry=tradeFirstEntry(TR_EXPORT_KEYS,periodView.total,summary,tradeData,motie,monthObj);
   const importEntry=tradeFirstEntry(TR_IMPORT_KEYS,periodView.total,summary,tradeData,motie,monthObj);
   const balanceEntry=tradeFirstEntry(TR_BALANCE_KEYS,periodView.total,summary,tradeData,motie,monthObj);
@@ -707,13 +706,14 @@ function renderTrade(){
     <div class="stat-card"><div class="label">수출</div><div class="value" style="color:var(--accent)">${fmtTradeAmount(exportEntry?.value,exportEntry?.key)}</div></div>
     <div class="stat-card"><div class="label">수입</div><div class="value" style="color:var(--gold)">${fmtTradeAmount(importEntry?.value,importEntry?.key)}</div></div>
     <div class="stat-card"><div class="label">무역수지</div><div class="value" style="color:${tradeNumber(balanceEntry?.value)<0?'var(--dn)':'var(--green)'}">${fmtTradeAmount(balanceEntry?.value,balanceEntry?.key)}</div></div>
-    <div class="stat-card"><div class="label">HS 상세 기준월</div><div class="value">${esc(hsMonth||'-')}</div><div class="sub">관세청 확정/상세</div></div>
+    <div class="stat-card"><div class="label">HS 상세 기준</div><div class="value">그룹별 확인</div><div class="sub">각 행의 기준월·검증 상태 확인</div></div>
   `;
 
   const topRows=tradeTopExportRows(tradeData,motie,monthObj);
   const snapshotRows=tradeReleaseSnapshots(tradeData);
   const hsRows=tradeHsGroupRows(tradeData,hs,monthObj);
   content.innerHTML=`
+    ${renderTradeCollectionNotice(tradeData.collection)}
     <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
       <div class="label" style="margin-bottom:8px;">속보 히스토리(1~10일·1~20일·월 전체)</div>
       <div class="table-scroll">
@@ -734,10 +734,11 @@ function renderTrade(){
       </div>
     </div>
     <div class="stat-card" style="text-align:left;padding:16px;margin-bottom:12px;">
-      <div class="label" style="margin-bottom:8px;">HS 그룹(확정 기준)</div>
+      <div class="label" style="margin-bottom:8px;">HS 그룹 · 보유 자료 기준</div>
+      <div class="trade-note" style="margin-bottom:8px;">그룹마다 기준월과 확인 범위가 다릅니다. 부분·기존 보유 자료의 금액은 보유한 품목의 합계이며, 누락된 품목을 0으로 채우지 않습니다. 비교 가능한 검증이 없는 증감률은 표시하지 않습니다.</div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>그룹</th><th style="text-align:right">수출</th><th style="text-align:right">수입</th><th style="text-align:right">무역수지</th><th style="text-align:right">MoM</th><th style="text-align:right">YoY</th></tr></thead>
+          <thead><tr><th>그룹</th><th>기준월·검증 상태</th><th style="text-align:right">수출</th><th style="text-align:right">수입</th><th style="text-align:right">무역수지</th><th style="text-align:right">MoM</th><th style="text-align:right">YoY</th></tr></thead>
           <tbody>${renderTradeHsRows(hsRows)}</tbody>
         </table>
       </div>
@@ -775,6 +776,25 @@ function tradePeriodPresentation(root,summary){
     itemsLabel:itemPeriod?label(itemPeriod):(item.month_label||item.date||'기준 기간 미확인'),
     itemsSource:`${sourceName(item.source)}${itemPeriod?'':' · 세부 집계 기간 미확인'}`
   };
+}
+function tradeCoveragePresentation(row){
+  const expected=row.expected_prefix_count,available=row.available_prefix_count,verified=row.verified_prefix_count;
+  const countsValid=Number.isInteger(expected)&&expected>0&&Number.isInteger(available)&&available>=0&&available<=expected&&Number.isInteger(verified)&&verified>=0&&verified<=available;
+  const complete=row.coverage_status==='complete'&&countsValid&&verified===expected;
+  const status=complete?'complete':row.coverage_status==='partial'?'partial':'historical';
+  return {
+    basis:row.basis_month_label||row.basis_date||'기준월 미확인',
+    status,
+    label:status==='complete'?'대상 품목 검증 완료':status==='partial'?'일부 검증 · 보유 자료 합계':'기존 보유 자료 · 이번 검증 미완료',
+    counts:countsValid?`이번 검증 ${verified}/${expected} · 보유 ${available}/${expected}`:'검증 범위 미확인',
+    comparisons:complete
+  };
+}
+function renderTradeCollectionNotice(collection){
+  if(!collection||collection.status!=='partial')return'';
+  const checked=collection.validated_units,unavailable=collection.unavailable_units;
+  const counts=Number.isInteger(checked)&&checked>=0&&Number.isInteger(unavailable)&&unavailable>=0?` 확인 ${checked}개 · 미완료 ${unavailable}개.`:'';
+  return`<div class="trade-note" role="status" style="padding:14px;margin-bottom:12px;border:1px solid var(--gold);border-radius:10px;">일부 자료 먼저 공개 중.${esc(counts)} 전체 수집 완료 상태가 아닙니다. 아래의 실제 집계 기간과 그룹별 검증 상태를 확인해 주세요.</div>`;
 }
 function tradeObj(...items){for(const item of items){if(item&&typeof item==='object'&&!Array.isArray(item))return item;}return{};}
 function tradeArr(...items){for(const item of items){if(Array.isArray(item))return item;}return[];}
@@ -841,16 +861,18 @@ function renderTradeTopRows(rows){
   }).join('');
 }
 function renderTradeHsRows(rows){
-  if(!rows.length)return'<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--muted);">수출입 데이터 준비 중</td></tr>';
+  if(!rows.length)return'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted);">수출입 데이터 준비 중</td></tr>';
   return rows.map(r=>{
     const group=tradeFirstValue(TR_GROUP_KEYS,r)||'-';
+    const coverage=tradeCoveragePresentation(r);
     const ex=tradeFirstEntry(TR_EXPORT_KEYS,r);
     const im=tradeFirstEntry(TR_IMPORT_KEYS,r);
     const bal=tradeFirstEntry(TR_BALANCE_KEYS,r)||tradeBalanceEntry(ex,im);
-    const mom=tradeFirstEntry(TR_MOM_KEYS,r);
-    const yoy=tradeFirstEntry(TR_YOY_KEYS,r);
+    const mom=coverage.comparisons&&r.has_export_mom===true?tradeFirstEntry(TR_MOM_KEYS,r):null;
+    const yoy=coverage.comparisons&&r.has_export_yoy===true?tradeFirstEntry(TR_YOY_KEYS,r):null;
     return`<tr>
       <td>${esc(group)}</td>
+      <td>${esc(coverage.basis)}<div class="trade-note">${esc(coverage.label)}<br>${esc(coverage.counts)}</div></td>
       <td style="text-align:right;font-weight:600;">${fmtTradeAmount(ex?.value,ex?.key)}</td>
       <td style="text-align:right;">${fmtTradeAmount(im?.value,im?.key)}</td>
       <td style="text-align:right;${tradeNumber(bal?.value)<0?'color:var(--dn);':'color:var(--green);'}">${fmtTradeAmount(bal?.value,bal?.key)}</td>

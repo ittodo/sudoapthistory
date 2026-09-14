@@ -48,3 +48,51 @@ test('MOTIE item does not borrow a Customs period in the same month', () => {
   assert.equal(view.itemsLabel, '2026년 9월');
   assert.match(view.itemsSource, /산업통상자원부 발표 · 세부 집계 기간 미확인/);
 });
+
+test('group coverage keeps historical and partial dates separate', () => {
+  const partial = context.tradeCoveragePresentation({ basis_date: '2026-07-01', basis_month_label: '2026년 7월', coverage_status: 'partial', expected_prefix_count: 4, available_prefix_count: 3, verified_prefix_count: 2 });
+  assert.equal(partial.basis, '2026년 7월');
+  assert.equal(partial.comparisons, false);
+  assert.match(partial.label, /일부 검증/);
+  assert.equal(partial.counts, '이번 검증 2/4 · 보유 3/4');
+  const historical = context.tradeCoveragePresentation({ basis_date: '2026-06-01', coverage_status: 'historical', expected_prefix_count: 4, available_prefix_count: 4, verified_prefix_count: 0 });
+  assert.equal(historical.basis, '2026-06-01');
+  assert.match(historical.label, /기존 보유 자료/);
+  assert.equal(historical.comparisons, false);
+});
+
+test('group is not marked complete from a label without matching counts', () => {
+  const invalid = context.tradeCoveragePresentation({ coverage_status: 'complete', expected_prefix_count: 3, available_prefix_count: 3, verified_prefix_count: 1 });
+  assert.notEqual(invalid.status, 'complete');
+  assert.equal(invalid.comparisons, false);
+  const complete = context.tradeCoveragePresentation({ coverage_status: 'complete', expected_prefix_count: 3, available_prefix_count: 3, verified_prefix_count: 3 });
+  assert.equal(complete.status, 'complete');
+  assert.equal(complete.comparisons, true);
+});
+
+test('partial collection is explicitly not a completed collection', () => {
+  context.esc = value => String(value).replaceAll('<', '&lt;');
+  const notice = context.renderTradeCollectionNotice({ status: 'partial', validated_units: 5, unavailable_units: 2 });
+  assert.match(notice, /일부 자료 먼저 공개/);
+  assert.match(notice, /확인 5개 · 미완료 2개/);
+  assert.match(notice, /전체 수집 완료 상태가 아닙니다/);
+  assert.equal(context.renderTradeCollectionNotice({ status: 'complete' }), '');
+});
+
+test('actual HS row renderer suppresses partial/historical growth even if payload claims flags', () => {
+  vm.runInContext(html.slice(html.indexOf('const TR_MONTH_KEYS='), html.indexOf('// Keep amounts and labels')), context);
+  vm.runInContext(html.slice(html.indexOf('function tradeObj('), html.indexOf('function tradeBalanceEntry(')), context);
+  context.tradeNumber = value => value;
+  context.fmtTradeAmount = value => value == null ? '-' : String(value);
+  context.fmtTradePct = value => value == null ? '-' : `${value}%`;
+  context.tradePctStyle = () => '';
+  const row = { group_name: '반도체', basis_month_label: '2026년 7월', export_usd: 12, import_usd: 9, balance_usd: 3, export_mom_pct: 987, export_yoy_pct: 654, has_export_mom: true, has_export_yoy: true, expected_prefix_count: 3, available_prefix_count: 2, verified_prefix_count: 1 };
+  for (const status of ['partial', 'historical']) {
+    const output = context.renderTradeHsRows([{ ...row, coverage_status: status }]);
+    assert.match(output, /2026년 7월/);
+    assert.doesNotMatch(output, /987%|654%/);
+    assert.match(output, />12</);
+  }
+  const output = context.renderTradeHsRows([{ ...row, coverage_status: 'complete', available_prefix_count: 3, verified_prefix_count: 3, has_export_mom: false, has_export_yoy: false }]);
+  assert.doesNotMatch(output, /987%|654%/);
+});
