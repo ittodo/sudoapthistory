@@ -29,3 +29,5 @@ body[data-site-page="div"] #panelCalendar>div{flex-wrap:wrap}body[data-site-page
 
 body[data-site-page="kapt-v2"] .detail-pane:has(.detail-title){display:block}body[data-site-page="kapt-v2"] .workspace:has(.detail-title){grid-template-columns:minmax(320px,40%) minmax(0,1fr)}
 @media(max-width:767px){body[data-site-page="kapt-v2"] .workspace:has(.detail-title){grid-template-columns:1fr}}
+
+body[data-site-page="kapt-v2"] .segments button.active{color:#fff}body[data-site-page="kapt-v2"] .topbar p{color:var(--muted)}
