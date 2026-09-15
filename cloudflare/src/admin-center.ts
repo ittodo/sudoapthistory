@@ -4,7 +4,8 @@ type Row=Record<string,any>;
 type Actor={id:string;role:string}|null;
 const conflict=()=>new HttpError(409,'CONFLICT','다른 작업으로 상태가 변경되었습니다. 새로고침 후 확인해 주세요.');
 const active="EXISTS(SELECT 1 FROM users u WHERE u.id=c.user_id AND u.status='active')";
-const snapshot=(r:Row)=>JSON.stringify([r.content,r.updated_at,r.deleted_at,r.moderated_at,r.moderation_reason,Number(r.pinned)]);
+const auditVersion='(SELECT id FROM admin_audit_log WHERE target_id=c.id ORDER BY rowid DESC LIMIT 1)';
+const snapshot=(r:Row)=>JSON.stringify([r.content,r.updated_at,r.deleted_at,r.moderated_at,r.moderation_reason,Number(r.pinned),r.last_audit??null]);
 const revision=(r:Row)=>hash(snapshot(r));
 const state=(r:Row)=>JSON.stringify({hidden:!!r.moderated_at,pinned:!!r.pinned});
 const cutoff=()=>new Date(Date.now()-90*86400000).toISOString();
@@ -19,11 +20,12 @@ export async function adminCenter(r:Request,env:Env,user:Actor):Promise<Response
  const q=(sql:string,...v:any[])=>env.DB.prepare(sql).bind(...v),first=(sql:string,...v:any[])=>q(sql,...v).first<Row>(),all=async(sql:string,...v:any[])=>(await q(sql,...v).all<Row>()).results;
  if((pin||mod)&&r.method==='PUT'){
   const id=Number((pin||mod)![1]),b=await body(r),field=pin?'pinned':'hidden';if(typeof b[field]!=='boolean')throw new HttpError(400,'INVALID_INPUT','변경 상태를 확인해 주세요.');
+  if(!Number.isSafeInteger(id)||id<1)throw new HttpError(400,'INVALID_INPUT','대상 번호를 확인해 주세요.');
   const reason=mod&&b.hidden?JSON.stringify({category:text(b.category,1,100),detail:typeof b.detail==='string'?text(b.detail,0,1000):''}):null;
   const requestId=r.headers.get('Idempotency-Key')||crypto.randomUUID();if(requestId.length>100)throw new HttpError(400,'INVALID_INPUT','요청 식별자를 확인해 주세요.');
   const requestHash=await hash(JSON.stringify([user.id,path,b]));
   const retry=await first('SELECT request_hash FROM admin_audit_log WHERE request_id=? AND created_at>=?',requestId,cutoff());if(retry){if(retry.request_hash!==requestHash)throw conflict();return json({ok:true,...(pin?{pinned:b.pinned}:{})});}
-  const row=await first('SELECT c.*,EXISTS(SELECT 1 FROM board_pins WHERE comment_id=c.id) pinned FROM comments c WHERE c.id=?',id);
+  const row=await first(`SELECT c.*,EXISTS(SELECT 1 FROM board_pins WHERE comment_id=c.id) pinned,${auditVersion} last_audit FROM comments c WHERE c.id=?`,id);
   if(!row||row.deleted_at||(row.moderated_at&&row.moderated_at<=moderationCutoff()))throw new HttpError(404,'NOT_FOUND','처리할 수 없는 글입니다.');
   if(pin&&(row.page_id!=='community'||row.parent_id!==null||row.moderated_at||!await first("SELECT id FROM users WHERE id=? AND status='active'",row.user_id)))throw new HttpError(404,'NOT_FOUND','공지로 변경할 수 없는 글입니다.');
   if(b.expectedRevision!==undefined&&b.expectedRevision!==await revision(row))throw conflict();
@@ -31,7 +33,7 @@ export async function adminCenter(r:Request,env:Env,user:Actor):Promise<Response
   // No-op retries from older clients must not create another audit event.
   if(state(row)===state(after)&&row.moderation_reason===after.moderation_reason)return json({ok:true,...(pin?{pinned:b.pinned}:{})});
   const auditId=crypto.randomUUID(),at=new Date().toISOString();
-  const insert=q(`INSERT INTO admin_audit_log(id,actor_id,created_at,target_id,page_id,action,before_state,after_state,reason,request_id,request_hash) SELECT ?,?,?,?,?,?,?,?,?,?,? FROM comments c WHERE c.id=? AND c.content IS ? AND c.updated_at IS ? AND c.deleted_at IS ? AND c.moderated_at IS ? AND c.moderation_reason IS ? AND EXISTS(SELECT 1 FROM board_pins WHERE comment_id=c.id)=? AND EXISTS(SELECT 1 FROM users WHERE id=? AND status='active' AND role='admin')`,auditId,user.id,at,id,row.page_id,pin?(b.pinned?'pin':'unpin'):(b.hidden?'hide':'restore'),state(row),state(after),reason,requestId,requestHash,id,row.content,row.updated_at,row.deleted_at,row.moderated_at,row.moderation_reason,Number(row.pinned),user.id);
+  const insert=q(`INSERT INTO admin_audit_log(id,actor_id,created_at,target_id,page_id,action,before_state,after_state,reason,request_id,request_hash) SELECT ?,?,?,?,?,?,?,?,?,?,? FROM comments c WHERE c.id=? AND c.content IS ? AND c.updated_at IS ? AND c.deleted_at IS ? AND c.moderated_at IS ? AND c.moderation_reason IS ? AND EXISTS(SELECT 1 FROM board_pins WHERE comment_id=c.id)=? AND ${auditVersion} IS ? AND EXISTS(SELECT 1 FROM users WHERE id=? AND status='active' AND role='admin')`,auditId,user.id,at,id,row.page_id,pin?(b.pinned?'pin':'unpin'):(b.hidden?'hide':'restore'),state(row),state(after),reason,requestId,requestHash,id,row.content,row.updated_at,row.deleted_at,row.moderated_at,row.moderation_reason,Number(row.pinned),row.last_audit??null,user.id);
   const gate='EXISTS(SELECT 1 FROM admin_audit_log WHERE id=?)';
   const mutation=pin?(b.pinned?q(`INSERT OR IGNORE INTO board_pins(comment_id) SELECT ? WHERE ${gate}`,id,auditId):q(`DELETE FROM board_pins WHERE comment_id=? AND ${gate}`,id,auditId)):q(`UPDATE comments SET moderated_at=?,moderation_reason=? WHERE id=? AND ${gate}`,after.moderated_at,reason,id,auditId);
   try{await env.DB.batch([insert,mutation]);}catch(error){const existing=await first('SELECT request_hash FROM admin_audit_log WHERE request_id=?',requestId);if(existing?.request_hash===requestHash)return json({ok:true,...(pin?{pinned:b.pinned}:{})});throw error;}
@@ -42,10 +44,10 @@ export async function adminCenter(r:Request,env:Env,user:Actor):Promise<Response
   const status=p.get('status')||'all',kind=p.get('kind')||'all',scope=p.get('scope')||'all',search=(p.get('q')||'').trim();if(search.length>100)throw new HttpError(400,'INVALID_INPUT','검색어는 100자 이하입니다.');
   const conditions:Row={all:'1',normal:`c.deleted_at IS NULL AND c.moderated_at IS NULL AND ${active}`,moderated:'c.deleted_at IS NULL AND c.moderated_at IS NOT NULL',deleted:'c.deleted_at IS NOT NULL',withdrawn:`c.deleted_at IS NULL AND NOT ${active}`};
   const kinds:Row={all:'1',posts:"c.page_id='community' AND c.parent_id IS NULL",comments:"NOT(c.page_id='community' AND c.parent_id IS NULL)"};const scopes:Row={all:'1',apartment:"c.page_id LIKE 'apt_%'",company:"(c.page_id LIKE 'company_%' OR c.page_id='div')",board:"c.page_id='community'"};
-  if(!conditions[status]||!kinds[kind]||!scopes[scope])throw new HttpError(400,'INVALID_INPUT','필터를 확인해 주세요.');
+  if(!Object.hasOwn(conditions,status)||!Object.hasOwn(kinds,kind)||!Object.hasOwn(scopes,scope))throw new HttpError(400,'INVALID_INPUT','필터를 확인해 주세요.');
   const where=`${conditions[status]} AND ${kinds[kind]} AND ${scopes[scope]} AND (?='' OR instr(lower(c.content),lower(?))>0 OR instr(lower(coalesce(p.nickname,'')),lower(?))>0) AND (?='' OR c.page_id=?) AND c.created_at>=?`;
   const args=[search,search,search,p.get('page_id')||'',p.get('page_id')||'',p.get('days')?new Date(period(p).utc).toISOString():'0000'];const n=offset(p);
-  const rows=await all(`SELECT c.*,p.nickname,u.status author_status,EXISTS(SELECT 1 FROM board_pins WHERE comment_id=c.id) pinned FROM comments c LEFT JOIN profiles p ON p.user_id=c.user_id LEFT JOIN users u ON u.id=c.user_id WHERE ${where} ORDER BY c.id DESC LIMIT 20 OFFSET ?`,...args,n);
+  const rows=await all(`SELECT c.*,p.nickname,u.status author_status,EXISTS(SELECT 1 FROM board_pins WHERE comment_id=c.id) pinned,${auditVersion} last_audit FROM comments c LEFT JOIN profiles p ON p.user_id=c.user_id LEFT JOIN users u ON u.id=c.user_id WHERE ${where} ORDER BY c.id DESC LIMIT 20 OFFSET ?`,...args,n);
   const data=await Promise.all(rows.map(async c=>({...c,request_key:undefined,request_hash:undefined,revision:await revision(c),content:c.deleted_at?'삭제된 글입니다.':c.author_status!=='active'?'탈퇴한 회원의 글입니다.':c.content,moderation_reason:c.moderation_reason?JSON.parse(c.moderation_reason):null})));
   return json({data,count:(await first(`SELECT count(*) count FROM comments c LEFT JOIN profiles p ON p.user_id=c.user_id WHERE ${where}`,...args))!.count});
  }

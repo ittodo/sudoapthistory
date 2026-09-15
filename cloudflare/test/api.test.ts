@@ -70,6 +70,23 @@ test('admin center enforces access, filters, atomic audit, retries, conflicts an
  }finally{await s.mf.dispose();}
 });
 
+test('admin revisions reject restored-state stale writes and invalid filter keys stay client errors',async()=>{
+ const s=await setup();try{
+  const admin=await s.user('reviewer','admin');
+  await s.db.prepare("INSERT INTO comments(id,user_id,page_id,content) VALUES(950,'reviewer','community','검토용 제목\n본문')").run();
+  const current=async()=>((await(await s.request('/api/admin/comments?kind=posts','GET',undefined,admin)).json()) as any).data[0];
+  const before=await current();
+  assert.equal((await s.request('/api/board/posts/950/pin','PUT',{pinned:true,expectedRevision:before.revision},admin)).status,200);
+  const pinned=await current();
+  assert.equal((await s.request('/api/board/posts/950/pin','PUT',{pinned:false,expectedRevision:pinned.revision},admin)).status,200);
+  const restored=await current();assert.equal(restored.pinned,before.pinned);assert.notEqual(restored.revision,before.revision);
+  assert.equal((await s.request('/api/admin/comments/950/moderation','PUT',{hidden:true,category:'other',expectedRevision:before.revision},admin)).status,409);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM admin_audit_log').first<any>())!.n,2);
+  for(const query of ['status=constructor','kind=toString','scope=__proto__'])assert.equal((await s.request('/api/admin/comments?'+query,'GET',undefined,admin)).status,400);
+  assert.equal((await s.request('/api/admin/comments/99999999999999999999/moderation','PUT',{hidden:true,category:'other'},admin)).status,400);
+ }finally{await s.mf.dispose();}
+});
+
 test('member library enforces ownership, one heart per member, optimistic writes and withdrawal purge',async()=>{
  const s=await setup();try{
   const a=await s.user('librarya'),b=await s.user('libraryb');
