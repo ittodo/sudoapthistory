@@ -4,6 +4,7 @@ import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,rmSync} from '
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {forbiddenReason} from './verify-site-layout.mjs';
+import {buildApartmentRent} from './build-apartment-rent.mjs';
 import {buildApartmentData} from './build-apartment-data.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -23,6 +24,7 @@ export function build(root, output, sha) {
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
   if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) buildApartmentData(root,{verify:true});
+  if(existsSync(join(root,'js/apartment-rent.js'))) buildApartmentRent(root,{verify:true});
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
   const assets=[];
   for(const path of paths) {

@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id),esc=s=>NodoUI.escape(s);
-  const tabs={overview:'개요',trades:'실거래',investment:'투자분석',facts:'단지정보',location:'위치',comments:'의견'};
+  const tabs={overview:'개요',trades:'실거래',rent:'전월세',investment:'투자분석',facts:'단지정보',location:'위치',comments:'의견'};
   const money=value=>{if(value==null)return '자료 없음';const n=Math.round(value),eok=Math.floor(n/10000),man=n%10000;return [eok?eok.toLocaleString()+'억':'',man?man.toLocaleString()+'만':''].filter(Boolean).join(' ')+(n===0?'0':'')+'원';};
   const number=n=>n==null?'미확인':Number(n).toLocaleString('ko-KR',{maximumFractionDigits:2});
   const pct=n=>n==null?'자료 없음':(n>0?'+':'')+number(n)+'%';
@@ -13,7 +13,7 @@
   let catalog,apartment,area,tab='overview',client,generation=0,chart,map,commentsLoaded=false,commentsReady=false;
   const assets=new Map();
   function script(src){if(!assets.has(src))assets.set(src,new Promise((resolve,reject)=>{const el=document.createElement('script');el.src=src;el.onload=resolve;el.onerror=()=>{assets.delete(src);el.remove();reject(Error('화면 도구를 불러오지 못했습니다.'));};document.head.append(el);}));return assets.get(src);}
-  function save(push=false){const previous=new URLSearchParams(location.search);const p=new URLSearchParams({id:apartment.id,tab});for(const key of ['from','comment','commentSource'])if(previous.has(key))p.set(key,previous.get(key));if(area)p.set('area',area.area);history[push?'pushState':'replaceState']({apartment:true},'',location.pathname+'?'+p);}
+  function save(push=false){const previous=new URLSearchParams(location.search);const p=new URLSearchParams({id:apartment.id,tab});for(const key of ['from','comment','commentSource','rentType','rentPeriod','rentArea'])if(previous.has(key))p.set(key,previous.get(key));if(area)p.set('area',area.area);history[push?'pushState':'replaceState']({apartment:true},'',location.pathname+'?'+p);}
   function selection(){const p=new URLSearchParams(location.search);tab=Object.hasOwn(tabs,p.get('tab'))?p.get('tab'):'overview';area=apartment.areas.find(a=>String(a.area)===p.get('area'))||[...apartment.areas].filter(a=>a.latest).sort((a,b)=>b.latest.date-a.latest.date||a.area-b.area)[0]||apartment.areas[0];}
   function header(){
     $('apartment-content').hidden=false;$('apartment-status').hidden=true;
@@ -21,6 +21,8 @@
     window.NodoCurrentApartment={apartment,area};queueMicrotask(()=>document.dispatchEvent(new Event('nodo:apartment')));
     $('apartment-name').textContent=apartment.name;$('apartment-region').textContent=(apartment.region||'')+' · 아파트';$('apartment-address').textContent=apartment.address;
     $('apartment-facts').innerHTML=[`단지 전체 ${number(apartment.units)}세대`,apartment.years.length?apartment.years.join('–')+'년 준공':'준공연도 미확인',apartment.rental?'임대 단지':null].filter(Boolean).map(v=>`<span class="nodo-tag">${esc(v)}</span>`).join('');
+    $('apartment-summary').innerHTML=facts([['세대수',number(apartment.units)+'세대'],['준공',apartment.years.join('–')||'미확인'],['주차',number(apartment.parking)+'대'],['최근 매매',money(area?.latest?.price)]]);
+    $('area-select').disabled=false;
     $('area-select').replaceChildren(...apartment.areas.map(a=>new Option(`${a.area}㎡ · ${(a.area/3.3058).toFixed(1)}평`,a.area)));
     if(area)$('area-select').value=area.area;else{$('area-select').add(new Option('평형 자료 없음',''));$('area-select').disabled=true;}
     $('area-units').textContent=area?`선택 평형 ${number(area.units)}세대`:'';
@@ -41,10 +43,10 @@
     if(apartment.rental||!area)return status('매매 실거래 자료가 없습니다.');
     const inputs=await Promise.all([...new Set(area.rows.map(r=>r.district))].map(async g=>[g,await client(`data/tx/${g}.json`)]));if(token!==generation)return;
     const data=Object.fromEntries(inputs),rows=area.rows.flatMap(r=>NodoMapModel.trades(data[r.district].entries?.[String(r.i)]||{}).map(t=>({...t,name:r.name,row:r.i}))).sort((a,b)=>b.date-a.date||a.row-b.row||a.order-b.order);
-    $('apartment-panel').innerHTML=`<div class="nodo-card"><div class="nodo-actions" style="justify-content:space-between;margin-bottom:18px"><h2 style="margin:0">${esc(area.area)}㎡ 실거래</h2><label class="nodo-field">기간<select id="trade-year"><option value="">전체 기간</option>${[...new Set(rows.map(t=>Math.floor(t.date/10000)))].map(y=>`<option>${y}</option>`).join('')}</select></label></div><p class="nodo-muted">해제·원천에서 사라진 거래는 표시하되 가격 통계에서 제외합니다.</p><div class="nodo-table-wrap"><table class="nodo-table"><thead><tr><th>거래일</th><th class="numeric">거래금액</th><th>층</th><th>거래기록 단지명</th><th>계산</th></tr></thead><tbody id="trade-rows"></tbody></table></div><button id="trade-more" class="nodo-button" style="margin-top:16px">이전 거래 더 보기</button><div id="trade-count" class="nodo-muted"></div></div>`;
+    $('apartment-panel').innerHTML=`<div class="nodo-card"><div class="nodo-actions" style="justify-content:space-between;margin-bottom:18px"><h2 style="margin:0">${esc(area.area)}㎡ 매매 실거래</h2><label class="nodo-field">기간<select id="trade-year"><option value="">전체 기간</option>${[...new Set(rows.map(t=>Math.floor(t.date/10000)))].map(y=>`<option>${y}</option>`).join('')}</select></label></div><p class="nodo-muted">해제·원천에서 사라진 거래는 표시하되 가격 통계에서 제외합니다.</p><div class="nodo-table-wrap"><table class="nodo-table"><thead><tr><th>거래일</th><th class="numeric">거래금액</th><th>층</th><th>거래기록 단지명</th><th>계산</th></tr></thead><tbody id="trade-rows"></tbody></table></div><button id="trade-more" class="nodo-button" style="margin-top:16px">이전 거래 더 보기</button><div id="trade-count" class="nodo-muted"></div></div>`;
     let count=30;const render=()=>{const filtered=rows.filter(r=>!$('trade-year').value||String(r.date).startsWith($('trade-year').value));$('trade-rows').innerHTML=txRows(filtered.slice(0,count))||'<tr><td colspan="4">선택한 기간에 거래가 없습니다.</td></tr>';$('trade-more').hidden=count>=filtered.length;$('trade-count').textContent=`${Math.min(count,filtered.length)} / ${filtered.length}건`;};$('trade-more').onclick=()=>{count+=30;render();};$('trade-year').onchange=()=>{count=30;render();};render();
   }
-  async function render(){const token=++generation;if(chart){chart.destroy();chart=null;}if(map){map.remove();map=null;}
+  async function render(){const token=++generation;window.NodoRent?.clear();if(chart){chart.destroy();chart=null;}if(map){map.remove();map=null;}
     $('apartment-tabs').innerHTML=Object.entries(tabs).map(([id,n])=>`<button id="tab-${id}" role="tab" aria-controls="apartment-panel" aria-selected="${id===tab}" tabindex="${id===tab?0:-1}" data-tab="${id}">${n}</button>`).join('');
     $('apartment-panel').setAttribute('aria-labelledby','tab-'+tab);$('apartment-panel').innerHTML=status('자료를 불러오고 있습니다…');
     try{
@@ -53,6 +55,7 @@
         $('apartment-panel').innerHTML=empty?status(apartment.rental?'임대 단지의 매매 통계는 제공하지 않습니다. 단지정보 탭에서 기본 정보를 확인하세요.':'연결된 평형·거래 자료가 없습니다. 단지정보 탭을 확인하세요.'):`<div class="nodo-metrics">${metric('최신 유효 실거래',money(a.latest?.price),latestHint())}${metric('최근 평균가',money(a.recent?.value),a.recent?`${month(a.recent.from)}–${month(a.recent.to)} · ${a.recent.count}건`:'거래 자료 없음')}${metric('선택 평형 거래',number(a.total)+'건','해제·원천에서 사라진 거래 제외')}</div><div class="nodo-grid"><div class="nodo-card"><h2>가격 추이</h2><p class="nodo-muted">월평균 실거래가 · 거래 없는 달은 공백으로 표시</p><div id="price-chart-wrap" class="nodo-chart"><canvas id="price-chart" aria-label="월별 평균 실거래가 차트" role="img"></canvas></div></div><div class="nodo-card"><h2>단지 한눈에</h2>${facts([['단지 전체 세대수',number(apartment.units)+'세대'],['선택 평형 세대수',number(a.units)+'세대'],['주차',number(apartment.parking)+'대'],['준공연도',apartment.years.join('–')||'미확인']])}</div></div><p class="nodo-muted" style="margin:16px 0">최근 평균가는 최신 거래 연도 안에서 최근 월부터 3건 이상을 모아 계산합니다. 3건 미만이면 해당 연도 전체 거래를 사용합니다.</p><div class="nodo-card"><h2>연도별 가격</h2><div class="nodo-table-wrap"><table class="nodo-table"><thead><tr><th>연도</th><th>평균</th><th>최저</th><th>최고</th><th>건수</th></tr></thead><tbody>${Object.entries(a.yearly).reverse().map(([y,v])=>`<tr><td>${y}</td><td>${money(v.average)}</td><td>${money(v.min)}</td><td>${money(v.max)}</td><td>${v.count}</td></tr>`).join('')}</tbody></table></div></div>`;
         if(!empty)await draw(token);
       }else if(tab==='trades'){if(apartment.rental||!area)$('apartment-panel').innerHTML=status('연결된 매매 거래가 없습니다.');else await trades(token);}
+      else if(tab==='rent'){await NodoRent.render({apartment,area,panel:$('apartment-panel'),current:()=>token===generation,script});}
       else if(tab==='investment'){
         $('apartment-panel').innerHTML=!area||apartment.rental?status('투자지표를 계산할 거래 자료가 없습니다.'):`<div class="nodo-stack">${area.rows.map(r=>`<div class="nodo-card"><h2>${esc(r.name)} · ${area.area}㎡</h2><div class="nodo-metrics">${metric('연평균성장률 · CAGR',pct(r.metrics.cagr))}${metric('최대낙폭 · MDD',pct(r.metrics.mdd))}${metric('샤프비율',number(r.metrics.sharpe))}${metric('최근 연도 모멘텀',pct(r.metrics.momentum))}${metric(r.metrics.landKind==='registry'?'등기 대지권':'추정 대지지분',number(r.metrics.land)+'㎡',r.metrics.landVerified?number(r.metrics.landVerified)+'세대 확인':'')}${metric('용적률',number(r.metrics.far)+'%')}</div></div>`).join('')}<div class="nodo-notice">기존 스크리너의 원천 단지·평형별 지표입니다. 여러 거래기록이 연결된 경우 각각 표시합니다. CAGR은 거래가 있는 첫해부터 ${Number(apartment.updated.slice(0,4))-1}년까지 연평균성장률, MDD는 연평균가 기준 최대낙폭, 샤프비율은 변동성 대비 수익률입니다.</div></div>`;
 
@@ -75,11 +78,11 @@
       }
     }catch(e){if(token!==generation)return;const el=$('apartment-panel');el.innerHTML=status(e.message)+'<button class="nodo-button" id="retry-tab">다시 시도</button>';$('retry-tab').onclick=render;}
   }
-  $('area-select').onchange=()=>{area=apartment.areas.find(a=>String(a.area)===$('area-select').value);header();save();render();};
-  $('apartment-tabs').onclick=e=>{const button=e.target.closest('[data-tab]');if(button){tab=button.dataset.tab;save();render();if(tab==='trades')window.NodoMember?.event('trades');$('tab-'+tab).focus();}};
+  $('area-select').onchange=()=>{const u=new URL(location.href);u.searchParams.delete('rentArea');history.replaceState(null,'',u);area=apartment.areas.find(a=>String(a.area)===$('area-select').value);header();save();render();};
+  $('apartment-tabs').onclick=e=>{const button=e.target.closest('[data-tab]');if(button){tab=button.dataset.tab;save(true);render();if(tab==='trades')window.NodoMember?.event('trades');$('tab-'+tab).focus();}};
   $('apartment-tabs').onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const ids=Object.keys(tabs),i=ids.indexOf(tab);tab=ids[e.key==='Home'?0:e.key==='End'?ids.length-1:(i+(e.key==='ArrowRight'?1:-1)+ids.length)%ids.length];save();render();$('tab-'+tab).focus();};
   window.addEventListener('popstate',()=>{if(apartment){selection();header();render();}});
-  window.addEventListener('nodo:theme',()=>{if(chart){const token=generation;chart.destroy();chart=null;draw(token).catch(()=>{});}});
+  window.addEventListener('nodo:theme',()=>{if(tab==='rent'){render();return;}if(chart){const token=generation;chart.destroy();chart=null;draw(token).catch(()=>{});}});
   $('share-detail').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);NodoUI.toast('상세 페이지 주소를 복사했습니다.');}catch{NodoUI.toast('주소 표시줄에서 현재 주소를 복사해 주세요.');}};
   try{const from=sessionStorage.getItem('nodoApartmentReturn');if(from&&from.startsWith('/')&&!from.startsWith('//')&&!from.startsWith('/apartment'))$('return-link').href=from;}catch{}
   $('return-link').onclick=e=>{if(history.length>1&&document.referrer&&new URL(document.referrer).origin===location.origin){e.preventDefault();history.back();}};
