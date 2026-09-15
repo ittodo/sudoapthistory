@@ -927,7 +927,10 @@
       });
       listWrap.appendChild(list);
       appendReplyButtons(list, data);
-
+      const focus=new URLSearchParams(location.search).get('comment');
+      if(focus&&/^\d+$/.test(focus)){
+        try{const selected=await _client.request('/api/comments/focus?'+new URLSearchParams({id:focus,page_id:_pageId}));if(version!==_renderVersion)return;for(const c of selected.data)if(!list.querySelector('[data-id="'+c.id+'"]'))list.prepend(renderComment(c,_session?.user.id===c.user_id));const target=list.querySelector('[data-id="'+focus+'"]');if(target){target.classList.add('member-highlight');target.scrollIntoView({block:'center'});}}catch{showToast('원문 댓글을 찾을 수 없거나 공개되지 않은 상태입니다.',true);}
+      }
       if (_totalCount > _offset) {
         appendMoreBtn(listWrap);
       }

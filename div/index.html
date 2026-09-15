@@ -1313,6 +1313,7 @@ init();
 <script src="../js/comments.js"></script>
 <script>
   initComments('div','#comments-section');
+  const requestedCompany=new URLSearchParams(location.search).get('company');if(requestedCompany&&tickerMeta[requestedCompany])showDetail(requestedCompany,tickerMeta[requestedCompany].name||requestedCompany);
   window._divCommentsReady=true;
 </script>
 <footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:var(--accent)">개인정보처리방침 · nodostream.com</a></footer>

@@ -12,7 +12,7 @@ export function publicAsset(path) {
   if (path.split('/').some(p => p.startsWith('.') || /^(docs|tools|cloudflare|supabase|schemas|tests?|logs?)$/i.test(p))) return false;
   if (forbiddenReason(path)) return false;
   if (/^data\//.test(path)) return /\.(json|bin)$/i.test(path) && !/(secret|credential|token|backup)/i.test(path);
-  if(path.includes('/') && !/^(account|admin|apartment|board|calc|compare|css|div|js|map|market|stats|trades|assets|images|fonts)\//.test(path)) return false;
+  if(path.includes('/') && !/^(account|admin|apartment|board|library|ranking|calc|compare|css|div|js|map|market|stats|trades|assets|images|fonts)\//.test(path)) return false;
   return /\.(html|css|js|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i.test(path) || ['ads.txt','robots.txt','sitemap.xml'].includes(path);
 }
 export function runtime(sha) {

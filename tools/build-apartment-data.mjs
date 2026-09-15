@@ -13,7 +13,7 @@ export function summarize(rows) {
     for(;start>=1;start--){subset=valid.filter(t=>Math.floor(t.date/10000)===year&&Math.floor(t.date/100)%100>=start);if(subset.length>=3||start===1)break;}
     recent={value:Math.round(subset.reduce((n,t)=>n+t.price,0)/subset.length/100)*100,count:subset.length,from:year*100+start,to:year*100+latestMonth};
   }
-  return {latest,recent,total:valid.length,yearly:Object.fromEntries(Object.entries(yearly).map(([k,v])=>[k,summarizeGroup(v)])),monthly:Object.fromEntries(Object.entries(monthly).map(([k,v])=>[k,summarizeGroup(v)]))};
+  return {latest,lastFive:valid.slice(0,5),recent,total:valid.length,yearly:Object.fromEntries(Object.entries(yearly).map(([k,v])=>[k,summarizeGroup(v)])),monthly:Object.fromEntries(Object.entries(monthly).map(([k,v])=>[k,summarizeGroup(v)]))};
 }
 export function buildApartmentData(root,{verify=false}={}) {
   const inputHashes={},read=path=>{const bytes=readFileSync(join(root,path));inputHashes[path]=sha(bytes);return JSON.parse(bytes);};
@@ -52,7 +52,9 @@ export function buildApartmentData(root,{verify=false}={}) {
     for(const id of [e.id,...e.aliases]){if(Object.hasOwn(lookup,id)&&lookup[id][0]!==e.id)throw Error('Conflicting alias: '+id);lookup[id]=[e.id,shard];}
     for(const row of e.rows)legacy[row.i]=[e.id,row.a];
   }
-  const outputs={};for(const [key,data] of Object.entries(shards))outputs[`data/apartments/${key}.json`]=JSON.stringify(data);
+  const outputs={};
+  for(const [key,data] of Object.entries(shards))outputs[`data/apartments/summary/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{id,name:a.name,region:a.region,district:a.areas[0]?.rows[0]?.district||a.address.split(' ').slice(1,3).join(' '),address:a.address,updated:a.updated,rental:a.rental,areas:a.areas.map(x=>({area:x.area,latest:x.latest,lastFive:x.lastFive,recent:x.recent}))}])));
+  for(const [key,data] of Object.entries(shards))outputs[`data/apartments/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{...a,areas:a.areas.map(({lastFive,...rest})=>rest)}])));
   const files=Object.fromEntries(Object.entries(outputs).map(([path,data])=>[path,sha(data)]));
   outputs['data/apartments/index.json']=JSON.stringify({version:1,updated:index.meta.updated,count:entities.length,lookup,legacy,sources:inputHashes,shards:files,ambiguous});
   for(const [path,data] of Object.entries(outputs)){if(verify){if(!existsSync(join(root,path))||readFileSync(join(root,path),'utf8')!==data)throw Error('Apartment data out of date: '+path);}else{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),data);}}

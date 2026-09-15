@@ -44,6 +44,13 @@ jobs:
           CLOUDFLARE_PRODUCTION_D1_ID: ${{ vars.CLOUDFLARE_PRODUCTION_D1_ID }}
           CLOUDFLARE_PRODUCTION_WRITES_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_WRITES_APPROVED }}
         run: node tools/ensure-cloudflare-board-schema.mjs
+      - name: Ensure explicitly approved member library tables only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PRODUCTION_D1_ID: ${{ vars.CLOUDFLARE_PRODUCTION_D1_ID }}
+          CLOUDFLARE_PRODUCTION_WRITES_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_WRITES_APPROVED }}
+        run: node tools/ensure-cloudflare-library-schema.mjs
       - name: Deploy without automatic schema migration
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

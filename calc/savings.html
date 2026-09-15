@@ -437,6 +437,7 @@ function calcSavings() {
   // 과세방식별 비교
   renderSavingsTaxCompare(monthly, annualRate, months, simpleInterest);
   $('savings-result').style.display = 'block';
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'savings'}));
 }
 
 function renderSavingsTaxCompare(monthly, annualRate, months, preTaxInterest) {
@@ -548,6 +549,7 @@ function calcDeposit() {
   // 과세방식별 비교
   renderDepositTaxCompare(amount, simpleInterest, compoundInterest);
   $('deposit-result').style.display = 'block';
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'deposit'}));
 }
 
 function renderDepositTaxCompare(amount, simpleInterest, compoundInterest) {
@@ -573,5 +575,6 @@ function renderDepositTaxCompare(amount, simpleInterest, compoundInterest) {
   $('deposit-tax-compare').innerHTML = `<div class="result-box">${rows.join('')}</div>`;
 }
 </script>
+<script defer src="/js/calculator-library.js"></script>
 </body>
 </html>

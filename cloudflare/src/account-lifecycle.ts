@@ -20,6 +20,8 @@ export async function purgeAccounts(db:D1Database,time=now()){
    db.prepare('DELETE FROM oauth_states WHERE state_hash IN (SELECT state_hash FROM oauth_states WHERE reauth_user=? LIMIT 500)').bind(id),
    db.prepare('DELETE FROM recovery_tickets WHERE token_hash IN (SELECT token_hash FROM recovery_tickets WHERE user_id=? LIMIT 500)').bind(id),
    db.prepare('DELETE FROM profiles WHERE user_id=?').bind(id),
+   db.prepare('DELETE FROM apartment_favorites WHERE user_id=?').bind(id),
+   db.prepare('DELETE FROM saved_calculations WHERE user_id=?').bind(id),
    db.prepare('DELETE FROM comment_likes WHERE rowid IN (SELECT rowid FROM comment_likes WHERE user_id=? LIMIT 500)').bind(id),
    db.prepare('DELETE FROM comment_likes WHERE rowid IN (SELECT l.rowid FROM comment_likes l JOIN comments c ON c.id=l.comment_id WHERE c.user_id=? LIMIT 500)').bind(id),
    db.prepare('DELETE FROM tag_votes WHERE rowid IN (SELECT rowid FROM tag_votes WHERE user_id=? LIMIT 500)').bind(id),

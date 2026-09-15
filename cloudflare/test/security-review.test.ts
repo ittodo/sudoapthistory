@@ -18,6 +18,7 @@ test('independent security regression: access control, private fields and erasur
     const db = await mf.getD1Database('DB');
     await db.exec(readFileSync('cloudflare/migrations/0001_initial.sql', 'utf8'));
     for(const sql of readFileSync('cloudflare/migrations/0002_withdrawal_requests.sql','utf8').split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
+    for(const file of ['0003_board_pins.sql','0004_member_library.sql'])for(const sql of readFileSync('cloudflare/migrations/'+file,'utf8').split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
     const now = Math.floor(Date.now()/1000);
     for (const [id,role] of [['alice','user'],['bob','user'],['admin','admin']]) {
       await db.prepare('INSERT INTO users(id,google_sub,email,role) VALUES(?,?,?,?)').bind(id, 'google-'+id, id+'@example.invalid', role).run();

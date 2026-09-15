@@ -7,6 +7,7 @@ import {Miniflare,createFetchMock} from 'miniflare';
 import {purgeExpiredComments,moderationCutoff} from '../src/comment-retention';
 import {readyWithdrawal,withdrawalKey} from './withdrawal-fixture';
 import {purgeAccounts,expireAccounts,issueRecovery,RECOVERY_SECONDS} from '../src/account-lifecycle';
+import {cleanupAnalytics} from '../src/member-library';
 
 const origin='https://test.example';
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
@@ -14,11 +15,12 @@ const bundle=await build({entryPoints:['cloudflare/src/index.ts'],bundle:true,wr
 const sql=await readFile('cloudflare/migrations/0001_initial.sql','utf8');
 async function setup(maintenance=false){
  const mock=createFetchMock();mock.disableNetConnect();
- const options={modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-08-01',d1Databases:['DB'],bindings:{SITE_ORIGIN:origin,GOOGLE_CLIENT_ID:'test-client',GOOGLE_CLIENT_SECRET:'fake-secret',RELEASE_SHA:'abc123',MAINTENANCE:String(maintenance),AUTH_ENABLED:'true',WITHDRAWAL_ENABLED:'true',WITHDRAWAL_ENCRYPTION_KEY:withdrawalKey},serviceBindings:{ASSETS:()=>new Response('asset',{status:404})},fetchMock:mock};
+ const options={modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-08-01',d1Databases:['DB'],bindings:{SITE_ORIGIN:origin,GOOGLE_CLIENT_ID:'test-client',GOOGLE_CLIENT_SECRET:'fake-secret',RELEASE_SHA:'abc123',MAINTENANCE:String(maintenance),AUTH_ENABLED:'true',WITHDRAWAL_ENABLED:'true',WITHDRAWAL_ENCRYPTION_KEY:withdrawalKey},serviceBindings:{ASSETS:(r:Request)=>{const p=new URL(r.url).pathname;if(p==='/data/apartments/index.json')return Response.json({lookup:{testapt:['testapt','00'],alias:['testapt','00']}});if(p==='/data/apartments/summary/00.json')return Response.json({testapt:{id:'testapt',name:'시험아파트',region:'서울',district:'강남구',areas:[{area:84},{area:59}]}});return new Response('asset',{status:404});}},fetchMock:mock};
  const mf=new Miniflare(options);
  const db=await mf.getD1Database('DB');for(const s of sql.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  for(const statement of (await readFile('cloudflare/migrations/0002_withdrawal_requests.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  for(const statement of (await readFile('cloudflare/migrations/0003_board_pins.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
+ for(const statement of (await readFile('cloudflare/migrations/0004_member_library.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  async function withdrawal(headers:Record<string,string>){
   const sessionToken=headers.Cookie.split('=')[1];const uid=sessionToken.slice('session-token-'.length);
   const receipt=await readyWithdrawal(db,origin,uid,sessionToken);
@@ -35,6 +37,63 @@ async function setup(maintenance=false){
   return mf.dispatchFetch(origin+path,{method,redirect:'manual',headers:{...headers,...(data===undefined?{}:{'Content-Type':'application/json'})},body:data===undefined?undefined:JSON.stringify(data)})}
  return {mf,db,user,request,mock,options,withdrawal};
 }
+test('member library enforces ownership, one heart per member, optimistic writes and withdrawal purge',async()=>{
+ const s=await setup();try{
+  const a=await s.user('librarya'),b=await s.user('libraryb');
+  assert.equal((await s.request('/api/me/favorites')).status,401);
+  assert.equal((await s.request('/api/me/favorites/testapt','PUT',{version:0,areas:['84','59']},a)).status,200);
+  assert.equal((await s.request('/api/me/favorites/testapt','PUT',{version:0,areas:['84']},a)).status,409);
+  assert.equal((await s.request('/api/me/favorites/alias','PUT',{version:0,areas:['84']},b)).status,400);
+  assert.equal((await s.request('/api/me/favorites/testapt','PUT',{version:0,areas:['999']},b)).status,400);
+  const counts=await (await s.request('/api/apartments/hearts?ids=testapt')).json() as any;assert.equal(counts.data.testapt,1);
+  assert.equal((await (await s.request('/api/me/favorites','GET',undefined,b)).json() as any).data.length,0);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM favorite_areas').first() as any).n,2);
+  await s.request('/api/me/favorites/testapt','PUT',{version:0,areas:['59']},b);
+  assert.equal((await (await s.request('/api/apartments/ranking?region=서울')).json() as any).data[0].hearts,2);
+  const payload={schema:1,formula:1,inputs:{g_price:'80,000'},result:'월 납입액 100만원',calculatedAt:Date.now()};
+  const write={kind:'loan',slot:null,name:'매수안',version:0,payload};
+  assert.equal((await s.request('/api/me/calculations/calc-one','PUT',write,a)).status,200);
+  assert.equal((await s.request('/api/me/calculations/calc-one','PUT',write,a)).status,200,'same uncertain retry is idempotent');
+  assert.equal((await s.request('/api/me/calculations/calc-one','PUT',{...write,name:'다른안'},a)).status,409);
+  assert.equal((await s.request('/api/me/calculations/calc-one','DELETE',{version:1},b)).status,404);
+  assert.equal((await (await s.request('/api/me/calculations','GET',undefined,b)).json() as any).data.length,0);
+  await s.db.prepare("UPDATE users SET status='withdrawn',recovery_deadline=? WHERE id='librarya'").bind(Math.floor(Date.now()/1000)-1).run();
+  assert.equal((await (await s.request('/api/apartments/hearts?ids=testapt')).json() as any).data.testapt,1);
+  await purgeAccounts(s.db as any);assert.equal((await s.db.prepare("SELECT count(*) n FROM saved_calculations WHERE user_id='librarya'").first() as any).n,0);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM favorite_areas').first() as any).n,1);
+ }finally{await s.mf.dispose();}
+});
+test('anonymous analytics deduplicates views, drops orphan actions and protects reports',async()=>{
+ const s=await setup();try{
+  const event={apartmentId:'testapt',area:'84',kind:'view',source:'search'};
+  assert.equal((await s.request('/api/apartments/events','POST',event)).status,403);
+  const first=await s.request('/api/apartments/events','POST',event,{Origin:origin});assert.equal(first.status,200);const Cookie=first.headers.get('set-cookie')!.split(';')[0];
+  await s.request('/api/apartments/events','POST',event,{Origin:origin,Cookie});
+  await s.request('/api/apartments/events','POST',{...event,kind:'calculator',source:'direct'},{Origin:origin,Cookie});
+  await s.request('/api/apartments/events','POST',{...event,kind:'heart'},{Origin:origin});
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM apartment_events').first() as any).n,2);
+  const summary=await s.db.prepare('SELECT * FROM apartment_daily').first() as any;assert.equal(summary.views,1);assert.equal(summary.sessions,1);assert.equal(summary.calculators,1);assert.equal(summary.hearts,0);assert.equal(summary.source,'search');
+  const normal=await s.user('reader'),admin=await s.user('metricsadmin','admin');
+  assert.equal((await s.request('/api/admin/apartment-analytics','GET',undefined,normal)).status,403);
+  assert.equal((await s.request('/api/admin/apartment-analytics','GET',undefined,admin)).status,200);
+  const cols=(await s.db.prepare('PRAGMA table_info(apartment_events)').all()).results.map((x:any)=>x.name);assert.ok(!cols.some((x:any)=>/user|email|ip|token/.test(x)));
+  await cleanupAnalytics(s.db as any,Math.floor(Date.now()/1000)+30*86400+1);assert.equal((await s.db.prepare('SELECT count(*) n FROM apartment_events').first() as any).n,0);assert.equal((await s.db.prepare('SELECT views FROM apartment_daily').first() as any).views,1);
+ }finally{await s.mf.dispose();}
+});
+test('own activity and focused comments preserve moderation and ownership boundaries',async()=>{
+ const s=await setup();try{const a=await s.user('activitya'),b=await s.user('activityb'),admin=await s.user('activityadmin','admin');
+ const root=(await (await s.request('/api/comments','POST',{page_id:'community',content:'제목입니다\n본문입니다'},{...a,'Idempotency-Key':'activity-root-000001'})).json() as any).data.id;
+ const reply=(await (await s.request('/api/comments','POST',{page_id:'community',content:'답글입니다',parent_id:root},{...b,'Idempotency-Key':'activity-reply-000001'})).json() as any).data.id;
+ assert.equal((await (await s.request('/api/me/activity?type=posts','GET',undefined,a)).json() as any).data.length,1);
+ assert.equal((await (await s.request('/api/me/activity?type=posts','GET',undefined,b)).json() as any).data.length,0);
+ assert.equal((await (await s.request('/api/me/activity?type=replies','GET',undefined,a)).json() as any).data[0].id,reply);
+ assert.equal((await (await s.request('/api/comments/focus?page_id=community&id='+reply)).json() as any).data.length,2);
+ assert.equal((await s.request('/api/comments/focus?page_id=other&id='+reply)).status,404);
+ await s.request('/api/admin/comments/'+root+'/moderation','PUT',{hidden:true,category:'spam'},admin);
+ assert.equal((await s.request('/api/comments/focus?page_id=community&id='+reply)).status,404);
+ assert.equal((await (await s.request('/api/me/activity?type=replies','GET',undefined,a)).json() as any).data.length,0);
+ }finally{await s.mf.dispose();}
+});
 test('age self-declaration is unchecked, server-enforced and bound to OAuth state',async()=>{
  const s=await setup();try{
   const path=origin+'/auth/google?returnTo=%2Faccount%2F';

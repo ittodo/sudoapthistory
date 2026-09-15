@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+test('actual loan calculator handles zero principal and zero interest without NaN',()=>{
+ const html=readFileSync(new URL('../calc/index.html',import.meta.url),'utf8'),fn=html.slice(html.indexOf('function calcLoan()'),html.indexOf('function calcPrepay()'));
+ for(const [principal,rate] of [[0,3.5],[12000,0]]){const elements=new Map(),events=[],ctx={raw:()=>principal,rawF:id=>id==='l_rate'?rate:1,$:id=>{if(!elements.has(id))elements.set(id,{value:'equal_payment',innerHTML:'',style:{},getContext(){return {};},appendChild(){}});return elements.get(id);},window:{},document:{createElement:()=>({}),dispatchEvent:e=>events.push(e)},CustomEvent:class{constructor(name,init){this.name=name;this.detail=init.detail;}},alert:()=>{throw Error('Unexpected validation');},fmt:n=>String(n),destroyChart(){},charts:{},Chart:class{},CHART_DEFAULTS:{plugins:{},scales:{x:{},y:{}}}};vm.runInNewContext(fn+';calcLoan();',ctx);assert.equal(ctx.window._loanSchedule.length,12);assert.ok(ctx.window._loanSchedule.every(x=>Number.isFinite(x.payment)));assert.equal(ctx.window._loanSchedule.reduce((n,x)=>n+x.interest,0),0);assert.equal(events[0].detail,'loan');assert.doesNotMatch(elements.get('loan-stats').innerHTML,/NaN|Infinity/);}
+});
+test('actual price adjustment always uses original transaction and supports direct amount',()=>{
+ const js=readFileSync(new URL('../js/calculator-library.js',import.meta.url),'utf8'),fn=js.slice(js.indexOf('function priceChange('),js.indexOf('function showContext('));const elements={'g_price':{value:'80,000'},'member-price-rate':{value:'5'},'member-price-amount':{value:80000},'member-price-info':{textContent:''}},ctx={$:id=>elements[id],context:{},baseline:80000,last:null,window:{},status:()=>{throw Error('Unexpected validation');}};vm.runInNewContext(fn+';priceChange("rate");',ctx);assert.equal(elements['g_price'].value,'84,000');elements['member-price-rate'].value='-5';vm.runInNewContext('priceChange("rate")',ctx);assert.equal(elements['g_price'].value,'76,000');elements['member-price-amount'].value=72000;vm.runInNewContext('priceChange("amount")',ctx);assert.equal(elements['member-price-rate'].value,'-10.00');
+});

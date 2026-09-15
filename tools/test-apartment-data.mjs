@@ -22,7 +22,7 @@ test('generated representative and canonical identities preserve household scope
  const apt=read(source.as);assert.equal(apt.units,source.tu);assert.equal(apt.areas.find(a=>a.area===85).units,source.u);
  for(const a of apt.areas)for(const row of a.rows)assert.equal(row.commentId,'apt_'+row.i);
  assert.equal(read('11440-5530').id,'pub_0008933ed9d689371e570144');
- assert.equal(Object.keys(index.shards).length,256);
+ assert.equal(Object.keys(index.shards).length,512);
  const map=JSON.parse(readFileSync(new URL('../data/map/index.json',import.meta.url)));
  for(const complex of map.d)assert.ok(index.lookup[complex.publicationId||complex.id],complex.id);
  for(const source of index.ambiguous)assert.equal(index.lookup[source][0],source,'Ambiguous source must remain independent');

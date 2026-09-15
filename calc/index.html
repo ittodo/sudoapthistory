@@ -604,7 +604,7 @@ function calcLoan() {
   const n = Math.round(rawF('l_years') * 12);
   const type = $('l_type').value;
 
-  if (P <= 0 || n <= 0) { alert('대출금액과 기간을 확인하세요.'); return; }
+  if (!Number.isFinite(P) || P < 0 || !Number.isFinite(r) || r < 0 || n <= 0 || n > 1200) { alert('대출금액·금리·기간을 확인하세요.'); return; }
 
   let schedule = [];
 
@@ -645,7 +645,7 @@ function calcLoan() {
     <div class="stat-item"><div class="s-label">총 이자</div><div class="s-value highlight-red">${fmt(totalInterest)}만원</div></div>
     <div class="stat-item"><div class="s-label">총 납입액</div><div class="s-value">${fmt(totalPayment)}만원</div></div>
     <div class="stat-item"><div class="s-label">대출원금</div><div class="s-value">${fmt(P)}만원</div></div>
-    <div class="stat-item"><div class="s-label">이자 비율</div><div class="s-value">${(totalInterest/P*100).toFixed(1)}%</div></div>
+    <div class="stat-item"><div class="s-label">이자 비율</div><div class="s-value">${(P?totalInterest/P*100:0).toFixed(1)}%</div></div>
   `;
 
   const years = [];
@@ -694,6 +694,7 @@ function calcLoan() {
   window._loanP = P; window._loanR = r; window._loanN = n; window._loanType = type;
 
   $('loan-result').style.display = 'block';
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'loan'}));
 }
 
 function calcPrepay() {
@@ -741,6 +742,7 @@ function calcPrepay() {
       <div class="result-row"><span class="lbl">절감 비율</span><span class="val highlight-green">${(saving/origRemaining*100).toFixed(1)}%</span></div>
     </div>
   `;
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'prepay'}));
 }
 
 // ─── 섹션 2: 전월세 전환 ──────────────────────────────────
@@ -772,6 +774,7 @@ function calcJ2W() {
       ${rate > legalMax ? '<div class="result-row"><span style="color:#f87171;font-size:11px">⚠ 전월세전환율이 법정 상한을 초과합니다</span></div>' : ''}
     </div>
   `;
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'j2w'}));
 }
 
 function calcW2J() {
@@ -789,6 +792,7 @@ function calcW2J() {
       <div class="result-row"><span class="lbl">전월세전환율</span><span class="val">${rate}%</span></div>
     </div>
   `;
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'w2j'}));
 }
 
 function calcCompare() {
@@ -833,6 +837,7 @@ function calcCompare() {
       <div class="result-row"><span class="lbl" style="font-size:11px;color:var(--muted)">※ 전세보증금 미회수 리스크, 전세자금 기회비용 미반영</span></div>
     </div>
   `;
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'rentcompare'}));
 }
 
 // ─── 세금 계산 함수 ───────────────────────────────────────
@@ -1185,6 +1190,7 @@ function calcOpportunity() {
     + `<div style="font-size:11px;color:var(--border);margin-top:8px;padding:8px 10px;background:rgba(71,85,105,.15);border-radius:6px;border-left:2px solid var(--border)">※ B·C 시나리오는 전세·월세 보증금 및 월세를 집값 상승률과 동일하게 2년마다 갱신 반영. 갱신 시 추가 보증금은 여유자본(투자풀)에서 차감, 대출 한도 초과분만 대출 증액 처리.</div>`;
 
   $('opp-result').style.display = 'block';
+  document.dispatchEvent(new CustomEvent('nodo:calculated',{detail:'opportunity'}));
 }
 
 // ─── 초기화 ────────────────────────────────────────────────
@@ -1223,5 +1229,6 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+<script defer src="/js/calculator-library.js"></script>
 </body>
 </html>
