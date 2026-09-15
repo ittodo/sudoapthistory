@@ -34,9 +34,16 @@ jobs:
           CLOUDFLARE_PRODUCTION_WRITES_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_WRITES_APPROVED }}
         run: node tools/verify-cloudflare-production.mjs
       - run: npm run typecheck && npm run test:api
-      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs
+      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
       - run: npm run build
+      - name: Ensure the explicitly approved board table only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PRODUCTION_D1_ID: ${{ vars.CLOUDFLARE_PRODUCTION_D1_ID }}
+          CLOUDFLARE_PRODUCTION_WRITES_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_WRITES_APPROVED }}
+        run: node tools/ensure-cloudflare-board-schema.mjs
       - name: Deploy without automatic schema migration
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -7,8 +7,8 @@
 <meta name="robots" content="noindex">
 <style>
   :root {
-    --bg: #0f172a; --card: #1e293b; --border: #334155;
-    --text: #e2e8f0; --muted: #94a3b8; --accent: #3b82f6;
+
+      --accent: #3b82f6;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -74,14 +74,14 @@
   .avatar {
     width: 44px; height: 44px;
     border-radius: 50%;
-    background: #334155;
+    background: var(--border);
     object-fit: cover;
     flex-shrink: 0;
   }
   .avatar-placeholder {
     width: 44px; height: 44px;
     border-radius: 50%;
-    background: #334155;
+    background: var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -120,7 +120,7 @@
   }
   .form-input {
     flex: 1;
-    background: #0f172a;
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 7px;
     color: var(--text);
@@ -131,10 +131,10 @@
     font-family: inherit;
   }
   .form-input:focus { border-color: var(--accent); }
-  .form-input::placeholder { color: #475569; }
+  .form-input::placeholder { color: var(--border); }
   .form-hint {
     font-size: 11px;
-    color: #64748b;
+    color: var(--muted);
     margin-top: 5px;
   }
 
@@ -157,7 +157,7 @@
   .btn-primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: #fff;
+    color: var(--text);
   }
   .btn-primary:hover { background: #2563eb; border-color: #2563eb; }
   .btn-danger {
@@ -209,9 +209,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #fff;
+    background: var(--text);
     border: 1px solid #d1d5db;
-    color: #374151;
+    color: var(--border);
     border-radius: 7px;
     padding: 10px 20px;
     font-size: 14px;
@@ -290,6 +290,10 @@
   .toast.error { border-color: #f87171; color: #fca5a5; }
   .toast.success { border-color: #34d399; color: #6ee7b7; }
 </style>
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
 
@@ -403,7 +407,7 @@
 </section>
 <div class="toast" id="toast"></div>
 
-<p role="note" style="max-width:680px;margin:16px auto;padding:12px;color:#94a3b8;">새 서비스는 신규 가입으로 시작합니다. 기존 닉네임·댓글·추천·사용자 태그는 이전되지 않습니다.</p>
+<p role="note" style="max-width:680px;margin:16px auto;padding:12px;color:var(--muted);">새 서비스는 신규 가입으로 시작합니다. 기존 닉네임·댓글·추천·사용자 태그는 이전되지 않습니다.</p>
 <script src="/js/auth-client.js"></script>
 <script>
 (function () {
@@ -642,6 +646,6 @@
   init().catch(e => { showLoginGate(); showToast(e.message, 'error'); });
 })();
 </script>
-<footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:#93c5fd">개인정보처리방침 · nodostream.com</a></footer>
+<footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:var(--accent)">개인정보처리방침 · nodostream.com</a></footer>
 </body>
 </html>

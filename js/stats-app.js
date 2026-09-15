@@ -20,7 +20,7 @@
   };
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
-  const colors = ["#64748b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#f97316"];
+  const colors = ["var(--muted)", "#3b82f6", "#22c55e", "#f59e0b", "var(--up)", "#a855f7", "#f97316"];
   const dataVersion = "20260814-turnover1";
 
   const $ = (id) => document.getElementById(id);
@@ -233,7 +233,7 @@
   }
 
   function chartDefaults() {
-    Chart.defaults.color = "#94a3b8";
+    Chart.defaults.color = "var(--muted)";
     Chart.defaults.borderColor = "rgba(51,65,85,.75)";
     Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
   }

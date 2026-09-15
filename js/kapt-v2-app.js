@@ -47,7 +47,9 @@ function renderList(){
   $('#complexList').querySelectorAll('[data-k]').forEach(button=>button.addEventListener('click',()=>select(button.dataset.k)));
 }
 
-function select(code){
+function select(code,replace=false){
+  const linked=state.data.complexes.find(value=>value.id===code||(value.legacyIds||[]).includes(code));
+  if(linked?.housingFamily==='apartment'){saveSearch();NodoApartmentLinks.go({id:linked.id},replace);return;}
   const item=state.data.complexes.find(value=>value.id===code||(value.legacyIds||[]).includes(code));
   const canonical=item?.id||code;
   state.selected=canonical;
@@ -71,7 +73,13 @@ function bind(){
   $('#regions').querySelectorAll('[data-region]').forEach(button=>button.addEventListener('click',()=>{state.region=button.dataset.region;$('#regions .active')?.classList.remove('active');button.classList.add('active');renderList()}));
 }
 
+function saveSearch(){try{sessionStorage.setItem('nodo:kapt-search',JSON.stringify({region:state.region,family:state.family,query:state.query,linkedOnly:state.linkedOnly,sort:state.sort}));}catch{}}
+window.addEventListener('pagehide',saveSearch);
 async function start(){
+  if(performance.getEntriesByType('navigation')[0]?.type==='back_forward'){
+    try{const saved=JSON.parse(sessionStorage.getItem('nodo:kapt-search'));if(saved){for(const key of ['region','family','query','linkedOnly','sort'])if(Object.hasOwn(saved,key))state[key]=saved[key];$('#search').value=state.query;$('#family').value=state.family;$('#sort').value=state.sort;$('#linkedOnly').checked=state.linkedOnly;$('#regions').querySelectorAll('[data-region]').forEach(b=>b.classList.toggle('active',b.dataset.region===state.region));}}catch{}
+  }
+
   bind();
   try{
     state.data=await loadData();
@@ -80,7 +88,7 @@ async function start(){
     renderList();
     const params=new URLSearchParams(location.hash.slice(1));
     const initial=params.get('k');
-    if(initial&&state.data.complexes.some(item=>item.id===initial||(item.legacyIds||[]).includes(initial)))select(initial);
+    if(initial&&state.data.complexes.some(item=>item.id===initial||(item.legacyIds||[]).includes(initial)))select(initial,true);
   }catch(error){
     $('#summary').textContent='승인된 공동주택 데이터가 아직 준비되지 않았습니다.';
     $('#complexList').innerHTML=`<div class="empty-state">${esc(error.message)}</div>`;

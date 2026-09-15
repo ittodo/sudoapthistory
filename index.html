@@ -24,25 +24,29 @@
 <script src="js/calc-utils.js?v=20260816-gap-recovery"></script>
 <script src="js/data-loader.js?v=20260907-parcel-index-v2"></script>
 <link rel="stylesheet" href="css/main.css?v=20260914-disappearance-v1">
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
-<div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">데이터 로딩 중...</span></div>
+<div id="loading"><div class="sp"></div><span style="color:var(--muted);font-size:13px" id="loadMsg">데이터 로딩 중...</span></div>
 
 <div id="app" style="display:none;max-width:1600px" class="mx-auto px-3 py-3">
   <div class="flex items-center justify-between mb-3">
     <div>
       <h1 class="text-lg font-bold text-white">서울·경기·인천 아파트 투자 스크리너</h1>
-      <p class="text-xs" style="color:#64748b">국토교통부 실거래가 <span id="yearRange">2015-2026</span> | <span id="tc">0</span>개 단지 | <a href="policy.html" style="color:#93c5fd">정책 현황</a></p>
+      <p class="text-xs" style="color:var(--muted)">국토교통부 실거래가 <span id="yearRange">2015-2026</span> | <span id="tc">0</span>개 단지 | <a href="policy.html" style="color:var(--accent)">정책 현황</a></p>
     </div>
     <div class="flex gap-2 items-center">
-      <a href="map/" class="pg-btn tab-btn" style="text-decoration:none;color:#93c5fd;">지도</a>
-      <a href="compare/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">지역 비교</a>
-      <a href="market/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">시장 동향</a>
-      <a href="stats/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">가격대 통계</a>
-      <a href="div/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">배당·소각</a>
-      <a href="trades/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">실거래가</a>
-      <a href="calc/" class="pg-btn" style="text-decoration:none;color:#94a3b8;">금융계산기</a>
-      <span id="fc" class="text-xs" style="color:#64748b">0건</span>
+      <a href="map/" class="pg-btn tab-btn" style="text-decoration:none;color:var(--accent);">지도</a>
+      <a href="compare/" class="pg-btn" style="text-decoration:none;color:var(--muted);">지역 비교</a>
+      <a href="market/" class="pg-btn" style="text-decoration:none;color:var(--muted);">시장 동향</a>
+      <a href="stats/" class="pg-btn" style="text-decoration:none;color:var(--muted);">가격대 통계</a>
+      <a href="div/" class="pg-btn" style="text-decoration:none;color:var(--muted);">배당·소각</a>
+      <a href="trades/" class="pg-btn" style="text-decoration:none;color:var(--muted);">실거래가</a>
+      <a href="calc/" class="pg-btn" style="text-decoration:none;color:var(--muted);">금융계산기</a>
+      <span id="fc" class="text-xs" style="color:var(--muted)">0건</span>
       <button onclick="setPriceMetricMode('total')" class="pg-btn active" data-price-mode="total" title="가격을 총액 기준으로 표시합니다">총액</button>
       <button onclick="setPriceMetricMode('pyeong')" class="pg-btn" data-price-mode="pyeong" title="가격을 전용면적 평당가 기준으로 표시합니다">평당가</button>
       <button onclick="toggleMerged()" class="pg-btn" id="mgBtn" title="같은 단지의 모든 평형을 하나로 합쳐서 봅니다">평형별</button>
@@ -52,20 +56,20 @@
   </div>
 
   <div id="complexView">
-  <div style="background:rgba(30,41,59,.5);border:1px solid rgba(51,65,85,.5);border-radius:10px;padding:12px;margin-bottom:12px">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
-      <div><label class="text-xs" style="color:#64748b">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select></div>
-      <div><label class="text-xs" style="color:#64748b">시/구</label><select id="fG" class="fi" onchange="onGAdd()"><option value="">선택</option></select><div id="fGChips" class="chip-wrap"></div></div>
-      <div><label class="text-xs" style="color:#64748b">동</label><select id="fD" class="fi" onchange="af()"><option value="">전체</option></select></div>
-      <div><label class="text-xs" style="color:#64748b">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명, 평형..." oninput="af()"></div>
-      <div><label class="text-xs" style="color:#64748b">평형(평)</label><div class="rg"><input id="aL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="aH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b"><span id="priceFilterLabel">최근가</span><span id="priceFilterUnit" style="margin-left:3px;color:#475569">억</span></label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:#475569">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">세대수</label><div class="rg"><input id="uL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="uH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div><label class="text-xs" style="color:#64748b">준공연도</label><div class="rg"><input id="bL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:#475569">~</span><input id="bH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
-      <div style="grid-column:span 2"><label class="text-xs" style="color:#64748b">수익률 기간</label><div style="display:flex;align-items:center;gap:6px"><select id="ryL" class="fi" style="width:auto" onchange="onReturnRange()"></select><span style="color:#475569">→</span><select id="ryH" class="fi" style="width:auto" onchange="onReturnRange()"></select><span id="retLabel" style="font-size:11px;color:#93c5fd;font-weight:600;white-space:nowrap"></span></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">지역</label><select id="fR" class="fi" onchange="onR()"><option value="">전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select></div>
+      <div><label class="text-xs" style="color:var(--muted)">시/구</label><select id="fG" class="fi" onchange="onGAdd()"><option value="">선택</option></select><div id="fGChips" class="chip-wrap"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">동</label><select id="fD" class="fi" onchange="af()"><option value="">전체</option></select></div>
+      <div><label class="text-xs" style="color:var(--muted)">단지 검색</label><input id="fS" type="text" class="fi" placeholder="단지명, 평형..." oninput="af()"></div>
+      <div><label class="text-xs" style="color:var(--muted)">평형(평)</label><div class="rg"><input id="aL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:var(--border)">~</span><input id="aH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">CAGR(%)</label><div class="rg"><input id="cL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:var(--border)">~</span><input id="cH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">MDD(%)</label><div class="rg"><input id="mL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:var(--border)">~</span><input id="mH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)"><span id="priceFilterLabel">최근가</span><span id="priceFilterUnit" style="margin-left:3px;color:var(--border)">억</span></label><div class="rg"><input id="pL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:var(--border)">~</span><input id="pH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">샤프비율</label><div class="rg"><input id="sL" type="number" class="fi" placeholder="min" step="0.1" onchange="af()"><span style="color:var(--border)">~</span><input id="sH" type="number" class="fi" placeholder="max" step="0.1" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">세대수</label><div class="rg"><input id="uL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:var(--border)">~</span><input id="uH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div><label class="text-xs" style="color:var(--muted)">준공연도</label><div class="rg"><input id="bL" type="number" class="fi" placeholder="min" onchange="af()"><span style="color:var(--border)">~</span><input id="bH" type="number" class="fi" placeholder="max" onchange="af()"></div></div>
+      <div style="grid-column:span 2"><label class="text-xs" style="color:var(--muted)">수익률 기간</label><div style="display:flex;align-items:center;gap:6px"><select id="ryL" class="fi" style="width:auto" onchange="onReturnRange()"></select><span style="color:var(--border)">→</span><select id="ryH" class="fi" style="width:auto" onchange="onReturnRange()"></select><span id="retLabel" style="font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap"></span></div></div>
     </div>
     <button class="filter-toggle-btn" onclick="toggleFilters()" id="filterToggle">필터 더보기 ▼</button>
   </div>
@@ -94,7 +98,7 @@
         </table>
       </div>
       <div id="mobileCards" style="display:none"></div>
-      <div class="flex items-center justify-between mt-2" style="font-size:11px;color:#64748b">
+      <div class="flex items-center justify-between mt-2" style="font-size:11px;color:var(--muted)">
         <div>페이지당 <select id="ps" class="fi" style="width:60px;display:inline" onchange="cps()"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select></div>
         <div class="flex items-center gap-2">
           <button onclick="pp()" class="pg-btn">&#8249; 이전</button>
@@ -108,11 +112,11 @@
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
         <button class="m-detail-back" onclick="cd()">‹ 목록으로 돌아가기</button>
         <div class="flex items-start justify-between mb-2">
-          <div><h2 id="dn" class="text-sm font-bold text-white"></h2><p id="dl" class="text-xs" style="color:#64748b;margin-top:2px"></p></div>
-          <button onclick="cd()" style="color:#64748b;font-size:16px;cursor:pointer;background:none;border:none">&#10005;</button>
+          <div><h2 id="dn" class="text-sm font-bold text-white"></h2><p id="dl" class="text-xs" style="color:var(--muted);margin-top:2px"></p></div>
+          <button onclick="cd()" style="color:var(--muted);font-size:16px;cursor:pointer;background:none;border:none">&#10005;</button>
         </div>
         <div id="lifecycleInfo" class="lifecycle-info" style="display:none"></div>
-        <a id="detailMapLink" class="pg-btn" style="display:inline-block;margin-bottom:10px;color:#93c5fd" href="map/">지도에서 보기 ↗</a>
+        <a id="detailMapLink" class="pg-btn" style="display:inline-block;margin-bottom:10px;color:var(--accent)" href="map/">지도에서 보기 ↗</a>
         <div id="areaTabs" class="area-tabs"></div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px" id="metrics"></div>
         <div id="chartTabWrap" style="display:none;margin-bottom:4px">
@@ -121,7 +125,7 @@
         </div>
         <div style="height:220px;margin-bottom:12px"><canvas id="chart"></canvas></div>
         <div id="mapWrap"><div id="vmap"></div><button class="map-expand-btn" onclick="openMapModal()" title="지도 크게 보기">&#x26F6;</button></div>
-        <div><h3 class="text-xs font-medium" style="color:#64748b;margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
+        <div><h3 class="text-xs font-medium" style="color:var(--muted);margin-bottom:6px">연도별 가격 (클릭하면 거래 내역)</h3><div id="yp" style="font-size:11px"></div></div>
         <div id="rental-link" style="margin-top:20px"></div>
         <div id="apt-comments" style="border-top:1px solid var(--border);margin-top:24px;padding-top:8px;padding-bottom:16px;"></div>
       </div>
@@ -135,24 +139,24 @@
     <h2 class="text-sm font-bold text-white" style="margin-bottom:12px;">분석 방법론 및 투자 지표 안내</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px;">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
-        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">CAGR (연평균성장률)</h3>
+        <h3 style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">CAGR (연평균성장률)</h3>
         <p style="font-size:11px;color:var(--muted);line-height:1.6;">2015년부터 2025년까지 아파트 가격의 연평균 복리 성장률입니다. (최종가/초기가)^(1/기간)-1 공식으로 산출하며, 최소 3개년 이상 거래 데이터가 있는 단지만 계산합니다. 장기 투자 수익률의 핵심 지표입니다.</p>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
-        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">MDD (최대낙폭)</h3>
+        <h3 style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">MDD (최대낙폭)</h3>
         <p style="font-size:11px;color:var(--muted);line-height:1.6;">연간 평균 거래가 기준으로 고점 대비 최대 하락폭을 측정합니다. 투자 위험도를 판단하는 핵심 지표로, MDD가 작을수록 가격 방어력이 우수한 단지입니다. 2022~2023년 하락장에서의 낙폭이 주로 반영됩니다.</p>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
-        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">샤프비율 (위험조정수익)</h3>
+        <h3 style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">샤프비율 (위험조정수익)</h3>
         <p style="font-size:11px;color:var(--muted);line-height:1.6;">CAGR을 연간 수익률의 표준편차로 나눈 값으로, 변동성 대비 수익률의 효율성을 나타냅니다. 샤프비율이 높을수록 리스크 대비 안정적인 수익을 제공하는 단지입니다. 일반적으로 1.0 이상이면 우수한 투자처로 평가됩니다.</p>
       </div>
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
-        <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">26년 모멘텀</h3>
+        <h3 style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">26년 모멘텀</h3>
         <p style="font-size:11px;color:var(--muted);line-height:1.6;">2026년 1분기 거래가를 2025년 연평균가와 비교한 단기 가격 추세입니다. 양수이면 최근 가격이 상승 중이며, 음수이면 하락 추세에 있음을 의미합니다. 단기 투자 타이밍 판단에 활용할 수 있습니다.</p>
       </div>
     </div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;">
-      <h3 style="font-size:12px;font-weight:700;color:#93c5fd;margin-bottom:6px;">데이터 출처 및 활용 안내</h3>
+      <h3 style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;">데이터 출처 및 활용 안내</h3>
       <p style="font-size:11px;color:var(--muted);line-height:1.6;">본 스크리너는 국토교통부 실거래가 공개시스템의 공식 데이터를 기반으로 합니다. 서울 및 경기도 아파트의 2006년부터 2026년 1분기까지 약 250만 건의 실거래 기록을 분석하여 투자 지표를 산출했습니다. 모든 가격은 전용면적 기준 평균 거래가(억원)이며, 연도별 거래 건수가 충분하지 않은 경우 일부 지표가 표시되지 않을 수 있습니다. 본 정보는 투자 판단의 참고 자료로만 활용하시고, 실제 투자 결정 시에는 반드시 전문가 상담 및 현장 실사를 병행하시기 바랍니다.</p>
     </div>
   </div>
@@ -166,9 +170,9 @@
     <div class="modal-header">
       <div>
         <h3 id="txTitle" class="text-sm font-bold text-white"></h3>
-        <p id="txSubtitle" class="text-xs" style="color:#64748b;margin-top:2px"></p>
+        <p id="txSubtitle" class="text-xs" style="color:var(--muted);margin-top:2px"></p>
       </div>
-      <button onclick="closeTxModal()" style="color:#64748b;font-size:18px;cursor:pointer;background:none;border:none">&#10005;</button>
+      <button onclick="closeTxModal()" style="color:var(--muted);font-size:18px;cursor:pointer;background:none;border:none">&#10005;</button>
     </div>
     <div class="modal-body">
       <div id="txSummary" class="tx-summary"></div>
@@ -183,7 +187,7 @@
   <div class="map-modal-card">
     <div class="map-modal-header">
       <h3 id="mapModalTitle" class="text-sm font-bold text-white"></h3>
-      <button onclick="closeMapModal()" style="color:#64748b;font-size:18px;cursor:pointer;background:none;border:none">&#10005;</button>
+      <button onclick="closeMapModal()" style="color:var(--muted);font-size:18px;cursor:pointer;background:none;border:none">&#10005;</button>
     </div>
     <div class="map-modal-body"><div id="vmapBig"></div></div>
   </div>
@@ -194,6 +198,6 @@
 <script src="js/main-app.js?v=20260914-disappearance-v1"></script>
 <script src="js/auth-client.js"></script>
 <script src="js/comments.js"></script>
-<footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:#93c5fd">개인정보처리방침 · nodostream.com</a></footer>
+<footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:var(--accent)">개인정보처리방침 · nodostream.com</a></footer>
 </body>
 </html>

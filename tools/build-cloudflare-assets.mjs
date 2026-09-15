@@ -4,6 +4,7 @@ import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,rmSync} from '
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {forbiddenReason} from './verify-site-layout.mjs';
+import {buildApartmentData} from './build-apartment-data.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const injection = '<script src="/deployment-version.js"></script>';
@@ -11,7 +12,7 @@ export function publicAsset(path) {
   if (path.split('/').some(p => p.startsWith('.') || /^(docs|tools|cloudflare|supabase|schemas|tests?|logs?)$/i.test(p))) return false;
   if (forbiddenReason(path)) return false;
   if (/^data\//.test(path)) return /\.(json|bin)$/i.test(path) && !/(secret|credential|token|backup)/i.test(path);
-  if(path.includes('/') && !/^(account|admin|calc|compare|css|div|js|map|market|stats|trades|assets|images|fonts)\//.test(path)) return false;
+  if(path.includes('/') && !/^(account|admin|apartment|board|calc|compare|css|div|js|map|market|stats|trades|assets|images|fonts)\//.test(path)) return false;
   return /\.(html|css|js|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i.test(path) || ['ads.txt','robots.txt','sitemap.xml'].includes(path);
 }
 export function runtime(sha) {
@@ -21,6 +22,7 @@ export function build(root, output, sha) {
   root=resolve(root); output=resolve(output);
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
+  if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) buildApartmentData(root,{verify:true});
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
   const assets=[];
   for(const path of paths) {

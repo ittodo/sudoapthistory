@@ -15,9 +15,9 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <style>
 :root {
-  --bg: #0f172a; --card: #1e293b; --border: #334155;
-  --text: #e2e8f0; --muted: #94a3b8;
-  --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --green: #22c55e;
+
+
+   --dn: #3b82f6; --accent: #3b82f6; --green: #22c55e;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
@@ -32,24 +32,24 @@ a:hover { text-decoration: underline; }
 
 /* Buttons */
 .tab-btn { padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .15s; }
-.tab-btn:hover { border-color: var(--muted); color: #fff; }
-.tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.tab-btn:hover { border-color: var(--muted); color: var(--text); }
+.tab-btn.active { background: var(--accent); border-color: var(--accent); color: var(--text); }
 
 /* Input */
 .fi { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 8px; font-size: 12px; }
 .fi:focus { outline: none; border-color: var(--accent); }
-.fi::placeholder { color: #475569; }
+.fi::placeholder { color: var(--border); }
 
 /* Table */
 table { width: 100%; border-collapse: collapse; }
 thead th {
-  position: sticky; top: 0; background: #1a2332; padding: 8px 8px;
+  position: sticky; top: 0; background: var(--surface); padding: 8px 8px;
   font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer;
   user-select: none; white-space: nowrap; border-bottom: 1px solid var(--border); z-index: 2;
 }
-thead th:hover { color: #fff; }
+thead th:hover { color: var(--text); }
 thead th.sort-active { color: var(--accent); }
-tbody td { padding: 7px 8px; border-bottom: 1px solid #1e293b; white-space: nowrap; font-size: 12px; }
+tbody td { padding: 7px 8px; border-bottom: 1px solid var(--card); white-space: nowrap; font-size: 12px; }
 tbody tr { transition: background .1s; }
 tbody tr:hover { background: rgba(59,130,246,.08); }
 .si { font-size: 9px; margin-left: 2px; }
@@ -62,7 +62,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   transition: all .15s;
 }
 .chip:hover { border-color: var(--muted); }
-.chip.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.selected { background: var(--accent); border-color: var(--accent); color: var(--text); }
 .chip-x { font-size: 13px; line-height: 1; }
 
 /* Summary bar */
@@ -103,13 +103,13 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 }
 .gu-menu.open { display: block; }
 .gu-menu::-webkit-scrollbar { width: 4px; }
-.gu-menu::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+.gu-menu::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 .gu-item { padding: 5px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; }
 .gu-item:hover { background: rgba(59,130,246,.1); }
 .gu-item.sel { color: var(--accent); }
 .gu-group-lbl { font-size: 10px; color: var(--muted); padding: 6px 8px 2px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
 .gu-chk { width: 14px; font-size: 10px; text-align: center; flex-shrink: 0; }
-.badge-cnt { background: rgba(59,130,246,.2); color: #93c5fd; padding: 0 5px; border-radius: 99px; font-size: 10px; font-weight: 700; margin-left: 3px; }
+.badge-cnt { background: rgba(59,130,246,.2); color: var(--accent); padding: 0 5px; border-radius: 99px; font-size: 10px; font-weight: 700; margin-left: 3px; }
 
 /* Chips strip */
 .chips-strip { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -120,7 +120,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   min-height: 240px; border: 1px solid var(--border); border-radius: 8px;
 }
 .table-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
-.table-wrap::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
 /* Load more btn */
 .load-more-btn {
@@ -128,7 +128,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   background: transparent; color: var(--muted); cursor: pointer; font-size: 12px;
   transition: all .15s; margin-top: 8px;
 }
-.load-more-btn:hover:not(:disabled) { border-color: var(--muted); color: #fff; background: rgba(255,255,255,.03); }
+.load-more-btn:hover:not(:disabled) { border-color: var(--muted); color: var(--text); background: rgba(255,255,255,.03); }
 .load-more-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* Mobile cards */
@@ -159,10 +159,10 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   transition: transform .2s ease;
 }
 #detailPanel::-webkit-scrollbar { width:4px; }
-#detailPanel::-webkit-scrollbar-thumb { background:#475569; border-radius:3px; }
+#detailPanel::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .dp-header { padding:14px 16px; border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--bg); z-index:1; }
 .dp-close { background:none; border:none; color:var(--muted); cursor:pointer; font-size:20px; line-height:1; float:right; padding:0 2px; }
-.dp-close:hover { color:#fff; }
+.dp-close:hover { color:var(--text); }
 .dp-name { font-size:15px; font-weight:700; padding-right:24px; line-height:1.3; }
 .dp-meta { font-size:11px; color:var(--muted); margin-top:3px; }
 .dp-price { font-size:19px; font-weight:700; color:var(--up); margin-top:6px; }
@@ -170,7 +170,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .dp-section { padding:12px 16px; border-bottom:1px solid var(--border); }
 .dp-stitle { font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
 .dp-yr-label { font-size:11px; color:var(--muted); font-weight:700; margin:8px 0 3px; }
-.dp-tx-row { display:flex; gap:8px; padding:3px 0; border-bottom:1px solid #1e293b; font-size:12px; align-items:center; }
+.dp-tx-row { display:flex; gap:8px; padding:3px 0; border-bottom:1px solid var(--card); font-size:12px; align-items:center; }
 .dp-tx-date { color:var(--muted); min-width:64px; flex-shrink:0; }
 .dp-tx-price { font-weight:600; color:var(--up); flex:1; }
 .dp-tx-floor { color:var(--muted); min-width:28px; flex-shrink:0; }
@@ -183,7 +183,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .trunc-notice { text-align: center; padding: 8px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); }
 
 /* Footer */
-.footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: #475569; border-top: 1px solid var(--border); margin-top: 16px; }
+.footer-disclaimer { text-align: center; padding: 12px; font-size: 11px; color: var(--border); border-top: 1px solid var(--border); margin-top: 16px; }
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -199,6 +199,10 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   .mobile-cards { display: none; }
 }
 </style>
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
 
@@ -219,7 +223,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <a href="../" class="tab-btn" style="text-decoration:none;font-size:11px;">아파트 스크리너</a>
-      <a href="../map/" class="pg-btn tab-btn" style="text-decoration:none;color:#93c5fd;">지도</a>
+      <a href="../map/" class="pg-btn tab-btn" style="text-decoration:none;color:var(--accent);">지도</a>
       <a href="../compare/" class="tab-btn" style="text-decoration:none;font-size:11px;">지역 비교</a>
       <a href="../market/" class="tab-btn" style="text-decoration:none;font-size:11px;">월간 동향</a>
       <a href="../stats/" class="tab-btn" style="text-decoration:none;font-size:11px;">가격대 통계</a>
@@ -731,6 +735,8 @@ function openDetailByIdx(idx) {
 }
 
 function openDetail(r) {
+  NodoApartmentLinks.go({row:r.i,area:r.a,tab:"trades"});
+  return;
   if (r.i == null) return;
   document.getElementById('dpName').textContent = r.n || '—';
   document.getElementById('dpMeta').textContent =
@@ -865,11 +871,11 @@ function drawDetailSparkline(canvas, priceData) {
   ctx.stroke();
   // Last dot
   ctx.beginPath();
-  ctx.fillStyle = '#ef4444';
+  ctx.fillStyle = 'var(--up)';
   ctx.arc(xs[xs.length-1], ys[ys.length-1], 3, 0, Math.PI * 2);
   ctx.fill();
   // Min/Max labels
-  ctx.font = '9px sans-serif'; ctx.fillStyle = '#64748b';
+  ctx.font = '9px sans-serif'; ctx.fillStyle = 'var(--muted)';
   ctx.textAlign = 'left'; ctx.fillText(formatPriceFull(Math.round(mn * 10000)), pad.l, H - 2);
   ctx.textAlign = 'right'; ctx.fillText(formatPriceFull(Math.round(mx * 10000)), W - pad.r, 10);
 }
@@ -932,7 +938,7 @@ function renderTable(data) {
     const ppStr = formatPyeongPrice(pricePerPyeong(r));
     const canOpen = r.i != null;
     const nameCell = canOpen
-      ? '<a href="javascript:void(0)" onclick="openDetailByIdx(' + idx + ')" style="color:var(--text);cursor:pointer;" title="단지 상세">' + (r.n || '—') + '</a>'
+      ? '<a href="' + NodoApartmentLinks.url({row:r.i,area:r.a,tab:'trades'}) + '" style="color:var(--text);cursor:pointer;" title="단지 상세">' + (r.n || '—') + '</a>'
       : (r.n || '—');
     const directBadge = r.dt ? '<span class="badge-direct" style="margin-left:4px;">직거래</span>' : '';
     return '<tr>' +
@@ -967,7 +973,7 @@ function renderCards(data) {
   let html = display.map((r, idx) => {
     const canOpen = r.i != null;
     const namePart = canOpen
-      ? '<a href="javascript:void(0)" onclick="openDetailByIdx(' + idx + ')" style="color:var(--text);">' + (r.n || '—') + '</a>'
+      ? '<a href="' + NodoApartmentLinks.url({row:r.i,area:r.a,tab:'trades'}) + '" style="color:var(--text);">' + (r.n || '—') + '</a>'
       : (r.n || '—');
     const directBadge = r.dt ? ' <span class="badge-direct">직거래</span>' : '';
     const prevHtml = renderPrevPrice(r);

@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>아파트 지도 — 노도스트림</title>
-<meta name="description" content="서울·경기·인천 아파트를 지도에서 찾아보세요. 최근 실거래, 평형별 가격과 거래내역을 지도 옆에서 확인합니다.">
+<meta name="description" content="서울·경기·인천 아파트를 지도에서 찾아보세요. 최근 실거래, 평형별 가격과 거래내역을 통합 상세에서 확인합니다.">
 <link rel="canonical" href="https://nodostream.com/map/">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="../css/map.css?v=20260908-map5">
-<style>.trade.missing strong{text-decoration:line-through;color:#94a3b8}.badge.missing{color:#fbbf24}</style>
+<style>.trade.missing strong{text-decoration:line-through;color:var(--muted)}.badge.missing{color:#fbbf24}</style>
 <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script defer src="../js/calc-utils.js?v=20260816-gap-recovery"></script>
@@ -17,6 +17,10 @@
 <script defer src="../js/map-parcels.js?v=20260908-map5"></script>
 <script defer src="../js/map-regions.js?v=20260908-map5"></script>
 <script defer src="../js/map-app.js?v=20260914-disappearance-v1"></script>
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
 <header class="site-header">

@@ -8,6 +8,9 @@
   const params = new URLSearchParams(location.search);
   let manifest, data = [], entity = params.get('entity') || '', page = 0, generation = 0, loaded = new Set(), requestedMonths = [];
   const cache = new Map();
+  let apartmentLookup = {};
+  const stateFields=['property','category','district','period','search','area'];
+  window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('nodo:contracts',JSON.stringify({values:Object.fromEntries(stateFields.map(id=>[id,$(id).value])),entity,page}));}catch{}});
   function service() { return $('property').value + '-' + ($('category').value === 'sale' ? 'sale' : 'rent'); }
   async function read(path) {
     const response = await fetch('/data/contracts/' + path);
@@ -39,6 +42,7 @@
       cell(tr,r.date+(r.cancelled?' (취소)':''));
       const name = cell(tr,''), button=document.createElement('button'), address=document.createElement('small');
       button.className='link';button.textContent=r.name || '건물명 미제공';button.disabled=r.identityStatus==='unresolved'||!r.name||!r.dong||!r.jibun;button.onclick=()=>{entity=r.entityId;page=0;areas();render();};
+      if(r.property==='apartment' && apartmentLookup[r.aptSeq||r.entityId])button.onclick=()=>NodoApartmentLinks.go({id:r.aptSeq||r.entityId,area:Math.round(r.area)});
       address.textContent=`${r.dong} ${r.jibun}`;name.append(button,address);
       if(REVIEW_MAP_BASE && r.property==='officetel' && !button.disabled){
         const link=document.createElement('a');link.href=REVIEW_MAP_BASE+encodeURIComponent(r.entityId);
@@ -100,6 +104,7 @@
   }
   async function init(){
     try{
+      try{const r=await fetch('/data/apartments/index.json');if(r.ok)apartmentLookup=(await r.json()).lookup;}catch{}
       manifest=await read('index.json');
       [...new Set(manifest.partitions.map(p=>p.month.slice(0,4)))].sort().reverse().forEach(y=>$('period').add(new Option(y+'년',y)));
       Object.entries(manifest.districts).sort((a,b)=>a[1].join(' ').localeCompare(b[1].join(' '),'ko')).forEach(([id,n])=>$('district').add(new Option(n.join(' '),id)));
@@ -107,6 +112,8 @@
       if(!$('district').value)$('district').selectedIndex=0;
       if(['apartment','rowhouse','officetel'].includes(params.get('property')))$('property').value=params.get('property');
       if(['all-rent','sale'].includes(params.get('category')))$('category').value=params.get('category');
+      let restored;try{if(performance.getEntriesByType('navigation')[0]?.type==='back_forward')restored=JSON.parse(sessionStorage.getItem('nodo:contracts'));}catch{}
+      if(restored?.values){for(const id of stateFields.filter(id=>id!=='area'))if(Object.hasOwn(restored.values,id))$(id).value=restored.values[id];entity=restored.entity||'';}
       $('property').onchange=()=>{entity='';if($('property').value!=='officetel'&&$('category').value==='sale')$('category').value='all-rent';load();};
       $('category').onchange=()=>{if($('category').value==='sale'&&$('property').value!=='officetel'){entity='';$('area').value='';$('property').value='officetel';}load();};
       $('district').onchange=()=>{entity='';load();};
@@ -115,6 +122,7 @@
       $('clear').onclick=()=>{entity='';$('search').value='';$('area').value='';areas();render();};
       $('prev').onclick=()=>{page--;render();};$('next').onclick=()=>{page++;render();};
       await load();
+      if(restored){$('area').value=restored.values?.area||'';page=Number.isInteger(restored.page)?restored.page:0;render();}
     }catch{$('status').textContent='자료를 준비 중이거나 연결이 원활하지 않습니다. 잠시 후 다시 확인해 주세요.';}
   }
   init();

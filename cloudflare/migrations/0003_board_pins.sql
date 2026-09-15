@@ -1,0 +1,1 @@
+CREATE TABLE board_pins (comment_id INTEGER PRIMARY KEY REFERENCES comments(id) ON DELETE CASCADE);

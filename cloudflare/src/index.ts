@@ -15,6 +15,7 @@ const rootVisible=`c.moderated_at IS NULL AND ((c.deleted_at IS NULL AND ${activ
 const commentSelect=`SELECT c.*,p.nickname,p.avatar_url,u.status author_status,(SELECT count(*) FROM comment_likes l JOIN users voter ON voter.id=l.user_id AND voter.status='active' WHERE l.comment_id=c.id) like_count,EXISTS(SELECT 1 FROM comment_likes l WHERE l.comment_id=c.id AND l.user_id=?) liked FROM comments c LEFT JOIN profiles p ON p.user_id=c.user_id LEFT JOIN users u ON u.id=c.user_id`;
 const shape=(row:Row)=>{const withdrawn=!!row.user_id&&row.author_status!=='active',hidden=!!row.deleted_at||withdrawn;return {id:row.id,user_id:hidden?null:row.user_id,page_id:row.page_id,content:row.deleted_at?'삭제된 댓글입니다.':withdrawn?'탈퇴한 회원의 댓글입니다.':row.content,is_deleted:hidden,is_withdrawn:withdrawn,parent_id:row.parent_id,created_at:row.created_at,updated_at:hidden?null:row.updated_at,profiles:{nickname:row.deleted_at?'삭제된 댓글':withdrawn?'탈퇴한 회원':row.nickname||'탈퇴한 회원',avatar_url:hidden?null:row.avatar_url||null},comment_likes:[{count:hidden?0:row.like_count}],liked:!hidden&&!!row.liked};};
 function integer(value:string|null,fallback:number,max:number){if(value===null)return fallback;const n=Number(value);if(!Number.isSafeInteger(n)||n<0||n>max)throw new HttpError(400,'INVALID_INPUT','잘못된 범위입니다.');return n}
+function validateBoardPost(content:string){const split=content.indexOf('\n');if(split<2||split>120||!content.slice(split+1).trim())throw new HttpError(400,'INVALID_INPUT','제목은 2~120자, 내용은 1자 이상 입력해 주세요.');}
 const notFound=()=>new HttpError(404,'NOT_FOUND','찾을 수 없습니다.');
 async function route(r:Request,env:Env):Promise<Response>{
  const url=new URL(r.url),path=url.pathname,method=r.method;
@@ -48,6 +49,30 @@ async function route(r:Request,env:Env):Promise<Response>{
  if(path==='/api/account/withdrawal/start'&&method==='POST')return prepareWithdrawal(r,env);
  if(path==='/api/account/withdrawal/cancel'&&method==='POST')return cancelWithdrawal(r,env);
  if((path==='/api/account'&&method==='DELETE')||(path==='/api/account/withdrawal/confirm'&&method==='POST'))return confirmWithdrawal(r,env);
+ if(path==='/api/board/posts'&&method==='GET'){
+  const query=(url.searchParams.get('q')||'').trim();if(query.length>100)throw new HttpError(400,'INVALID_INPUT','검색어는 100자 이하로 입력해 주세요.');
+  const offset=integer(url.searchParams.get('offset'),0,1000000),limit=20;
+  const hidden=url.searchParams.get('hidden')==='1';if(hidden&&user?.role!=='admin')throw new HttpError(403,'ADMIN_REQUIRED','관리자 권한이 필요합니다.');
+  const where=`c.page_id='community' AND c.parent_id IS NULL AND c.deleted_at IS NULL AND ${activeAuthor} AND ${hidden?'c.moderated_at IS NOT NULL':'c.moderated_at IS NULL'} AND (?='' OR instr(lower(c.content),lower(?))>0)`;
+  const data=await all(env,`SELECT c.id,c.content,c.created_at,c.updated_at,c.user_id,p.nickname,c.moderated_at,EXISTS(SELECT 1 FROM board_pins bp WHERE bp.comment_id=c.id) pinned,(SELECT count(*) FROM comments reply JOIN users author ON author.id=reply.user_id AND author.status='active' WHERE reply.parent_id=c.id AND reply.deleted_at IS NULL AND reply.moderated_at IS NULL) reply_count FROM comments c JOIN users u ON u.id=c.user_id LEFT JOIN profiles p ON p.user_id=c.user_id WHERE ${where} ORDER BY pinned DESC,c.created_at DESC,c.id DESC LIMIT ? OFFSET ?`,query,query,limit,offset);
+  return json({data:data.map(c=>({...c,title:String(c.content).split('\n')[0],content:undefined})),count:(await first(env,`SELECT count(*) count FROM comments c WHERE ${where}`,query,query))!.count});
+ }
+ const boardPost=path.match(/^\/api\/board\/posts\/(\d+)(\/pin)?$/);
+ if(boardPost){
+  const id=Number(boardPost[1]);if(!Number.isSafeInteger(id))throw notFound();
+  if(boardPost[2]&&method==='PUT'){
+   if(user?.role!=='admin')throw new HttpError(403,'ADMIN_REQUIRED','관리자 권한이 필요합니다.');
+   const b=await body(r);if(typeof b.pinned!=='boolean')throw new HttpError(400,'INVALID_INPUT','공지 상태를 확인해 주세요.');
+   if(!await first(env,`SELECT 1 FROM comments c WHERE c.id=? AND c.page_id='community' AND c.parent_id IS NULL AND ${visible}`,id))throw notFound();
+   if(b.pinned)await statement(env,'INSERT OR IGNORE INTO board_pins(comment_id) VALUES(?)',id).run();else await statement(env,'DELETE FROM board_pins WHERE comment_id=?',id).run();
+   return json({ok:true,pinned:b.pinned});
+  }
+  if(!boardPost[2]&&method==='GET'){
+   const row=await first(env,commentSelect+` WHERE c.id=? AND c.page_id='community' AND c.parent_id IS NULL AND ${rootVisible}`,uid,id);if(!row)throw notFound();
+   return json({data:{...shape(row),pinned:!!await first(env,'SELECT 1 FROM board_pins WHERE comment_id=?',id)}});
+  }
+  throw new HttpError(405,'METHOD','지원하지 않는 요청입니다.');
+ }
  if(path==='/api/comments'&&method==='GET'){
   const page=text(url.searchParams.get('page_id'),1,200),offset=integer(url.searchParams.get('offset'),0,1000000),limit=integer(url.searchParams.get('limit'),20,100)||20;
   const roots=await all(env,commentSelect+` WHERE c.page_id=? AND c.parent_id IS NULL AND ${rootVisible} ORDER BY c.created_at DESC,c.id DESC LIMIT ? OFFSET ?`,uid,page,limit,offset);
@@ -71,6 +96,7 @@ async function route(r:Request,env:Env):Promise<Response>{
   const b=await body(r),page=text(b.page_id,1,200),content=text(b.content,1,1000);
   if(!await first(env,'SELECT 1 FROM profiles WHERE user_id=?',uid))throw new HttpError(400,'PROFILE_REQUIRED','닉네임을 먼저 설정해 주세요.');
   const parent=b.parent_id??null;if(parent!==null&&(!Number.isSafeInteger(parent)||Number(parent)<1))throw new HttpError(400,'INVALID_INPUT','잘못된 답글 대상입니다.');
+  if(page==='community'&&parent===null)validateBoardPost(content);
   const key=r.headers.get('Idempotency-Key');if(!key||!/^[A-Za-z0-9_-]{16,100}$/.test(key))throw new HttpError(400,'IDEMPOTENCY_REQUIRED','요청 식별자가 필요합니다.');
   const requestKey=uid+':'+key,requestHash=await hash(JSON.stringify([page,content,parent]));
   const existing=await first(env,'SELECT id,request_hash FROM comments WHERE request_key=?',requestKey);
@@ -96,7 +122,7 @@ async function route(r:Request,env:Env):Promise<Response>{
     ]);
     if(!results[1].results.length)throw notFound();return json({ok:true});
    }
-   const b=await body(r);const row=await first(env,`UPDATE comments AS c SET content=?,updated_at=? WHERE id=? AND user_id=? AND ${visible} RETURNING id`,text(b.content,1,1000),timestamp(),id,uid);
+   const b=await body(r);const content=text(b.content,1,1000);const before=await first(env,'SELECT page_id,parent_id FROM comments WHERE id=? AND user_id=?',id,uid);if(before?.page_id==='community'&&before.parent_id===null)validateBoardPost(content);const row=await first(env,`UPDATE comments AS c SET content=?,updated_at=? WHERE id=? AND user_id=? AND ${visible} RETURNING id`,content,timestamp(),id,uid);
    if(!row)throw notFound();return json({data:shape((await first(env,commentSelect+' WHERE c.id=?',uid,id))!)});
   }
  }

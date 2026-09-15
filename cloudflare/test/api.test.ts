@@ -18,6 +18,7 @@ async function setup(maintenance=false){
  const mf=new Miniflare(options);
  const db=await mf.getD1Database('DB');for(const s of sql.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  for(const statement of (await readFile('cloudflare/migrations/0002_withdrawal_requests.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
+ for(const statement of (await readFile('cloudflare/migrations/0003_board_pins.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  async function withdrawal(headers:Record<string,string>){
   const sessionToken=headers.Cookie.split('=')[1];const uid=sessionToken.slice('session-token-'.length);
   const receipt=await readyWithdrawal(db,origin,uid,sessionToken);
@@ -397,4 +398,32 @@ test('reply previews have explicit pagination and public rows never exceed 100',
  const next=await (await s.request(`/api/comments/${id}/replies?offset=3&limit=3`)).json() as any;assert.equal(next.data.length,3);assert.equal(next.count,8);assert.equal(next.data[0].content,'답글3');
  await s.db.prepare('UPDATE comments SET moderated_at=? WHERE id=?').bind(new Date().toISOString(),id).run();assert.equal((await s.request(`/api/comments/${id}/replies`)).status,404);
  }finally{await s.mf.dispose()}
+});
+
+
+test('community board search, pagination, ownership, pins, hidden threads and withdrawal',async()=>{
+ const s=await setup();try{
+ const a=await s.user('board-a'),b=await s.user('board-b'),admin=await s.user('board-admin','admin');
+ assert.equal((await s.request('/api/comments','POST',{page_id:'community',content:'제목만'},a)).status,400);
+ const created=await s.request('/api/comments','POST',{page_id:'community',content:'개선 제안\n상세 페이지의 평형 선택이 편리해졌어요.'},{...a,'Idempotency-Key':'board-post-create-001'});
+ assert.equal(created.status,201);const id=(await created.json() as any).data.id;
+ assert.equal((await s.request('/api/board/posts/'+id+'/pin','PUT',{pinned:true},b)).status,403);
+ assert.equal((await s.request('/api/board/posts/'+id+'/pin','PUT',{pinned:true},admin)).status,200);
+ const listed=await (await s.request('/api/board/posts?q='+encodeURIComponent('평형'))).json() as any;
+ assert.equal(listed.count,1);assert.equal(listed.data[0].title,'개선 제안');assert.equal(listed.data[0].pinned,1);
+ assert.equal((await s.request('/api/comments/'+id,'PATCH',{content:'다른 제목\n변경'},b)).status,404);
+ assert.equal((await s.request('/api/comments/'+id,'PATCH',{content:'다른 제목\n수정한 내용'},a)).status,200);
+ assert.equal((await s.request('/api/board/posts?hidden=1')).status,403);
+ await s.request('/api/comments','POST',{page_id:'community',parent_id:id,content:'동의합니다.'},{...b,'Idempotency-Key':'board-reply-create-01'});
+ assert.equal(((await (await s.request('/api/board/posts')).json() as any).data[0]).reply_count,1);
+ await s.request('/api/admin/comments/'+id+'/moderation','PUT',{hidden:true,category:'board'},admin);
+ assert.equal((await s.request('/api/board/posts/'+id)).status,404);
+ assert.equal(((await (await s.request('/api/board/posts')).json() as any).data).length,0);
+ assert.equal(((await (await s.request('/api/board/posts?hidden=1','GET',undefined,admin)).json() as any).data).length,1);
+ await s.request('/api/admin/comments/'+id+'/moderation','PUT',{hidden:false},admin);
+ await s.db.prepare("UPDATE users SET status='withdrawn' WHERE id='board-a'").run();
+ assert.equal(((await (await s.request('/api/board/posts')).json() as any).data).length,0);
+ const tombstone=(await (await s.request('/api/board/posts/'+id)).json() as any).data;
+ assert.equal(tombstone.is_withdrawn,true);assert.ok(!tombstone.content.includes('수정한 내용'));
+ }finally{await s.mf.dispose();}
 });

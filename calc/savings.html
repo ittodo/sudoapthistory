@@ -8,30 +8,30 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  :root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --green: #10b981; }
+  :root {       --dn: #3b82f6; --accent: #3b82f6; --green: #10b981; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .pg-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; }
-  .pg-btn:hover { border-color: var(--muted); color: #fff; }
+  .pg-btn:hover { border-color: var(--muted); color: var(--text); }
 
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-  .card-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
 
-  .fi { background: #0f172a; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; width: 100%; }
+  .fi { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; width: 100%; }
   .fi:focus { outline: none; border-color: var(--accent); }
   select.fi { cursor: pointer; }
 
   .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
-  .amount-hint { font-size: 10px; color: #60a5fa; margin-top: 3px; min-height: 14px; letter-spacing: -0.2px; }
+  .amount-hint { font-size: 10px; color: var(--accent); margin-top: 3px; min-height: 14px; letter-spacing: -0.2px; }
 
   .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .grid-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
   .result-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #1e293b; font-size: 13px; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--card); font-size: 13px; }
   .result-row:last-child { border-bottom: none; }
   .result-row .lbl { color: var(--muted); }
   .result-row .val { font-weight: 600; }
@@ -43,26 +43,26 @@
   .stat-item .s-value { font-size: 17px; font-weight: 700; }
 
   .btn { padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
-  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary { background: var(--accent); color: var(--text); }
   .btn-primary:hover { background: #2563eb; }
 
   .tab-row { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; margin-bottom: 14px; }
   .tab-btn { padding: 5px 14px; border-radius: 6px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
-  .tab-btn:hover { color: #fff; }
-  .tab-btn.active { background: var(--accent); color: #fff; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { background: var(--accent); color: var(--text); }
 
   .section-header { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
 
   .highlight { color: #fbbf24; font-weight: 700; }
   .highlight-green { color: var(--green); font-weight: 700; }
-  .highlight-blue { color: #60a5fa; font-weight: 700; }
+  .highlight-blue { color: var(--accent); font-weight: 700; }
   .highlight-red { color: #f87171; font-weight: 700; }
 
   .canvas-wrap { position: relative; height: 280px; margin-top: 14px; }
 
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-  .info-box { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #93c5fd; margin-bottom: 12px; }
+  .info-box { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: var(--accent); margin-bottom: 12px; }
 
   .tax-badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
   .tax-general { background: rgba(239,68,68,.15); color: #f87171; }
@@ -79,6 +79,10 @@
     .tab-btn { padding: 5px 10px; font-size: 11px; }
   }
 </style>
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
 <div style="max-width:900px" class="mx-auto px-3 py-3">
@@ -87,7 +91,7 @@
   <div class="flex items-center justify-between mb-4">
     <div>
       <h1 class="text-lg font-bold text-white">예적금 계산기</h1>
-      <p class="text-xs" style="color:#64748b">만기수령액 · 세전/세후 이자 · 단리/복리 비교</p>
+      <p class="text-xs" style="color:var(--muted)">만기수령액 · 세전/세후 이자 · 단리/복리 비교</p>
     </div>
     <div class="flex gap-2 items-center">
       <a href="/calc/" class="pg-btn">부동산 계산기</a>
@@ -105,7 +109,7 @@
   <div id="tab-savings">
     <div class="card">
       <div class="card-title">
-        <span style="background:rgba(59,130,246,.2);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px">적금</span>
+        <span style="background:rgba(59,130,246,.2);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px">적금</span>
         월납입식 적금
       </div>
       <div class="grid-inputs" style="margin-bottom:14px">
@@ -153,7 +157,7 @@
       <div class="card-title">과세방식별 비교</div>
       <div class="info-box">동일한 조건에서 과세방식에 따른 최종 수령액 차이를 확인하세요.</div>
       <div id="savings-tax-compare">
-        <div style="color:#64748b;font-size:12px">위에서 계산하면 자동으로 비교됩니다.</div>
+        <div style="color:var(--muted);font-size:12px">위에서 계산하면 자동으로 비교됩니다.</div>
       </div>
     </div>
   </div>
@@ -209,12 +213,12 @@
     <div class="card">
       <div class="card-title">과세방식별 비교</div>
       <div id="deposit-tax-compare">
-        <div style="color:#64748b;font-size:12px">위에서 계산하면 자동으로 비교됩니다.</div>
+        <div style="color:var(--muted);font-size:12px">위에서 계산하면 자동으로 비교됩니다.</div>
       </div>
     </div>
   </div>
 
-  <div style="text-align:center;padding:12px;font-size:11px;color:#475569;border-top:1px solid var(--border);margin-top:8px">
+  <div style="text-align:center;padding:12px;font-size:11px;color:var(--border);border-top:1px solid var(--border);margin-top:8px">
     본 계산기는 참고용이며 실제 금융상품 조건과 다를 수 있습니다.
   </div>
 </div>
@@ -294,12 +298,12 @@ function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete chart
 
 const CHART_DEFAULTS = {
   plugins: {
-    legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
-    tooltip: { backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1 }
+    legend: { labels: { color: 'var(--muted)', font: { size: 11 } } },
+    tooltip: { backgroundColor: 'var(--card)', titleColor: 'var(--text)', bodyColor: 'var(--muted)', borderColor: 'var(--border)', borderWidth: 1 }
   },
   scales: {
-    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
-    y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }
+    x: { ticks: { color: 'var(--muted)', font: { size: 10 } }, grid: { color: 'var(--card)' } },
+    y: { ticks: { color: 'var(--muted)', font: { size: 10 } }, grid: { color: 'var(--card)' } }
   }
 };
 
@@ -360,14 +364,14 @@ function calcSavings() {
 
   $('savings-detail').innerHTML = `
     <div class="result-box">
-      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px">단리 기준</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">단리 기준</div>
       <div class="result-row"><span class="lbl">납입원금 합계</span><span class="val">${fmt(simplePrincipal)}만원</span></div>
       <div class="result-row"><span class="lbl">세전 이자</span><span class="val">${fmt(simpleInterest)}만원</span></div>
       <div class="result-row"><span class="lbl">이자소득세 (${(taxRate*100).toFixed(1)}%)</span><span class="val highlight-red">-${fmt(simpleTax)}만원</span></div>
       <div class="result-row big"><span class="lbl">세후 최종 수령액</span><span class="val">${fmt(simpleNet)}만원</span></div>
     </div>
     <div class="result-box" style="margin-top:8px">
-      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px">월복리 기준</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">월복리 기준</div>
       <div class="result-row"><span class="lbl">세전 이자</span><span class="val">${fmt(compoundInterest)}만원</span></div>
       <div class="result-row"><span class="lbl">이자소득세</span><span class="val highlight-red">-${fmt(compoundTax)}만원</span></div>
       <div class="result-row big"><span class="lbl">세후 최종 수령액</span><span class="val">${fmt(compoundNet)}만원</span></div>
@@ -412,8 +416,8 @@ function calcSavings() {
     data: {
       labels,
       datasets: [
-        { label: '납입원금', data: principalData, borderColor: '#475569', backgroundColor: 'transparent', tension: 0, borderDash: [4,2], pointRadius: 0 },
-        { label: '단리', data: simpleData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.08)', tension: .3, pointRadius: 0 },
+        { label: '납입원금', data: principalData, borderColor: 'var(--border)', backgroundColor: 'transparent', tension: 0, borderDash: [4,2], pointRadius: 0 },
+        { label: '단리', data: simpleData, borderColor: 'var(--accent)', backgroundColor: 'rgba(96,165,250,.08)', tension: .3, pointRadius: 0 },
         { label: '월복리', data: compoundDataReal, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,.08)', tension: .3, pointRadius: 0 }
       ]
     },
@@ -449,7 +453,7 @@ function renderSavingsTaxCompare(monthly, annualRate, months, preTaxInterest) {
       <div class="result-row">
         <span class="lbl"><span class="tax-badge ${t.cls}">${t.label}</span></span>
         <span class="val">
-          <span style="color:#64748b;font-size:11px;margin-right:8px">세금 -${fmt(tax)}만</span>
+          <span style="color:var(--muted);font-size:11px;margin-right:8px">세금 -${fmt(tax)}만</span>
           ${fmt(net)}만원
         </span>
       </div>`;
@@ -498,10 +502,10 @@ function calcDeposit() {
 
   $('deposit-detail').innerHTML = `
     <div class="result-box">
-      <div class="result-row"><span class="lbl" style="font-weight:600">구분</span><span class="val" style="display:flex;gap:16px;font-size:11px"><span style="color:#60a5fa">단리</span><span style="color:#34d399">월복리</span><span style="color:#fbbf24">연복리</span></span></div>
+      <div class="result-row"><span class="lbl" style="font-weight:600">구분</span><span class="val" style="display:flex;gap:16px;font-size:11px"><span style="color:var(--accent)">단리</span><span style="color:#34d399">월복리</span><span style="color:#fbbf24">연복리</span></span></div>
       <div class="result-row"><span class="lbl">세전 이자</span><span class="val" style="display:flex;gap:16px;font-size:12px"><span>${fmt(simpleInterest)}</span><span>${fmt(compoundInterest)}</span><span>${fmt(yearInterest)}</span></span></div>
       <div class="result-row"><span class="lbl">이자세금</span><span class="val" style="display:flex;gap:16px;font-size:12px;color:#f87171"><span>-${fmt(simpleTax)}</span><span>-${fmt(compoundTax)}</span><span>-${fmt(yearTax)}</span></span></div>
-      <div class="result-row"><span class="lbl" style="font-weight:700">세후 수령액</span><span class="val" style="display:flex;gap:16px;font-size:12px;font-weight:700"><span style="color:#60a5fa">${fmt(simpleNet)}</span><span style="color:#34d399">${fmt(compoundNet)}</span><span style="color:#fbbf24">${fmt(yearNet)}</span></span></div>
+      <div class="result-row"><span class="lbl" style="font-weight:700">세후 수령액</span><span class="val" style="display:flex;gap:16px;font-size:12px;font-weight:700"><span style="color:var(--accent)">${fmt(simpleNet)}</span><span style="color:#34d399">${fmt(compoundNet)}</span><span style="color:#fbbf24">${fmt(yearNet)}</span></span></div>
       <div class="result-row"><span class="lbl">수익률</span><span class="val" style="display:flex;gap:16px;font-size:12px"><span>${((simpleNet/amount-1)*100).toFixed(2)}%</span><span>${((compoundNet/amount-1)*100).toFixed(2)}%</span><span>${((yearNet/amount-1)*100).toFixed(2)}%</span></span></div>
     </div>
   `;
@@ -524,7 +528,7 @@ function calcDeposit() {
     data: {
       labels: labelsMo,
       datasets: [
-        { label: '단리', data: sData, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.1)', tension: .3, pointRadius: 2 },
+        { label: '단리', data: sData, borderColor: 'var(--accent)', backgroundColor: 'rgba(96,165,250,.1)', tension: .3, pointRadius: 2 },
         { label: '월복리', data: cData, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,.1)', tension: .3, pointRadius: 2 }
       ]
     },
@@ -561,7 +565,7 @@ function renderDepositTaxCompare(amount, simpleInterest, compoundInterest) {
       <div class="result-row">
         <span class="lbl"><span class="tax-badge ${t.cls}">${t.label}</span></span>
         <span class="val">
-          <span style="color:#64748b;font-size:11px;margin-right:8px">세금 -${fmt(tax)}만</span>
+          <span style="color:var(--muted);font-size:11px;margin-right:8px">세금 -${fmt(tax)}만</span>
           ${fmt(net)}만원
         </span>
       </div>`;

@@ -24,7 +24,7 @@ let cmpChart=null, cmpSimChart=null;
 let cmpSubTab='price'; // 'price' | 'sim'
 let simMode='gap'; // 'gap' | 'live'
 let priceMetricMode=(()=>{try{return localStorage.getItem('aptPriceMetricMode')||'total';}catch(e){return 'total';}})(); // 'total' | 'pyeong'
-const CMP_COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
+const CMP_COLORS=['var(--up)','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
 let TX_CACHE={};
 let DI=null;
 let curDetailIdx=null;
@@ -91,7 +91,7 @@ function setPriceMetricMode(mode){
   if(document.getElementById('areaChecklist')) renderAreaList();
   if(typeof F!=='undefined'&&Array.isArray(F)&&F.length){ ds(); rt(); }
   if(typeof selectedAreas!=='undefined'&&selectedAreas.length) renderComparison();
-  if(curDetailIdx!==null&&DI&&DI[curDetailIdx]) showDetail(DI[curDetailIdx]);
+  /* Detail now has its own route. */
   saveHash();
 }
 function syncPriceMetricButtons(){
@@ -146,11 +146,11 @@ function renderDetailChart(){
         borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.3,
         pointRadius:pointRadii,
         pointBackgroundColor:sliceData.map((v,i)=>!sliceFilled[i]?'#3b82f6':'transparent'),
-        pointBorderColor:'#1e293b',pointBorderWidth:1,borderWidth:2,spanGaps:true
+        pointBorderColor:'var(--card)',pointBorderWidth:1,borderWidth:2,spanGaps:true
       }]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{display:false},tooltip:{
-          backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
+          backgroundColor:'var(--card)',titleColor:'var(--text)',bodyColor:'var(--text)',borderColor:'var(--border)',borderWidth:1,
           callbacks:{
             title:items=>sliceLabels[items[0].dataIndex],
             label:c=>{
@@ -163,10 +163,10 @@ function renderDetailChart(){
           }
         }},
         scales:{
-          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:9},maxRotation:0,
+          x:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:9},maxRotation:0,
             callback:function(val,idx){ return idx%12===0?sliceLabels[idx].slice(0,4):''; }
           }},
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
+          y:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
         }
       }
     });
@@ -180,13 +180,13 @@ function renderDetailChart(){
       data:{labels:yrLabels,datasets:[{
         data:yrData,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',
         fill:true,tension:.3,pointRadius:3,pointBackgroundColor:'#3b82f6',
-        pointBorderColor:'#1e293b',pointBorderWidth:2,borderWidth:2,spanGaps:true
+        pointBorderColor:'var(--card)',pointBorderWidth:2,borderWidth:2,spanGaps:true
       }]},
       options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,callbacks:{label:c=>priceMetricMode==='pyeong'?Math.round(c.parsed.y).toLocaleString()+'\uB9CC/\uD3C9':c.parsed.y+'\uC5B5\uC6D0'}}},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'var(--card)',titleColor:'var(--text)',bodyColor:'var(--text)',borderColor:'var(--border)',borderWidth:1,callbacks:{label:c=>priceMetricMode==='pyeong'?Math.round(c.parsed.y).toLocaleString()+'\uB9CC/\uD3C9':c.parsed.y+'\uC5B5\uC6D0'}}},
         scales:{
-          x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},maxRotation:0}},
-          y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
+          x:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:10},maxRotation:0}},
+          y:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
         }
       }
     });
@@ -487,7 +487,7 @@ function renderAreaList(){
     const checked=selectedAreas.includes(item.key);
     h+=renderAreaItem(item,checked);
   });
-  el.innerHTML=h||'<div style="color:#64748b;padding:12px;text-align:center;font-size:11px">검색 결과 없음</div>';
+  el.innerHTML=h||'<div style="color:var(--muted);padding:12px;text-align:center;font-size:11px">검색 결과 없음</div>';
   renderBadges();
 }
 
@@ -646,7 +646,7 @@ async function renderComparison(){
 
   html+=`<div id="cmpPriceView" style="${cmpSubTab==='price'?'':'display:none'}">`;
   html+=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-    <span style="font-size:11px;color:#64748b">가격 기준</span>
+    <span style="font-size:11px;color:var(--muted)">가격 기준</span>
     <button class="cmp-sub-tab ${priceMetricMode==='total'?'active':''}" data-price-mode="total" onclick="setPriceMetricMode('total')">총액</button>
     <button class="cmp-sub-tab ${priceMetricMode==='pyeong'?'active':''}" data-price-mode="pyeong" onclick="setPriceMetricMode('pyeong')">평당가</button>
   </div>`;
@@ -679,10 +679,10 @@ async function renderComparison(){
   html+='</div>';
 
   // 차트
-  html+=`<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">평균 ${priceMetricMode==='pyeong'?'평당가':'가격'} 추이 (${priceModeUnit()}, 월별)</h3><div style="height:280px"><canvas id="cmpChart"></canvas></div></div>`;
+  html+=`<div class="cmp-card"><h3 style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">평균 ${priceMetricMode==='pyeong'?'평당가':'가격'} 추이 (${priceModeUnit()}, 월별)</h3><div style="height:280px"><canvas id="cmpChart"></canvas></div></div>`;
 
   // 상세 비교 테이블
-  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">지표 비교</h3>';
+  html+='<div class="cmp-card"><h3 style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">지표 비교</h3>';
   html+='<table class="cmp-table"><thead><tr><th>지표</th>';
   data.forEach((d,i)=>{ html+=`<th style="color:${CMP_COLORS[i]}">${d.name}</th>`; });
   html+='</tr></thead><tbody>';
@@ -733,12 +733,12 @@ async function renderComparison(){
         const pv=displayPriceValue(x);
         html+=`<tr onclick="goToComplex(${x.i})">
           <td style="text-align:left">${x.n}</td>
-          <td style="text-align:left;color:#64748b">${x.d||'-'}</td>
+          <td style="text-align:left;color:var(--muted)">${x.d||'-'}</td>
           <td>${fmtArea(x.a)}</td>
           <td style="font-weight:600">${fmtDisplayPrice(pv)}</td>
           <td class="${cc}">${cv}</td>
           <td>${fmtPct(x.m)}</td>
-          <td style="color:#64748b">${x.v}</td>
+          <td style="color:var(--muted)">${x.v}</td>
         </tr>`;
       });
       html+=`</tbody></table></div>`;
@@ -759,8 +759,6 @@ async function renderComparison(){
 function goToComplex(dataIdx){
   const x=DI[dataIdx];
   if(!x) return;
-  switchView('complex');
-  curDetailIdx=dataIdx;
   showDetail(x);
 }
 
@@ -850,7 +848,7 @@ async function renderComparisonChartMonthly(data){
       fill:false,tension:.3,
       pointRadius:pointRadii,
       pointBackgroundColor:CMP_COLORS[i],
-      pointBorderColor:'#1e293b',
+      pointBorderColor:'var(--card)',
       pointBorderWidth:1,
       borderWidth:2,
       spanGaps:true
@@ -863,9 +861,9 @@ async function renderComparisonChartMonthly(data){
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{
-        legend:{position:'top',labels:{color:'#94a3b8',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
+        legend:{position:'top',labels:{color:'var(--muted)',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
         tooltip:{
-          backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
+          backgroundColor:'var(--card)',titleColor:'var(--text)',bodyColor:'var(--text)',borderColor:'var(--border)',borderWidth:1,
           callbacks:{label:c=>{
             const y=c.parsed.y;
             const val=priceMetricMode==='pyeong'?Math.round(y).toLocaleString():y.toFixed(2);
@@ -875,13 +873,13 @@ async function renderComparisonChartMonthly(data){
       },
       scales:{
         x:{
-          grid:{color:'#1e293b'},
+          grid:{color:'var(--card)'},
           ticks:{
-            color:'#64748b',font:{size:10},maxRotation:0,
+            color:'var(--muted)',font:{size:10},maxRotation:0,
             callback:function(val,idx){ return idx%12===0?MONTH_LABELS[idx].slice(0,4):''; }
           }
         },
-        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
+        y:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>v+priceModeAxisSuffix()}}
       }
     }
   });
@@ -1014,20 +1012,20 @@ function renderSimView(){
   html+=`<div class="sim-slider"><label>보유세율(연)</label><input type="range" id="simHoldTax" min="0" max="2" value="0.3" step="0.1" oninput="updateSim()"><div class="val" id="simHoldTaxVal">0.3%</div></div>`;
   html+=`<div class="sim-slider"><label>주택수</label><div style="display:flex;gap:4px;margin-top:4px">`;
   [1,2,3].forEach(n=>{
-    html+=`<button class="pg-btn sim-house-btn${n===1?' active':''}" data-cnt="${n}" onclick="setSimHouseCnt(${n})" style="flex:1;text-align:center;${n===1?'background:var(--accent);color:#fff;border-color:var(--accent)':''}">${n}주택</button>`;
+    html+=`<button class="pg-btn sim-house-btn${n===1?' active':''}" data-cnt="${n}" onclick="setSimHouseCnt(${n})" style="flex:1;text-align:center;${n===1?'background:var(--accent);color:var(--text);border-color:var(--accent)':''}">${n}주택</button>`;
   });
   html+=`</div></div>`;
-  html+=`<div class="sim-slider"><label>1주택 비과세</label><div style="margin-top:6px"><label style="color:#fff;cursor:pointer;font-size:12px"><input type="checkbox" id="simExempt" checked onchange="updateSim()"> 적용 (2년↑보유, 12억↓비과세)</label></div></div>`;
-  html+=`<div class="sim-slider" id="simCgTaxWrap" style="display:none"><label>양도세율(고정)</label><input type="range" id="simCgTaxRate" min="6" max="50" value="35" step="1" oninput="updateSim()"><div class="val" id="simCgTaxRateVal">35%</div><div style="font-size:9px;color:#64748b;margin-top:2px">누진세 대신 고정세율 적용</div></div>`;
+  html+=`<div class="sim-slider"><label>1주택 비과세</label><div style="margin-top:6px"><label style="color:var(--text);cursor:pointer;font-size:12px"><input type="checkbox" id="simExempt" checked onchange="updateSim()"> 적용 (2년↑보유, 12억↓비과세)</label></div></div>`;
+  html+=`<div class="sim-slider" id="simCgTaxWrap" style="display:none"><label>양도세율(고정)</label><input type="range" id="simCgTaxRate" min="6" max="50" value="35" step="1" oninput="updateSim()"><div class="val" id="simCgTaxRateVal">35%</div><div style="font-size:9px;color:var(--muted);margin-top:2px">누진세 대신 고정세율 적용</div></div>`;
 
   if(simMode==='gap'){
     html+=`<div class="sim-slider"><label>기회비용 이자율</label><input type="range" id="simDeposit" min="1" max="8" value="3.5" step="0.5" oninput="updateSim()"><div class="val" id="simDepositVal">3.5%</div></div>`;
   } else {
-    html+=`<div class="sim-slider"><label>대출이자율 <span style="font-size:9px;color:#64748b">(원리금균등 30년)</span></label><input type="range" id="simLoanRate" min="1" max="8" value="3.5" step="0.1" oninput="updateSim()"><div class="val" id="simLoanRateVal">3.5%</div></div>`;
+    html+=`<div class="sim-slider"><label>대출이자율 <span style="font-size:9px;color:var(--muted)">(원리금균등 30년)</span></label><input type="range" id="simLoanRate" min="1" max="8" value="3.5" step="0.1" oninput="updateSim()"><div class="val" id="simLoanRateVal">3.5%</div></div>`;
     html+=`<div class="sim-slider"><label>대출한도</label><div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap">`;
     [{v:0,l:'제한없음'},{v:6,l:'6억'},{v:4,l:'4억'},{v:2,l:'2억'}].forEach(o=>{
       const isActive=o.v===0;
-      html+=`<button class="pg-btn sim-loancap-btn${isActive?' active':''}" data-cap="${o.v}" onclick="setSimLoanCap(${o.v})" style="flex:1;text-align:center;font-size:10px;${isActive?'background:var(--accent);color:#fff;border-color:var(--accent)':''}">${o.l}</button>`;
+      html+=`<button class="pg-btn sim-loancap-btn${isActive?' active':''}" data-cap="${o.v}" onclick="setSimLoanCap(${o.v})" style="flex:1;text-align:center;font-size:10px;${isActive?'background:var(--accent);color:var(--text);border-color:var(--accent)':''}">${o.l}</button>`;
     });
     html+=`</div></div>`;
     html+=`<div class="sim-slider"><label>현재 월세(만원)</label><input type="range" id="simRent" min="0" max="300" value="100" step="10" oninput="updateSim()"><div class="val" id="simRentVal">100만원</div></div>`;
@@ -1042,13 +1040,13 @@ function renderSimView(){
       html+=`<div style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px">
         <label style="font-size:11px;color:${color};font-weight:600;display:block;margin-bottom:3px">${d.name} 전세가율</label>
         <input type="range" class="simJeonseEach" data-idx="${i}" min="30" max="90" value="65" step="5" oninput="updateSim()" style="width:100%;accent-color:${color}">
-        <div class="val simJeonseEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:#fff;text-align:right">65%</div>
+        <div class="val simJeonseEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:var(--text);text-align:right">65%</div>
       </div>`;
     } else {
       html+=`<div style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-left:3px solid ${color};border-radius:6px">
         <label style="font-size:11px;color:${color};font-weight:600;display:block;margin-bottom:3px">${d.name} LTV(대출비율)</label>
         <input type="range" class="simLtvEach" data-idx="${i}" min="0" max="80" value="50" step="5" oninput="updateSim()" style="width:100%;accent-color:${color}">
-        <div class="val simLtvEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:#fff;text-align:right">50%</div>
+        <div class="val simLtvEachVal" data-idx="${i}" style="font-size:12px;font-weight:600;color:var(--text);text-align:right">50%</div>
       </div>`;
     }
   });
@@ -1063,7 +1061,7 @@ function setSimLoanCap(v){
   document.querySelectorAll('.sim-loancap-btn').forEach(b=>{
     const isActive=parseInt(b.dataset.cap)===v;
     b.style.background=isActive?'var(--accent)':'';
-    b.style.color=isActive?'#fff':'';
+    b.style.color=isActive?'var(--text)':'';
     b.style.borderColor=isActive?'var(--accent)':'';
     b.classList.toggle('active',isActive);
   });
@@ -1074,7 +1072,7 @@ function setSimHouseCnt(n){
   document.querySelectorAll('.sim-house-btn').forEach(b=>{
     const isActive=parseInt(b.dataset.cnt)===n;
     b.style.background=isActive?'var(--accent)':'';
-    b.style.color=isActive?'#fff':'';
+    b.style.color=isActive?'var(--text)':'';
     b.style.borderColor=isActive?'var(--accent)':'';
     b.classList.toggle('active',isActive);
   });
@@ -1264,10 +1262,10 @@ function updateSim(){
 
   // 차트
   const chartTitle=params.mode==='gap'?'순수익 vs 기회비용 (연도별)':'매수 순자산 vs 전세+예금 (연도별)';
-  html+=`<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">${chartTitle}</h3><div style="height:280px"><canvas id="cmpSimChartCanvas"></canvas></div></div>`;
+  html+=`<div class="cmp-card"><h3 style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">${chartTitle}</h3><div style="height:280px"><canvas id="cmpSimChartCanvas"></canvas></div></div>`;
 
   // 비용 비교 테이블
-  html+='<div class="cmp-card"><h3 style="font-size:12px;color:#94a3b8;margin-bottom:10px;font-weight:600">비용 비교</h3>';
+  html+='<div class="cmp-card"><h3 style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600">비용 비교</h3>';
   html+='<div style="overflow-x:auto"><table class="cmp-table"><thead><tr><th>항목</th>';
   validResults.forEach((r,i)=>{
     const idx=results.indexOf(r);
@@ -1433,10 +1431,10 @@ function renderSimChart(validResults, allResults, params){
       datasets.push({
         label:'예금 수익 (기회비용)',
         data:validResults[0].result.yearlyDeposit,
-        borderColor:'#64748b',
+        borderColor:'var(--muted)',
         borderDash:[6,4],
         fill:false, tension:.3, borderWidth:2,
-        pointRadius:2, pointBackgroundColor:'#64748b'
+        pointRadius:2, pointBackgroundColor:'var(--muted)'
       });
     }
   } else {
@@ -1455,10 +1453,10 @@ function renderSimChart(validResults, allResults, params){
       datasets.push({
         label:'전세+예금 수익',
         data:validResults[0].result.yearlyRent,
-        borderColor:'#64748b',
+        borderColor:'var(--muted)',
         borderDash:[6,4],
         fill:false, tension:.3, borderWidth:2,
-        pointRadius:2, pointBackgroundColor:'#64748b'
+        pointRadius:2, pointBackgroundColor:'var(--muted)'
       });
     }
   }
@@ -1469,15 +1467,15 @@ function renderSimChart(validResults, allResults, params){
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{
-        legend:{position:'top',labels:{color:'#94a3b8',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
+        legend:{position:'top',labels:{color:'var(--muted)',font:{size:11},usePointStyle:true,pointStyle:'circle',boxWidth:8}},
         tooltip:{
-          backgroundColor:'#1e293b',titleColor:'#e2e8f0',bodyColor:'#e2e8f0',borderColor:'#334155',borderWidth:1,
+          backgroundColor:'var(--card)',titleColor:'var(--text)',bodyColor:'var(--text)',borderColor:'var(--border)',borderWidth:1,
           callbacks:{label:c=>c.dataset.label+': '+(c.parsed.y>=0?'+':'')+c.parsed.y.toFixed(2)+'억'}
         }
       },
       scales:{
-        x:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10}}},
-        y:{grid:{color:'#1e293b'},ticks:{color:'#64748b',font:{size:10},callback:v=>v.toFixed(1)+'억'}}
+        x:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:10}}},
+        y:{grid:{color:'var(--card)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>v.toFixed(1)+'억'}}
       }
     }
   });
@@ -1571,7 +1569,7 @@ function toggleInactive(value){
 function goToLifecycleSite(key){
   const x=SITE_ENTRY.get(key);
   if(!x)return;
-  curDetailIdx=x.i; showDetail(x); saveHash();
+  showDetail(x);
 }
 function renderLifecycleInfo(x){
   const el=document.getElementById('lifecycleInfo');
@@ -1839,7 +1837,7 @@ function toggleMerged(){
   merged=!merged;
   document.getElementById('mgBtn').textContent=merged?'통합':'평형별';
   document.getElementById('mgBtn').style.background=merged?'var(--accent)':'';
-  document.getElementById('mgBtn').style.color=merged?'#fff':'';
+  document.getElementById('mgBtn').style.color=merged?'var(--text)':'';
   document.getElementById('mgBtn').style.borderColor=merged?'var(--accent)':'';
   areaCache={}; // 비교 캐시 클리어
   areaIndexCache={};
@@ -1911,6 +1909,7 @@ function gv(id){return document.getElementById(id).value}
 function gn(id){const v=document.getElementById(id).value;return v===''?null:parseFloat(v)}
 
 function af(){
+  applyMobileFilterVisibility();
   const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
   const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH'),bL=gn('bL'),bH=gn('bH');
 
@@ -1999,31 +1998,31 @@ function rt(){
   for(let i=s;i<e;i++){
     const x=F[i];
     const bg=['b-g','b-s','b-i'][x.r];
-    const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
+    const rl=(['경기','서울','인천'][x.r]||'지역 미확인');
     const lpv=fmtDisplayPrice(displayPriceValue(x));
     const retObj=calcReturnObj(x);
     const retv=retObj?(retObj.val>0?'+':'')+retObj.val.toFixed(1)+'%':'-';
     const retc=retObj?(retObj.val>0?'up':retObj.val<0?'dn':''):'';
-    const retYrs=retObj&&retObj.years!==(retMonths()/12)?'<span style="font-size:9px;color:#64748b;margin-left:2px">'+retObj.years.toFixed(1)+'년</span>':'';
+    const retYrs=retObj&&retObj.years!==(retMonths()/12)?'<span style="font-size:9px;color:var(--muted);margin-left:2px">'+retObj.years.toFixed(1)+'년</span>':'';
     const cv=fmtPct(x.c);
     const cc=x.c>0?'up':x.c<0?'dn':'';
     const mc=x.m<-10?'dn':'';
 
     frags.push(`<tr onclick="sd(${i})" class="${si===i?'sel':''}">
-      <td style="color:#475569;text-align:center">${i+1}</td>
-      <td class="text-left"><span class="badge ${bg}">${rl}</span>${x.n}${statusBadgeHtml(x)}</td>
-      <td class="text-left" style="color:#94a3b8">${x.g}</td>
-      <td class="text-left" style="color:#94a3b8">${x.d||'-'}</td>
-      <td style="text-align:center;color:#94a3b8">${fmtArea(x.a)}</td>
+      <td style="color:var(--border);text-align:center">${i+1}</td>
+      <td class="text-left"><span class="badge ${bg}">${rl}</span><a href="${NodoApartmentLinks.url({id:x.as,row:x.i,area:x._merged?null:x.a})}" onclick="event.stopPropagation()">${escHtml(x.n)}</a>${statusBadgeHtml(x)}</td>
+      <td class="text-left" style="color:var(--muted)">${x.g}</td>
+      <td class="text-left" style="color:var(--muted)">${x.d||'-'}</td>
+      <td style="text-align:center;color:var(--muted)">${fmtArea(x.a)}</td>
       <td style="text-align:center;font-weight:600">${lpv}</td>
       <td style="text-align:center;font-weight:600" class="${retc}">${retv}${retYrs}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${fmtPct(x.m)}</td>
-      <td style="text-align:center;color:#94a3b8">${fmtSharp(x.s)}</td>
-      <td style="text-align:center;color:#94a3b8;font-size:11px">${fmtDate(x.ld)}</td>
-      <td style="text-align:center;color:#64748b">${x.v}</td>
-      <td style="text-align:center;color:#64748b">${x.u?x.u.toLocaleString():'-'}</td>
-      <td style="text-align:center;color:#94a3b8" title="${x.lr?'등기 대지권':'건축물대장 기반 추정'}">${fmtLs(calcLandShare(x))}${x.lr?'<span style="display:block;font-size:9px;color:#0f766e">등기</span>':''}</td>
+      <td style="text-align:center;color:var(--muted)">${fmtSharp(x.s)}</td>
+      <td style="text-align:center;color:var(--muted);font-size:11px">${fmtDate(x.ld)}</td>
+      <td style="text-align:center;color:var(--muted)">${x.v}</td>
+      <td style="text-align:center;color:var(--muted)">${x.u?x.u.toLocaleString():'-'}</td>
+      <td style="text-align:center;color:var(--muted)" title="${x.lr?'등기 대지권':'건축물대장 기반 추정'}">${fmtLs(calcLandShare(x))}${x.lr?'<span style="display:block;font-size:9px;color:#0f766e">등기</span>':''}</td>
     </tr>`);
   }
   tb.innerHTML=frags.join('');
@@ -2035,7 +2034,7 @@ function rt(){
     for(let i=s;i<e;i++){
       const x=F[i];
       const bg=['b-g','b-s','b-i'][x.r];
-      const rl=x.r?'\uC11C\uC6B8':'\uACBD\uAE30';
+      const rl=(['경기','서울','인천'][x.r]||'지역 미확인');
       const lpv=fmtDisplayPrice(displayPriceValue(x));
       const cv=fmtSignedPct(x.c);
       const cc=x.c>0?'up':x.c<0?'dn':'';
@@ -2052,7 +2051,7 @@ function rt(){
           <div class="m-card-metric"><div class="ml">CAGR</div><div class="mv ${cc}">${cv}</div></div>
           <div class="m-card-metric"><div class="ml">MDD</div><div class="mv dn">${mv}</div></div>
           <div class="m-card-metric"><div class="ml">${retYearFrom%100}→${retYearTo%100}</div><div class="mv ${retc}">${retv}</div></div>
-          <div class="m-card-metric"><div class="ml">샤프</div><div class="mv" style="color:#94a3b8">${fmtSharp(x.s)}</div></div>
+          <div class="m-card-metric"><div class="ml">샤프</div><div class="mv" style="color:var(--muted)">${fmtSharp(x.s)}</div></div>
         </div>
       </div>`);
     }
@@ -2062,12 +2061,8 @@ function rt(){
 
 // --- 상세 패널 ---
 function sd(i){
-  si=i;
   const x=F[i];
-  showDetail(x);
-  rt();
-  if(isMobile()) document.body.style.overflow='hidden';
-  saveHash();
+  if(x) showDetail(x);
 }
 
 function updateDetailMapLink(x){
@@ -2083,6 +2078,8 @@ function updateDetailMapLink(x){
 }
 
 function showDetail(x){
+  NodoApartmentLinks.go({id:x.as,row:x.i,area:x._merged?null:x.a});
+  return;
   curDetailIdx=x.i;
   const dp=document.getElementById('dp');
   if(!dp.classList.contains('open')) pushPopup('detail');
@@ -2095,7 +2092,7 @@ function showDetail(x){
   const unitStr=x.u?` | ${x.u.toLocaleString()}세대${x.up?' (부분 대장)':''}`:'';
   const farStr=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
-  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr}${pkStr}`;
+  document.getElementById('dl').textContent=`${(['경기','서울','인천'][x.r]||'지역 미확인')} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${unitStr} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr}${pkStr}`;
   renderLifecycleInfo(x);
 
   // 평형 탭
@@ -2157,7 +2154,7 @@ function showDetail(x){
     for(const sibIdx of x.si){ prices=getPrices(sibIdx); if(prices) break; }
   }
   if(!prices){
-    document.getElementById('yp').innerHTML='<div style="color:#64748b">\uAC00\uACA9 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
+    document.getElementById('yp').innerHTML='<div style="color:var(--muted)">\uAC00\uACA9 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
     if(ch)ch.destroy();
     const retry=setInterval(()=>{
       if(PRICES){clearInterval(retry);if(curDetailIdx===x.i)renderDetail(x);}
@@ -2196,7 +2193,7 @@ function switchAreaFromMerged(dataIdx){
   const uStr2=x.u?` | ${x.u.toLocaleString()}세대${x.up?' (부분 대장)':''}`:'';
   const farStr2=x.fr?` | 용적률 ${x.fr}%`:'';
   const pkStr2=x.pk?` | 주차 ${x.pk.toLocaleString()}대 (세대당 ${(x.pk/(x.tu||x.u||1)).toFixed(1)})`:'';
-  document.getElementById('dl').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}${pkStr2}`;
+  document.getElementById('dl').textContent=`${(['경기','서울','인천'][x.r]||'지역 미확인')} ${x.g} ${x.d||''} | ${fmtArea(x.a)} | ${x.b?x.b+'\uB144 \uC900\uACF5':''}${uStr2} | \uCD1D ${x.t.toLocaleString()}\uAC74${farStr2}${pkStr2}`;
   renderLifecycleInfo(x);
   const lsVal2=calcLandShare(x);
   const lsDisplay2=fmtLs(lsVal2);
@@ -2292,11 +2289,11 @@ async function renderDetail(x){
           const pct=((avgP-prevAvg)/prevAvg*100).toFixed(1);
           chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
         }
-        const volStr=mergedYearVols[j]>0?`<span style="color:#64748b;font-size:10px">${mergedYearVols[j]}건</span>`:'';
+        const volStr=mergedYearVols[j]>0?`<span style="color:var(--muted);font-size:10px">${mergedYearVols[j]}건</span>`:'';
         yh+=`<div class="yr-row">
-          <span style="color:#64748b;min-width:32px">${y}</span>
+          <span style="color:var(--muted);min-width:32px">${y}</span>
           <span style="font-weight:600">${shownPrice}</span>
-          <span style="color:#475569;font-size:10px">(${mergedYearCounts[j]}평형)</span>
+          <span style="color:var(--border);font-size:10px">(${mergedYearCounts[j]}평형)</span>
           ${volStr}
           ${chg}
         </div>`;
@@ -2316,19 +2313,19 @@ async function renderDetail(x){
           const pct=((p-prices[j-1])/prices[j-1]*100).toFixed(1);
           chg=`<span class="${pct>0?'up':pct<0?'dn':''}" style="font-size:10px">${pct>0?'+':''}${pct}%</span>`;
         }
-        const volStr=vol>0?`<span style="color:#64748b;font-size:10px">${vol}건</span>`:'';
+        const volStr=vol>0?`<span style="color:var(--muted);font-size:10px">${vol}건</span>`:'';
 
         let rangeStr='';
         if(details && details[j]){
           const d=details[j];
           const mn=d[1], mx=d[2];
           if(mn>0 && mx>0 && mn!==mx){
-            rangeStr=`<span style="color:#475569;font-size:10px">(${mn}~${mx})</span>`;
+            rangeStr=`<span style="color:var(--border);font-size:10px">(${mn}~${mx})</span>`;
           }
         }
 
         yh+=`<div class="yr-row" onclick="openTxModal(${x.i},${y})">
-          <span style="color:#64748b;min-width:32px">${y}</span>
+          <span style="color:var(--muted);min-width:32px">${y}</span>
           <span style="font-weight:600">${shownPrice}</span>
           ${rangeStr}
           ${volStr}
@@ -2419,8 +2416,8 @@ async function openTxModal(dataIdx, year){
   pushPopup('tx');
   modal.style.display='flex';
   document.getElementById('txTitle').textContent=`${x.n} ${fmtArea(x.a)} \u2014 ${year}\uB144 \uAC70\uB798 \uB0B4\uC5ED`;
-  document.getElementById('txSubtitle').textContent=`${x.r?'\uC11C\uC6B8':'\uACBD\uAE30'} ${x.g} ${x.d||''}`;
-  document.getElementById('txSummary').innerHTML='<div style="color:#64748b;text-align:center;grid-column:1/-1">\uAC70\uB798 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
+  document.getElementById('txSubtitle').textContent=`${(['경기','서울','인천'][x.r]||'지역 미확인')} ${x.g} ${x.d||''}`;
+  document.getElementById('txSummary').innerHTML='<div style="color:var(--muted);text-align:center;grid-column:1/-1">\uAC70\uB798 \uB370\uC774\uD130 \uB85C\uB529 \uC911...</div>';
   document.getElementById('txMonthTabs').innerHTML='';
   document.getElementById('txTableWrap').innerHTML='';
 
@@ -2462,7 +2459,7 @@ function renderTxModal(x){
       ['\uCD5C\uACE0',(mx/10000).toFixed(2)+'\uC5B5','up']
     ].map(([l,v,c])=>`<div class="tx-stat"><div class="label">${l}</div><div class="value ${c}">${v}</div></div>`).join('');
   } else {
-    document.getElementById('txSummary').innerHTML='<div style="color:#64748b;text-align:center;grid-column:1/-1">\uAC70\uB798 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
+    document.getElementById('txSummary').innerHTML='<div style="color:var(--muted);text-align:center;grid-column:1/-1">\uAC70\uB798 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4</div>';
   }
 
   if(filtered.length>0){
@@ -2599,7 +2596,7 @@ function removeMapOverlay(map,big){
 function showMapMarker(map,coord,x,big){
   if(!map||!coord) return;
   removeMapOverlay(map,big);
-  const marker=L.circleMarker(coord,{radius:big?10:8,fillColor:'#ef4444',color:'#fff',weight:2,fillOpacity:1})
+  const marker=L.circleMarker(coord,{radius:big?10:8,fillColor:'var(--up)',color:'var(--text)',weight:2,fillOpacity:1})
     .bindPopup(`<b>${escHtml(x.n)}</b><br>${escHtml(x.g+' '+(x.d||''))}<br>${fmtArea(x.a)}`,{className:''})
     .addTo(map).openPopup();
   if(big) LMARKER_BIG=marker; else LMARKER=marker;
@@ -3194,8 +3191,12 @@ function loadHash(){
     const btn=document.getElementById('mgBtn');
     btn.textContent='통합';
     btn.style.background='var(--accent)';
-    btn.style.color='#fff';
+    btn.style.color='var(--text)';
     btn.style.borderColor='var(--accent)';
+  }
+  if(p.a||p.i!==undefined){
+    NodoApartmentLinks.go({id:p.a,row:p.i,area:p.ar},true);
+    return true;
   }
   if(p.a){
     const requestedArea=Number(p.ar);
@@ -3238,29 +3239,18 @@ function toggleFilters(){
   applyMobileFilterVisibility();
 }
 function applyMobileFilterVisibility(){
-  if(!isMobile()) return;
   const grid=document.querySelector('#complexView > div > div[style*="grid"]');
-  if(!grid) return;
-  const children=grid.children;
-  for(let i=2;i<children.length;i++){
-    if(filtersExpanded) children[i].classList.remove('filter-hidden');
-    else children[i].classList.add('filter-hidden');
+  if(!grid)return;
+  for(const child of grid.children){
+    const advanced=!!child.querySelector('#cL,#mL,#sL,#bL,#ryL');
+    const active=[...child.querySelectorAll('input')].some(input=>input.value!=='');
+    child.classList.remove('filter-hidden');child.hidden=advanced&&!filtersExpanded&&!active;
   }
+  const button=document.getElementById('filterToggle');
+  if(button){button.setAttribute('aria-expanded',String(filtersExpanded));button.textContent=filtersExpanded?'고급 필터 접기 ▲':'고급 필터 · 투자지표·준공연도·기간 ▼';}
 }
-function initMobileFilters(){
-  if(isMobile()) applyMobileFilterVisibility();
-}
-window.addEventListener('resize',function(){
-  if(!isMobile()){
-    const grid=document.querySelector('#complexView > div > div[style*="grid"]');
-    if(grid){
-      for(let i=0;i<grid.children.length;i++) grid.children[i].classList.remove('filter-hidden');
-    }
-    document.body.style.overflow='';
-  } else {
-    applyMobileFilterVisibility();
-  }
-});
+function initMobileFilters(){applyMobileFilterVisibility();}
+window.addEventListener('resize',applyMobileFilterVisibility);
 
 // 페이지가 비교 전용 모드가 아닐 때만 메인 init 자동 실행
 // (window.APT_PAGE === 'compare' 인 페이지는 자체 init 사용)

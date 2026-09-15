@@ -22,6 +22,7 @@
     if(restoring || !map || !payload) return;
     const center=map.getCenter(), p=new URLSearchParams();
     p.set('lat',center.lat.toFixed(5)); p.set('lng',center.lng.toFixed(5)); p.set('z',map.getZoom());
+    if($('search').value.trim())p.set('q',$('search').value.trim().slice(0,100));
     for(const [key,value] of Object.entries(filters)) if(value!=null) p.set(key,value);
     if(selected) {p.set('a',selected.id); if(selectedArea)p.set('ar',selectedArea.a);}
     const hash='#'+p.toString();
@@ -38,7 +39,7 @@
     if(p.has('r') && ['0','1','2'].includes(p.get('r'))) next.r=Number(p.get('r'));
     filterKeys.forEach(key=>{const n=Number(p.get(key));if(p.has(key) && p.get(key)!=='' && Number.isFinite(n) && n>=0)next[key]=n;});
     for(const prefix of ['a','p','u','b']) if(next[prefix+'L']>next[prefix+'H']) delete next[prefix+'H'];
-    return {view,filters:next,id:p.get('a'),area:p.has('ar')?Number(p.get('ar')):null};
+    return {view,filters:next,id:p.get('a'),area:p.has('ar')?Number(p.get('ar')):null,query:(p.get('q')||'').slice(0,100)};
   }
   function syncForm() {
     $('region').value=filters.r??'';
@@ -129,6 +130,8 @@
     map.panBy(innerWidth<768?[0,map.getSize().y*.2]:[-200,0],{animate:false});
   }
   function select(id,area=null,push=true,focus=false) {
+    const chosen=byId.get(id);
+    if(chosen){save();NodoApartmentLinks.go({id:chosen.publicationId||chosen.id,area:area??model.latestArea(chosen.areas)?.a},!push);return;}
     const match=matches.get(byId.get(id)?.id||id);
     if(!match) {toast('현재 조건에서 해당 단지를 찾을 수 없습니다.');return;}
     selected=match.complex;
@@ -237,7 +240,7 @@
   }
   function restore() {
     if(!payload)return;cancelNavigation();restoring=true;
-    const state=parseState();filters=state.filters;syncForm();close(false);refilter();
+    const state=parseState();filters=state.filters;syncForm();close(false);refilter();$('search').value=state.query;search();
     if(state.view)map.setView([state.view.lat,state.view.lng],state.view.z,{animate:false});
     else map.fitBounds([[36.87,126.36],[38.15,127.84]],{animate:false});
     if(state.id){if(matches.has(byId.get(state.id)?.id||state.id))select(state.id,state.area,false,!state.view);else toast('선택 단지가 없거나 현재 조건에서 제외되었습니다.');}

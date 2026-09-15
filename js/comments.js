@@ -19,6 +19,8 @@
   let _isAdmin   = false;
   let _pageId    = null;
   let _container = null;
+  let _renderVersion = 0;
+  let _authSubscribed = false;
   let _offset    = 0;   // 최상위 댓글 기준 offset
   let _totalCount = 0;  // 최상위 댓글 수
   let _editingId  = null;
@@ -70,22 +72,22 @@
         padding: 0 16px 40px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         font-size: 13px;
-        color: #e2e8f0;
+        color: var(--text);
       }
       .nds-comments * { box-sizing: border-box; }
 
       .nds-c-title {
         font-size: 15px;
         font-weight: 700;
-        color: #e2e8f0;
+        color: var(--text);
         margin-bottom: 16px;
         padding-bottom: 10px;
-        border-bottom: 1px solid #334155;
+        border-bottom: 1px solid var(--border);
       }
       .nds-c-title span {
         font-size: 12px;
         font-weight: 400;
-        color: #94a3b8;
+        color: var(--muted);
         margin-left: 6px;
       }
 
@@ -94,8 +96,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--card);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 10px 14px;
         margin-bottom: 16px;
@@ -106,23 +108,23 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        color: #94a3b8;
+        color: var(--muted);
         font-size: 12px;
       }
-      .nds-user-info strong { color: #e2e8f0; font-size: 13px; }
+      .nds-user-info strong { color: var(--text); font-size: 13px; }
       .nds-avatar {
         width: 28px; height: 28px;
         border-radius: 50%;
-        background: #334155;
+        background: var(--border);
         object-fit: cover;
         flex-shrink: 0;
       }
       .nds-btn {
         padding: 6px 14px;
         border-radius: 6px;
-        border: 1px solid #334155;
+        border: 1px solid var(--border);
         background: transparent;
-        color: #94a3b8;
+        color: var(--muted);
         cursor: pointer;
         font-size: 12px;
         font-weight: 500;
@@ -130,21 +132,21 @@
         white-space: nowrap;
         font-family: inherit;
       }
-      .nds-btn:hover { border-color: #94a3b8; color: #e2e8f0; }
+      .nds-btn:hover { border-color: var(--muted); color: var(--text); }
       .nds-btn:disabled { opacity: .4; cursor: not-allowed; }
       .nds-btn-primary {
         background: #3b82f6;
         border-color: #3b82f6;
-        color: #fff;
+        color: var(--text);
       }
       .nds-btn-primary:hover { background: #2563eb; border-color: #2563eb; }
       .nds-btn-google {
         display: flex;
         align-items: center;
         gap: 8px;
-        background: #fff;
+        background: var(--text);
         border-color: #d1d5db;
-        color: #374151;
+        color: var(--border);
       }
       .nds-btn-google:hover { background: #f9fafb; }
       .nds-btn-google svg { flex-shrink: 0; }
@@ -164,7 +166,7 @@
 
       /* 닉네임 설정 폼 */
       .nds-nick-form {
-        background: #1e293b;
+        background: var(--card);
         border: 1px solid #f59e0b44;
         border-radius: 8px;
         padding: 14px 16px;
@@ -182,10 +184,10 @@
       }
       .nds-input {
         flex: 1;
-        background: #0f172a;
-        border: 1px solid #334155;
+        background: var(--bg);
+        border: 1px solid var(--border);
         border-radius: 6px;
-        color: #e2e8f0;
+        color: var(--text);
         font-size: 13px;
         padding: 7px 10px;
         outline: none;
@@ -193,10 +195,10 @@
         font-family: inherit;
       }
       .nds-input:focus { border-color: #3b82f6; }
-      .nds-input::placeholder { color: #475569; }
+      .nds-input::placeholder { color: var(--border); }
       .nds-nick-hint {
         font-size: 11px;
-        color: #64748b;
+        color: var(--muted);
         margin-top: 6px;
       }
 
@@ -206,10 +208,10 @@
       }
       .nds-textarea {
         width: 100%;
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--card);
+        border: 1px solid var(--border);
         border-radius: 8px;
-        color: #e2e8f0;
+        color: var(--text);
         font-size: 13px;
         padding: 10px 12px;
         outline: none;
@@ -220,37 +222,37 @@
         line-height: 1.5;
       }
       .nds-textarea:focus { border-color: #3b82f6; }
-      .nds-textarea::placeholder { color: #475569; }
+      .nds-textarea::placeholder { color: var(--border); }
       .nds-write-footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-top: 8px;
       }
-      .nds-char-count { font-size: 11px; color: #64748b; }
+      .nds-char-count { font-size: 11px; color: var(--muted); }
       .nds-char-count.over { color: #f87171; }
 
       /* 댓글 목록 */
       .nds-list { display: flex; flex-direction: column; gap: 2px; }
 
       .nds-comment {
-        background: #1e293b;
-        border: 1px solid #1e293b;
+        background: var(--card);
+        border: 1px solid var(--card);
         border-radius: 8px;
         padding: 12px 14px;
         transition: border-color .15s;
       }
-      .nds-comment:hover { border-color: #334155; }
+      .nds-comment:hover { border-color: var(--border); }
 
       /* 대댓글 */
       .nds-reply {
         margin-top: 0;
         margin-left: 28px;
         background: #172033;
-        border-left: 2px solid #334155 !important;
+        border-left: 2px solid var(--border) !important;
         border-radius: 0 8px 8px 0;
       }
-      .nds-reply:hover { border-color: #334155 !important; border-left-color: #475569 !important; }
+      .nds-reply:hover { border-color: var(--border) !important; border-left-color: var(--border) !important; }
 
       .nds-comment-header {
         display: flex;
@@ -260,17 +262,17 @@
       }
       .nds-comment-nick {
         font-weight: 600;
-        color: #e2e8f0;
+        color: var(--text);
         font-size: 12px;
       }
       .nds-comment-time {
         font-size: 11px;
-        color: #64748b;
+        color: var(--muted);
         flex: 1;
       }
       .nds-comment-edited {
         font-size: 10px;
-        color: #475569;
+        color: var(--border);
         font-style: italic;
       }
       .nds-comment-actions {
@@ -300,20 +302,20 @@
         gap: 4px;
         padding: 3px 9px;
         border-radius: 99px;
-        border: 1px solid #334155;
+        border: 1px solid var(--border);
         background: transparent;
-        color: #64748b;
+        color: var(--muted);
         cursor: pointer;
         font-size: 11px;
         font-family: inherit;
         transition: all .15s;
         line-height: 1;
       }
-      .nds-like-btn:hover:not(:disabled) { border-color: #94a3b8; color: #e2e8f0; }
+      .nds-like-btn:hover:not(:disabled) { border-color: var(--muted); color: var(--text); }
       .nds-like-btn.liked {
         border-color: rgba(59,130,246,.5);
         background: rgba(59,130,246,.1);
-        color: #60a5fa;
+        color: var(--accent);
       }
       .nds-like-btn:disabled { opacity: .45; cursor: default; }
 
@@ -330,18 +332,18 @@
       /* 답글 작성 폼 */
       .nds-reply-form {
         margin-left: 28px;
-        border-left: 2px solid #334155;
+        border-left: 2px solid var(--border);
         padding: 6px 0 6px 12px;
       }
       .nds-reply-form-inner {
         background: #172033;
-        border: 1px solid #334155;
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 10px 12px;
       }
       .nds-reply-form .nds-textarea {
         min-height: 60px;
-        background: #1e293b;
+        background: var(--card);
       }
 
       /* 더보기 */
@@ -352,12 +354,12 @@
 
       /* 로그인 유도 */
       .nds-login-prompt {
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--card);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 16px;
         text-align: center;
-        color: #94a3b8;
+        color: var(--muted);
         font-size: 13px;
         margin-bottom: 20px;
       }
@@ -368,12 +370,12 @@
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%);
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--card);
+        border: 1px solid var(--border);
         border-radius: 8px;
         padding: 10px 20px;
         font-size: 13px;
-        color: #e2e8f0;
+        color: var(--text);
         z-index: 9999;
         pointer-events: none;
         opacity: 0;
@@ -385,13 +387,13 @@
 
       .nds-empty {
         text-align: center;
-        color: #64748b;
+        color: var(--muted);
         font-size: 13px;
         padding: 30px 0;
       }
       .nds-loading-inline {
         text-align: center;
-        color: #64748b;
+        color: var(--muted);
         font-size: 12px;
         padding: 20px 0;
       }
@@ -443,6 +445,7 @@
 
   // ─── 렌더링 ──────────────────────────────────────────────────────────────
   function render() {
+    _renderVersion++;
     _container.innerHTML = '';
 
     // 타이틀
@@ -451,7 +454,7 @@
     title.innerHTML = '댓글' + (_totalCount > 0 ? `<span>${_totalCount}개</span>` : '');
     _container.appendChild(title);
     const notice = document.createElement('p');
-    notice.style.cssText = 'color:#94a3b8;font-size:12px;';
+    notice.style.cssText = 'color:var(--muted);font-size:12px;';
     notice.textContent = '새 서비스는 신규 가입으로 시작하며 기존 댓글·닉네임·추천은 이전되지 않습니다.';
     _container.appendChild(notice);
 
@@ -521,7 +524,7 @@
       bar.appendChild(actions);
     } else {
       const msg = document.createElement('span');
-      msg.style.cssText = 'color:#94a3b8;font-size:12px;';
+      msg.style.cssText = 'color:var(--muted);font-size:12px;';
       msg.textContent = '댓글을 작성하려면 로그인하세요.';
       bar.appendChild(msg);
 
@@ -887,9 +890,11 @@
   }
 
   async function renderList(listWrap) {
+    const version = _renderVersion, pageId = _pageId;
     listWrap.innerHTML = '<div class="nds-loading-inline">불러오는 중...</div>';
     try {
-      const { data, count } = await api.listComments(_pageId, 0, PAGE_SIZE);
+      const { data, count } = await api.listComments(pageId, 0, PAGE_SIZE);
+      if (version !== _renderVersion || pageId !== _pageId || !listWrap.isConnected) return;
 
       // 최상위 댓글 수 기준 offset
       _offset = data.filter(c => !c.parent_id).length;
@@ -897,7 +902,9 @@
 
       // 좋아요 Set 로드
       if (_session && data.length) {
-        _likedSet = await api.getUserLikes(data.map(c => c.id));
+        const liked = await api.getUserLikes(data.map(c => c.id));
+        if (version !== _renderVersion || pageId !== _pageId || !listWrap.isConnected) return;
+        _likedSet = liked;
       } else {
         _likedSet = new Set();
       }
@@ -1043,10 +1050,11 @@
       _container.textContent = '로그인 상태를 확인하지 못했습니다. 새로고침해 주세요. ' + error.message;
       return;
     }
-    _client.onChange(() => {
+    if (!_authSubscribed) _client.onChange(() => {
       _session = null; _profile = null; _isAdmin = false; _likedSet = new Set();
       render();
     });
+    _authSubscribed = true;
 
     render();
   }

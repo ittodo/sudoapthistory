@@ -52,7 +52,7 @@
       for (const path of paths) if (cache.has(path)) {
         L.geoJSON(cache.get(path), {pane:'regions', bubblingMouseEvents:false, interactive:model.regionClickable(zoom),
           filter:f => wanted.has(f.properties.id),
-          style:{color:'#416687',weight:mode === 'apartment' ? .8 : 1.3,opacity:.75,fillColor:'#60a5fa',fillOpacity:.025},
+          style:{color:'#416687',weight:mode === 'apartment' ? .8 : 1.3,opacity:.75,fillColor:'var(--accent)',fillOpacity:.025},
           onEachFeature(f,layer) {
             const region = regions.get(f.properties.id);
             const info = describe(region);

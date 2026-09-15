@@ -17,9 +17,13 @@
 <script>window.APT_BASE='../';</script>
 <link rel="stylesheet" href="../css/main.css?v=20260814-turnover1">
 <link rel="stylesheet" href="../css/stats.css?v=20260814-turnover1">
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
-<div id="loading"><div class="sp"></div><span style="color:#94a3b8;font-size:13px" id="loadMsg">통계 로딩 중...</span></div>
+<div id="loading"><div class="sp"></div><span style="color:var(--muted);font-size:13px" id="loadMsg">통계 로딩 중...</span></div>
 
 <div id="app" class="stats-shell" style="display:none">
   <header class="stats-header">
@@ -29,7 +33,7 @@
     </div>
     <nav class="stats-nav">
       <a href="../" class="pg-btn">아파트 스크리너</a>
-      <a href="../map/" class="pg-btn tab-btn" style="text-decoration:none;color:#93c5fd;">지도</a>
+      <a href="../map/" class="pg-btn tab-btn" style="text-decoration:none;color:var(--accent);">지도</a>
       <a href="../compare/" class="pg-btn">지역 비교</a>
       <a href="../market/" class="pg-btn">시장 동향</a>
       <a href="../trades/" class="pg-btn">실거래가</a>

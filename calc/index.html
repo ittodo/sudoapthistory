@@ -9,33 +9,33 @@
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-  :root { --bg: #0f172a; --card: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --up: #ef4444; --dn: #3b82f6; --accent: #3b82f6; --green: #10b981; }
+  :root {       --dn: #3b82f6; --accent: #3b82f6; --green: #10b981; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 13px; }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .pg-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; text-decoration: none; display: inline-block; }
-  .pg-btn:hover { border-color: var(--muted); color: #fff; }
+  .pg-btn:hover { border-color: var(--muted); color: var(--text); }
 
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-  .card-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
   .card-title .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
 
-  .fi { background: #0f172a; border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; width: 100%; }
+  .fi { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; width: 100%; }
   .fi:focus { outline: none; border-color: var(--accent); }
   .fi[readonly] { opacity: 0.5; cursor: not-allowed; }
   select.fi { cursor: pointer; }
 
   .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
-  .amount-hint { font-size: 10px; color: #60a5fa; margin-top: 3px; min-height: 14px; letter-spacing: -0.2px; }
+  .amount-hint { font-size: 10px; color: var(--accent); margin-top: 3px; min-height: 14px; letter-spacing: -0.2px; }
 
   .grid-inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
   .grid-inputs-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .grid-inputs-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
   .result-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #1e293b; font-size: 13px; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--card); font-size: 13px; }
   .result-row:last-child { border-bottom: none; }
   .result-row .lbl { color: var(--muted); }
   .result-row .val { font-weight: 600; }
@@ -46,21 +46,21 @@
   .stat-item .s-value { font-size: 17px; font-weight: 700; }
 
   .btn { padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
-  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary { background: var(--accent); color: var(--text); }
   .btn-primary:hover { background: #2563eb; }
   .btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--muted); }
-  .btn-secondary:hover { border-color: var(--muted); color: #fff; }
+  .btn-secondary:hover { border-color: var(--muted); color: var(--text); }
 
   .tab-row { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px; width: fit-content; margin-bottom: 14px; }
   .tab-btn { padding: 5px 14px; border-radius: 6px; border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; transition: all .15s; }
-  .tab-btn:hover { color: #fff; }
-  .tab-btn.active { background: var(--accent); color: #fff; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { background: var(--accent); color: var(--text); }
 
   .section-header { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; }
 
   .highlight { color: #fbbf24; font-weight: 700; }
   .highlight-green { color: var(--green); font-weight: 700; }
-  .highlight-blue { color: #60a5fa; font-weight: 700; }
+  .highlight-blue { color: var(--accent); font-weight: 700; }
   .highlight-red { color: #f87171; font-weight: 700; }
 
   .canvas-wrap { position: relative; height: 260px; margin-top: 14px; }
@@ -68,7 +68,7 @@
 
   .divider { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
 
-  .info-box { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #93c5fd; margin-bottom: 12px; }
+  .info-box { background: rgba(59,130,246,.08); border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 10px 12px; font-size: 12px; color: var(--accent); margin-bottom: 12px; }
 
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
@@ -77,12 +77,12 @@
   .scenario-card.best { border-color: var(--green); background: rgba(16,185,129,.05); }
 
   .repay-table { width: 100%; border-collapse: collapse; font-size: 11px; max-height: 240px; overflow-y: auto; display: block; }
-  .repay-table thead th { position: sticky; top: 0; background: #1a2332; padding: 6px 8px; font-size: 10px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
-  .repay-table tbody td { padding: 4px 8px; border-bottom: 1px solid #1e293b; white-space: nowrap; }
+  .repay-table thead th { position: sticky; top: 0; background: var(--surface); padding: 6px 8px; font-size: 10px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .repay-table tbody td { padding: 4px 8px; border-bottom: 1px solid var(--card); white-space: nowrap; }
   .repay-table tbody tr:hover { background: rgba(59,130,246,.06); }
 
   .toggle-section { cursor: pointer; user-select: none; }
-  .toggle-section:hover { color: #fff; }
+  .toggle-section:hover { color: var(--text); }
 
   @media (max-width: 768px) {
     .two-col, .three-col { grid-template-columns: 1fr; }
@@ -96,6 +96,10 @@
     .tab-btn { padding: 5px 10px; font-size: 11px; }
   }
 </style>
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
 <div style="max-width:1200px" class="mx-auto px-3 py-3">
@@ -104,7 +108,7 @@
   <div class="flex items-center justify-between mb-4">
     <div>
       <h1 class="text-lg font-bold text-white">부동산 금융 계산기</h1>
-      <p class="text-xs" style="color:#64748b">대출이자 · 전월세 전환 · 기회비용 비교</p>
+      <p class="text-xs" style="color:var(--muted)">대출이자 · 전월세 전환 · 기회비용 비교</p>
     </div>
     <div class="flex gap-2 items-center">
       <a href="/calc/savings.html" class="pg-btn">예적금 계산기</a>
@@ -116,7 +120,7 @@
   <div class="card">
     <div class="card-title">
       공통 입력
-      <span style="font-size:11px;color:#64748b;font-weight:400">아래 섹션들에서 공통으로 사용됩니다</span>
+      <span style="font-size:11px;color:var(--muted);font-weight:400">아래 섹션들에서 공통으로 사용됩니다</span>
     </div>
     <div class="grid-inputs">
       <div>
@@ -168,7 +172,7 @@
   <!-- 섹션 1: 대출이자 계산기 -->
   <div class="card" id="sec-loan">
     <div class="card-title">
-      <span style="background:rgba(59,130,246,.2);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:12px">1</span>
+      <span style="background:rgba(59,130,246,.2);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px">1</span>
       대출이자 계산기
     </div>
 
@@ -214,7 +218,7 @@
           <div class="canvas-wrap"><canvas id="loanChart"></canvas></div>
         </div>
         <div>
-          <div class="section-header">월별 상환 스케줄 <span style="font-size:11px;color:#64748b;font-weight:400">(처음 24개월)</span></div>
+          <div class="section-header">월별 상환 스케줄 <span style="font-size:11px;color:var(--muted);font-weight:400">(처음 24개월)</span></div>
           <table class="repay-table" id="repayTable">
             <thead><tr>
               <th>월차</th><th>납입원금</th><th>이자</th><th>월납입액</th><th>잔여원금</th>
@@ -364,7 +368,7 @@
       <div>
         <label class="label">예상 집값상승률 (%/년)</label>
         <input type="number" id="o_price_growth" class="fi" value="5.5" step="0.1">
-        <div style="font-size:10px;color:#475569;margin-top:3px">서울 5.5% / 경기 3.3% / 인천 2.7% / 전국 2.4%<br><span style="color:#334155">10년 연평균 CAGR · KB부동산 2015–2025</span></div>
+        <div style="font-size:10px;color:var(--border);margin-top:3px">서울 5.5% / 경기 3.3% / 인천 2.7% / 전국 2.4%<br><span style="color:var(--border)">10년 연평균 CAGR · KB부동산 2015–2025</span></div>
       </div>
       <div>
         <label class="label">투자수익률 (%/년)</label>
@@ -391,12 +395,12 @@
         <div>
           <label class="label">공시가격현실화율 (%)</label>
           <input type="number" id="o_official_ratio" class="fi" value="60" step="1" min="30" max="100">
-          <div style="font-size:10px;color:#475569;margin-top:3px">기본 60% (2024 기준)</div>
+          <div style="font-size:10px;color:var(--border);margin-top:3px">기본 60% (2024 기준)</div>
         </div>
         <div>
           <label class="label">실거주 기간 (년, 양도세용)</label>
           <input type="number" id="o_residency_years" class="fi" value="10" min="0" max="30">
-          <div style="font-size:10px;color:#475569;margin-top:3px">장기보유특별공제 거주분 산정</div>
+          <div style="font-size:10px;color:var(--border);margin-top:3px">장기보유특별공제 거주분 산정</div>
         </div>
       </div>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
@@ -415,7 +419,7 @@
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted)">
         <input type="checkbox" id="o_extra_invest" style="width:14px;height:14px;cursor:pointer">
         여유자금 투자 반영
-        <span style="color:#64748b;font-size:11px">(가처분소득 = 소득 - 소비 - 주거비를 매달 투자풀에 적립)</span>
+        <span style="color:var(--muted);font-size:11px">(가처분소득 = 소득 - 소비 - 주거비를 매달 투자풀에 적립)</span>
       </label>
     </div>
 
@@ -432,7 +436,7 @@
     </div>
   </div>
 
-  <div style="text-align:center;padding:12px;font-size:11px;color:#475569;border-top:1px solid var(--border);margin-top:8px">
+  <div style="text-align:center;padding:12px;font-size:11px;color:var(--border);border-top:1px solid var(--border);margin-top:8px">
     본 계산기는 참고용이며 실제 금융 조건과 다를 수 있습니다. 투자 결정 전 전문가와 상담하세요.
   </div>
 </div>
@@ -582,14 +586,14 @@ function destroyChart(id) {
 }
 
 const CHART_DEFAULTS = {
-  color: '#e2e8f0',
+  color: 'var(--text)',
   plugins: {
-    legend: { labels: { color: '#94a3b8', font: { size: 11 } } },
-    tooltip: { backgroundColor: '#1e293b', titleColor: '#e2e8f0', bodyColor: '#94a3b8', borderColor: '#334155', borderWidth: 1 }
+    legend: { labels: { color: 'var(--muted)', font: { size: 11 } } },
+    tooltip: { backgroundColor: 'var(--card)', titleColor: 'var(--text)', bodyColor: 'var(--muted)', borderColor: 'var(--border)', borderWidth: 1 }
   },
   scales: {
-    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } },
-    y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }
+    x: { ticks: { color: 'var(--muted)', font: { size: 10 } }, grid: { color: 'var(--card)' } },
+    y: { ticks: { color: 'var(--muted)', font: { size: 10 } }, grid: { color: 'var(--card)' } }
   }
 };
 
@@ -807,7 +811,7 @@ function calcCompare() {
   $('c3-result').innerHTML = `
     <div class="two-col">
       <div class="scenario-card">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:#60a5fa">전세대출 거주</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--accent)">전세대출 거주</div>
         <div class="result-box">
           <div class="result-row"><span class="lbl">전세대출금</span><span class="val">${fmt(jLoan)}만원</span></div>
           <div class="result-row"><span class="lbl">월 이자</span><span class="val">${fmt(monthlyJInterest)}만원</span></div>
@@ -826,7 +830,7 @@ function calcCompare() {
     <div class="result-box" style="margin-top:10px">
       <div class="result-row"><span class="lbl">비용 차이</span><span class="val highlight">${fmt(Math.abs(diff))}만원</span></div>
       <div class="result-row"><span class="lbl">더 저렴한 선택</span><span class="val highlight-green">${cheaper}</span></div>
-      <div class="result-row"><span class="lbl" style="font-size:11px;color:#64748b">※ 전세보증금 미회수 리스크, 전세자금 기회비용 미반영</span></div>
+      <div class="result-row"><span class="lbl" style="font-size:11px;color:var(--muted)">※ 전세보증금 미회수 리스크, 전세자금 기회비용 미반영</span></div>
     </div>
   `;
 }
@@ -1067,23 +1071,23 @@ function calcOpportunity() {
   const endRatioC  = income > 0 ? dataRatioC[years].toFixed(1) : null;
 
   const burdenBadge = (init, end) => init !== null
-    ? `<div style="font-size:10px;color:#64748b;margin-top:5px">주거비 부담률 <span style="color:#fbbf24">${init}%</span> → <span style="color:#fbbf24">${end}%</span></div>`
+    ? `<div style="font-size:10px;color:var(--muted);margin-top:5px">주거비 부담률 <span style="color:#fbbf24">${init}%</span> → <span style="color:#fbbf24">${end}%</span></div>`
     : '';
 
   const dispBadge = (inc, con, housing, label) => {
     if (!income) return '';
     const d = inc - con - housing;
     const color = d >= 0 ? '#10b981' : '#f87171';
-    return `<div style="font-size:10px;color:#64748b;margin-top:4px">${label}: 소득 ${fmt(Math.round(inc))} - 소비 ${fmt(Math.round(con))} - 주거비 ${fmt(Math.round(housing))} = <span style="color:${color}">${fmt(Math.round(d))}만</span></div>`;
+    return `<div style="font-size:10px;color:var(--muted);margin-top:4px">${label}: 소득 ${fmt(Math.round(inc))} - 소비 ${fmt(Math.round(con))} - 주거비 ${fmt(Math.round(housing))} = <span style="color:${color}">${fmt(Math.round(d))}만</span></div>`;
   };
 
   $('opp-scenarios').innerHTML = `
     <div class="scenario-card ${finalA === maxFinal ? 'best' : ''}">
-      <div style="font-size:12px;font-weight:700;color:#60a5fa;margin-bottom:6px">시나리오 A: 매매</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:4px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(Math.round(bMonthly))}만${applyTax ? ` + 재산세 ${fmt(Math.round(initMonthlyPropTax))}만` : ''}</div>
-      <div style="font-size:10px;color:#475569;margin-bottom:8px">집값 ${fmt(price)}만 → <span style="color:#60a5fa">${fmt(finalHouseVal)}만</span> (${years}년 후)</div>
-      <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalA)}만원</div>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 ${applyTax ? '세후 ' : ''}순자산${extraInvest ? ' + 투자풀' : ''}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">시나리오 A: 매매</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px">자기자본 ${fmt(equity)}만 + 대출 ${fmt(bLoan)}만 / 월납입 ${fmt(Math.round(bMonthly))}만${applyTax ? ` + 재산세 ${fmt(Math.round(initMonthlyPropTax))}만` : ''}</div>
+      <div style="font-size:10px;color:var(--border);margin-bottom:8px">집값 ${fmt(price)}만 → <span style="color:var(--accent)">${fmt(finalHouseVal)}만</span> (${years}년 후)</div>
+      <div style="font-size:18px;font-weight:700;color:${finalA===maxFinal?'#10b981':'var(--text)'}">${fmt(finalA)}만원</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${years}년 후 ${applyTax ? '세후 ' : ''}순자산${extraInvest ? ' + 투자풀' : ''}</div>
       ${applyTax ? `<div style="font-size:10px;color:#f87171;margin-top:3px">취득세 ${fmt(Math.round(acquisitionTax))}만 · 재산세↗ ${fmt(totalPropTaxFinal)}만 · 양도세 ${fmt(Math.round(capitalGainsTax))}만</div>` : ''}
       ${burdenBadge(initRatioA, endRatioA)}
       ${dispBadge(finalIncome, finalConsume, bMonthly, `${years}년 후`)}
@@ -1091,20 +1095,20 @@ function calcOpportunity() {
     </div>
     <div class="scenario-card ${finalB === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px">시나리오 B: 전세</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(jeonse)}만 → ${fmt(Math.round(finalJeonse))}만 (2년 갱신)</div>
-      <div style="font-size:18px;font-weight:700;color:${finalB===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalB)}만원</div>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
-      ${investTax ? '<div style="font-size:10px;color:#94a3b8;margin-top:2px">투자수익 과세(15.4%) 반영</div>' : ''}
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">보증금 ${fmt(jeonse)}만 → ${fmt(Math.round(finalJeonse))}만 (2년 갱신)</div>
+      <div style="font-size:18px;font-weight:700;color:${finalB===maxFinal?'#10b981':'var(--text)'}">${fmt(finalB)}만원</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${years}년 후 순자산</div>
+      ${investTax ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">투자수익 과세(15.4%) 반영</div>' : ''}
       ${burdenBadge(initRatioB, endRatioB)}
       ${dispBadge(finalIncome, finalConsume, finalJeonse * jLoanRate / 12, `${years}년 후`)}
       ${finalB===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
     </div>
     <div class="scenario-card ${finalC === maxFinal ? 'best' : ''}">
       <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:6px">시나리오 C: 월세</div>
-      <div style="font-size:10px;color:#64748b;margin-bottom:8px">보증금 ${fmt(wDep)}→${fmt(Math.round(finalWDep))}만 / 월세 ${fmt(wRent)}→${fmt(Math.round(finalWRent))}만 (2년 갱신)</div>
-      <div style="font-size:18px;font-weight:700;color:${finalC===maxFinal?'#10b981':'#e2e8f0'}">${fmt(finalC)}만원</div>
-      <div style="font-size:10px;color:#64748b;margin-top:4px">${years}년 후 순자산</div>
-      ${investTax ? '<div style="font-size:10px;color:#94a3b8;margin-top:2px">투자수익 과세(15.4%) 반영</div>' : ''}
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px">보증금 ${fmt(wDep)}→${fmt(Math.round(finalWDep))}만 / 월세 ${fmt(wRent)}→${fmt(Math.round(finalWRent))}만 (2년 갱신)</div>
+      <div style="font-size:18px;font-weight:700;color:${finalC===maxFinal?'#10b981':'var(--text)'}">${fmt(finalC)}만원</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">${years}년 후 순자산</div>
+      ${investTax ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">투자수익 과세(15.4%) 반영</div>' : ''}
       ${burdenBadge(initRatioC, endRatioC)}
       ${dispBadge(finalIncome, finalConsume, finalWRent, `${years}년 후`)}
       ${finalC===maxFinal?'<div style="font-size:10px;color:#10b981;margin-top:6px">★ 최고 수익</div>':''}
@@ -1118,7 +1122,7 @@ function calcOpportunity() {
     data: {
       labels: labelsYear,
       datasets: [
-        { label: 'A: 매매', data: dataA, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.1)', tension: .3, pointRadius: 3 },
+        { label: 'A: 매매', data: dataA, borderColor: 'var(--accent)', backgroundColor: 'rgba(96,165,250,.1)', tension: .3, pointRadius: 3 },
         { label: 'B: 전세', data: dataB, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.1)', tension: .3, pointRadius: 3 },
         { label: 'C: 월세', data: dataC, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,.1)', tension: .3, pointRadius: 3 }
       ]
@@ -1145,7 +1149,7 @@ function calcOpportunity() {
       data: {
         labels: labelsYear,
         datasets: [
-          { label: 'A: 매매', data: dataRatioA, borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,.08)', tension: .3, pointRadius: 3 },
+          { label: 'A: 매매', data: dataRatioA, borderColor: 'var(--accent)', backgroundColor: 'rgba(96,165,250,.08)', tension: .3, pointRadius: 3 },
           { label: 'B: 전세', data: dataRatioB, borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,.08)', tension: .3, pointRadius: 3 },
           { label: 'C: 월세', data: dataRatioC, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,.08)', tension: .3, pointRadius: 3 }
         ]
@@ -1168,9 +1172,9 @@ function calcOpportunity() {
 
   // ── 소득 요약 + 손익분기 ──
   const incomeNote = income > 0
-    ? `<div style="font-size:11px;color:#94a3b8;margin-top:8px;padding:8px 10px;background:rgba(16,185,129,.07);border-radius:6px;border-left:2px solid #10b981">`
-      + `${years}년 후 월 소득 <strong style="color:#fff">${fmt(finalIncome)}만원</strong> · `
-      + `소비 <strong style="color:#fff">${fmt(finalConsume)}만원</strong>`
+    ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;padding:8px 10px;background:rgba(16,185,129,.07);border-radius:6px;border-left:2px solid #10b981">`
+      + `${years}년 후 월 소득 <strong style="color:var(--text)">${fmt(finalIncome)}만원</strong> · `
+      + `소비 <strong style="color:var(--text)">${fmt(finalConsume)}만원</strong>`
       + ` (초기 소득 ${fmt(income)}만 / 소비 ${fmt(consume)}만)</div>`
     : '';
 
@@ -1178,7 +1182,7 @@ function calcOpportunity() {
     ? `<div class="info-box">💡 매매(A) 순자산이 월세(C)를 <strong>${breakeven}년차</strong>에 추월합니다.</div>`
     : `<div class="info-box">💡 ${years}년 내 매매(A)가 월세(C)를 추월하지 않습니다. 집값상승률을 높이거나 거주기간을 늘려보세요.</div>`)
     + incomeNote
-    + `<div style="font-size:11px;color:#475569;margin-top:8px;padding:8px 10px;background:rgba(71,85,105,.15);border-radius:6px;border-left:2px solid #475569">※ B·C 시나리오는 전세·월세 보증금 및 월세를 집값 상승률과 동일하게 2년마다 갱신 반영. 갱신 시 추가 보증금은 여유자본(투자풀)에서 차감, 대출 한도 초과분만 대출 증액 처리.</div>`;
+    + `<div style="font-size:11px;color:var(--border);margin-top:8px;padding:8px 10px;background:rgba(71,85,105,.15);border-radius:6px;border-left:2px solid var(--border)">※ B·C 시나리오는 전세·월세 보증금 및 월세를 집값 상승률과 동일하게 2년마다 갱신 반영. 갱신 시 추가 보증금은 여유자본(투자풀)에서 차감, 대출 한도 초과분만 대출 증액 처리.</div>`;
 
   $('opp-result').style.display = 'block';
 }

@@ -7,17 +7,17 @@
 <meta name="description" content="기업 상세 정보 — 배당 내역, 태그, 시가총액">
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <style>
-:root{--bg:#0f172a;--card:#1e293b;--border:#334155;--text:#e2e8f0;--muted:#94a3b8;--up:#ef4444;--dn:#3b82f6;--accent:#3b82f6;--gold:#f59e0b;--green:#10b981;--purple:#a78bfa;}
+:root{--dn:#3b82f6;--accent:#3b82f6;--gold:#f59e0b;--green:#10b981;--purple:#a78bfa;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
 .fi{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;}
 .fi:focus{outline:none;border-color:var(--accent);}
 .tab-btn{padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;text-decoration:none;display:inline-block;}
-.tab-btn:hover{border-color:var(--muted);color:#fff;text-decoration:none;}
-.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.tab-btn:hover{border-color:var(--muted);color:var(--text);text-decoration:none;}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:var(--text);}
 .badge{display:inline-block;padding:1px 6px;border-radius:99px;font-size:10px;font-weight:600;}
 .b-kospi{background:#7c3aed22;color:#a78bfa;}.b-kosdaq{background:#05966922;color:#6ee7b7;}
-.b-pre{background:#f59e0b22;color:#fbbf24;}.b-post{background:#3b82f622;color:#93c5fd;}
+.b-pre{background:#f59e0b22;color:#fbbf24;}.b-post{background:#3b82f622;color:var(--accent);}
 .b-bb{background:#ef444422;color:#fca5a5;}.b-buy{background:#10b98122;color:#6ee7b7;}
 .section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
 .section-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
@@ -26,41 +26,45 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .info-label{font-size:12px;color:var(--muted);}
 .info-value{font-size:12px;font-weight:600;}
 table{width:100%;border-collapse:collapse;}
-thead th{background:#1a2332;padding:7px 6px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);}
-tbody td{padding:6px;border-bottom:1px solid #1e293b;white-space:nowrap;font-size:12px;}
+thead th{background:var(--surface);padding:7px 6px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap;border-bottom:1px solid var(--border);}
+tbody td{padding:6px;border-bottom:1px solid var(--card);white-space:nowrap;font-size:12px;}
 tbody tr:hover{background:rgba(59,130,246,.06);}
 #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);z-index:999;gap:12px;}
 .sp{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .sa{font-size:10px;opacity:.6;}
 a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
-.footer-disclaimer{text-align:center;padding:12px;font-size:11px;color:#475569;border-top:1px solid var(--border);margin-top:16px;}
+.footer-disclaimer{text-align:center;padding:12px;font-size:11px;color:var(--border);border-top:1px solid var(--border);margin-top:16px;}
 
 /* Tag styles */
-.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--border);background:rgba(59,130,246,.08);color:#93c5fd;margin:3px;}
-.tag-chip.cat-sector,.tag-chip.cat-industry{background:rgba(59,130,246,.07);color:#93c5fd;border-color:rgba(59,130,246,.25);}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;font-size:11px;font-weight:500;border:1px solid var(--border);background:rgba(59,130,246,.08);color:var(--accent);margin:3px;}
+.tag-chip.cat-sector,.tag-chip.cat-industry{background:rgba(59,130,246,.07);color:var(--accent);border-color:rgba(59,130,246,.25);}
 .tag-chip.cat-theme{background:rgba(167,139,250,.07);color:#c4b5fd;border-color:rgba(167,139,250,.25);}
 .tag-chip.cat-custom{background:rgba(16,185,129,.07);color:#6ee7b7;border-color:rgba(16,185,129,.25);}
 .vote-btn{background:none;border:none;cursor:pointer;padding:1px 3px;font-size:11px;color:var(--muted);line-height:1;border-radius:3px;transition:all .15s;}
-.vote-btn:hover{color:#fff;background:rgba(255,255,255,.1);}
+.vote-btn:hover{color:var(--text);background:rgba(255,255,255,.1);}
 .vote-btn.voted-up{color:#10b981;}
-.vote-btn.voted-dn{color:#ef4444;}
+.vote-btn.voted-dn{color:var(--up);}
 .tag-add-row{display:flex;gap:6px;margin-top:10px;}
-.tag-input{flex:1;background:#0f172a;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;}
+.tag-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:12px;}
 .tag-input:focus{outline:none;border-color:var(--accent);}
-.btn-sm{padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s;border:1px solid var(--accent);background:var(--accent);color:#fff;}
+.btn-sm{padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:all .15s;border:1px solid var(--accent);background:var(--accent);color:var(--text);}
 .btn-sm:hover{background:#2563eb;}
 .btn-sm.secondary{background:transparent;border-color:var(--border);color:var(--muted);}
-.btn-sm.secondary:hover{border-color:var(--muted);color:#fff;}
+.btn-sm.secondary:hover{border-color:var(--muted);color:var(--text);}
 .tags-empty{color:var(--muted);font-size:12px;padding:8px 0;}
-.tag-section-note{font-size:10px;color:#475569;margin-top:6px;}
-.error-box{background:#1e293b;border:1px solid #ef444444;border-radius:8px;padding:24px;text-align:center;color:#fca5a5;font-size:13px;}
+.tag-section-note{font-size:10px;color:var(--border);margin-top:6px;}
+.error-box{background:var(--card);border:1px solid #ef444444;border-radius:8px;padding:24px;text-align:center;color:#fca5a5;font-size:13px;}
 @media(max-width:600px){
   .hide-mobile{display:none;}
   .section{padding:12px;}
   #earningsRatios{grid-template-columns:repeat(2,1fr)!important;}
 }
 </style>
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css">
+<script src="/js/apartment-links.js"></script>
+<script defer src="/js/site-shell.js"></script>
 </head>
 <body>
 <div id="loading"><div class="sp"></div><div class="sa">데이터 로딩 중...</div></div>
@@ -520,7 +524,7 @@ function renderEarnings(data) {
     { label: '부채비율', value: r.debt_ratio != null ? fmtPct(r.debt_ratio) : '—' },
   ];
   document.getElementById('earningsRatios').innerHTML = cards.map(c =>
-    `<div style="background:#0f172a;border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;">
+    `<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;text-align:center;">
       <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">${c.label}</div>
       <div style="font-size:14px;font-weight:700;">${c.value}</div>
     </div>`

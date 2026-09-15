@@ -6,7 +6,7 @@
 
 - `main` push → Cloudflare Production: 운영 환경 검사 → 타입·기능·자산 검사 → Worker/정적 자산 배포 → 같은 SHA·manifest·공개 파일 해시·없는 JSON 404 확인 → Google 로그인 시작 확인.
 - `cloudflare-staging` push → Cloudflare Staging: 시험 DB와 Worker만 사용한다. 운영 활성화 여부는 시험 대상 검사의 조건이 아니다.
-- 운영 배포는 DB migration, 데이터 초기화, secret 생성/교체를 하지 않는다. 현재 D1과 기존 회원/관리자/세션을 보존한다. 스키마 변경은 별도 절차가 필요하다.
+- 운영 배포는 일반 DB migration, 데이터 초기화, secret 생성/교체를 하지 않는다. 2026-09-15 사용자 승인에 따른 `board_pins` 테이블 추가만 고정된 SQL·운영 대상 검사 후 실행하며, 기존 테이블이면 검증만 한다. 현재 D1과 기존 회원/관리자/세션을 보존한다. 스키마 변경은 별도 절차가 필요하다.
 - 운영 `AUTH_ENABLED=true`, `MAINTENANCE=false`, `WITHDRAWAL_ENABLED=true`를 소스에 저장했다. 배포마다 임시 옵션으로 켜는 방식은 종료한다.
 - Cloudflare Custom Domain과 www 리디렉션은 대시보드에서 관리한다. Wrangler `routes`/`route`는 지정하지 않는다. 설치된 Wrangler는 custom domain 목록이 비어 있으면 도메인 게시를 실행하지 않는다. 배포 후 실제 운영 도메인 접근으로 연결 보존을 검증한다. CI 토큰에 DNS·결제 권한을 추가하지 않는다.
 - `tools/deployment-provider.json`과 저장소 변수 `NODESTREAM_DEPLOYMENT_PROVIDER`는 `cloudflare`다. 기존 Pages 완료 후 캐시 Purge 작업은 건너뛴다. GitHub Pages와 Supabase 자체는 아직 삭제하지 않는다.

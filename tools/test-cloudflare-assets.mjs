@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {publicAsset,runtime,injection} from './build-cloudflare-assets.mjs';
 test('allowlist preserves public assets but excludes internal files',()=>{
-  for(const p of ['data/earnings/000020.json','data/tx/고양시 덕양구.json','data/polygen/index.packed.bin','index.html','js/main-app.js','policy.html'])assert.equal(publicAsset(p),true,p);
+  for(const p of ['apartment/index.html','board/index.html','data/apartments/00.json','data/earnings/000020.json','data/tx/고양시 덕양구.json','data/polygen/index.packed.bin','index.html','js/main-app.js','policy.html'])assert.equal(publicAsset(p),true,p);
   for(const p of ['docs/secret.html','supabase/schema.sql','.env','data/private.db','data/foo.json.bak','tools/tool.js','cloudflare/src/index.js','data/div/a.json','data/.company-export.json','data/credentials.json','data/logs/a.json'])assert.equal(publicAsset(p),false,p);
 });
 test('unapproved privacy drafts stay out of public assets and do not load external resources',()=>{

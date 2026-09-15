@@ -20,7 +20,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck && npm run test:api
-      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs
+      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
       - run: npm run build
   deploy:
