@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../js/apartment-links.js',import.meta.url),'utf8');
-function environment({wide=true,embedded=false}={}){
- const origin='https://site.test';let href=origin+(embedded?'/apartment/?id=A&view=panel&panelKey=child':'/?filter=kept');
+function environment({wide=true,embedded=false,path}={}){
+ const origin='https://site.test';let href=origin+(path||(embedded?'/apartment/?id=A&view=panel&panelKey=child':'/?filter=kept'));
  const events={},messages=[],navigations=[],classes=new Set();let sequence=0;
  const classList={add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x)};
  const location={get href(){return href;},get origin(){return origin;},get pathname(){return new URL(href).pathname;},get search(){return new URL(href).search;},get hash(){return new URL(href).hash;},assign:x=>navigations.push(x),replace:x=>navigations.push(x)};
@@ -13,7 +13,7 @@ function environment({wide=true,embedded=false}={}){
  const panel={style:{},setAttribute(){},querySelector:s=>s==='iframe'?frame:buttons[s],remove(){}};
  const host={classList};
  const document={readyState:'loading',activeElement:null,body:{classList,append(){}},createElement:()=>panel,querySelector:s=>s==='.nodo-header'?{getBoundingClientRect:()=>({bottom:80})}:host,querySelectorAll:()=>[],addEventListener:(name,fn)=>{events['document:'+name]=fn;}};
- const context={URL,URLSearchParams,Event:class{},document,location,navigator:{clipboard:{writeText:async()=>{}}},sessionStorage:{setItem(){}},crypto:{randomUUID:()=>String(++sequence)},history:{state:null,pushState(_s,_t,u){href=String(u);},replaceState(_s,_t,u){href=String(u);}},matchMedia:()=>({matches:wide,addEventListener(){}}),addEventListener:(name,fn)=>{events[name]=fn;},dispatchEvent(){}};
+ const context={URL,URLSearchParams,Event:class{},document,location,navigator:{clipboard:{writeText:async()=>{}}},sessionStorage:{setItem(){},getItem(){return null;}},crypto:{randomUUID:()=>String(++sequence)},history:{state:null,pushState(_s,_t,u){href=String(u);},replaceState(_s,_t,u){href=String(u);}},matchMedia:()=>({matches:wide,addEventListener(){}}),addEventListener:(name,fn)=>{events[name]=fn;},dispatchEvent(){}};
  context.window=context;context.parent=embedded?{location:{origin,pathname:'/',search:'?detail=selected',hash:''},postMessage:(d,o)=>messages.push({d,o})}:context;
  vm.createContext(context);vm.runInContext(source,context);return{context,events,messages,navigations,frame,get href(){return href;},key:()=>new URL(frame.src).searchParams.get('panelKey')};
 }
@@ -29,4 +29,21 @@ test('mobile selection opens a normal detail URL and preserves the old row ident
 });
 test('embedded detail publishes clean share URLs and returns login to its parent search',()=>{
  const e=environment({embedded:true});e.context.NodoApartmentLinks.sync();assert.equal(e.messages[0].d.url,'/apartment/?id=A');assert.equal(e.messages[0].d.key,'child');assert.equal(e.messages[0].o,'https://site.test');assert.equal(e.context.NodoApartmentLinks.returnURL(),'/?detail=selected');e.context.NodoApartmentLinks.navigate('/auth/google?returnTo=x');assert.equal(e.messages[1].d.type,'nodo:detail-navigate');assert.equal(e.navigations.length,0);
+});
+
+test('direct desktop detail is restored in the search workspace without losing filters or comments',()=>{
+ const e=environment({path:'/apartment/?row=42&area=85&tab=rent&rentType=monthly&comment=7'});
+ const target=new URL(e.navigations[0],'https://site.test');
+ assert.equal(target.pathname,'/');
+ assert.equal(target.searchParams.get('detail'),'/apartment/?row=42&area=85&tab=rent&rentType=monthly&comment=7');
+});
+test('explicit full screen and mobile direct entry stay standalone',()=>{
+ for(const args of [{path:'/apartment/?id=A&view=full'},{wide:false,path:'/apartment/?id=A'}]){
+  assert.equal(environment(args).navigations.length,0);
+ }
+});
+test('a detail-to-detail navigation keeps its desktop host',()=>{
+ const e=environment();e.context.NodoApartmentLinks.go({id:'A'});
+ e.events.message({origin:'https://site.test',source:e.frame.contentWindow,data:{type:'nodo:detail-navigate',key:e.key(),url:'/apartment/?id=B&tab=comments&comment=7'}});
+ assert.equal(e.navigations.length,0);assert.equal(new URL(e.frame.src).searchParams.get('id'),'B');
 });
