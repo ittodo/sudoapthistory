@@ -3,11 +3,11 @@
   const memberScript=document.createElement('script');memberScript.src='/js/member-library.js';memberScript.defer=true;document.head.append(memberScript);
   'use strict';
   const path = location.pathname;
-  const section = path.startsWith('/div') ? 'company' : /\/(calc|savings)/.test(path) ? 'calc' : path.startsWith('/board') ? 'board' : /^\/(library|ranking)/.test(path)?'library':'housing';
+  const section = path.startsWith('/admin') ? 'admin' : path.startsWith('/div') ? 'company' : /\/(calc|savings)/.test(path) ? 'calc' : path.startsWith('/board') ? 'board' : /^\/(library|ranking)/.test(path)?'library':'housing';
   if(!document.querySelector('link[href="/css/responsive.css"]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/css/responsive.css';document.head.append(style);}
   document.body.dataset.siteSection=section;
   document.body.dataset.sitePage=path==='/'?'search':path.split('/').filter(Boolean)[0].replace('.html','');
-  const groups = {library:[['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']],housing:[['단지 검색','/'],['지도','/map/'],['지역·단지 비교','/compare/'],['시장 동향','/market/'],['가격대 통계','/stats/'],['실거래가','/trades/'],['정책','/policy.html']],company:[['배당·소각','/div/'],['기업 목록','/div/stocks/']],calc:[['부동산 계산기','/calc/'],['예적금 계산기','/calc/savings.html']],board:[]};
+  const groups = {admin:[],library:[['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']],housing:[['단지 검색','/'],['지도','/map/'],['지역·단지 비교','/compare/'],['시장 동향','/market/'],['가격대 통계','/stats/'],['실거래가','/trades/'],['정책','/policy.html']],company:[['배당·소각','/div/'],['기업 목록','/div/stocks/']],calc:[['부동산 계산기','/calc/'],['예적금 계산기','/calc/savings.html']],board:[]};
   const same = href => path.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'') === href.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'');
   const anchor = (label,href,current) => `<a href="${href}"${current?' aria-current="page"':''}>${label}</a>`;
   const header = document.createElement('header');header.className='nodo-header';
@@ -24,7 +24,7 @@
     const nodes=[...card.childNodes],at=nodes.indexOf(result);for(const node of nodes.slice(0,at))inputs.append(node);
     result.classList.add('calc-output');const placeholder=document.createElement('div');placeholder.className='calc-placeholder';placeholder.textContent='조건을 입력하고 계산하면 이곳에 결과가 표시됩니다.';split.append(inputs,result,placeholder);card.prepend(split);
   }
-  const layoutRoot=path.startsWith('/board')?document.querySelector('main'):path.startsWith('/account')?document.getElementById('main-content'):path.startsWith('/admin')?document.getElementById('screen-app'):null;
+  const layoutRoot=path.startsWith('/board')?document.querySelector('main'):path.startsWith('/account')?document.getElementById('main-content'):null;
   if(layoutRoot){const layout=document.createElement('div'),nav=document.createElement('nav'),body=document.createElement('div');layout.className='page-layout';nav.className='page-nav';nav.setAttribute('aria-label','페이지 메뉴');body.className='page-body';
     const links=path.startsWith('/board')?[['전체 글','/board/'],['내 글·댓글','/account/']]:path.startsWith('/admin')?[['댓글 관리','#stats-area'],['단지 이용 통계','#member-admin-analytics']]:[['프로필·설정','#display-nickname'],['내 글·댓글','#member-activity'],['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']];
     for(const [label,href] of links){const a=document.createElement('a');a.textContent=label;a.href=href;nav.append(a);}body.append(...layoutRoot.childNodes);layout.append(nav,body);layoutRoot.append(layout);
@@ -36,7 +36,7 @@
   retiredNav.forEach(p=>navPaths.add(p));
   // Hide only duplicated navigation links in legacy headers, never links in data/results.
   for(const a of document.querySelectorAll('body a')) {
-    if(a.closest('.nodo-header')||a.closest('table,#dp,#detail,#detailPanel'))continue;
+    if(a.closest('.nodo-header,.admin-heading')||a.closest('table,#dp,#detail,#detailPanel'))continue;
     const inHeader=a.closest('header,.topbar,.site-header')||legacyTop?.contains(a);
     if(inHeader && navPaths.has(new URL(a.href,location.href).pathname.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'')))a.classList.add('nodo-legacy-nav');
   }

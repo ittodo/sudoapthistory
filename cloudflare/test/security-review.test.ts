@@ -18,7 +18,7 @@ test('independent security regression: access control, private fields and erasur
     const db = await mf.getD1Database('DB');
     await db.exec(readFileSync('cloudflare/migrations/0001_initial.sql', 'utf8'));
     for(const sql of readFileSync('cloudflare/migrations/0002_withdrawal_requests.sql','utf8').split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
-    for(const file of ['0003_board_pins.sql','0004_member_library.sql'])for(const sql of readFileSync('cloudflare/migrations/'+file,'utf8').split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
+    for(const file of ['0003_board_pins.sql','0004_member_library.sql','0005_admin_audit.sql'])for(const sql of readFileSync('cloudflare/migrations/'+file,'utf8').split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(sql).run();
     const now = Math.floor(Date.now()/1000);
     for (const [id,role] of [['alice','user'],['bob','user'],['admin','admin']]) {
       await db.prepare('INSERT INTO users(id,google_sub,email,role) VALUES(?,?,?,?)').bind(id, 'google-'+id, id+'@example.invalid', role).run();
@@ -29,7 +29,7 @@ test('independent security regression: access control, private fields and erasur
       ...(who?{Cookie:'__Host-nodo_session=token-'+who,'X-CSRF-Token':digest('csrf:token-'+who)}:{}),
       ...(method==='GET'?{}:{Origin:origin,'Content-Type':'application/json'}), ...extra
     }, ...(payload===undefined?{}:{body:JSON.stringify(payload)}) });
-    assert.equal((await request('/api/admin/stats')).status,403);
+    assert.equal((await request('/api/admin/stats')).status,401);
     assert.equal((await request('/api/admin/comments','alice')).status,403);
     assert.equal((await request('/api/profile','alice','PATCH',{nickname:'alice2',role:'admin',user_id:'bob'},{Origin:'https://evil.invalid'})).status,403);
     assert.equal((await request('/api/profile','alice','PATCH',{nickname:'alice2'},{'X-CSRF-Token':'wrong'})).status,403);

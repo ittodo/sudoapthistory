@@ -1,3 +1,4 @@
+import {operationsMetadata} from './operations-metadata.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,rmSync} from 'node:fs';
@@ -41,6 +42,7 @@ export function build(root, output, sha) {
     if(bytes.length>25*1024*1024) throw new Error(`Asset exceeds 25 MiB: ${path}`);
     assets.push({path,bytes});
   }
+  if(existsSync(join(root,'js/admin-center.js'))) assets.push({path:'data/operations-status.json',bytes:Buffer.from(JSON.stringify(operationsMetadata(root)))});
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));

@@ -1,3 +1,4 @@
+import {adminCenter,cleanupAdminAudit} from './admin-center';
 import {auth} from './auth';
 import {libraryRoute,collectEvent,cleanupAnalytics} from './member-library';
 import {moderationCutoff,purgeExpiredComments} from './comment-retention';
@@ -39,6 +40,7 @@ async function route(r:Request,env:Env):Promise<Response>{
   if(r.headers.get('X-CSRF-Token')!==user.csrfToken)throw new HttpError(403,'CSRF','페이지를 새로고침해 주세요.');
   await rate(env.DB,'write:'+uid,30,60);
  }
+ const admin=await adminCenter(r,env,user);if(admin)return admin;
  const library=await libraryRoute(r,env,user);if(library)return library;
  if(path==='/api/logout'&&method==='POST'){await statement(env,'DELETE FROM sessions WHERE token_hash=?',await hash(cookie(r,'__Host-nodo_session'))).run();const res=json({ok:true});res.headers.append('Set-Cookie',setCookie('__Host-nodo_session','',0));return res}
  if(path==='/api/profile'){
@@ -173,5 +175,5 @@ export default {
   // needs same-origin; Google redirects and callbacks must still leak no URL.
   if(path.startsWith('/auth/'))response.headers.set('Referrer-Policy',path==='/auth/google'&&r.method==='GET'&&response.status===200?'same-origin':'no-referrer');
   return response}catch(error){if(error instanceof HttpError)return json({error:{code:error.code,message:error.message}},error.status);if(error instanceof Error&&error.message.includes('UNIQUE constraint'))return json({error:{code:'CONFLICT',message:'이미 사용 중인 값입니다.'}},409);return json({error:{code:'INTERNAL',message:'요청을 처리할 수 없습니다.'}},500)}},
- async scheduled(_event:ScheduledEvent,env:Env){await cleanupAnalytics(env.DB);await cleanWithdrawals(env);await purgeAccounts(env.DB);await purgeExpiredComments(env.DB);await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
+ async scheduled(_event:ScheduledEvent,env:Env){await cleanupAdminAudit(env.DB);await cleanupAnalytics(env.DB);await cleanWithdrawals(env);await purgeAccounts(env.DB);await purgeExpiredComments(env.DB);await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
 };

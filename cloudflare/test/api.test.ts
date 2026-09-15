@@ -8,6 +8,7 @@ import {purgeExpiredComments,moderationCutoff} from '../src/comment-retention';
 import {readyWithdrawal,withdrawalKey} from './withdrawal-fixture';
 import {purgeAccounts,expireAccounts,issueRecovery,RECOVERY_SECONDS} from '../src/account-lifecycle';
 import {cleanupAnalytics} from '../src/member-library';
+import {cleanupAdminAudit} from '../src/admin-center';
 
 const origin='https://test.example';
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
@@ -21,6 +22,7 @@ async function setup(maintenance=false){
  for(const statement of (await readFile('cloudflare/migrations/0002_withdrawal_requests.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  for(const statement of (await readFile('cloudflare/migrations/0003_board_pins.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  for(const statement of (await readFile('cloudflare/migrations/0004_member_library.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
+ for(const statement of (await readFile('cloudflare/migrations/0005_admin_audit.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  async function withdrawal(headers:Record<string,string>){
   const sessionToken=headers.Cookie.split('=')[1];const uid=sessionToken.slice('session-token-'.length);
   const receipt=await readyWithdrawal(db,origin,uid,sessionToken);
@@ -37,6 +39,37 @@ async function setup(maintenance=false){
   return mf.dispatchFetch(origin+path,{method,redirect:'manual',headers:{...headers,...(data===undefined?{}:{'Content-Type':'application/json'})},body:data===undefined?undefined:JSON.stringify(data)})}
  return {mf,db,user,request,mock,options,withdrawal};
 }
+test('admin center enforces access, filters, atomic audit, retries, conflicts and retention',async()=>{
+ const s=await setup();try{
+  const admin=await s.user('ops','admin'),author=await s.user('writer'),other=await s.user('ops2','admin');
+  for(const path of ['/api/admin/overview','/api/admin/audit','/api/admin/status','/api/admin/comments']){assert.equal((await s.request(path)).status,401);assert.equal((await s.request(path,'GET',undefined,author)).status,403);}
+  await s.db.prepare("INSERT INTO comments(id,user_id,page_id,content) VALUES(900,'writer','community','운영 공지 테스트\n본문'),(901,'writer','apt_0','단지 의견')").run();
+  const listing=async()=>await(await s.request('/api/admin/comments?kind=posts&q=운영','GET',undefined,admin)).json() as any;
+  const initial=await listing();assert.equal(initial.count,1);assert.equal(initial.data[0].id,900);
+  assert.equal((await(await s.request('/api/admin/comments?kind=comments&scope=apartment','GET',undefined,admin)).json() as any).count,1);
+  const payload={hidden:true,category:'spam',detail:'시험 사유',expectedRevision:initial.data[0].revision},headers={...admin,'Idempotency-Key':'same-request'};
+  assert.equal((await s.request('/api/admin/comments/900/moderation','PUT',payload,headers)).status,200);
+  assert.equal((await s.request('/api/admin/comments/900/moderation','PUT',payload,headers)).status,200);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM admin_audit_log').first<any>())!.n,1);
+  assert.equal((await s.request('/api/admin/comments/900/moderation','PUT',{...payload,hidden:false},headers)).status,409);
+  assert.equal((await s.request('/api/admin/comments/900/moderation','PUT',{hidden:false,expectedRevision:initial.data[0].revision},other)).status,409);
+  const latest=(await listing()).data[0];assert.equal((await s.request('/api/admin/comments/900/moderation','PUT',{hidden:false,expectedRevision:latest.revision},other)).status,200);
+  const current=(await listing()).data[0];
+  const attempts=await Promise.all([s.request('/api/board/posts/900/pin','PUT',{pinned:true,expectedRevision:current.revision},admin),s.request('/api/admin/comments/900/moderation','PUT',{hidden:true,category:'other',expectedRevision:current.revision},other)]);
+  assert.deepEqual(attempts.map(x=>x.status).sort(),[200,409]);
+  const before=(await s.db.prepare('SELECT count(*) n FROM admin_audit_log').first<any>())!.n;
+  await s.db.prepare("CREATE TRIGGER fail_admin_update BEFORE UPDATE ON comments WHEN OLD.id=901 BEGIN SELECT RAISE(ABORT,'test rollback'); END").run();
+  assert.equal((await s.request('/api/admin/comments/901/moderation','PUT',{hidden:true,category:'spam'},admin)).status,500);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM admin_audit_log').first<any>())!.n,before);
+  assert.equal((await s.db.prepare('SELECT moderated_at FROM comments WHERE id=901').first<any>())!.moderated_at,null);
+  const audit=await(await s.request('/api/admin/audit','GET',undefined,admin)).json() as any;assert.equal(audit.count,before);assert.ok(!JSON.stringify(audit).includes('본문'));assert.ok(!JSON.stringify(audit).includes('@example.test'));
+  const overview=await(await s.request('/api/admin/overview?days=1','GET',undefined,admin)).json() as any;assert.equal(overview.counts.posts,1);assert.equal(overview.counts.comments,1);
+  const status=await(await s.request('/api/admin/status','GET',undefined,admin)).json() as any;assert.equal(status.gitSha,'abc123');assert.ok(status.data.some((x:any)=>x.status==='error'));
+  await s.db.prepare("DELETE FROM users WHERE id='ops2'").run();assert.equal((await s.db.prepare("SELECT count(*) n FROM admin_audit_log WHERE actor_id='ops2'").first<any>())!.n,0);
+  await s.db.prepare("UPDATE admin_audit_log SET created_at='2000-01-01T00:00:00.000Z'").run();await cleanupAdminAudit(s.db);assert.equal((await s.db.prepare('SELECT count(*) n FROM admin_audit_log').first<any>())!.n,0);
+ }finally{await s.mf.dispose();}
+});
+
 test('member library enforces ownership, one heart per member, optimistic writes and withdrawal purge',async()=>{
  const s=await setup();try{
   const a=await s.user('librarya'),b=await s.user('libraryb');

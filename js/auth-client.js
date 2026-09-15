@@ -10,6 +10,8 @@
     if (!path.startsWith('/api/')) throw new Error('허용되지 않은 API 경로입니다.');
     const method = options.method || 'GET';
     const headers = { Accept: 'application/json', ...options.headers };
+    const auditSignature=method==='PUT'&&(/\/api\/admin\/comments\/\d+\/moderation$/.test(path)||/\/api\/board\/posts\/\d+\/pin$/.test(path))?path+'\n'+options.body:null;
+    if(auditSignature&&!headers['Idempotency-Key']){if(!creates.has(auditSignature))creates.set(auditSignature,crypto.randomUUID());headers['Idempotency-Key']=creates.get(auditSignature);}
     if (method !== 'GET') {
       if (!state) await getState();
       if (!state?.session || !state.csrfToken) throw new Error('로그인이 필요합니다.');
@@ -20,12 +22,14 @@
     let result;
     try { result = await response.json(); } catch (_) { throw new Error('서버 응답을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.'); }
     if (!response.ok) {
+      if(auditSignature&&response.status<500)creates.delete(auditSignature);
       const error = new Error(result.error?.message || result.message || '요청을 처리하지 못했습니다.');
       error.code = result.error?.code || result.code;
       error.status = response.status;
       if (response.status === 401) { state = null; listeners.forEach(fn => fn(null)); }
       throw error;
     }
+    if(auditSignature)creates.delete(auditSignature);
     return result;
   }
   async function getState(refresh = false) {
