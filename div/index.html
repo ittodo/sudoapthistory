@@ -1303,7 +1303,7 @@ function dartL(r){return r?`<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpN
 function fmtAmt(v){if(!v)return'-';if(v>=1e12)return(v/1e12).toFixed(1)+'조';if(v>=1e8)return(v/1e8).toFixed(0)+'억';if(v>=1e4)return(v/1e4).toFixed(0)+'만';return v.toLocaleString();}
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
-init();
+const divDataReady=init();
 </script>
 
 <!-- 전역 댓글 섹션 -->
@@ -1312,9 +1312,9 @@ init();
 <script src="../js/auth-client.js"></script>
 <script src="../js/comments.js"></script>
 <script>
-  initComments('div','#comments-section');
-  const requestedCompany=new URLSearchParams(location.search).get('company');if(requestedCompany&&tickerMeta[requestedCompany])showDetail(requestedCompany,tickerMeta[requestedCompany].name||requestedCompany);
+  const divCommentsReady=initComments('div','#comments-section');
   window._divCommentsReady=true;
+  Promise.all([divDataReady,divCommentsReady]).then(()=>{const requestedCompany=new URLSearchParams(location.search).get('company');if(requestedCompany&&tickerMeta[requestedCompany])showDetail(requestedCompany,tickerMeta[requestedCompany].name||requestedCompany);});
 </script>
 <footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:var(--accent)">개인정보처리방침 · nodostream.com</a></footer>
 </body>

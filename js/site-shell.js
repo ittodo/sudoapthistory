@@ -3,6 +3,7 @@
   'use strict';
   const path = location.pathname;
   const section = path.startsWith('/div') ? 'company' : /\/(calc|savings)/.test(path) ? 'calc' : path.startsWith('/board') ? 'board' : /^\/(library|ranking)/.test(path)?'library':'housing';
+  document.body.dataset.siteSection=section;
   const groups = {library:[['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']],housing:[['단지 검색','/'],['지도','/map/'],['지역·단지 비교','/compare/'],['시장 동향','/market/'],['가격대 통계','/stats/'],['실거래가','/trades/'],['전월세','/trades/contracts.html'],['단지정보','/kapt-v2.html'],['정책','/policy.html']],company:[['배당·소각','/div/'],['기업 목록','/div/stocks/']],calc:[['부동산 계산기','/calc/'],['예적금 계산기','/calc/savings.html']],board:[]};
   const same = href => path.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'') === href.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'');
   const anchor = (label,href,current) => `<a href="${href}"${current?' aria-current="page"':''}>${label}</a>`;
