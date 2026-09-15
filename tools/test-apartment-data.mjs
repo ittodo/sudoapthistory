@@ -1,8 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarize} from './build-apartment-data.mjs';
+import {summarize,districtFromAddress} from './build-apartment-data.mjs';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+
+test('metadata-only apartments keep district filters separate from neighborhood names',()=>{
+ assert.equal(districtFromAddress('서울 강남구 역삼동 123'),'강남구');
+ assert.equal(districtFromAddress('경기 고양시 덕양구 지축동 123'),'고양시 덕양구');
+ assert.equal(districtFromAddress('경기 양평군 양평읍 123'),'양평군');
+});
 test('recent average expands within the latest year, excludes cancelled and missing trades',()=>{
  const tx=(date,price,flags=0)=>({date,price,flags,row:0,order:0});
  const result=summarize([tx(20260911,84500),tx(20260830,87000),tx(20260821,85000),tx(20260915,999999,2),tx(20260914,888888,4),tx(20250101,50000)]);

@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+export function districtFromAddress(address){const parts=String(address||'').trim().split(/\s+/).slice(1);return parts.filter((p,i)=>i<2&&/[시군구]$/.test(p)).join(' ');}
 export function summarize(rows) {
   const valid=rows.filter(t=>!(t.flags&6)&&t.price>0).sort((a,b)=>b.date-a.date||a.row-b.row||a.order-b.order);
   const latest=valid[0]||null, yearly={}, monthly={};
@@ -53,7 +54,7 @@ export function buildApartmentData(root,{verify=false}={}) {
     for(const row of e.rows)legacy[row.i]=[e.id,row.a];
   }
   const outputs={};
-  for(const [key,data] of Object.entries(shards))outputs[`data/apartments/summary/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{id,name:a.name,region:a.region,district:a.areas[0]?.rows[0]?.district||a.address.split(' ').slice(1,3).join(' '),address:a.address,updated:a.updated,rental:a.rental,areas:a.areas.map(x=>({area:x.area,latest:x.latest,lastFive:x.lastFive,recent:x.recent}))}])));
+  for(const [key,data] of Object.entries(shards))outputs[`data/apartments/summary/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{id,name:a.name,region:a.region,district:a.areas[0]?.rows[0]?.district||districtFromAddress(a.address),address:a.address,updated:a.updated,rental:a.rental,areas:a.areas.map(x=>({area:x.area,latest:x.latest,lastFive:x.lastFive,recent:x.recent}))}])));
   for(const [key,data] of Object.entries(shards))outputs[`data/apartments/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{...a,areas:a.areas.map(({lastFive,...rest})=>rest)}])));
   const files=Object.fromEntries(Object.entries(outputs).map(([path,data])=>[path,sha(data)]));
   outputs['data/apartments/index.json']=JSON.stringify({version:1,updated:index.meta.updated,count:entities.length,lookup,legacy,sources:inputHashes,shards:files,ambiguous});
