@@ -2237,6 +2237,17 @@ function switchArea(dataIdx){
 }
 
 async function renderDetail(x){
+  const rentalLink=document.getElementById('rental-link');
+  if(rentalLink){
+    rentalLink.replaceChildren();
+    const seq=String(x.as||'');
+    if(/^\d{5}-/.test(seq)){
+      const link=document.createElement('a');
+      link.href='/trades/contracts.html?'+new URLSearchParams({property:'apartment',category:'all-rent',lawd:seq.slice(0,5),entity:seq});
+      link.textContent='이 단지 전월세 계약 내역·월별 추이 →';
+      rentalLink.append(link);
+    }
+  }
   let prices=getPrices(x.i);
   // 통합 엔트리면 si 중 아무 가격이라도 있으면 진행
   if(!prices&&x._merged&&x.si){
