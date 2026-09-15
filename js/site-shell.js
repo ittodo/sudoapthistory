@@ -1,4 +1,5 @@
 (() => {
+  if(!window.NodoApartmentLinks){const links=document.createElement('script');links.src='/js/apartment-links.js';document.head.append(links);}
   const memberScript=document.createElement('script');memberScript.src='/js/member-library.js';memberScript.defer=true;document.head.append(memberScript);
   'use strict';
   const path = location.pathname;

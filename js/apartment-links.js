@@ -1,16 +1,37 @@
-/* All callers use stable source IDs. Only the detail resolver canonicalizes publications. */
+/* One detail view, hosted beside desktop results or opened as a full page. */
 (() => {
-  const url = ({id,row,area,tab='overview'}) => {
-    const p=new URLSearchParams();
-    if(id)p.set('id',id);else if(row!=null)p.set('row',row);
-    if(area!=null && area!=='')p.set('area',area);
-    p.set('tab',tab);
-    return '/apartment/?'+p;
-  };
-  const go = (selection,replace=false) => {
-    const from=new URL(location.href);['a','ar','i','k'].forEach(k=>{const h=new URLSearchParams(from.hash.slice(1));h.delete(k);from.hash=h.toString();});
-    try{sessionStorage.setItem('nodoApartmentReturn',from.pathname+from.search+from.hash);}catch{}
-    location[replace?'replace':'assign'](url(selection));
-  };
-  window.NodoApartmentLinks={url,go};
+  const embedded=(()=>{try{return window.parent!==window&&parent.location.origin===location.origin&&new URLSearchParams(location.search).get('view')==='panel';}catch{return false;}})();
+  const desktop=matchMedia('(min-width:1200px)');
+  const clean=value=>{const u=new URL(value,location.href);u.searchParams.delete('view');u.searchParams.delete('panelKey');return u.pathname+u.search+u.hash;};
+  const url=({id,row,area,tab='overview'})=>{const p=new URLSearchParams();if(id)p.set('id',id);else if(row!=null)p.set('row',row);if(area!=null&&area!=='')p.set('area',area);p.set('tab',tab);return '/apartment/?'+p;};
+  const send=(type,data={})=>parent.postMessage({type,...data,key:new URLSearchParams(location.search).get('panelKey')},location.origin);
+  const navigate=href=>{if(embedded)send('nodo:detail-navigate',{url:href});else location.assign(href);};
+  const returnURL=()=>embedded?parent.location.pathname+parent.location.search+parent.location.hash:clean(location.href);
+  const sync=()=>{if(embedded)send('nodo:detail-state',{url:clean(location.href),title:document.title});};
+  let panel,frame,trigger,currentURL='',host,frameKey='';
+  const source=()=>location.pathname.startsWith('/map')?'map':location.pathname.startsWith('/library')?'favorites':location.pathname.startsWith('/ranking')?'ranking':location.pathname==='/'?'search':'internal';
+  function storedReturn(){const from=new URL(location.href);from.searchParams.delete('detail');const h=new URLSearchParams(from.hash.slice(1));['a','ar','i','k'].forEach(k=>h.delete(k));from.hash=h.toString();try{sessionStorage.setItem('nodoApartmentReturn',from.pathname+from.search+from.hash);}catch{}}
+  function saveURL(value,push){const u=new URL(location.href);if(value)u.searchParams.set('detail',value);else u.searchParams.delete('detail');history[push?'pushState':'replaceState'](history.state,'',u);}
+  function close(update=true){if(!panel)return;panel.remove();panel=null;frame=null;currentURL='';document.body.classList.remove('nodo-detail-open');host?.classList.remove('nodo-detail-host');document.querySelectorAll('.nodo-detail-selected').forEach(e=>e.classList.remove('nodo-detail-selected'));if(update)saveURL('',false);window.dispatchEvent(new Event('resize'));if(trigger?.isConnected)trigger.focus?.();}
+  function top(){if(panel)panel.style.top=Math.max(0,document.querySelector('.nodo-header')?.getBoundingClientRect().bottom||0,host?.id==='workspace'?host.getBoundingClientRect().top:0)+'px';}
+  function open(value,{push=true,opener=document.activeElement}={}){
+    let target;try{target=new URL(value,location.href);}catch{return false;}if(target.origin!==location.origin||target.pathname!=='/apartment/')return false;
+    if(!desktop.matches||location.pathname.startsWith('/apartment/')){location.assign(clean(target));return true;}
+    if(push&&currentURL&&(target.searchParams.get('tab')||'overview')==='overview'){const previous=new URL(currentURL,location.origin);for(const key of ['tab','rentType','rentPeriod'])if(previous.searchParams.has(key))target.searchParams.set(key,previous.searchParams.get(key));}
+    storedReturn();if(!target.searchParams.has('from'))target.searchParams.set('from',source());target.searchParams.delete('view');target.searchParams.delete('panelKey');const next=target.pathname+target.search;
+    trigger=opener;document.querySelectorAll('.nodo-detail-selected').forEach(e=>e.classList.remove('nodo-detail-selected'));const selected=Array.from(document.querySelectorAll('a[href]')).find(a=>{try{const u=new URL(a.href,location.href);return u.pathname==='/apartment/'&&['id','row'].some(k=>target.searchParams.has(k)&&u.searchParams.get(k)===target.searchParams.get(k));}catch{return false;}});selected?.closest?.('tr,.complex-row,.member-card')?.classList.add('nodo-detail-selected');
+    if(!panel){panel=document.createElement('aside');panel.id='nodo-desktop-detail';panel.setAttribute('aria-label','선택한 아파트 상세');panel.innerHTML='<div class="detail-toolbar"><strong>아파트 상세</strong><button id="detail-copy" type="button">주소 복사</button><a id="detail-open-page" target="_blank" rel="noopener">새 탭에서 보기 ↗</a><button id="detail-close" type="button" aria-label="상세 닫기">닫기 ×</button></div><iframe title="선택한 아파트 상세" id="detail-frame"></iframe>';document.body.append(panel);frame=panel.querySelector('iframe');panel.querySelector('#detail-close').onclick=()=>close();panel.querySelector('#detail-copy').onclick=async()=>{try{await navigator.clipboard.writeText(new URL(currentURL,location.origin).href);window.NodoUI?.toast('상세 주소를 복사했습니다.');}catch{window.NodoUI?.toast('새 탭에서 열어 주소를 복사해 주세요.');}};host=document.querySelector('#workspace,#app,main')||document.querySelector('body>.mx-auto');host?.classList.add('nodo-detail-host');document.body.classList.add('nodo-detail-open');top();window.dispatchEvent(new Event('resize'));}
+    panel.querySelector('#detail-open-page').href=next;
+    if(next!==currentURL){currentURL=next;const child=new URL(next,location.origin);child.searchParams.set('view','panel');frameKey=crypto.randomUUID();child.searchParams.set('panelKey',frameKey);if(frame.getAttribute('src'))frame.contentWindow.location.replace(child.href);else frame.src=child.href;}
+    if(push)saveURL(next,true);return true;
+  }
+  function go(selection,replace=false){const target=url(selection);if(embedded){navigate(target);return;}if(desktop.matches&&!location.pathname.startsWith('/apartment/'))open(target,{push:!replace});else{storedReturn();location[replace?'replace':'assign'](target);}}
+  const favoriteChanged=()=>{if(embedded)send('nodo:detail-favorite');else frame?.contentWindow.postMessage({type:'nodo:favorite-refresh'},location.origin);};
+  window.NodoApartmentLinks={url,go,open,close,embedded,navigate,returnURL,sync,favoriteChanged};
+  if(embedded){window.addEventListener('message',e=>{if(e.source===parent&&e.origin===location.origin&&e.data?.type==='nodo:favorite-refresh')window.NodoMember?.refresh().catch(()=>{});});document.addEventListener('click',e=>{const a=e.target.closest('a[href]');if(!a||e.defaultPrevented||e.ctrlKey||e.metaKey||e.shiftKey||a.target==='_blank')return;const u=new URL(a.href);if(u.origin===location.origin&&!u.pathname.startsWith('/apartment/')){e.preventDefault();navigate(u.pathname+u.search+u.hash);}},true);document.addEventListener('keydown',e=>{if(e.key==='Escape')send('nodo:detail-close');});return;}
+  document.addEventListener('click',e=>{const a=e.target.closest('a[href]');if(!a||e.button!==0||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey||a.target==='_blank'||a.hasAttribute('download')||!desktop.matches||location.pathname.startsWith('/apartment/'))return;const u=new URL(a.href);if(u.origin===location.origin&&u.pathname==='/apartment/'){e.preventDefault();e.stopImmediatePropagation();open(u,{opener:a});}},true);
+  window.addEventListener('message',e=>{if(!frame||e.source!==frame.contentWindow||e.origin!==location.origin)return;const d=e.data;if(!d||typeof d!=='object'||d.key!==frameKey)return;if(d.type==='nodo:detail-close'){close();return;}if(d.type==='nodo:detail-favorite'){window.NodoMember?.refresh().catch(()=>{});return;}if(typeof d.url!=='string')return;let u;try{u=new URL(d.url,location.origin);}catch{return;}if(u.origin!==location.origin)return;if(d.type==='nodo:detail-state'&&u.pathname==='/apartment/'){currentURL=clean(u);panel.querySelector('#detail-open-page').href=currentURL;saveURL(currentURL,false);}else if(d.type==='nodo:detail-navigate'&&['/calc/','/map/','/account/','/library/','/board/','/auth/google','/apartment/','/'].some(p=>u.pathname===p)){location.assign(clean(u));}});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel)close();});window.addEventListener('scroll',top,{passive:true});window.addEventListener('resize',top);
+  const restore=()=>{const value=new URLSearchParams(location.search).get('detail');if(value&&desktop.matches)open(value,{push:false});else if(value){let u;try{u=new URL(value,location.origin);}catch{return;}if(u.origin===location.origin&&u.pathname==='/apartment/')location.replace(clean(u));}else close(false);};window.addEventListener('popstate',restore);desktop.addEventListener('change',()=>{if(!desktop.matches&&currentURL){const next=currentURL;close();location.assign(next);}});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',restore,{once:true});else restore();
 })();

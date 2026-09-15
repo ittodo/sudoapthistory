@@ -37,9 +37,9 @@
     return pending;
   }
   function login(reauth = false) {
-    const params = new URLSearchParams({ returnTo: location.pathname + location.search + location.hash });
+    const params = new URLSearchParams({ returnTo: global.NodoApartmentLinks?.embedded ? global.NodoApartmentLinks.returnURL() : location.pathname + location.search + location.hash });
     if (reauth) params.set('reauth', '1');
-    location.assign('/auth/google?' + params);
+    if(global.NodoApartmentLinks?.embedded)global.NodoApartmentLinks.navigate('/auth/google?' + params);else location.assign('/auth/google?' + params);
   }
   async function logout() {
     await request('/api/logout', { method: 'POST', body: '{}' });

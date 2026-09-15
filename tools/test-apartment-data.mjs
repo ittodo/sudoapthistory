@@ -17,7 +17,7 @@ test('recent average expands within the latest year, excludes cancelled and miss
  assert.equal(summarize([tx(20260901,10000,2)]).latest,null);
 });
 test('detail links preserve source IDs and zero-valued legacy row IDs',()=>{
- const context={window:{},URLSearchParams};vm.runInNewContext(readFileSync(new URL('../js/apartment-links.js',import.meta.url),'utf8'),context);
+ const context={window:{addEventListener(){}},URLSearchParams,matchMedia:()=>({matches:false,addEventListener(){}}),document:{readyState:'loading',addEventListener(){}}};vm.runInNewContext(readFileSync(new URL('../js/apartment-links.js',import.meta.url),'utf8'),context);
  assert.equal(context.window.NodoApartmentLinks.url({row:0,area:59,tab:'trades'}),'/apartment/?row=0&area=59&tab=trades');
  assert.equal(context.window.NodoApartmentLinks.url({id:'41281-3250',area:85}),'/apartment/?id=41281-3250&area=85&tab=overview');
 });
