@@ -1,8 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {readFileSync} from 'node:fs';
-import {publicAsset,runtime,injection} from './build-cloudflare-assets.mjs';
+import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync,truncateSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {publicAsset,runtime,injection,build,sha256} from './build-cloudflare-assets.mjs';
+test('one-file-at-a-time packaging preserves bytes and manifest hashes and rejects oversized assets',()=>{
+ const root=mkdtempSync(join(tmpdir(),'nodo-assets-stream-'));
+ try {
+  execFileSync('git',['init'],{cwd:root,stdio:'pipe'});
+  writeFileSync(join(root,'.gitignore'),'cloudflare/dist/\n');
+  writeFileSync(join(root,'index.html'),'<html><head></head><body>한글</body></html>');
+  mkdirSync(join(root,'data'));
+  writeFileSync(join(root,'data/valid.json'),'{}');
+  const output=join(root,'cloudflare/dist/public');
+  build(root,output,'a'.repeat(40));
+  const manifest=JSON.parse(readFileSync(join(output,'deployment-manifest.json')));
+  for(const file of manifest.files) {
+   const bytes=readFileSync(join(output,file.path));
+   assert.equal(sha256(bytes),file.sha256);assert.equal(bytes.length,file.bytes);
+  }
+  assert.equal(readFileSync(join(output,'index.html'),'utf8'),'<html><head>'+injection+'</head><body>한글</body></html>');
+  truncateSync(join(root,'data/valid.json'),25*1024*1024+1);
+  assert.throws(()=>build(root,output,'a'.repeat(40)),/exceeds 25 MiB/);
+ } finally {rmSync(root,{recursive:true,force:true});}
+});
 test('allowlist preserves public assets but excludes internal files',()=>{
   for(const p of ['apartment/index.html','board/index.html','data/apartments/00.json','data/earnings/000020.json','data/tx/고양시 덕양구.json','data/polygen/index.packed.bin','index.html','js/main-app.js','policy.html'])assert.equal(publicAsset(p),true,p);
   for(const p of ['docs/secret.html','supabase/schema.sql','.env','data/private.db','data/foo.json.bak','tools/tool.js','cloudflare/src/index.js','data/div/a.json','data/.company-export.json','data/credentials.json','data/logs/a.json'])assert.equal(publicAsset(p),false,p);

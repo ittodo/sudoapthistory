@@ -5,7 +5,7 @@ import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,rmSync} from '
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {forbiddenReason} from './verify-site-layout.mjs';
-import {buildApartmentRent} from './build-apartment-rent.mjs';
+import {verifyApartmentRent} from './verify-apartment-rent.mjs';
 import {buildApartmentData} from './build-apartment-data.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -25,7 +25,7 @@ export function build(root, output, sha) {
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
   if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) buildApartmentData(root,{verify:true});
-  if(existsSync(join(root,'js/apartment-rent.js'))) buildApartmentRent(root,{verify:true});
+  if(existsSync(join(root,'js/apartment-rent.js'))) verifyApartmentRent(root);
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
   const assets=[];
   for(const path of paths) {
@@ -33,6 +33,7 @@ export function build(root, output, sha) {
     if(!publicAsset(path)) continue;
     let current=root;
     for(const part of path.split('/')) {current=join(current,part);if(lstatSync(current).isSymbolicLink()) throw new Error(`Symlink: ${path}`);}
+    if(lstatSync(current).size>25*1024*1024) throw new Error(`Asset exceeds 25 MiB: ${path}`);
     let bytes=readFileSync(current);
     if(path.endsWith('.html')) {
       const html=bytes.toString('utf8');
@@ -40,17 +41,22 @@ export function build(root, output, sha) {
       bytes=Buffer.from(html.replace(/<head(?:\s[^>]*)?>/i,match=>match+injection));
     }
     if(bytes.length>25*1024*1024) throw new Error(`Asset exceeds 25 MiB: ${path}`);
-    assets.push({path,bytes});
+    assets.push({path,source:current,sha256:sha256(bytes),size:bytes.length});
   }
   if(existsSync(join(root,'js/admin-center.js'))) assets.push({path:'data/operations-status.json',bytes:Buffer.from(JSON.stringify(operationsMetadata(root)))});
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));
-  const manifest=JSON.stringify({schema:1,gitSha:sha,files:assets.map(f=>({path:f.path,sha256:sha256(f.bytes),bytes:f.bytes.length}))});
+  const manifest=JSON.stringify({schema:1,gitSha:sha,files:assets.map(f=>({path:f.path,sha256:f.sha256??sha256(f.bytes),bytes:f.size??f.bytes.length}))});
   // Only this known generated directory is ever replaced; never clean the source tree.
   for(const part of [join(root,'cloudflare'),join(root,'cloudflare','dist'),output])if(existsSync(part)&&lstatSync(part).isSymbolicLink())throw new Error('Symlink output parent');
   if(existsSync(output)) rmSync(output,{recursive:true});
-  for(const f of assets) {const target=join(output,f.path);mkdirSync(dirname(target),{recursive:true});writeFileSync(target,f.bytes);}
+  for(const f of assets) {
+    let bytes=f.bytes??readFileSync(f.source);
+    if(f.source && f.path.endsWith('.html')) bytes=Buffer.from(bytes.toString('utf8').replace(/<head(?:\s[^>]*)?>/i,match=>match+injection));
+    if(f.source && sha256(bytes)!==f.sha256) throw Error('Asset changed during packaging: '+f.path);
+    const target=join(output,f.path);mkdirSync(dirname(target),{recursive:true});writeFileSync(target,bytes);
+  }
   writeFileSync(join(output,'deployment-manifest.json'),manifest);
   writeFileSync(join(output,'deployment.json'),JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
   writeFileSync(join(output,'_headers'),'/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
