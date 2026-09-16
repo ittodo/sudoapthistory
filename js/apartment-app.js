@@ -20,6 +20,8 @@
     document.title=apartment.name+' 실거래·단지정보 | 노도스트림';let canonical=document.querySelector('link[rel=canonical]');if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.append(canonical);}canonical.href='https://nodostream.com/apartment/?id='+encodeURIComponent(apartment.id);
     window.NodoCurrentApartment={apartment,area};queueMicrotask(()=>document.dispatchEvent(new Event('nodo:apartment')));
     $('apartment-name').textContent=apartment.name;$('apartment-region').textContent=(apartment.region||'')+' · 아파트';$('apartment-address').textContent=apartment.address;
+    $('apartment-map-link').href='/map/#'+new URLSearchParams(apartment.coord?{lat:apartment.coord[0],lng:apartment.coord[1],z:16}:{q:apartment.name});
+    $('apartment-map-link').title=apartment.coord?'이 아파트 위치를 지도에서 보기':'지도에서 단지명으로 검색';
     $('apartment-facts').innerHTML=[`단지 전체 ${number(apartment.units)}세대`,apartment.years.length?apartment.years.join('–')+'년 준공':'준공연도 미확인',apartment.parking?`주차 ${number(apartment.parking)}대`:null,apartment.rental?'임대 단지':null].filter(Boolean).map(v=>`<span class="nodo-tag">${esc(v)}</span>`).join('');
     $('area-select').disabled=false;
     $('area-select').replaceChildren(...apartment.areas.map(a=>new Option(`${a.area}㎡ · ${(a.area/3.3058).toFixed(1)}평`,a.area)));

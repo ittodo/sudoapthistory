@@ -36,7 +36,7 @@
   retiredNav.forEach(p=>navPaths.add(p));
   // Hide only duplicated navigation links in legacy headers, never links in data/results.
   for(const a of document.querySelectorAll('body a')) {
-    if(a.closest('.nodo-header,.admin-heading')||a.closest('table,#dp,#detail,#detailPanel'))continue;
+    if(a.closest('.nodo-header,.admin-heading,.apartment-hero')||a.closest('table,#dp,#detail,#detailPanel'))continue;
     const inHeader=a.closest('header,.topbar,.site-header')||legacyTop?.contains(a);
     if(inHeader && navPaths.has(new URL(a.href,location.href).pathname.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'')))a.classList.add('nodo-legacy-nav');
   }
