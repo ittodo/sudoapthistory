@@ -33,5 +33,8 @@ export function verifyApartmentRent(root) {
     if(!/^data\/apartment-rent\/[0-9a-f]{2}\.json$/.test(path)) throw Error('Invalid rent shard path');
     check(path,expected);
   }
+  if(!index.records || typeof index.records!=='object' || Array.isArray(index.records)) throw Error('Invalid rent records');
+  const required=new Set(Object.values(index.records).map(record=>`data/apartment-rent/${record.shard}.json`));
+  if(required.size!==Object.keys(index.shards).length || [...required].some(path=>!Object.hasOwn(index.shards,path))) throw Error('Rent shard set mismatch');
   return {total:index.total,linked:index.linked,files:Object.keys(index.shards).length+1,verified:true};
 }

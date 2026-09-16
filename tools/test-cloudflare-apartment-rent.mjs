@@ -48,3 +48,27 @@ test('recent rental period crosses the calendar year without adding future month
  const context={window:{}};vm.createContext(context);vm.runInContext(readFileSync(new URL('../js/apartment-rent.js',import.meta.url),'utf8'),context);
  const now=new Date(2026,0,15);assert.deepEqual(Array.from(context.window.NodoRent.months('recent',now)),['202502','202503','202504','202505','202506','202507','202508','202509','202510','202511','202512','202601']);assert.deepEqual(Array.from(context.window.NodoRent.months('2026',now)),['202601']);
 });
+test('deployment rent verifier requires every referenced shard and accepts empty input',()=>{
+ const root=mkdtempSync(join(tmpdir(),'nodo-rent-complete-'));
+ const put=(p,j)=>{mkdirSync(dirname(join(root,p)),{recursive:true});writeFileSync(join(root,p),JSON.stringify(j));};
+ try {
+  put('data/apartments/index.json',{lookup:{a:['canonical','aa']}});
+  put('data/contracts/index.json',{partitions:[]});
+  buildApartmentRent(root);
+  assert.equal(verifyApartmentRent(root).files,1);
+  const partition='apartment-rent/11110/202609.json';
+  put('data/contracts/'+partition,{rows:[{aptSeq:'a',area:84,date:'2026-09-01'}]});
+  put('data/contracts/index.json',{partitions:[{path:partition,service:'apartment-rent',lawd:'11110',month:'202609',count:1,checkedAt:null}]});
+  buildApartmentRent(root);
+  assert.equal(verifyApartmentRent(root).files,2);
+  const path='data/apartment-rent/index.json';
+  const original=JSON.parse(readFileSync(join(root,path)));
+  put(path,{...original,shards:{}});
+  assert.throws(()=>verifyApartmentRent(root),/shard set mismatch/);
+  put(path,{...original,records:{}});
+  assert.throws(()=>verifyApartmentRent(root),/shard set mismatch/);
+  put(path,original);
+  rmSync(join(root,'data/apartment-rent/aa.json'));
+  assert.throws(()=>verifyApartmentRent(root),/ENOENT/);
+ } finally {rmSync(root,{recursive:true,force:true});}
+});
