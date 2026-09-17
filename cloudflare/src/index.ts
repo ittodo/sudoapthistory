@@ -1,3 +1,4 @@
+import {collectPageView,cleanupPageViews} from './page-analytics';
 import {adminCenter,cleanupAdminAudit} from './admin-center';
 import {auth} from './auth';
 import {libraryRoute,collectEvent,cleanupAnalytics} from './member-library';
@@ -29,6 +30,7 @@ async function route(r:Request,env:Env):Promise<Response>{
   return recoveryRoute(r,env);
  }
  if(path==='/api/health'&&method==='GET'){const schema=await first(env,'SELECT version FROM schema_metadata');if(schema?.version!==2)throw new HttpError(503,'SCHEMA_UNSUPPORTED','데이터베이스 준비 상태를 확인해 주세요.');await first(env,'SELECT withdrawal_generation FROM users LIMIT 1');await first(env,'SELECT token_hash FROM recovery_tickets LIMIT 1');return json({status:'ok',gitSha:env.RELEASE_SHA,workerVersionId:env.CF_VERSION_METADATA?.id||null,schemaVersion:schema.version,maintenance:env.MAINTENANCE==='true'})}
+ if(path==='/api/analytics/pageviews')return collectPageView(r,env);
  if(path==='/api/apartments/events')return collectEvent(r,env);
  const user=await session(r,env);const uid=user?.id||'';
  if(path==='/api/session'&&method==='GET')return json({session:user?{user:{id:user.id,email:user.email}}:null,profile:user?await first(env,'SELECT * FROM profiles WHERE user_id=?',uid):null,isAdmin:user?.role==='admin',csrfToken:user?.csrfToken||null});
@@ -175,5 +177,5 @@ export default {
   // needs same-origin; Google redirects and callbacks must still leak no URL.
   if(path.startsWith('/auth/'))response.headers.set('Referrer-Policy',path==='/auth/google'&&r.method==='GET'&&response.status===200?'same-origin':'no-referrer');
   return response}catch(error){if(error instanceof HttpError)return json({error:{code:error.code,message:error.message}},error.status);if(error instanceof Error&&error.message.includes('UNIQUE constraint'))return json({error:{code:'CONFLICT',message:'이미 사용 중인 값입니다.'}},409);return json({error:{code:'INTERNAL',message:'요청을 처리할 수 없습니다.'}},500)}},
- async scheduled(_event:ScheduledEvent,env:Env){await cleanupAdminAudit(env.DB);await cleanupAnalytics(env.DB);await cleanWithdrawals(env);await purgeAccounts(env.DB);await purgeExpiredComments(env.DB);await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
+ async scheduled(_event:ScheduledEvent,env:Env){await cleanupAdminAudit(env.DB);await cleanupAnalytics(env.DB);await cleanupPageViews(env.DB);await cleanWithdrawals(env);await purgeAccounts(env.DB);await purgeExpiredComments(env.DB);await env.DB.batch([statement(env,'DELETE FROM sessions WHERE token_hash IN(SELECT token_hash FROM sessions WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM oauth_states WHERE state_hash IN(SELECT state_hash FROM oauth_states WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now()),statement(env,'DELETE FROM rate_limits WHERE key IN(SELECT key FROM rate_limits WHERE expires_at<? ORDER BY expires_at LIMIT 1000)',now())])}
 };

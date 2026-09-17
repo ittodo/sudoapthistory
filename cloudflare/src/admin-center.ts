@@ -1,3 +1,4 @@
+import {pageReport} from './page-analytics';
 import {Env,HttpError,json,body,text,hash} from './shared';
 import {moderationCutoff} from './comment-retention';
 type Row=Record<string,any>;
@@ -51,6 +52,7 @@ export async function adminCenter(r:Request,env:Env,user:Actor):Promise<Response
   const data=await Promise.all(rows.map(async c=>({...c,request_key:undefined,request_hash:undefined,revision:await revision(c),content:c.deleted_at?'삭제된 글입니다.':c.author_status!=='active'?'탈퇴한 회원의 글입니다.':c.content,moderation_reason:c.moderation_reason?JSON.parse(c.moderation_reason):null})));
   return json({data,count:(await first(`SELECT count(*) count FROM comments c LEFT JOIN profiles p ON p.user_id=c.user_id WHERE ${where}`,...args))!.count});
  }
+ if(path==='/api/admin/page-analytics')return json(await pageReport(env,period(p).days));
  if(path==='/api/admin/overview'){
   const t=period(p),from=new Date(t.utc).toISOString();
   const counts=await first(`SELECT coalesce(sum(page_id='community' AND parent_id IS NULL),0) posts,coalesce(sum(NOT(page_id='community' AND parent_id IS NULL)),0) comments,coalesce(sum(moderated_at IS NOT NULL AND deleted_at IS NULL),0) hidden,coalesce(sum(page_id='community' AND parent_id IS NULL AND moderated_at IS NOT NULL AND deleted_at IS NULL),0) hiddenPosts,coalesce(sum(NOT(page_id='community' AND parent_id IS NULL) AND moderated_at IS NOT NULL AND deleted_at IS NULL),0) hiddenComments FROM comments WHERE created_at>=?`,from);

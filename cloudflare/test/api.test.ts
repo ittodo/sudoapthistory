@@ -23,6 +23,7 @@ async function setup(maintenance=false){
  for(const statement of (await readFile('cloudflare/migrations/0003_board_pins.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  for(const statement of (await readFile('cloudflare/migrations/0004_member_library.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  for(const statement of (await readFile('cloudflare/migrations/0005_admin_audit.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
+ for(const statement of (await readFile('cloudflare/migrations/0006_page_analytics.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();
  async function withdrawal(headers:Record<string,string>){
   const sessionToken=headers.Cookie.split('=')[1];const uid=sessionToken.slice('session-token-'.length);
   const receipt=await readyWithdrawal(db,origin,uid,sessionToken);
@@ -534,5 +535,38 @@ test('community board search, pagination, ownership, pins, hidden threads and wi
  assert.equal(((await (await s.request('/api/board/posts')).json() as any).data).length,0);
  const tombstone=(await (await s.request('/api/board/posts/'+id)).json() as any).data;
  assert.equal(tombstone.is_withdrawn,true);assert.ok(!tombstone.content.includes('수정한 내용'));
+ }finally{await s.mf.dispose();}
+});
+
+
+test('page analytics counts anonymous loads once and restricts reports',async()=>{
+ const s=await setup();try{
+  const admin=await s.user('page-admin','admin'),normal=await s.user('page-user');
+  const payload={eventId:crypto.randomUUID(),path:'/map/index.html',sentAt:Math.floor(Date.now()/1000)};
+  const send=(data:any=payload,headers:any={Origin:origin})=>s.request('/api/analytics/pageviews','POST',data,headers);
+  assert.equal((await s.request('/api/admin/page-analytics')).status,401);
+  assert.equal((await s.request('/api/admin/page-analytics','GET',undefined,normal)).status,403);
+  const report=async(days=7)=>await (await s.request('/api/admin/page-analytics?days='+days,'GET',undefined,admin)).json() as any;
+  assert.equal((await report()).total,0);
+  for(const r of await Promise.all([send(),send(),send()]))assert.equal(r.status,200);
+  assert.equal((await report()).total,1);
+  assert.equal((await send({...payload,eventId:crypto.randomUUID()})).status,200);
+  assert.equal((await report()).total,2);
+  assert.equal((await report()).data[0].path,'/map/');
+  for(const path of ['/admin/','/auth/google','/unknown','/map/?secret=x','//evil.example/','/__proto__'])assert.equal((await send({...payload,path})).status,400);
+  assert.equal((await send(payload,{})).status,403);
+  assert.equal((await send(payload,{Origin:'https://evil.example'})).status,403);
+  assert.equal((await send({...payload,sentAt:0})).status,400);
+  assert.equal((await send({...payload,eventId:'bad'})).status,400);
+  assert.equal((await s.request('/api/admin/page-analytics?days=3','GET',undefined,admin)).status,400);
+  const {koreanDay,cleanupPageViews}=await import('../src/page-analytics');
+  assert.equal(koreanDay(Date.parse('2026-09-17T14:59:59Z')),'2026-09-17');
+  assert.equal(koreanDay(Date.parse('2026-09-17T15:00:00Z')),'2026-09-18');
+  for(const age of [1,6,7,29,30])await s.db.prepare('INSERT INTO page_daily(day,path,views) VALUES(?,?,10)').bind(koreanDay(Date.now()-age*86400000),'/calc/').run();
+  assert.equal((await report(1)).total,2);assert.equal((await report(7)).total,22);assert.equal((await report(30)).total,42);
+  assert.equal((await report(7)).data[0].path,'/calc/');
+  await cleanupPageViews(s.db as any,Math.floor(Date.now()/1000)+3*86400);
+  assert.equal((await s.db.prepare('SELECT count(*) n FROM page_events').first() as any).n,0);
+  assert.equal((await report(7)).total,22);
  }finally{await s.mf.dispose();}
 });
