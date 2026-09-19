@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
-const model=require('../js/map-model.js');
+require('../js/map-model.js');const model=globalThis.NodoMapModel;
 function bounds(raw) {
   return {raw,intersects(other){return raw[0][0]<=other.raw[1][0]&&raw[1][0]>=other.raw[0][0]&&raw[0][1]<=other.raw[1][1]&&raw[1][1]>=other.raw[0][1];},
     contains(p){return p.lat>=raw[0][0]&&p.lat<=raw[1][0]&&p.lng>=raw[0][1]&&p.lng<=raw[1][1];},pad(){return this;}};
 }
 function fixture(client) {
   const groups=[], map={zoom:12,box:bounds([[0,0],[10,10]]),createPane(){},getPane(){return {style:{}};},getZoom(){return this.zoom;},getBounds(){return this.box;}};
-  const L={latLngBounds:bounds,layerGroup(){const g={items:new Set(),addTo(){groups.push(this);return this;},removeLayer(l){this.items.delete(l);}};return g;},
+  const L={latLngBounds:bounds,layerGroup(){const g={items:new Set(),addTo(){groups.push(this);return this;},clearLayers(){this.items.clear();},removeLayer(l){this.items.delete(l);}};return g;},
     geoJSON(fc,options={}) {
       const points=fc.features.flatMap(f=>f.geometry.coordinates.flat(2)).filter(Array.isArray);
       // Fixture polygons are single rings; handle that shape without using production bounds logic.
@@ -37,6 +37,7 @@ const matches=[{complex:A},{complex:B}], shard={one:fc(1,1),far:fc(30,30)};
   assert.equal(f.chosen[0].join(','),'A,B','shared parcel preserves both apartment identities');
   await f.view.render(matches,A);assert.equal(f.layers()[0].style.weight,3);
   await f.view.render(matches,null);assert.equal(f.layers()[0].style.weight,1,'closing restores thin outline');
+  const retained=f.layers()[0];await f.view.render(matches,null);assert.equal(f.layers()[0],retained,'price frames retain parcel geometry');
   f.tap.begin(1,0,0,300,'parcel:one');f.tap.end(1,20,0,350);
   f.layers()[0].paths[0].handlers.click({originalEvent:{timeStamp:350},latlng:{lat:2,lng:2}});
   assert.equal(f.chosen.length,1,'fast drag never selects');

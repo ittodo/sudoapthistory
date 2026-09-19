@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>기간별 실거래 — 노도스트림</title>
+<meta name="description" content="서울·경기·인천 아파트의 일간·주간·월간 거래, 역대 신고가·신저가와 직전 계약일 최저가격 대비 하락 거래를 확인하세요.">
+<link rel="canonical" href="https://nodostream.com/trades/daily/">
+<script src="/js/site-theme.js"></script>
+<link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/responsive.css"><link rel="stylesheet" href="/css/daily.css">
+<script defer src="/js/apartment-links.js"></script><script defer src="/js/site-shell.js"></script>
+<script defer src="/js/daily-model.js"></script><script defer src="/js/daily-client.js"></script><script defer src="/js/daily-app.js"></script>
+<script defer src="/js/page-analytics.js"></script>
+</head>
+<body>
+<main class="daily-page" id="dailyApp">
+  <div class="daily-heading"><div><p class="daily-eyebrow">TRANSACTIONS · 수도권 아파트 매매</p><h1>기간별 실거래</h1><p class="daily-muted">일간·주간·월간 거래와 신고가, 낮아진 거래가격을 살펴보세요.</p></div><a class="daily-link" href="/trades/">기존 실거래 탐색기 ↗</a></div>
+  <section class="daily-panel daily-controls" aria-label="조회 조건">
+    <div class="daily-tabs daily-periods" id="dailyPeriods" role="group" aria-label="조회 단위"><button data-period="day" aria-pressed="true">일간</button><button data-period="week" aria-pressed="false">주간</button><button data-period="month" aria-pressed="false">월간</button></div>
+    <div class="daily-date"><button id="dayPrev" aria-label="하루 전">←</button><label><span id="dayLabel">계약일</span> <input id="dayDate" type="date" required aria-label="기준 계약일"><select id="dayWeek" aria-label="조회 주간 (월요일부터 일요일)" hidden></select><input id="dayMonth" type="month" aria-label="조회 월" hidden></label><button id="dayNext" aria-label="하루 후">→</button><button id="dayLatest">최근</button></div><p class="daily-muted" id="dailyRange" aria-live="polite"></p>
+    <form id="dailyFilters" class="daily-filters">
+      <label>지역<select name="r"><option value="">수도권 전체</option><option value="1">서울</option><option value="0">경기</option><option value="2">인천</option></select></label>
+      <label>시·군·구<select name="g"><option value="">전체</option></select></label>
+      <label class="daily-search">단지·지역 검색<input name="q" type="search" placeholder="단지명 또는 동 이름" maxlength="100"></label>
+      <label>전용면적 ㎡<span><input name="aL" aria-label="최소 전용면적" type="number" min="0" step="any" placeholder="최소"> ~ <input name="aH" aria-label="최대 전용면적" type="number" min="0" step="any" placeholder="최대"></span></label>
+      <label>거래가격 억원<span><input name="pL" aria-label="최소 가격" type="number" min="0" step="any" placeholder="최소"> ~ <input name="pH" aria-label="최대 가격" type="number" min="0" step="any" placeholder="최대"></span></label>
+      <button type="submit" class="daily-primary">조회</button><button type="button" id="dailyReset">초기화</button>
+    </form>
+  </section>
+  <div class="daily-status" role="status" id="dailyStatus">전체 거래 이력을 준비하고 있습니다…</div><button id="dailyRetry" hidden>다시 시도</button>
+  <p class="daily-muted" id="dailyRecordRule">신고가·신저가는 각 계약일 이전의 역대 기록을 갱신한 거래 건수입니다. 같은 날 거래끼리는 선후를 비교하지 않습니다.</p>
+  <section class="daily-stats" aria-label="선택 기간 거래 요약" id="dailyStats"></section>
+  <section class="daily-panel daily-chart-panel"><div class="daily-section-heading"><h2 id="dailyChartTitle">최근 30일 거래 흐름</h2><span class="daily-muted">날짜를 눌러 거래 보기 · 선택한 조건 기준</span></div><div class="daily-chart" id="dailyChart" aria-label="최근 30일 거래량"></div><p class="daily-chart-legend"><span>■ 전체</span><span class="daily-up">■ 신고가</span><span class="daily-down">■ 직전 대비 하락</span></p></section>
+  <section class="daily-panel daily-results">
+    <div class="daily-section-heading"><div class="daily-tabs" role="group" aria-label="거래 분류"><button data-kind="all" aria-pressed="true">전체</button><button data-kind="high" aria-pressed="false">신고가</button><button data-kind="down" aria-pressed="false">직전 대비 하락</button><button data-kind="low" aria-pressed="false">신저가</button><button data-kind="inactive" aria-pressed="false">해제·소실</button></div><a id="dailyMap" class="daily-link" href="/map/">이 날짜 지도에서 보기 ↗</a></div>
+    <div class="daily-section-heading"><p id="dailyCount" class="daily-muted"></p><label>정렬 <select id="dailySort"><option value="price">거래금액 높은 순</option><option value="drop">하락률 큰 순</option><option value="area">면적 작은 순</option></select></label></div>
+    <div id="dailyRows" class="daily-rows"></div><button id="dailyMore" hidden>50건 더 보기</button>
+  </section>
+  <details class="daily-rules"><summary>가격 비교 기준과 데이터 안내</summary><p>같은 원천 단지와 소수점까지 일치하는 전용면적끼리 비교합니다. 하락은 가장 최근의 이전 계약일 최저가격보다 낮은 경우입니다. 같은 날 여러 거래의 순서는 추정하지 않습니다.</p><p>연환산 등락률은 (현재 거래가 ÷ 직전 계약일 최저가)^(365.2425 ÷ 경과 일수) − 1로 계산한 연평균 복리 변화율입니다. 실제 1년 수익률이 아니며 거래 간격이 짧으면 수치가 크게 확대될 수 있습니다. 첫 거래·직거래·해제·소실은 연환산 비교에서 제외합니다.</p><p>신고가·신저가는 보유한 전체 유효 이력에서 해당 계약일 이전 기록을 갱신한 거래입니다. 첫 거래와 동일 가격은 갱신 건수에 포함하지 않습니다. 한 거래에 여러 배지가 붙을 수 있습니다.</p><p>직거래는 전체 건수에 포함하되 가격 판정에서 제외합니다. 해제·원천에서 사라진 거래는 별도로 표시하며 유효 거래 집계에 포함하지 않습니다. 최근 계약일은 아직 신고되지 않은 거래가 있어 추후 달라질 수 있습니다.</p><p>과거 화면은 현재 확인된 유효 거래로 재구성합니다. 당시 신고되어 있던 정보나 과거 단지 경계를 복원한 화면은 아닙니다.</p><p id="dailyStamp"></p></details>
+</main>
+</body></html>

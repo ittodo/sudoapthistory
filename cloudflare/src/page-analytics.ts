@@ -2,7 +2,7 @@ import {Env,HttpError,body,json,now} from './shared';
 
 export const pages:Record<string,string>={
  '/':'단지 검색','/map/':'지도','/compare/':'지역·단지 비교','/market/':'시장 동향',
- '/stats/':'가격대 통계','/trades/':'실거래가','/trades/contracts.html':'계약 현황',
+ '/stats/':'가격대 통계','/trades/':'실거래가','/trades/daily/':'일별 실거래','/trades/contracts.html':'계약 현황',
  '/apartment/':'단지 상세','/ranking/':'관심 단지 순위','/library/':'내 보관함',
  '/calc/':'부동산 계산기','/calc/savings.html':'예적금 계산기','/div/':'배당·소각',
  '/div/stocks/':'기업 목록','/div/stocks/detail.html':'기업 상세','/board/':'게시판',

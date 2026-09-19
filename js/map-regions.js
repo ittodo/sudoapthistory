@@ -6,6 +6,8 @@
     const regions = new Map(meta.regions.map(r => [r.id, r]));
     let groups = new Map(), summaries = new Map(), filterRegion = null, token = 0;
     const cache = new Map(), loading = new Map();
+    let geometryKey='',labelKey='';
+    const regionLayers=new Map(),labelLayers=new Map(),labelTitles=new Map();
     map.createPane('regions'); map.getPane('regions').style.zIndex = '350';
     const polygons = L.layerGroup().addTo(map), labels = L.layerGroup().addTo(map), leaders = L.layerGroup().addTo(map);
     const container = map.getContainer();
@@ -31,7 +33,7 @@
     function describe(region) {
       const summary = summaries.get(region.id) || {average:null,count:0,pricedCount:0};
       const average = summary.average == null ? '가격 없음' : `평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
-      return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 최신 실거래 산술평균 · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 전체 범위 보기`};
+      return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 대표면적 가격 산술평균 · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 전체 범위 보기`};
     }
     function fetchShard(path) {
       if (!loading.has(path)) loading.set(path, client(path).then(data => {
@@ -46,9 +48,22 @@
       const bounds = map.getBounds().pad(.1);
       const visible = [...regions.values()].filter(r => r.level === level &&
         (filterRegion == null || r.id.startsWith(['31','11','23'][filterRegion])) && L.latLngBounds(r.bounds).intersects(bounds));
-      polygons.clearLayers(); labels.clearLayers(); leaders.clearLayers();
       const paths = [...new Set(visible.map(r => r.shard))];
+      const nextGeometry=[zoom,bounds.toBBoxString(),map.getSize().x,map.getSize().y,filterRegion,paths.map(p=>p+cache.has(p)).join('|')].join(':');
+      const nextLabels=nextGeometry+'|'+visible.filter(r=>summaries.has(r.id)).map(r=>r.id).join(',');
+      if(nextLabels===labelKey){
+        for(const r of visible){const info=describe(r);if(labelTitles.get(r.id)===info.title)continue;
+          labelTitles.set(r.id,info.title);const marker=labelLayers.get(r.id),element=marker?.getElement();
+          if(element){element.title=info.title;element.querySelector('strong').textContent=info.average;element.querySelector('small').textContent=info.summary.count.toLocaleString()+'개 단지';}
+          regionLayers.get(r.id)?.setTooltipContent(`${escape(r.fullName)}<br>${info.average} · ${info.summary.count.toLocaleString()}개 단지`);
+        }
+        return paths.filter(path=>!cache.has(path));
+      }
+      labels.clearLayers();leaders.clearLayers();labelLayers.clear();labelTitles.clear();labelKey=nextLabels;
+      if(nextGeometry===geometryKey)for(const r of visible){const info=describe(r);regionLayers.get(r.id)?.setTooltipContent(`${escape(r.fullName)}<br>${info.average} · ${info.summary.count.toLocaleString()}개 단지`);}
       const wanted = new Set(visible.map(r => r.id));
+      if(nextGeometry!==geometryKey){
+      polygons.clearLayers();regionLayers.clear();geometryKey=nextGeometry;
       for (const path of paths) if (cache.has(path)) {
         L.geoJSON(cache.get(path), {pane:'regions', bubblingMouseEvents:false, interactive:model.regionClickable(zoom),
           filter:f => wanted.has(f.properties.id),
@@ -56,12 +71,14 @@
           onEachFeature(f,layer) {
             const region = regions.get(f.properties.id);
             const info = describe(region);
+            regionLayers.set(region.id,layer);
             layer.bindTooltip(`${escape(region.fullName)}<br>${info.average} · ${info.summary.count.toLocaleString()}개 단지`,{sticky:true,direction:'top'});
             layer.on('add', () => bindLayer(layer,region));
             layer.on('mouseover', () => layer.setStyle({weight:2,fillOpacity:.09}));
             layer.on('mouseout', () => layer.setStyle({weight:mode === 'apartment' ? .8 : 1.3,fillOpacity:.025}));
           }
         }).addTo(polygons);
+      }
       }
       if (mode !== 'apartment') {
         const occupied = [];
@@ -92,6 +109,7 @@
             icon:L.divIcon({className:'apt-marker region-marker',iconSize:[120,68],iconAnchor:[60,34],
               html:`<div class="region-label"><span>${escape(r.name)}</span><strong>${average}</strong><small>${summary.count.toLocaleString()}개 단지</small></div>`})}).addTo(labels);
           bindLayer(marker,r);
+          labelLayers.set(r.id,marker);labelTitles.set(r.id,title);
         }
       }
       return paths.filter(path=>!cache.has(path));

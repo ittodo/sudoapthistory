@@ -34,7 +34,7 @@
     return sums.map((sum,i)=>counts[i]?sum/counts[i]/10000:0);
   }
   function clusterSummary(matches) {
-    const prices=matches.map(m=>m.area?.latest?.[1]).filter(p=>Number.isFinite(p)&&p>0);
+    const prices=matches.filter(m=>!m.area?.excludeAggregate).map(m=>m.area?.latest?.[1]).filter(p=>Number.isFinite(p)&&p>0);
     return {count:matches.length, pricedCount:prices.length,
       average:prices.length?prices.reduce((sum,p)=>sum+p,0)/prices.length:null};
   }

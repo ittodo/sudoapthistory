@@ -1,0 +1,34 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const {webcrypto,createHash}=require('node:crypto');
+require('../js/daily-model.js');const M=globalThis.NodoDailyModel;
+const january={opening:[[0,20251231,100,100,100,1]],updates:[[0,20260101,90,90,90,1],[0,20260131,110,110,110,2]]};
+const february={opening:[[0,20260131,110,110,110,2]],updates:[[0,20260201,130,130,130,3]]};
+const bodies={'data/daily/catalog.json':{areas:[[0,'84.9']],complexes:[{id:'A',r:1}]}};
+for(const r of [0,1,2])for(const [ym,state]of [['2026-01',january],['2026-02',february]])bodies[`data/daily/${r}/${ym}-state.json`]=r===1?state:{opening:[],updates:[]};
+const encoded=Object.fromEntries(Object.entries(bodies).map(([p,b])=>[p,Buffer.from(JSON.stringify(b))]));
+const index={schema:1,months:['2026-01','2026-02'],sources:Object.fromEntries(Object.entries(encoded).map(([p,b])=>[p,createHash('sha256').update(b).digest('hex')]))};
+let fetched=0,hold=null,block=false;
+const scope={window:{},NodoDailyModel:M,Map,Promise,Uint8Array,TextDecoder,crypto:webcrypto,fetch:async path=>{
+  fetched++;if(path.endsWith('index.json'))return {ok:true,json:async()=>index};
+  const b=encoded[path.slice(1)];if(!b)return {ok:false};
+  if(block&&path.includes('0/2026-02'))await new Promise(resolve=>hold=resolve);
+  return {ok:true,arrayBuffer:async()=>b};
+}};
+vm.runInNewContext(fs.readFileSync(require.resolve('../js/daily-client.js'),'utf8'),scope);
+(async()=>{
+  const c=await scope.window.NodoDailyClient.create();
+  let f=await c.priceFrame('2026-01-30',{r:1});assert.equal(f.values[0].get(0)[4],90);
+  f=await c.priceFrame('2026-02-02',{r:1},'2026-01-30');
+  assert.deepEqual(Array.from(f.events,e=>e.state[1]).sort(),[20260131,20260201]);assert.equal(f.events.reduce((n,e)=>n+e.state[5],0),5);
+  assert.deepEqual(Array.from(f.events,e=>e.previous[4]).sort((a,b)=>a-b),[90,110]);
+  assert.equal(f.values[0].get(0)[4],130);
+  const before=fetched;f=await c.priceFrame('2026-02-03',{r:1},'2026-02-02');assert.equal(f.changes.length,0);assert.equal(f.events.length,0);assert.equal(fetched,before,'cached day advances perform no network request');
+  f=await c.priceFrame('2026-01-01',{r:1});assert.equal(f.values[0].get(0)[4],90);assert.equal(f.events.length,1);
+  f=await c.priceFrame('2026-01-31',{r:1});assert.equal(f.changes.length,1);assert.equal(f.events[0].state[5],2);
+  block=true;const old=c.priceFrame('2026-02-01',{},'2026-01-31');
+  await new Promise(resolve=>setImmediate(resolve));
+  const latest=await c.priceFrame('2026-01-01',{r:1});hold();await old;
+  assert.equal(latest.values[0].get(0)[4],90,'stale async month request cannot mutate the latest cursor');
+  assert.equal((await c.priceFrame('2026-01-02',{r:1})).values[0].get(0)[4],90);
+  console.log('Price client: month boundaries, interval effects, reverse seeks, no-fetch playback and stale requests passed');
+})().catch(e=>{console.error(e);process.exitCode=1;});

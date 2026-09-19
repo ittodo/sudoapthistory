@@ -10,6 +10,8 @@
   let map, markers, chart, payload, client, byId, regionView, parcelView, tap, navigationDone, filtered=[], matches=new Map();
   let selected=null, selectedArea=null, filters={}, restoring=false, detailToken=0, boundaryToken=0;
   let transactionRows=[], visibleTrades=30, searchTimer, toastTimer, renderFrame, tileFailed=false;
+  let temporal=null, timeline;
+  const apartmentMarkers=new Map();
   const storageKey='nodoMapView';
 
   function toast(message) {
@@ -25,6 +27,7 @@
     if($('search').value.trim())p.set('q',$('search').value.trim().slice(0,100));
     for(const [key,value] of Object.entries(filters)) if(value!=null) p.set(key,value);
     if(selected) {p.set('a',selected.id); if(selectedArea)p.set('ar',selectedArea.a);}
+    timeline?.write(p);
     const hash='#'+p.toString();
     if(location.hash!==hash) history[push?'pushState':'replaceState']({map:true},'',hash);
     try{localStorage.setItem(storageKey,JSON.stringify({lat:center.lat,lng:center.lng,z:map.getZoom()}));}catch{}
@@ -49,9 +52,9 @@
     const lo=filters.aL, hi=filters.aH;
     $('areaHint').textContent=lo!=null || hi!=null ? `${lo!=null?(lo/3.3058).toFixed(1):'전체'} ~ ${hi!=null?(hi/3.3058).toFixed(1):'전체'}평` : '㎡ · 평 환산';
   }
-  function refilter() {
-    filtered=payload.d.map(c=>model.match(c,filters)).filter(Boolean);
-    matches=new Map(filtered.map(m=>[m.complex.id,m]));
+  function refilter(changed=null) {
+    if(changed){for(const c of changed){const match=model.match(c,filters);if(match)matches.set(c.id,match);else matches.delete(c.id);}filtered=[...matches.values()];}
+    else{filtered=(temporal||payload.d).map(c=>model.match(c,filters)).filter(Boolean);matches=new Map(filtered.map(m=>[m.complex.id,m]));}
     regionView?.setMatches(filtered,filters.r);
     if(selected && !matches.has(selected.id)) {close(false);toast('선택한 단지가 필터 조건에서 제외되었습니다.');}
     else if(selected && !selectedMatch().areas.some(a=>a.i===selectedArea?.i)) select(selected.id,null,false,false);
@@ -60,7 +63,7 @@
   function scheduleRender() {cancelAnimationFrame(renderFrame);renderFrame=requestAnimationFrame(render);}
   function render() {
     if(!map || !markers || !payload) return;
-    markers.clearLayers();
+    const wanted=new Set();
     const bounds=map.getBounds().pad(.08), zoom=map.getZoom();
     let visible=0, located=0;
     regionView?.render();
@@ -71,9 +74,10 @@
       located++;
       if(!bounds.contains(c.coord)) continue;
       visible++;
-      if(c.id===selected?.id) addApartment(match,true);
-      else if(zoom>=16) addApartment(match);
+      if(c.id===selected?.id){wanted.add(c.id);addApartment(match,true);}
+      else if(zoom>=16){wanted.add(c.id);addApartment(match);}
     }
+    for(const [id,entry]of apartmentMarkers)if(!wanted.has(id)){markers.removeLayer(entry.marker);apartmentMarkers.delete(id);}
     const unmapped=filtered.filter(m=>(m.complex.admin||[]).length<3).length;
     $('mapStatus').textContent=`현재 영역 ${visible.toLocaleString()}개 · 조건 일치 ${filtered.length.toLocaleString()}개${located<filtered.length?' · 위치 확인 중 '+(filtered.length-located).toLocaleString()+'개':''}${unmapped?' · 행정동 확인 중 '+unmapped.toLocaleString()+'개':''}`;
   }
@@ -102,9 +106,13 @@
   function addApartment(match,isSelected=false) {
     const c=match.complex, a=isSelected?selectedArea:match.area, trade=a?.latest;
     const stale=trade && Date.now()-new Date(fmtDate(trade[0])).getTime()>365*86400000;
-    const label=`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
-    const marker=L.marker(c.coord,{icon:L.divIcon({className:'apt-marker',html:label,iconSize:[98,46],iconAnchor:[49,23]}),zIndexOffset:isSelected?1000:0,title:`${c.n} · ${a?fmtArea(a.a):''} · 최근 실거래 ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`}).addTo(markers);
+    const label=timeline?.active()?timeline.label(match):`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
+    const title=`${c.n} · ${a?fmtArea(a.a):''} · ${timeline?.active()?'선택 시점':'최근 실거래'} ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`;
+    const cached=apartmentMarkers.get(c.id);
+    if(cached){if(cached.label!==label){cached.marker.getElement().innerHTML=label;cached.label=label;}cached.marker.getElement().title=title;cached.marker.setZIndexOffset(isSelected?1000:0);return;}
+    const marker=L.marker(c.coord,{icon:L.divIcon({className:'apt-marker',html:label,iconSize:[98,46],iconAnchor:[49,23]}),zIndexOffset:isSelected?1000:0,title}).addTo(markers);
     marker.getElement().dataset.mapTarget='apt:'+c.id;
+    apartmentMarkers.set(c.id,{marker,label});
     const activate=event=>{
       const e=event.originalEvent;
       if(e?.type!=='keydown' && !tap.accept('apt:'+c.id,e?.timeStamp))return;
@@ -130,6 +138,7 @@
     map.panBy(innerWidth<768?[0,map.getSize().y*.2]:[-200,0],{animate:false});
   }
   function select(id,area=null,push=true,focus=false) {
+    if(timeline?.active()){timeline.select(id);return;}
     const chosen=byId.get(id);
     if(chosen){save();NodoApartmentLinks.go({id:chosen.publicationId||chosen.id,area:area??model.latestArea(chosen.areas)?.a},!push);if(focus&&document.body.classList.contains('nodo-detail-open'))focusOn(chosen);return;}
     const match=matches.get(byId.get(id)?.id||id);
@@ -236,22 +245,23 @@
     if($('region').value!=='')next.r=Number($('region').value);
     for(const key of filterKeys){const input=$('filters').elements[key];if(input.value!==''){const n=Number(input.value);if(!Number.isFinite(n)||n<0){$('filterError').textContent='0 이상의 숫자를 입력해 주세요.';return;}next[key]=n;}}
     for(const p of ['a','p','u','b'])if(next[p+'L']>next[p+'H']){$('filterError').textContent='최솟값은 최댓값보다 클 수 없습니다.';return;}
-    $('filterError').textContent='';restoring=true;filters=next;syncForm();refilter();search();restoring=false;save(true);
+    $('filterError').textContent='';restoring=true;filters=next;syncForm();refilter();search();restoring=false;
+    if(timeline?.active())timeline.refresh();else save(true);
   }
   function restore() {
     if(!payload)return;cancelNavigation();restoring=true;
-    const state=parseState();filters=state.filters;syncForm();close(false);refilter();$('search').value=state.query;search();
+    const state=parseState();filters=state.filters;syncForm();close(false);$('search').value=state.query;timeline?.restore();refilter();search();
     if(state.view)map.setView([state.view.lat,state.view.lng],state.view.z,{animate:false});
     else map.fitBounds([[36.87,126.36],[38.15,127.84]],{animate:false});
-    if(state.id){if(matches.has(byId.get(state.id)?.id||state.id))select(state.id,state.area,false,!state.view);else toast('선택 단지가 없거나 현재 조건에서 제외되었습니다.');}
+    if(state.id&&!timeline?.active()){if(matches.has(byId.get(state.id)?.id||state.id))select(state.id,state.area,false,!state.view);else toast('선택 단지가 없거나 현재 조건에서 제외되었습니다.');}
     restoring=false;save();
   }
   function bind() {
     $('closeDetail').onclick=()=>close();$('moreTrades').onclick=()=>{visibleTrades+=30;renderTrades();};
     $('filterToggle').onclick=()=>{const show=$('filters').hidden;$('filters').hidden=!show;$('filterToggle').setAttribute('aria-expanded',String(show));setTimeout(()=>map.invalidateSize(),0);};
     $('filters').onsubmit=applyFilters;$('region').onchange=applyFilters;
-    $('resetFilters').onclick=()=>{filters={};syncForm();refilter();search();save(true);};
-    $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(search,150);};
+    $('resetFilters').onclick=()=>{filters={};$('search').value='';syncForm();refilter();search();if(timeline?.active())timeline.resetFilters();else save(true);};
+    $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{search();if(timeline?.active())timeline.refresh();},250);};
     $('search').onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='Enter'){const first=$('searchResults').querySelector('button');if(first&&!$('searchResults').hidden){e.preventDefault();first.focus();}}};
     $('searchResults').onkeydown=e=>{const buttons=[...$('searchResults').querySelectorAll('button')],idx=buttons.indexOf(document.activeElement);if(e.key==='ArrowDown'){e.preventDefault();buttons[Math.min(idx+1,buttons.length-1)]?.focus();}if(e.key==='ArrowUp'){e.preventDefault();if(idx>0)buttons[idx-1].focus();else $('search').focus();}};
     document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap')){$('searchResults').hidden=true;$('search').setAttribute('aria-expanded','false');}});
@@ -306,6 +316,8 @@
       });
       $('retryParcels').onclick=()=>parcelView.render(filtered,selected);
       $('retryRegions').onclick=()=>regionView.render();
+      if(!timeline)timeline=NodoMapTimeline.create({map,payload,getFilters:()=>({...filters,q:$('search').value.trim()}),
+        apply(complexes,changed=null){temporal=complexes;selected=null;selectedArea=null;refilter(changed);if($('search').value)search();},save});
       restore();$('startup').hidden=true;
     } catch(error) {
       $('startupMessage').textContent=error.message;$('retryStartup').hidden=false;$('startup').querySelector('.spinner').hidden=true;

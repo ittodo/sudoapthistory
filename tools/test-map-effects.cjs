@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+require('../js/daily-model.js');
+let callback=null,next=0,reduced=false,timeout=null,arcs=0;
+const ctx=new Proxy({arc(x,y,r){assert.ok(r>=0);arcs++;}}, {get(o,k){return k in o?o[k]:()=>{};}});
+const canvas={dataset:{},style:{},setAttribute(){},getContext:()=>ctx};
+const listeners={},mapListeners={};
+const document={hidden:false,createElement:()=>canvas,addEventListener:(name,fn)=>listeners[name]=fn};
+const scope={window:{addEventListener(){}},document,NodoDailyModel:globalThis.NodoDailyModel,devicePixelRatio:3,performance:{now:()=>100},matchMedia:()=>({get matches(){return reduced;}}),requestAnimationFrame:fn=>{callback=fn;return ++next;},cancelAnimationFrame:()=>{callback=null;},setTimeout:fn=>{timeout=fn;return 1;},clearTimeout:()=>{timeout=null;}};
+vm.runInNewContext(fs.readFileSync(require.resolve('../js/map-effects.js'),'utf8'),scope);
+const effects=scope.window.NodoMapEffects.create({getContainer:()=>({append(){}}),getSize:()=>({x:500,y:400}),latLngToContainerPoint:coord=>({x:coord[0],y:coord[1]}),on:(name,fn)=>mapListeners[name]=fn});
+const events=[{coord:[100,100],count:2,direction:1}];
+effects.burst(events);assert.equal(canvas.width,1000,'DPR is capped at two');
+callback(90);assert.ok(arcs>0,'early RAF timestamp still draws nonnegative radii');
+callback(750);assert.equal(callback,null);assert.equal(canvas.hidden,true,'animation terminates');
+effects.burst(events);document.hidden=true;listeners.visibilitychange();assert.equal(callback,null);
+document.hidden=false;reduced=true;effects.burst(events);callback(100);assert.ok(timeout);timeout();assert.equal(canvas.hidden,true);
+effects.burst(events);mapListeners['movestart resize']();assert.equal(callback,null);
+console.log('Trade effects: bounded resolution, early timestamps, completion, hidden page and reduced motion passed');

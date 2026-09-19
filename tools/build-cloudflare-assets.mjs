@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {forbiddenReason} from './verify-site-layout.mjs';
 import {verifyApartmentRent} from './verify-apartment-rent.mjs';
 import {verifyApartmentSale} from './verify-apartment-sale.mjs';
+import {verifyDailyData} from './verify-daily-data.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const injection = '<script src="/deployment-version.js"></script>';
@@ -26,6 +27,8 @@ export function build(root, output, sha) {
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
   if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) verifyApartmentSale(root);
   if(existsSync(join(root,'js/apartment-rent.js'))) verifyApartmentRent(root);
+  if(existsSync(join(root,'trades/daily/index.html'))&&!existsSync(join(root,'data/daily/index.json')))throw Error('Daily page requires its data manifest');
+  verifyDailyData(root);
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
   const assets=[];
   for(const path of paths) {
