@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from daily_data import area_key, build, validate
 
@@ -68,6 +69,23 @@ class DailyExportTest(unittest.TestCase):
             self.assertTrue(all(s[1]<20260101 for s in data('1/2026-01-state')['opening']))
             self.assertFalse(any(s[1] in (20260103,20260104) for s in data('1/2026-01-state')['updates']))
             self.assertEqual(validate(root)['active'],10)
+            original_files = {p: (p.read_bytes(), p.stat().st_mtime_ns) for p in (root / 'data/daily').rglob('*') if p.is_file()}
+            with patch('daily_data.gzip.compress', side_effect=AssertionError('unchanged content must not be recompressed')):
+                repeated = run()
+            self.assertEqual(index, repeated)
+            for path, (content, mtime) in original_files.items():
+                self.assertEqual(path.read_bytes(), content)
+                self.assertEqual(path.stat().st_mtime_ns, mtime)
+            # The previous publication is reusable by a fresh isolated release.
+            stage = root / 'stage'
+            (stage / 'data/map').mkdir(parents=True)
+            (stage / 'data/map/index.json').write_bytes((root / 'data/map/index.json').read_bytes())
+            with patch('daily_data.gzip.compress', side_effect=AssertionError('cross-stage cache miss')), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(build(stage,database,previous_site=root),index)
+            damaged = root / 'data/daily/1/2026-01.bin'
+            damaged.write_bytes(b'corrupt')
+            run()
+            self.assertEqual(damaged.read_bytes(),original_files[damaged][0])
             c.execute('UPDATE transactions SET price=75 WHERE price=90')
             c.execute("UPDATE build_meta SET value='v2' WHERE key='trade_source_revision'")
             c.commit()

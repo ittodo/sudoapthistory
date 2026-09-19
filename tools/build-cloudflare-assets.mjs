@@ -1,7 +1,7 @@
 import {operationsMetadata} from './operations-metadata.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,rmSync} from 'node:fs';
+import {mkdirSync,readFileSync,writeFileSync,existsSync,lstatSync,rmSync,readdirSync} from 'node:fs';
 import {resolve,join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {forbiddenReason} from './verify-site-layout.mjs';
@@ -53,17 +53,29 @@ export function build(root, output, sha) {
   const manifest=JSON.stringify({schema:1,gitSha:sha,files:assets.map(f=>({path:f.path,sha256:f.sha256??sha256(f.bytes),bytes:f.size??f.bytes.length}))});
   // Only this known generated directory is ever replaced; never clean the source tree.
   for(const part of [join(root,'cloudflare'),join(root,'cloudflare','dist'),output])if(existsSync(part)&&lstatSync(part).isSymbolicLink())throw new Error('Symlink output parent');
-  if(existsSync(output)) rmSync(output,{recursive:true});
+  const wanted=new Set([...assets.map(f=>f.path),'deployment-manifest.json','deployment.json','_headers']);
+  function prune(directory,prefix='') {
+    if(!existsSync(directory))return;
+    for(const entry of readdirSync(directory,{withFileTypes:true})) {
+      const path=join(directory,entry.name),relative=prefix+entry.name;
+      if(lstatSync(path).isSymbolicLink())throw new Error('Symlink output entry');
+      if(entry.isDirectory())prune(path,relative+'/');
+      else if(!wanted.has(relative))rmSync(path);
+    }
+  }
+  prune(output);
+  let reused=0,written=0;
+  function emit(path,bytes){const target=join(output,path);bytes=Buffer.from(bytes);mkdirSync(dirname(target),{recursive:true});if(existsSync(target)&&readFileSync(target).equals(bytes)){reused++;return;}writeFileSync(target,bytes);written++;}
   for(const f of assets) {
     let bytes=f.bytes??readFileSync(f.source);
     if(f.source && f.path.endsWith('.html')) bytes=Buffer.from(bytes.toString('utf8').replace(/<head(?:\s[^>]*)?>/i,match=>match+injection));
     if(f.source && sha256(bytes)!==f.sha256) throw Error('Asset changed during packaging: '+f.path);
-    const target=join(output,f.path);mkdirSync(dirname(target),{recursive:true});writeFileSync(target,bytes);
+    emit(f.path,bytes);
   }
-  writeFileSync(join(output,'deployment-manifest.json'),manifest);
-  writeFileSync(join(output,'deployment.json'),JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
-  writeFileSync(join(output,'_headers'),'/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
-  return {gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest)};
+  emit('deployment-manifest.json',manifest);
+  emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
+  emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
+  return {gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)) {
   const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');

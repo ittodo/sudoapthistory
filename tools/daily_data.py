@@ -47,12 +47,20 @@ def advance(previous, day, prices):
             min(low, previous[3]) if previous else low]
 
 
-def build(site, database, missing=None, guard=None):
+def build(site, database, missing=None, guard=None, previous_site=None):
     site, database = Path(site), Path(database)
     if guard:
         policy = read(guard)
         if not policy.get('site_publish_allowed') or policy.get('projection_in_progress'):
             raise ValueError('Daily generation blocked by source transition policy')
+    previous_site = Path(previous_site) if previous_site else site
+    try:
+        previous_index = read(previous_site / 'data/daily/index.json')
+    except (OSError, ValueError):
+        previous_index = {}
+    if not isinstance(previous_index, dict) or not isinstance(previous_index.get('sources', {}), dict):
+        previous_index = {}
+    reuse = {'reused': 0, 'compressed': 0, 'written': 0, 'unchanged': 0}
     map_path = site / 'data/map/index.json'
     map_data = read(map_path)
     source_map = {s['id']: c for c in map_data['d']
@@ -102,10 +110,29 @@ def build(site, database, missing=None, guard=None):
         path.parent.mkdir(parents=True, exist_ok=True)
         content = json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()
         if compressed:
-            content = gzip.compress(content, compresslevel=6, mtime=0)
+            previous = previous_site / relative
+            cached = None
+            if previous.is_file():
+                try:
+                    candidate = previous.read_bytes()
+                    expected = previous_index.get('sources', {}).get(relative)
+                    if hashlib.sha256(candidate).hexdigest() == expected and gzip.decompress(candidate) == content:
+                        cached = candidate
+                except (OSError, EOFError, ValueError):
+                    pass
+            if cached is not None:
+                content = cached
+                reuse['reused'] += 1
+            else:
+                content = gzip.compress(content, compresslevel=6, mtime=0)
+                reuse['compressed'] += 1
         if len(content) > 24 * 1024 * 1024:
             raise ValueError(f'Daily shard exceeds size budget: {relative}')
-        path.write_bytes(content)
+        if path.is_file() and path.read_bytes() == content:
+            reuse['unchanged'] += 1
+        else:
+            path.write_bytes(content)
+            reuse['written'] += 1
         files[relative] = hashlib.sha256(content).hexdigest()
 
     def flush():
@@ -205,7 +232,11 @@ def build(site, database, missing=None, guard=None):
               'sourceRevision': revision, 'mapVersion': map_data['meta']['sourceVersion'],
               'minDate': min_date, 'maxDate': max_date, 'months': months,
               'counts': dict(counts), 'summary': summaries, 'sources': sources}
+    # A no-op build must not trigger a release merely because the clock advanced.
+    if {k:v for k,v in previous_index.items() if k != 'updated'} == {k:v for k,v in result.items() if k != 'updated'} and previous_index.get('updated'):
+        result['updated'] = previous_index['updated']
     write('data/daily/index.json', result)
+    print('daily reuse: ' + json.dumps(reuse), flush=True)
     return result
 
 
@@ -224,8 +255,9 @@ if __name__ == '__main__':
     p.add_argument('--database', type=Path, default=Path('D:/Work/15_26/apt_data.db'))
     p.add_argument('--missing', type=Path, default=Path('D:/Work/15_26/snapshots/trade_disappearance.db'))
     p.add_argument('--guard', type=Path, default=Path('D:/Work/15_26/data/trade_source_transition.json'))
+    p.add_argument('--previous-site', type=Path, help='Previous validated site used as a per-file cache')
     p.add_argument('--verify', action='store_true')
     args = p.parse_args()
     if not args.verify:
-        build(args.site, args.database, args.missing, args.guard)
+        build(args.site, args.database, args.missing, args.guard, args.previous_site)
     print(json.dumps(validate(args.site), ensure_ascii=False))

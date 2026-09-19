@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync,truncateSync} from 'node:fs';
+import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync,truncateSync,statSync,utimesSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -22,6 +22,12 @@ test('one-file-at-a-time packaging preserves bytes and manifest hashes and rejec
    assert.equal(sha256(bytes),file.sha256);assert.equal(bytes.length,file.bytes);
   }
   assert.equal(readFileSync(join(output,'index.html'),'utf8'),'<html><head>'+injection+'</head><body>한글</body></html>');
+  const unchanged=join(output,'data/valid.json');utimesSync(unchanged,1000,1000);
+  const before=statSync(unchanged).mtimeMs;
+  const repeated=build(root,output,'a'.repeat(40));assert.equal(repeated.written,0);assert.ok(repeated.reused>0);assert.equal(statSync(unchanged).mtimeMs,before);
+  build(root,output,'b'.repeat(40));assert.equal(statSync(unchanged).mtimeMs,before,'new release SHA does not rewrite old data');
+  writeFileSync(join(output,'stale.json'),'stale');writeFileSync(unchanged,'damaged');
+  build(root,output,'b'.repeat(40));assert.equal(readFileSync(unchanged,'utf8'),'{}');assert.equal(existsSync(join(output,'stale.json')),false);
   truncateSync(join(root,'data/valid.json'),25*1024*1024+1);
   assert.throws(()=>build(root,output,'a'.repeat(40)),/exceeds 25 MiB/);
  } finally {rmSync(root,{recursive:true,force:true});}
