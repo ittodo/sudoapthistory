@@ -31,12 +31,16 @@
       (!f.q||[t.c.n,t.c.g,t.c.d].join(' ').toLowerCase().includes(f.q.toLowerCase()))&&
       range(t.a,f.aL,f.aH)&&range(t.p/10000,f.pL,f.pH)&&range(t.c.tu,f.uL,f.uH)&&range(t.c.b,f.bL,f.bH);
   }
+  function changeRate(t) {
+    return !(t.flags&7)&&t.previousDate>0&&t.previousDate<t.d&&t.previousMin>0&&t.p>0 ? (t.p/t.previousMin-1)*100 : null;
+  }
+  function isUp(t) {const rate=changeRate(t);return rate!==null&&rate>0;}
   function category(t,kind='all') {
     if(kind==='inactive')return !!(t.flags&6);
     if(t.flags&6)return false;
-    return kind==='high'?!!(t.records&1):kind==='low'?!!(t.records&2):kind==='down'?!!(t.records&4):true;
+    return kind==='up'?isUp(t):kind==='high'?!!(t.records&1):kind==='low'?!!(t.records&2):kind==='down'?!!(t.records&4):true;
   }
-  function summary(rows) {return rows.reduce((s,t)=>{if(!(t.flags&6)){s.count++;s.high+=!!(t.records&1);s.low+=!!(t.records&2);s.down+=!!(t.records&4);s.direct+=!!(t.flags&1);s.unlocated+=!t.c.coord;}else {s.inactive++;if(t.flags&2)s.cancelled++;else s.missing++;}return s;},{count:0,high:0,low:0,down:0,direct:0,unlocated:0,inactive:0,cancelled:0,missing:0});}
+  function summary(rows) {return rows.reduce((s,t)=>{if(!(t.flags&6)){s.count++;s.up+=isUp(t);s.high+=!!(t.records&1);s.low+=!!(t.records&2);s.down+=!!(t.records&4);s.direct+=!!(t.flags&1);s.unlocated+=!t.c.coord;}else {s.inactive++;if(t.flags&2)s.cancelled++;else s.missing++;}return s;},{count:0,up:0,high:0,low:0,down:0,direct:0,unlocated:0,inactive:0,cancelled:0,missing:0});}
   function snapshot(data,day) {
     const result=new Map(data.opening.map(s=>[s[0],s]));
     for(const s of data.updates){if(s[1]>day)break;result.set(s[0],s);}
@@ -81,7 +85,7 @@
   }
   function badge(t) {
     if(t.flags&2)return '해제'; if(t.flags&4)return '원천에서 사라짐';if(t.flags&1)return '직거래';
-    const v=[];if(t.records&1)v.push('신고가');if(t.records&2)v.push('신저가');if(t.records&4)v.push('직전 대비 하락');
+    const v=[];if(isUp(t))v.push('직전 대비 상승');if(t.records&1)v.push('신고가');if(t.records&2)v.push('신저가');if(t.records&4)v.push('직전 대비 하락');
     if(t.records&8)v.push('최고가 동일');if(t.records&16)v.push('최저가 동일');if(t.records&32)v.push('첫 거래');return v.join(' · ')||'일반 거래';
   }
   function filters(params) {
@@ -90,7 +94,7 @@
     for(const p of ['a','p','u','b'])if(f[p+'L']>f[p+'H'])delete f[p+'H'];
     for(const k of ['g','q'])if(params.get(k))f[k]=params.get(k).slice(0,100);return f;
   }
-  const api={DAY,iso,number,valid,shift,periodRange,monthsBetween,range,detailArea,decode,match,category,summary,snapshot,priceCursor,effectClusters,annualChange,badge,filters};
+  const api={DAY,iso,number,valid,shift,periodRange,monthsBetween,range,detailArea,decode,match,changeRate,isUp,category,summary,snapshot,priceCursor,effectClusters,annualChange,badge,filters};
   root.NodoDailyModel=api;
   if(typeof module!=='undefined')module.exports=api;
 })(globalThis);
