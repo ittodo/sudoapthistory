@@ -152,6 +152,7 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
     # Every earlier source row is fingerprinted again; no timestamp-only trust.
     cache_path, context, cutoff, checkpoint = None, None, None, None
     prefix_hash = hashlib.sha256()
+    prefix_scanned = False
     restored = False
     if cache_dir and previous_index.get('maxDate'):
         cutoff = int(previous_index['maxDate'][:7].replace('-', ''))
@@ -167,6 +168,7 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
                 fingerprint_started = time.perf_counter()
                 for raw in conn.execute(' UNION ALL '.join(prefix_queries) + order, [cutoff] * len(queries)):
                     prefix_hash.update(json.dumps(tuple(raw), ensure_ascii=False, separators=(',', ':')).encode() + b'\n')
+                prefix_scanned = True
                 print('daily prefix fingerprint seconds: ' + str(round(time.perf_counter() - fingerprint_started, 3)), flush=True)
                 if prefix_hash.hexdigest() == cached['prefixHash']:
                     for name, expected in snapshot['files'].items():
@@ -199,7 +201,10 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
         except (OSError, ValueError, KeyError, TypeError):
             pass
         if not restored:
-            prefix_hash = hashlib.sha256()
+            # A historical correction invalidates the cached pricing state, but the
+            # completed fingerprint is still valid in this same SQLite snapshot.
+            if not prefix_scanned:
+                prefix_hash = hashlib.sha256()
             areas, area_ids, history, states = [], {}, {}, [{}, {}, {}]
             files, summaries, months, counts = {}, {}, [], defaultdict(int)
             current_month, min_date, max_date, checkpoint = None, None, None, None
@@ -207,7 +212,7 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
     raw_cursor = conn.execute(' UNION ALL '.join(selected) + order, [cutoff] * len(queries) if restored else [])
     def fingerprinted():
         for raw in raw_cursor:
-            if cutoff and (raw['year'] or 0)*100 + (raw['month'] or 0) < cutoff:
+            if cutoff and not prefix_scanned and (raw['year'] or 0)*100 + (raw['month'] or 0) < cutoff:
                 prefix_hash.update(json.dumps(tuple(raw), ensure_ascii=False, separators=(',', ':')).encode() + b'\n')
             yield raw
     cursor = fingerprinted()

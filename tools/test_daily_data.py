@@ -150,6 +150,7 @@ class CheckpointTests(unittest.TestCase):
             c.execute('DELETE FROM transactions WHERE year=2025 AND contract_day=31')
             c.commit()
             compare('full')
+            compare('reused')
             next(cache.glob('*.json')).write_text('{broken')
             compare('full')
             (site / 'data/daily/1/2025-12.bin').write_bytes(b'broken')
