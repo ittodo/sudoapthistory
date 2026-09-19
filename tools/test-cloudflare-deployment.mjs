@@ -6,11 +6,13 @@ const hash=x=>createHash('sha256').update(x).digest('hex');
 test('public verification binds health, release, manifest and sample bytes to SHA',async()=>{
   const sha='a'.repeat(40), content='fixture';
   const files=['index.html','data/index.json','data/earnings_index.json','deployment-version.js'].map(path=>({path,sha256:hash(content),bytes:content.length}));
+  files.find(f=>f.path==='data/index.json').bytes=15*1024*1024;
   const manifest=JSON.stringify({schema:1,gitSha:sha,files});
   const release={gitSha:sha,assetManifestSha256:hash(manifest)};
+  const requested=[];
   const original=globalThis.fetch;let badHealth=false,badBytes=false,missing404=true;
   globalThis.fetch=async(input)=>{
-    const url=new URL(input);let body=content,status=200;
+    const url=new URL(input);requested.push(url.pathname);let body=content,status=200;
     if(url.pathname==='/deployment.json')body=JSON.stringify(release);
     else if(url.pathname==='/api/health')body=JSON.stringify({gitSha:badHealth?'b'.repeat(40):sha,status:'ok',workerVersionId:'fixture-worker-version',schemaVersion:2});
     else if(url.pathname==='/deployment-manifest.json')body=manifest;
@@ -20,6 +22,8 @@ test('public verification binds health, release, manifest and sample bytes to SH
   };
   try {
     assert.deepEqual(await verify('https://fixture.invalid',sha),{...release,workerVersionId:'fixture-worker-version',schemaVersion:2});
+    assert.ok(!requested.includes('/data/index.json'));
+    assert.ok(requested.includes('/data/earnings_index.json'));
     badHealth=true;await assert.rejects(verify('https://fixture.invalid',sha),/SHA mismatch/);badHealth=false;
     badBytes=true;await assert.rejects(verify('https://fixture.invalid',sha),/Public hash mismatch/);badBytes=false;
     missing404=false;await assert.rejects(verify('https://fixture.invalid',sha),/must be 404/);

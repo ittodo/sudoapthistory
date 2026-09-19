@@ -18,7 +18,12 @@ export async function verify(origin,sha,localManifest,{signal}={}) {
   if(localManifest && hash(readFileSync(localManifest))!==hash(raw))throw new Error('Local build manifest differs');
   const manifest=JSON.parse(raw);if(manifest.gitSha!==sha || !Array.isArray(manifest.files))throw new Error('Invalid manifest');
   // Full manifest is checked against the local build in CI; representative bytes are checked publicly.
-  const samples=['index.html','data/index.json','data/earnings_index.json','deployment-version.js'];
+  // Large catalogs are covered by the exact manifest and release byte-check cache.
+  // Probe JSON routing with one small asset, keeping recurring network checks bounded.
+  for(const path of ['data/index.json','data/earnings_index.json'])if(!manifest.files.some(f=>f.path===path))throw new Error(`Required public asset missing: ${path}`);
+  const probe=manifest.files.filter(f=>f.path.startsWith('data/')&&f.path.endsWith('.json')&&Number.isSafeInteger(f.bytes)&&f.bytes>0&&f.bytes<=64*1024).sort((a,b)=>a.bytes-b.bytes||a.path.localeCompare(b.path))[0];
+  if(!probe)throw new Error('Small JSON probe missing from manifest');
+  const samples=['index.html','deployment-version.js',probe.path];
   for(const path of samples) {const f=manifest.files.find(f=>f.path===path);if(!f)throw new Error(`Required public asset missing: ${path}`);if(hash(await get(`${url.origin}/${path}?v=${sha}`,signal))!==f.sha256)throw new Error(`Public hash mismatch: ${path}`);}
   const missing=await fetch(`${url.origin}/data/__migration_missing_${sha}.json`,{redirect:'error',signal:requestSignal(signal)});if(missing.status!==404)throw new Error('Missing JSON must be 404');
   return {...release,workerVersionId:health.workerVersionId,schemaVersion:health.schemaVersion};
