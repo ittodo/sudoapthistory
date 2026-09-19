@@ -22,18 +22,21 @@
   // The established detail pages use Python's integer-area grouping (ties to even).
   const detailArea=n=>n%1===0.5?Math.round(n/2)*2:Math.round(n);
   function decode(row,catalog) {
-    const [ai,d,p,f,flags,previousDate,previousMin,high,low,records,id]=row;
+    const [ai,d,p,f,flags,previousDate,previousMin,high,low,records,id,previousMax]=row;
     const [ci,a]=catalog.areas[ai];
-    return {ai,d,p,f,flags,previousDate,previousMin,high,low,records,id,a:Number(a),c:catalog.complexes[ci]};
+    return {ai,d,p,f,flags,previousDate,previousMin,previousMax,high,low,records,id,a:Number(a),c:catalog.complexes[ci]};
   }
   function match(t,f={}) {
     return (f.r==null||t.c.r===f.r)&&(!f.g||t.c.g===f.g)&&
       (!f.q||[t.c.n,t.c.g,t.c.d].join(' ').toLowerCase().includes(f.q.toLowerCase()))&&
       range(t.a,f.aL,f.aH)&&range(t.p/10000,f.pL,f.pH)&&range(t.c.tu,f.uL,f.uH)&&range(t.c.b,f.bL,f.bH);
   }
-  function changeRate(t) {
-    return !(t.flags&7)&&t.previousDate>0&&t.previousDate<t.d&&t.previousMin>0&&t.p>0 ? (t.p/t.previousMin-1)*100 : null;
+  function comparison(t) {
+    if(t.flags&7||!(t.previousDate>0&&t.previousDate<t.d&&t.previousMin>0&&t.previousMax>=t.previousMin&&t.p>0))return null;
+    const direction=t.p>t.previousMax?1:t.p<t.previousMin?-1:0;
+    return {direction,base:direction>0?t.previousMax:direction<0?t.previousMin:null};
   }
+  function changeRate(t) {const c=comparison(t);return !c?null:c.direction===0?0:(t.p/c.base-1)*100;}
   function isUp(t) {const rate=changeRate(t);return rate!==null&&rate>0;}
   function category(t,kind='all') {
     if(kind==='inactive')return !!(t.flags&6);
@@ -77,15 +80,15 @@
     return [...groups.values()].map(g=>({...g,x:g.x/g.n,y:g.y/g.n,direction:g.up&&g.down?0:g.up?1:g.down?-1:0}));
   }
   function annualChange(t) {
-    if(t.flags&7||!(t.p>0)||!(t.previousMin>0)||!valid(iso(t.d))||!valid(iso(t.previousDate)))return null;
+    const c=comparison(t);if(!c||!c.direction||!valid(iso(t.d))||!valid(iso(t.previousDate)))return null;
     const days=(Date.parse(iso(t.d)+'T00:00:00Z')-Date.parse(iso(t.previousDate)+'T00:00:00Z'))/DAY;
     if(days<=0)return null;
-    const years=days/365.2425,rate=Math.expm1(Math.log(t.p/t.previousMin)/years)*100;
+    const years=days/365.2425,rate=Math.expm1(Math.log(t.p/c.base)/years)*100;
     return {days,years,rate:Number.isFinite(rate)?rate:null};
   }
   function badge(t) {
     if(t.flags&2)return '해제'; if(t.flags&4)return '원천에서 사라짐';if(t.flags&1)return '직거래';
-    const v=[];if(isUp(t))v.push('직전 대비 상승');if(t.records&1)v.push('신고가');if(t.records&2)v.push('신저가');if(t.records&4)v.push('직전 대비 하락');
+    const v=[];if(comparison(t)?.direction===0)v.push('직전 범위 내');if(isUp(t))v.push('직전 대비 상승');if(t.records&1)v.push('신고가');if(t.records&2)v.push('신저가');if(t.records&4)v.push('직전 대비 하락');
     if(t.records&8)v.push('최고가 동일');if(t.records&16)v.push('최저가 동일');if(t.records&32)v.push('첫 거래');return v.join(' · ')||'일반 거래';
   }
   function filters(params) {
@@ -94,7 +97,7 @@
     for(const p of ['a','p','u','b'])if(f[p+'L']>f[p+'H'])delete f[p+'H'];
     for(const k of ['g','q'])if(params.get(k))f[k]=params.get(k).slice(0,100);return f;
   }
-  const api={DAY,iso,number,valid,shift,periodRange,monthsBetween,range,detailArea,decode,match,changeRate,isUp,category,summary,snapshot,priceCursor,effectClusters,annualChange,badge,filters};
+  const api={DAY,iso,number,valid,shift,periodRange,monthsBetween,range,detailArea,decode,match,comparison,changeRate,isUp,category,summary,snapshot,priceCursor,effectClusters,annualChange,badge,filters};
   root.NodoDailyModel=api;
   if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

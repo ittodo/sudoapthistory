@@ -55,6 +55,11 @@ class DailyExportTest(unittest.TestCase):
             self.assertEqual(index['counts']['invalidDate'],1)
             january=data('1/2026-01')['rows']
             by_price={r[2]:r for r in january}
+            self.assertEqual(by_price[110][11],120)
+            self.assertEqual(by_price[90][11],110)
+            self.assertEqual(by_price[130][11],110)
+            self.assertEqual(by_price[95][11],130)
+            self.assertIsNone(by_price[20][11])
             self.assertEqual(by_price[90][5:10],[20260101,110,120,100,6])
             self.assertEqual(by_price[130][5:10],[20260101,110,120,100,1])
             self.assertEqual(by_price[95][5:10],[20260102,90,130,90,0])

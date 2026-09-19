@@ -1,6 +1,6 @@
 """Exact-area daily sales export. All database connections are read-only.
 
-Rows: [areaId,date,price,floor,flags,previousDate,previousMin,high,low,records,id]
+Rows: [areaId,date,price,floor,flags,previousDate,previousMin,high,low,records,id,previousMax]
 flags: direct=1,cancelled=2,missing=4. records: high=1,low=2,down=4,
 equalHigh=8,equalLow=16,first=32. State: [areaId,date,min,max,mean,count].
 """
@@ -39,7 +39,7 @@ def area_key(value):
 def classify(price, previous):
     if previous is None:
         return 32
-    _, prev_min, high, low = previous
+    _, prev_min, high, low, _ = previous
     return ((1 if price > high else 8 if price == high else 0)
             | (2 if price < low else 16 if price == low else 0)
             | (4 if price < prev_min else 0))
@@ -48,7 +48,7 @@ def classify(price, previous):
 def advance(previous, day, prices):
     low, high = min(prices), max(prices)
     return [day, low, max(high, previous[2]) if previous else high,
-            min(low, previous[3]) if previous else low]
+            min(low, previous[3]) if previous else low, high]
 
 
 def build(site, database, missing=None, guard=None, previous_site=None, cache_dir=None, ledger_root=None):
@@ -331,7 +331,7 @@ def _build(site, database, missing, guard, previous_site, cache_dir, ledger_root
             rows[c['r']].append([ai, day, r['price'], r['floor'], flags,
                 prev[0] if prev and flags == 0 else None, prev[1] if prev and flags == 0 else None,
                 prev[2] if prev and flags == 0 else None, prev[3] if prev and flags == 0 else None,
-                records, rid])
+                records, rid, prev[4] if prev and flags == 0 else None])
             counts['rows'] += 1
             if flags & 6:
                 counts['inactive'] += 1

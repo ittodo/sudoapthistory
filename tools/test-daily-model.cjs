@@ -8,7 +8,7 @@ assert.equal(M.shift('2026-01-01',-1),'2025-12-31');
 assert.equal(M.valid('2026-02-30'),false);
 assert.equal(M.detailArea(84.5),84);assert.equal(M.detailArea(85.5),86);
 const catalog={complexes:[{id:'A',r:1,g:'중구',n:'단지',coord:[37,127],tu:100,b:2000}],areas:[[0,'84.90'],[0,'84.95']]};
-const t=M.decode([0,20260102,90000,4,0,20260101,100000,120000,95000,6,'id'],catalog);
+const t=M.decode([0,20260102,90000,4,0,20260101,100000,120000,95000,6,'id',100000],catalog);
 assert.equal(t.a,84.9);
 assert.equal(M.match(t,{r:1,aH:84.91,pH:9}),true);
 assert.equal(M.match(t,{r:2}),false);
@@ -61,11 +61,11 @@ assert.deepEqual(M.monthsBetween('2026-01-31','2026-03-01'),['2026-01','2026-02'
 assert.deepEqual(M.monthsBetween('2025-12-29','2026-01-04'),['2025-12','2026-01']);
 console.log('Calendar periods: partial weeks, leap February and exact month requests passed');
 
-const annualBase={p:121,previousMin:100,previousDate:20240101,d:20260101,flags:0};
+const annualBase={p:121,previousMin:100,previousMax:100,previousDate:20240101,d:20260101,flags:0};
 const annual=M.annualChange(annualBase);
 assert.equal(annual.days,731);assert.ok(Math.abs(annual.rate-10)<0.02);
 assert.ok(M.annualChange({...annualBase,p:81}).rate<0);
-assert.equal(M.annualChange({...annualBase,p:100}).rate,0);
+assert.equal(M.annualChange({...annualBase,p:100}),null);
 for(const flags of [1,2,4])assert.equal(M.annualChange({...annualBase,flags}),null);
 for(const override of [{previousMin:null},{previousMin:0},{previousDate:20260101},{previousDate:20260102}])assert.equal(M.annualChange({...annualBase,...override}),null);
 assert.equal(M.annualChange({...annualBase,previousDate:20251231}).days,1);
@@ -74,3 +74,19 @@ console.log('Annualized change: elapsed days, compound rate, exclusions and over
 
 const inactiveCounts=M.summary([{...t,flags:2},{...t,flags:4},{...t,flags:6}]);
 assert.equal(inactiveCounts.cancelled,2);assert.equal(inactiveCounts.missing,1);assert.equal(inactiveCounts.count,0);assert.equal(inactiveCounts.inactive,3);
+
+// Previous contract-day range resets after each trading day, not each calendar day.
+const rangeTrade={...rising,previousMin:100000,previousMax:120000};
+for(const p of [100000,110000,120000]){
+ const trade={...rangeTrade,p};
+ assert.equal(M.category(trade,'up'),false);
+ assert.equal(M.comparison(trade).direction,0);
+ assert.equal(M.annualChange(trade),null);
+}
+assert.equal(M.comparison({...rangeTrade,p:99000}).direction,-1);
+assert.equal(M.comparison({...rangeTrade,p:121000}).direction,1);
+assert.ok(Math.abs(M.changeRate({...rangeTrade,p:132000})-10)<1e-9);
+assert.equal(M.comparison({...rangeTrade,previousMin:110000,previousMax:110000,p:100000}).direction,-1);
+assert.equal(M.comparison({...rangeTrade,previousMin:110000,previousMax:110000,p:120000}).direction,1);
+assert.equal(M.category({...rangeTrade,previousMax:undefined,p:130000},'up'),false);
+console.log('Range comparison: boundaries, reset, rates and legacy-data exclusion passed');
