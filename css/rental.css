@@ -3,3 +3,47 @@
 #nodo-rental.rental-map-page{padding-top:12px}.rental-map-page .rental-eyebrow{display:none}#nodo-rental.rental-map-page h1{font-size:22px;margin:0}.rental-map-page .rental-card{margin:10px 0;padding:12px}.rental-map-page .rental-heading{align-items:center}.rental-map-page #rental-convert-wrap{flex-direction:row;align-items:center}.rental-map-page #rental-playback p{margin:0;font-size:11px}.rental-map-page #rental-coverage{font-size:11px}
 
 .rental-row>div{min-width:0;overflow-wrap:anywhere}#nodo-rental input,#nodo-rental select{min-width:0;max-width:100%}
+/* Period rentals share the sale page's hierarchy, spacing and responsive controls. */
+#nodo-rental.rental-daily-page{padding:32px 28px 60px}
+#nodo-rental.rental-daily-page h1{font-size:clamp(26px,3vw,38px);letter-spacing:-1.5px;margin:8px 0}
+#nodo-rental.rental-daily-page .rental-heading{align-items:center;margin-bottom:28px}
+#nodo-rental.rental-daily-page .daily-eyebrow{font-size:11px;letter-spacing:1.5px;font-weight:700;color:var(--accent)}
+#nodo-rental.rental-daily-page .daily-muted{font-size:13px;color:var(--muted)}
+#nodo-rental.rental-daily-page .daily-panel{padding:20px;border-radius:16px;margin:0 0 18px;box-shadow:var(--shadow)}
+#nodo-rental.rental-daily-page button,#nodo-rental.rental-daily-page input,#nodo-rental.rental-daily-page select{border-radius:8px;padding:9px 11px}
+#nodo-rental.rental-daily-page .daily-periods button{min-width:68px;font-size:12px}
+#nodo-rental.rental-daily-page .daily-periods button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+#nodo-rental.rental-daily-page .rental-date-label{flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px;font-size:14px;font-weight:700}
+#nodo-rental.rental-daily-page .daily-date input{font-size:19px;font-weight:700}
+#nodo-rental.rental-daily-page .daily-date select{font-size:14px;max-width:100%}
+#nodo-rental.rental-daily-page .daily-filters{gap:12px;align-items:end}
+#nodo-rental.rental-daily-page .daily-filters label{font-size:11px;color:var(--muted);gap:6px}
+#nodo-rental.rental-daily-page .daily-filters input,#nodo-rental.rental-daily-page .daily-filters select{font-size:13px}
+#nodo-rental.rental-daily-page .daily-search{flex:1;min-width:170px}
+#nodo-rental.rental-daily-page .daily-filters label>span{display:flex;align-items:center;gap:5px}
+#nodo-rental.rental-daily-page .daily-filters input[type=number]{width:76px}
+#nodo-rental.rental-daily-page .rental-primary{margin:0;background:var(--accent);color:var(--bg)}
+#nodo-rental.rental-daily-page .rental-daily-extra{display:flex;align-items:center;flex-wrap:wrap;gap:18px;border-top:1px solid var(--border);padding-top:14px;margin-top:16px}
+#nodo-rental.rental-daily-page .rental-daily-extra label{flex-direction:row;align-items:center;gap:10px;color:var(--muted)}
+#nodo-rental.rental-daily-page .rental-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0 22px}
+#nodo-rental.rental-daily-page .daily-stat{padding:19px 20px}
+#nodo-rental.rental-daily-page .daily-stat strong{font-size:32px;letter-spacing:-1px;margin:8px 0}
+@media(max-width:760px){
+ #nodo-rental.rental-daily-page{padding:20px 14px 40px}
+ #nodo-rental.rental-daily-page .rental-heading{margin-bottom:20px}
+ #nodo-rental.rental-daily-page .daily-panel{padding:14px}
+ #nodo-rental.rental-daily-page .daily-filters{gap:10px}
+ #nodo-rental.rental-daily-page .daily-filters label{flex:1;min-width:125px}
+ #nodo-rental.rental-daily-page .daily-filters input[type=number]{width:45%;flex:1;min-width:0}
+ #nodo-rental.rental-daily-page .daily-date{gap:6px}
+ #nodo-rental.rental-daily-page .rental-date-label{min-width:0;flex:0 1 auto}
+ #nodo-rental.rental-daily-page .daily-date input{font-size:16px;padding:7px}
+ #nodo-rental.rental-daily-page #rental-week{font-size:12px;width:248px}
+ #nodo-rental.rental-daily-page .rental-daily-extra{gap:12px}
+ #nodo-rental.rental-daily-page .rental-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ #nodo-rental.rental-daily-page .daily-stat{padding:14px}
+ #nodo-rental.rental-daily-page .daily-stat strong{font-size:27px}
+}
+#nodo-rental.rental-daily-page .rental-result-tabs{margin-bottom:18px}
+#nodo-rental.rental-daily-page .daily-tabs button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+@media(max-width:760px){#nodo-rental.rental-daily-page #rental-date-nav[data-period=week] .rental-date-label{order:-1;flex-basis:100%}}

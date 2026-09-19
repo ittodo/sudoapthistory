@@ -4,6 +4,7 @@
  const M=window.NodoRental,esc=window.NodoUI.escape,path=location.pathname.replace(/index\.html$/,'');
  const titles={'/':'단지 검색','/map/':'지도','/trades/':'실거래','/trades/daily/':'기간별 실거래','/apartment/':'단지 상세','/compare/':'지역·단지 비교','/ranking/':'순위','/stats/':'가격대 통계','/market/':'시장 동향'};
  if(!titles[path])return;
+ const isDaily=path==='/trades/daily/';
  const key='nodo:rental:preferences:v1';let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch{}
  const params=new URLSearchParams(location.search),initial=M.normalize(params,saved);
  let settings={...initial,q:'',district:'',areaMin:'',areaMax:'',depositMin:'',depositMax:'',rentMin:'',rentMax:'',sort:'date',limit:50,map:path==='/map/',detail:path==='/apartment/'?(params.get('id')||'__unresolved__'):null,year:''};
@@ -25,6 +26,31 @@
  <section id="rental-rank-panel" class="rental-card" hidden><h2>단지·면적·계약 구분별 가격 순위</h2><div id="rental-rank"></div></section>
  <section class="rental-card"><div class="rental-controls"><h2>계약 내역</h2><label>분류<select id="rental-kind"><option value="all">전체 유효 거래</option><option value="up">직전 대비 상승</option><option value="down">직전 대비 하락</option><option value="within">직전 범위 내</option><option value="high">보유 이력 신고가</option><option value="low">보유 이력 신저가</option><option value="cancelled">해제 거래</option></select></label><label>정렬<select id="rental-sort"><option value="date">최근 계약일</option><option value="value">표시 가격 높은 순</option><option value="deposit">보증금 높은 순</option><option value="rent">월세 높은 순</option><option value="rise">상승률 큰 순</option><option value="drop">하락률 큰 순</option></select></label></div><p id="rental-count"></p><div id="rental-rows"></div><button id="rental-more" hidden>50건 더 보기</button></section>
  <details class="rental-card"><summary>전월세 가격 비교 기준</summary><p>전세는 보증금, 환산 월세는 월세＋보증금×연 환산율÷12로 비교합니다. 환산값은 실제 계약금액이나 법정 전환율을 뜻하지 않습니다.</p><p>같은 원천 단지·정확한 전용면적·전세/월세·신규/갱신/미상끼리 비교합니다. 직전 계약일 최고가를 넘으면 상승, 최저가보다 낮으면 하락이며 양 끝값을 포함한 사이는 범위 내입니다. 같은 날 거래의 순서는 추정하지 않습니다.</p><p>환산 비교에는 현재 거래의 계약 월 기준 환산율을 과거 비교 대상에도 동일하게 적용합니다. 공식 값이 아직 없으면 그 월 이전의 마지막 발표값을 사용하며 최초 공식 값 이전에는 환산하지 않습니다. 해제는 제외하고 첫 거래는 기록 갱신으로 세지 않습니다. 수집된 과거 이력이 추가되면 판정이 달라질 수 있습니다.</p></details>`;
+ // Match the sale period page while retaining the shared rental form and data flow.
+ if(isDaily){
+  root.classList.add('daily-page','rental-daily-page');
+  const heading=root.querySelector('.rental-heading');heading.classList.add('daily-heading');
+  heading.querySelector('.rental-eyebrow').classList.add('daily-eyebrow');
+  heading.querySelector('h1').after(Object.assign(document.createElement('p'),{className:'daily-muted',textContent:'일간·주간·월간 전월세 거래와 가격 변화를 살펴보세요.'}));
+  heading.insertAdjacentHTML('beforeend','<a class="daily-link" id="rental-explorer" href="/trades/">기존 실거래 탐색기 ↗</a>');
+  const f=root.querySelector('#rental-filters'), controls=f.querySelector('.rental-controls');f.classList.add('daily-panel','daily-controls');controls.classList.add('daily-filters');
+  const period=f.elements.period.closest('label');period.hidden=true;
+  const date=f.elements.day.closest('label');date.classList.add('rental-date-label');
+  const year=f.elements.year.closest('label');year.hidden=true;
+  const contract=f.elements.contract.closest('label');
+  f.insertAdjacentHTML('afterbegin','<div class="daily-tabs daily-periods" id="rental-periods" role="group" aria-label="조회 단위">'+[['day','일간'],['week','주간'],['month','월간']].map(([v,n])=>`<button type="button" data-rental-period="${v}" aria-pressed="false">${n}</button>`).join('')+'</div><div class="daily-date" id="rental-date-nav"><button type="button" id="rental-prev" aria-label="이전 기간">←</button><button type="button" id="rental-next" aria-label="다음 기간">→</button><button type="button" id="rental-latest">최근</button></div><p id="rental-range" class="daily-muted" aria-live="polite"></p>');
+  f.querySelector('#rental-next').before(date);date.insertAdjacentHTML('beforeend','<select id="rental-week" hidden aria-label="조회 주간 · 월요일부터 일요일"></select>');
+  f.elements.region.options[0].textContent='수도권 전체';f.elements.district.closest('label').firstChild.textContent='시·군·구';
+  f.elements.q.closest('label').classList.add('daily-search');f.elements.q.placeholder='단지명 또는 동 이름';
+  for(const name of ['area','deposit','rent']){const label=f.elements[name+'Min'].closest('label');label.dataset.rentalAmount=name;controls.append(label);for(const edge of ['Min','Max'])f.elements[name+edge].setAttribute('aria-label',({'area':'전용면적','deposit':'보증금','rent':'월세'}[name])+(edge==='Min'?' 최소':' 최대'));}
+  f.querySelector('details').remove();const submit=f.querySelector('[type=submit]');submit.classList.add('daily-primary');controls.append(submit);
+  controls.insertAdjacentHTML('beforeend','<button type="button" id="rental-reset">초기화</button>');
+  const extra=document.createElement('div');extra.className='rental-daily-extra';extra.append(contract,root.querySelector('#rental-convert-wrap'));f.append(extra,period,year);
+  const kind=root.querySelector('#rental-kind');kind.closest('label').hidden=true;
+  const resultPanel=kind.closest('section');resultPanel.insertAdjacentHTML('afterbegin','<div class="daily-section-heading rental-result-tabs"><div class="daily-tabs" id="rental-categories" role="group" aria-label="거래 분류">'+[...kind.options].map(o=>`<button type="button" data-rental-category="${o.value}" aria-pressed="false">${o.textContent.replace('전체 유효 거래','전체').replace('보유 이력 ','')}</button>`).join('')+'</div><a class="daily-link" id="rental-daily-map" href="/map/">이 날짜 지도에서 보기 ↗</a></div>');
+  root.querySelector('#rental-stats').classList.add('daily-stats');
+  root.querySelectorAll('.rental-card').forEach(e=>e.classList.add('daily-panel'));
+ }
  const $=id=>document.getElementById(id),form=$('rental-filters'),money=v=>v==null?'—':Number(v).toLocaleString('ko-KR',{maximumFractionDigits:2})+'만원';
  const typeName=()=>settings.type==='jeonse'?'전세':settings.convert?'월세 · 월 환산액':'월세 · 보증금/월세';
  const detailURL=t=>'/apartment/?'+new URLSearchParams({id:t.c?.publicId||t.publicId||t.c?.id,tenure:settings.type,rentConvert:settings.convert?'1':'0',rentContract:settings.contract,rentDate:settings.day,rental_year:(t.date||settings.day).slice(0,4),view:'full'});
@@ -34,7 +60,39 @@
   const raw=settings.type==='monthly'&&!settings.convert;for(const o of $('rental-kind').options)o.disabled=raw&&!['all','cancelled'].includes(o.value);for(const o of $('rental-sort').options)o.disabled=raw&&['rise','drop'].includes(o.value);$('rental-kind').value=settings.kind;$('rental-sort').value=settings.sort;
   $('rental-playback').hidden=!settings.map;$('rental-map').hidden=!settings.map;$('rental-year-wrap').hidden=!settings.detail;
   for(const n of ['day','period'])form.elements[n].closest('label').hidden=!!settings.detail||(n==='period'&&settings.map);form.elements.day.readOnly=settings.map;
+  if(isDaily)syncDaily();
   $('rental-trend-panel').hidden=!['/market/','/compare/'].includes(path);$('rental-regions-panel').hidden=!['/market/','/compare/'].includes(path);$('rental-rank-panel').hidden=!['/','/ranking/','/compare/'].includes(path);$('rental-distribution-panel').hidden=path!=='/stats/';
+ }
+ function shiftPeriod(direction){const span=M.range(settings.day,settings.period),d=new Date(span.from+'T00:00:00Z');if(settings.period==='month')d.setUTCMonth(d.getUTCMonth()+direction);else d.setUTCDate(d.getUTCDate()+direction*(settings.period==='week'?7:1));return d.toISOString().slice(0,10);}
+ function syncDaily(){
+  if(settings.type!=='monthly'){settings.rentMin=settings.rentMax='';form.elements.rentMin.value=form.elements.rentMax.value='';}
+  if(settings.type==='monthly'&&!settings.convert&&!['all','cancelled'].includes(settings.kind))settings.kind='all';
+  $('rental-date-nav').dataset.period=settings.period;
+  root.querySelectorAll('[data-rental-category]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.rentalCategory===settings.kind));b.disabled=settings.type==='monthly'&&!settings.convert&&!['all','cancelled'].includes(b.dataset.rentalCategory);});
+  $('rental-daily-map').href='/map/?'+new URLSearchParams({tenure:settings.type,rentConvert:settings.convert?'1':'0',rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract});
+  $('rental-title').textContent='기간별 실거래';root.querySelector('.rental-eyebrow').textContent='TRANSACTIONS · 수도권 아파트 '+(settings.type==='monthly'?'월세':'전세');
+  $('rental-explorer').href='/trades/?'+new URLSearchParams({tenure:settings.type,rentConvert:settings.convert?'1':'0'});
+  form.elements.period.closest('label').hidden=true;
+  root.querySelector('[data-rental-amount="rent"]').hidden=settings.type!=='monthly';
+  root.querySelectorAll('[data-rental-period]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rentalPeriod===settings.period)));
+  const week=$('rental-week');week.hidden=settings.period!=='week';form.elements.day.hidden=settings.period==='week';
+  $('rental-prev').disabled=!meta;$('rental-next').disabled=!meta;
+  if(!meta||!settings.day)return;
+  const span=M.range(settings.day,settings.period);$('rental-range').textContent=span.from===span.to?span.from:span.from+' ~ '+span.to+(settings.period==='week'?' · 월요일~일요일':'');
+  $('rental-prev').disabled=M.range(shiftPeriod(-1),settings.period).to<meta.months[0]+'-01';$('rental-next').disabled=shiftPeriod(1)>meta.lastDate;
+  if(settings.period==='week'){
+   if(!week.options.length){let day=M.range(meta.months[0]+'-01','week').from;const options=[];while(day<=meta.lastDate){const r=M.range(day,'week');options.push(`<option value="${day}">${r.from} ~ ${r.to}</option>`);const d=new Date(day+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+7);day=d.toISOString().slice(0,10);}week.innerHTML=options.reverse().join('');}
+   week.value=span.from;
+  }
+ }
+ if(isDaily){
+  $('rental-categories').onclick=e=>{const b=e.target.closest('[data-rental-category]');if(!b||b.disabled)return;settings.kind=b.dataset.rentalCategory;settings.limit=50;refresh();};
+  $('rental-periods').onclick=e=>{const b=e.target.closest('[data-rental-period]');if(!b)return;settings.period=b.dataset.rentalPeriod;settings.limit=50;refresh();};
+  for(const [id,direction]of [['rental-prev',-1],['rental-next',1]])$(id).onclick=()=>{if(!meta)return;settings.day=shiftPeriod(direction);settings.limit=50;refresh();};
+  $('rental-latest').onclick=()=>{if(!meta)return;settings.day=meta.lastDate;settings.limit=50;refresh();};
+  $('rental-week').onchange=e=>{settings.day=e.target.value;settings.limit=50;refresh();};
+  form.elements.day.onchange=e=>{if(!e.target.value)return;settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
+  $('rental-reset').onclick=()=>{for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
  }
  function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
  async function ensure(){if(meta)return;const init=await request('init');meta=init.meta;const last=meta.months.at(-1);if(!settings.day)settings.day=meta.lastDate;if(!/^\d{4}-\d{2}-\d{2}$/.test(settings.day)||settings.day.slice(0,7)>last)settings.day=meta.lastDate;settings.year=settings.year||last.slice(0,4);form.elements.day.min=meta.months[0]+'-01';form.elements.day.max=meta.lastDate;form.elements.year.innerHTML=[...meta.historyYears].reverse().map(y=>`<option>${y}</option>`).join('');form.elements.district.innerHTML='<option value="">전체</option>'+init.districts.map(d=>`<option>${esc(d)}</option>`).join('');$('rental-start').value=settings.day.slice(0,7);$('rental-end').value=last;}
@@ -42,7 +100,7 @@
  function stop(){playing=false;clearTimeout(timer);$('rental-play').textContent='▶ 재생';$('rental-play').setAttribute('aria-pressed','false');}
  async function refresh(){const id=++frame;try{sync();if(settings.type==='sale'){stop();return;}await ensure();if(id!==frame)return;sync();rateText();$('rental-status').textContent='전월세 자료를 불러오는 중…';$('rental-retry').hidden=true;const result=await request('view',{settings});if(id!==frame||result.stale)return;render(result);if(settings.map)await renderMap(result.points);if(id!==frame)return;$('rental-status').textContent='자료 확인 완료 · '+(settings.map?settings.day+'까지의 마지막 거래':settings.detail?settings.year+'년':M.range(settings.day,settings.period).from+' ~ '+M.range(settings.day,settings.period).to);persist();}catch(e){if(id!==frame)return;stop();$('rental-rows').textContent='조회하지 못했습니다. 다시 시도해 주세요.';$('rental-stats').replaceChildren();$('rental-status').textContent=e.message;$('rental-retry').hidden=false;}}
  function render(result){
-  const s=result.stats,raw=settings.type==='monthly'&&!settings.convert;const cards=[[settings.map?'마지막 거래 이력':'유효 거래',s.count],['해제',s.cancelled],['지도 위치 미확인',s.unlocated]];if(!raw)cards.splice(1,0,['직전 대비 상승',s.up],['직전 대비 하락',s.down],['직전 범위 내',s.within],['보유 이력 신고가',s.high],['보유 이력 신저가',s.low]);$('rental-stats').innerHTML=cards.map(([n,v])=>`<article><span>${n}</span><strong>${v.toLocaleString()}<small>건</small></strong></article>`).join('');
+  const s=result.stats,raw=settings.type==='monthly'&&!settings.convert;const cards=[[settings.map?'마지막 거래 이력':'유효 거래',s.count],['해제',s.cancelled],['지도 위치 미확인',s.unlocated]];if(!raw)cards.splice(1,0,['직전 대비 상승',s.up],['직전 대비 하락',s.down],['직전 범위 내',s.within],['보유 이력 신고가',s.high],['보유 이력 신저가',s.low]);$('rental-stats').innerHTML=cards.map(([n,v])=>`<article class="${isDaily?'daily-stat '+(/상승|신고가/.test(n)?'up':/하락|신저가/.test(n)?'down':''):''}"><span>${n}</span><strong>${v.toLocaleString()}<small>건</small></strong></article>`).join('');
   $('rental-coverage').textContent=result.coverage.map(c=>`${{'11':'서울','41':'경기','28':'인천'}[c.region]}: ${c.available?'선택 구간 '+c.available+'개 지역 자료 보유 · 과거 '+c.first+'부터':'선택 구간 미수집'}`).join(' / ')+' · 일부 지역·단지의 과거 이력은 추가 수집 중';
   $('rental-count').textContent=result.count.toLocaleString()+'건 · '+(settings.detail?'선택 단지의 원천 연결 기준':'해당 조건 기준');
   $('rental-rows').innerHTML=result.rows.length?result.rows.map(t=>{const labels=[];if(t.cancelled)labels.push('해제');else if(!raw){for(const [bit,n]of [[1,'신고가'],[2,'신저가'],[4,'하락'],[8,'상승'],[16,'직전 범위 내'],[32,'첫 거래']])if(t.records&bit)labels.push(n);}const cls=t.records&8?'rental-up':t.records&4?'rental-down':'';return `<article class="rental-row ${t.cancelled?'rental-cancelled':''}"><div><a href="${esc(detailURL(t))}" data-rental-link><strong>${esc(t.c.n)}</strong></a><p>${esc(t.c.g)} ${esc(t.c.d)} · ${t.area}㎡ · ${t.floor??'미상'}층</p><p>${t.date} · ${['구분 미상','신규','갱신'][t.contract]}</p></div><div><strong>${settings.type==='jeonse'?money(t.deposit):money(t.deposit)+' / 월 '+money(t.rent)}</strong>${settings.type==='monthly'&&settings.convert?`<p>월 환산 ${money(t.value)}</p><small>${t.rate?`연 ${t.rate}% · ${t.rateMonth} 기준`:'해당 시점 공식 환산율 없음'}</small>`:''}<p class="${cls}">${labels.join(' · ')}</p></div><div>${!raw&&t.previousDate?`<p>직전 ${t.previousDate}</p><p>${money(t.previousLow)} ~ ${money(t.previousHigh)}</p>${t.change!=null?`<strong class="${cls}">${t.change>0?'+':''}${t.change.toFixed(2)}%</strong>${t.annual!=null?`<p>연환산 ${t.annual.toLocaleString('ko-KR',{maximumFractionDigits:2})}%</p><small>거래 간격이 짧으면 수치가 확대됩니다.</small>`:''}`:''}`:'<p>비교 대상 없음 또는 원금액 보기</p>'}</div></article>`;}).join(''):'<p class="rental-empty">선택 조건의 거래가 없습니다. 위 수집 범위도 확인해 주세요.</p>';
