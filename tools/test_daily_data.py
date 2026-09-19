@@ -6,6 +6,8 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+import shutil
+import daily_data as d
 from unittest.mock import patch
 
 from daily_data import area_key, build, validate
@@ -100,3 +102,61 @@ class DailyExportTest(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+class CheckpointTests(unittest.TestCase):
+
+    def test_recent_edits_historical_correction_and_corruption_match_full(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            site = root / 'site'
+            (site / 'data/map').mkdir(parents=True)
+            (site / 'data/map/index.json').write_text(json.dumps({'meta': {'sourceVersion': 'v1'}, 'd': []}))
+            db = root / 'fixture.db'
+            c = sqlite3.connect(db)
+            c.executescript("CREATE TABLE build_meta(key TEXT,value TEXT);\n   INSERT INTO build_meta VALUES('trade_projection_status','complete'),('trade_source_revision','v1');\n   CREATE TABLE canonical_complex(apt_seq TEXT,region TEXT,complex_name TEXT,gu TEXT,dong TEXT);\n   INSERT INTO canonical_complex VALUES('A','서울','A','구','동');\n   CREATE TABLE transactions(apt_seq TEXT,area REAL,year INT,month INT,contract_day INT,price INT,floor INT,dealing_type TEXT,source_lawd_cd TEXT,source_deal_ymd TEXT,source_page_no INT,source_item_no INT,detail_fingerprint TEXT);\n   CREATE TABLE cancelled_transactions AS SELECT * FROM transactions WHERE 0;")
+            for y, m, day, price in [(2025, 12, 0, 1), (2025, 12, 31, 100), (2026, 1, 5, 90), (2026, 1, 10, 120)]:
+                c.execute('INSERT INTO transactions VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)', ('A', 84.9, y, m, day, price, 3, '', '11', str(y * 100 + m), 1, day, str(day)))
+            c.commit()
+            cache = root / 'cache'
+
+            def run():
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    result = d.build(site, db, cache_dir=cache)
+                return (result, out.getvalue())
+            run()
+            run()
+
+            def compare(expected):
+                result, log = run()
+                self.assertIn('daily checkpoint: ' + expected, log)
+                other = root / 'full'
+                (other / 'data/map').mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(site / 'data/map/index.json', other / 'data/map/index.json')
+                with contextlib.redirect_stdout(io.StringIO()):
+                    full = d.build(other, db)
+                self.assertEqual({k: v for k, v in result.items() if k != 'updated'}, {k: v for k, v in full.items() if k != 'updated'})
+                for name in result['sources']:
+                    self.assertEqual((site / name).read_bytes(), (other / name).read_bytes(), name)
+                d.validate(site)
+            compare('reused')
+            c.execute('UPDATE transactions SET price=80 WHERE year=2026 AND contract_day=10')
+            c.commit()
+            compare('reused')
+            c.execute('UPDATE transactions SET price=70 WHERE year=2025 AND contract_day=31')
+            c.commit()
+            compare('full')
+            compare('reused')
+            c.execute('INSERT INTO cancelled_transactions SELECT * FROM transactions WHERE year=2025 AND contract_day=31')
+            c.execute('DELETE FROM transactions WHERE year=2025 AND contract_day=31')
+            c.commit()
+            compare('full')
+            next(cache.glob('*.json')).write_text('{broken')
+            compare('full')
+            (site / 'data/daily/1/2025-12.bin').write_bytes(b'broken')
+            compare('full')
+            c.execute("INSERT INTO transactions VALUES('A',84.95,2026,3,1,200,4,'','11','202603',1,1,'new')")
+            c.commit()
+            compare('reused')
+            compare('full')
+            compare('reused')
+            c.close()

@@ -14,6 +14,9 @@ from itertools import groupby
 import json
 from pathlib import Path
 import sqlite3
+import sys
+import time
+from functools import lru_cache
 
 
 def read(path):
@@ -25,6 +28,7 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+@lru_cache(maxsize=16384)
 def area_key(value):
     value = Decimal(str(value))
     if not value.is_finite() or value <= 0:
@@ -47,7 +51,7 @@ def advance(previous, day, prices):
             min(low, previous[3]) if previous else low]
 
 
-def build(site, database, missing=None, guard=None, previous_site=None):
+def build(site, database, missing=None, guard=None, previous_site=None, cache_dir=None):
     site, database = Path(site), Path(database)
     if guard:
         policy = read(guard)
@@ -95,8 +99,7 @@ def build(site, database, missing=None, guard=None, previous_site=None):
         conn.execute('ATTACH DATABASE ? AS gone', (Path(missing).resolve().as_uri() + '?mode=ro',))
         queries.append(f"SELECT {fields},4 AS inactive FROM gone.disappeared_transactions "
                        "WHERE source_state='missing' AND price>0 AND area>0")
-    cursor = conn.execute(' UNION ALL '.join(queries) +
-                          ' ORDER BY year,month,contract_day,apt_seq,area,price,floor,source_page_no,source_item_no')
+    order = ' ORDER BY year,month,contract_day,apt_seq,area,price,floor,source_page_no,source_item_no'
     areas, area_ids, history, states = [], {}, {}, [{}, {}, {}]
     files, summaries, months, counts = {}, {}, [], defaultdict(int)
     current_month, rows, updates, opening = None, [[], [], []], [[], [], []], [[], [], []]
@@ -136,7 +139,7 @@ def build(site, database, missing=None, guard=None, previous_site=None):
         files[relative] = hashlib.sha256(content).hexdigest()
 
     def flush():
-        if current_month is None:
+        if current_month is None or (months and months[-1] == current_month):
             return
         months.append(current_month)
         for region in range(3):
@@ -145,7 +148,77 @@ def build(site, database, missing=None, guard=None, previous_site=None):
                   {'opening': opening[region], 'updates': updates[region]})
         print(f'daily {current_month}: {sum(map(len, rows)):,} rows', flush=True)
 
+    # A private checkpoint contains pricing state before the latest public month.
+    # Every earlier source row is fingerprinted again; no timestamp-only trust.
+    cache_path, context, cutoff, checkpoint = None, None, None, None
+    prefix_hash = hashlib.sha256()
+    restored = False
+    if cache_dir and previous_index.get('maxDate'):
+        cutoff = int(previous_index['maxDate'][:7].replace('-', ''))
+        cache_path = Path(cache_dir) / (hashlib.sha256(str(database.resolve()).encode()).hexdigest() + '.json')
+        context = hashlib.sha256(json.dumps([1, digest(Path(__file__)), list(sys.version_info[:2]),
+            cutoff, complexes], ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+        try:
+            cached = read(cache_path)
+            snapshot = cached['snapshot']
+            snapshot_bytes = json.dumps(snapshot, ensure_ascii=False, separators=(',', ':')).encode()
+            if cached['context'] == context and hashlib.sha256(snapshot_bytes).hexdigest() == cached['snapshotHash']:
+                prefix_queries = [q + ' AND (COALESCE(year,0)*100+COALESCE(month,0)) < ?' for q in queries]
+                fingerprint_started = time.perf_counter()
+                for raw in conn.execute(' UNION ALL '.join(prefix_queries) + order, [cutoff] * len(queries)):
+                    prefix_hash.update(json.dumps(tuple(raw), ensure_ascii=False, separators=(',', ':')).encode() + b'\n')
+                print('daily prefix fingerprint seconds: ' + str(round(time.perf_counter() - fingerprint_started, 3)), flush=True)
+                if prefix_hash.hexdigest() == cached['prefixHash']:
+                    for name, expected in snapshot['files'].items():
+                        path = Path(name)
+                        if (path.is_absolute() or '..' in path.parts or not name.startswith('data/daily/')
+                                or '\\' in name or ':' in name or not name.endswith('.bin') or previous_index.get('sources', {}).get(name) != expected
+                                or digest(previous_site / name) != expected):
+                            raise ValueError('Invalid checkpoint shard')
+                    for name in snapshot['files']:
+                        target = site / name
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        content = (previous_site / name).read_bytes()
+                        if not target.exists() or target.read_bytes() != content:
+                            target.write_bytes(content)
+                            reuse['written'] += 1
+                        else:
+                            reuse['unchanged'] += 1
+                        reuse['reused'] += 1
+                    areas = snapshot['areas']
+                    area_ids = {tuple(value): i for i, value in enumerate(areas)}
+                    history = {int(k): v for k, v in snapshot['history'].items()}
+                    states = [{int(k): v for k, v in state.items()} for state in snapshot['states']]
+                    counts = defaultdict(int, snapshot['counts'])
+                    summaries, months, files = snapshot['summaries'], snapshot['months'], snapshot['files']
+                    min_date, max_date = snapshot['minDate'], snapshot['maxDate']
+                    current_month = snapshot['currentMonth']
+                    # The resumed month appends to these structures; keep the saved prefix immutable.
+                    checkpoint = json.loads(snapshot_bytes)
+                    restored = True
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+        if not restored:
+            prefix_hash = hashlib.sha256()
+            areas, area_ids, history, states = [], {}, {}, [{}, {}, {}]
+            files, summaries, months, counts = {}, {}, [], defaultdict(int)
+            current_month, min_date, max_date, checkpoint = None, None, None, None
+    selected = [q + ' AND (COALESCE(year,0)*100+COALESCE(month,0)) >= ?' for q in queries] if restored else queries
+    raw_cursor = conn.execute(' UNION ALL '.join(selected) + order, [cutoff] * len(queries) if restored else [])
+    def fingerprinted():
+        for raw in raw_cursor:
+            if cutoff and (raw['year'] or 0)*100 + (raw['month'] or 0) < cutoff:
+                prefix_hash.update(json.dumps(tuple(raw), ensure_ascii=False, separators=(',', ':')).encode() + b'\n')
+            yield raw
+    cursor = fingerprinted()
+    print('daily checkpoint: ' + ('reused' if restored else 'full'), flush=True)
+
     for day_parts, items in groupby(cursor, lambda r: (r['year'], r['month'], r['contract_day'])):
+        if cutoff and checkpoint is None and (day_parts[0] or 0)*100 + (day_parts[1] or 0) >= cutoff:
+            flush()
+            checkpoint = json.loads(json.dumps({'areas': areas, 'history': history, 'states': states,
+                'counts': dict(counts), 'summaries': summaries, 'months': months, 'files': files,
+                'minDate': min_date, 'maxDate': max_date, 'currentMonth': current_month}))
         try:
             iso = date(*day_parts).isoformat()
         except (ValueError, TypeError):
@@ -174,7 +247,7 @@ def build(site, database, missing=None, guard=None, previous_site=None):
         day = int(iso.replace('-', ''))
         prices_by_area = defaultdict(list)
         for raw in items:
-            r = dict(raw)
+            r = raw
             ci = by_source.get(r['apt_seq'])
             if ci is None:
                 counts['unresolvedSource'] += 1
@@ -236,6 +309,15 @@ def build(site, database, missing=None, guard=None, previous_site=None):
     if {k:v for k,v in previous_index.items() if k != 'updated'} == {k:v for k,v in result.items() if k != 'updated'} and previous_index.get('updated'):
         result['updated'] = previous_index['updated']
     write('data/daily/index.json', result)
+    if cache_path and checkpoint is not None:
+        snapshot_bytes = json.dumps(checkpoint, ensure_ascii=False, separators=(',', ':')).encode()
+        payload = json.dumps({'context': context, 'prefixHash': prefix_hash.hexdigest(), 'snapshot': checkpoint,
+            'snapshotHash': hashlib.sha256(snapshot_bytes).hexdigest()}, ensure_ascii=False, separators=(',', ':')).encode()
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        if not cache_path.exists() or cache_path.read_bytes() != payload:
+            temporary = cache_path.with_suffix('.tmp')
+            temporary.write_bytes(payload)
+            temporary.replace(cache_path)
     print('daily reuse: ' + json.dumps(reuse), flush=True)
     return result
 
@@ -256,8 +338,9 @@ if __name__ == '__main__':
     p.add_argument('--missing', type=Path, default=Path('D:/Work/15_26/snapshots/trade_disappearance.db'))
     p.add_argument('--guard', type=Path, default=Path('D:/Work/15_26/data/trade_source_transition.json'))
     p.add_argument('--previous-site', type=Path, help='Previous validated site used as a per-file cache')
+    p.add_argument('--cache-dir', type=Path)
     p.add_argument('--verify', action='store_true')
     args = p.parse_args()
     if not args.verify:
-        build(args.site, args.database, args.missing, args.guard, args.previous_site)
+        build(args.site, args.database, args.missing, args.guard, args.previous_site, args.cache_dir)
     print(json.dumps(validate(args.site), ensure_ascii=False))
