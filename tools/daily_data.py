@@ -51,7 +51,16 @@ def advance(previous, day, prices):
             min(low, previous[3]) if previous else low]
 
 
-def build(site, database, missing=None, guard=None, previous_site=None, cache_dir=None):
+def build(site, database, missing=None, guard=None, previous_site=None, cache_dir=None, ledger_root=None):
+    connections=[]
+    try:
+        return _build(site,database,missing,guard,previous_site,cache_dir,ledger_root,connections)
+    finally:
+        for connection in connections:
+            connection.close()
+
+
+def _build(site, database, missing, guard, previous_site, cache_dir, ledger_root, connections):
     site, database = Path(site), Path(database)
     if guard:
         policy = read(guard)
@@ -71,6 +80,7 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
                   for s in c.get('memberSources', [{'id': c['id']}])}
     sources = {'data/map/index.json': digest(map_path)}
     conn = sqlite3.connect(database.resolve().as_uri() + '?mode=ro', uri=True)
+    connections.append(conn)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA query_only=ON')
     conn.execute('BEGIN')
@@ -99,11 +109,39 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
         conn.execute('ATTACH DATABASE ? AS gone', (Path(missing).resolve().as_uri() + '?mode=ro',))
         queries.append(f"SELECT {fields},4 AS inactive FROM gone.disappeared_transactions "
                        "WHERE source_state='missing' AND price>0 AND area>0")
-    order = ' ORDER BY year,month,contract_day,apt_seq,area,price,floor,source_page_no,source_item_no'
+    order = ' ORDER BY year,month,contract_day,apt_seq,area,price,floor,source_page_no,source_item_no,source_lawd_cd,source_deal_ymd,detail_fingerprint,inactive'
     areas, area_ids, history, states = [], {}, {}, [{}, {}, {}]
     files, summaries, months, counts = {}, {}, [], defaultdict(int)
     current_month, rows, updates, opening = None, [[], [], []], [[], [], []], [[], [], []]
     min_date, max_date = None, None
+    monthly_cache, ledger_module, ledger_values = None, None, None
+    has_missing = bool(missing and Path(missing).exists())
+    if cache_dir and ledger_root and not (Path(ledger_root)/'_ops/month-ledger-audit-block.json').exists():
+        sys.path.insert(0,str(Path(ledger_root).resolve()))
+        import trade_month_ledger as ledger_module
+        from daily_checkpoint import MonthCache
+        import daily_checkpoint
+        def read_ledgers():
+            values={}
+            for schema in (('main','gone') if has_missing else ('main',)):
+                data=ledger_module.read(conn,schema)
+                if data is None:return None
+                values.update({schema+':'+k:v for k,v in data.items()})
+            return values
+        ledger_started=time.perf_counter()
+        ledger_values=read_ledgers()
+        print('daily ledger seconds: '+str(round(time.perf_counter()-ledger_started,3)),flush=True)
+        if ledger_values is not None:
+            cache_context=hashlib.sha256(json.dumps([2,digest(Path(__file__)),
+                digest(Path(daily_checkpoint.__file__)),digest(Path(ledger_module.__file__)),
+                list(sys.version_info[:2]),complexes],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+            cache_root=Path(cache_dir)/('months-'+hashlib.sha256(str(database.resolve()).encode()).hexdigest())
+            monthly_cache=MonthCache(cache_root,cache_context,ledger_values,date.today().isoformat())
+
+    def snapshot():
+        return {'areas':areas,'history':history,'states':states,'counts':dict(counts),
+                'summaries':summaries,'months':months,'files':files,'minDate':min_date,
+                'maxDate':max_date,'currentMonth':current_month}
 
     def write(relative, value):
         compressed = relative != 'data/daily/index.json'
@@ -147,6 +185,8 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
             write(f'data/daily/{region}/{current_month}-state.json',
                   {'opening': opening[region], 'updates': updates[region]})
         print(f'daily {current_month}: {sum(map(len, rows)):,} rows', flush=True)
+        if monthly_cache:
+            monthly_cache.capture(current_month,snapshot(),site)
 
     # A private checkpoint contains pricing state before the latest public month.
     # Every earlier source row is fingerprinted again; no timestamp-only trust.
@@ -154,7 +194,19 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
     prefix_hash = hashlib.sha256()
     prefix_scanned = False
     restored = False
-    if cache_dir and previous_index.get('maxDate'):
+    resume_month = None
+    if monthly_cache:
+        saved=monthly_cache.restore(site)
+        if saved:
+            areas=saved['areas'];area_ids={tuple(v):i for i,v in enumerate(areas)}
+            history={int(k):v for k,v in saved['history'].items()}
+            states=[{int(k):v for k,v in s.items()} for s in saved['states']]
+            counts=defaultdict(int,saved['counts']);summaries=saved['summaries']
+            months=saved['months'];files=saved['files'];min_date=saved['minDate'];max_date=saved['maxDate']
+            current_month=saved['currentMonth'];resume_month=tuple(map(int,current_month.split('-')))
+            restored=True;reuse['reused']+=len(files)
+        print('daily monthly cache: '+json.dumps({'restoredMonth':monthly_cache.restore_month,'reason':monthly_cache.reason}),flush=True)
+    elif cache_dir and previous_index.get('maxDate'):
         cutoff = int(previous_index['maxDate'][:7].replace('-', ''))
         cache_path = Path(cache_dir) / (hashlib.sha256(str(database.resolve()).encode()).hexdigest() + '.json')
         context = hashlib.sha256(json.dumps([1, digest(Path(__file__)), list(sys.version_info[:2]),
@@ -208,8 +260,14 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
             areas, area_ids, history, states = [], {}, {}, [{}, {}, {}]
             files, summaries, months, counts = {}, {}, [], defaultdict(int)
             current_month, min_date, max_date, checkpoint = None, None, None, None
-    selected = [q + ' AND (COALESCE(year,0)*100+COALESCE(month,0)) >= ?' for q in queries] if restored else queries
-    raw_cursor = conn.execute(' UNION ALL '.join(selected) + order, [cutoff] * len(queries) if restored else [])
+    if resume_month:
+        selected=[q+' AND (year,month) > (?,?)' for q in queries]
+        parameters=list(resume_month)*len(queries)
+    else:
+        selected = [q + ' AND (COALESCE(year,0)*100+COALESCE(month,0)) >= ?' for q in queries] if restored else queries
+        parameters=[cutoff]*len(queries) if restored else []
+    raw_cursor = conn.execute(' UNION ALL '.join(selected) + order, parameters)
+    scanned_rows=0
     def fingerprinted():
         for raw in raw_cursor:
             if cutoff and not prefix_scanned and (raw['year'] or 0)*100 + (raw['month'] or 0) < cutoff:
@@ -252,6 +310,7 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
         day = int(iso.replace('-', ''))
         prices_by_area = defaultdict(list)
         for raw in items:
+            scanned_rows+=1
             r = raw
             ci = by_source.get(r['apt_seq'])
             if ci is None:
@@ -296,6 +355,8 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
     flush()
     conn.commit()
     final_meta = dict(conn.execute('SELECT key,value FROM build_meta'))
+    if monthly_cache and read_ledgers()!=ledger_values:
+        raise ValueError('Monthly ledger changed during daily export')
     conn.close()
     if revision != final_meta.get('trade_source_revision') or final_meta.get('trade_projection_status') != 'complete':
         raise ValueError('Projection changed during daily export; rebuild required')
@@ -323,6 +384,9 @@ def build(site, database, missing=None, guard=None, previous_site=None, cache_di
             temporary = cache_path.with_suffix('.tmp')
             temporary.write_bytes(payload)
             temporary.replace(cache_path)
+    if monthly_cache:
+        monthly_cache.commit(counts)
+    print('daily rows scanned: '+str(scanned_rows),flush=True)
     print('daily reuse: ' + json.dumps(reuse), flush=True)
     return result
 
@@ -344,8 +408,9 @@ if __name__ == '__main__':
     p.add_argument('--guard', type=Path, default=Path('D:/Work/15_26/data/trade_source_transition.json'))
     p.add_argument('--previous-site', type=Path, help='Previous validated site used as a per-file cache')
     p.add_argument('--cache-dir', type=Path)
+    p.add_argument('--ledger-root', type=Path)
     p.add_argument('--verify', action='store_true')
     args = p.parse_args()
     if not args.verify:
-        build(args.site, args.database, args.missing, args.guard, args.previous_site, args.cache_dir)
+        build(args.site, args.database, args.missing, args.guard, args.previous_site, args.cache_dir, args.ledger_root)
     print(json.dumps(validate(args.site), ensure_ascii=False))
