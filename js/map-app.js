@@ -1,6 +1,7 @@
 /* Full-screen apartment explorer. Map state is independent of the screener DOM. */
 (function() {
   'use strict';
+  if(window.NodoRentalInitial)return;
   const $ = id => document.getElementById(id);
   const model = NodoMapModel, services = NodoMapServices;
   const filterKeys = ['aL','aH','pL','pH','uL','uH','bL','bH'];

@@ -1,5 +1,6 @@
 (async function() {
   'use strict';
+  if(window.NodoRentalInitial)return;
   const M=NodoDailyModel,$=id=>document.getElementById(id),form=$('dailyFilters');
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>v==null?'—':(v/10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';

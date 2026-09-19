@@ -197,6 +197,7 @@
 <script>
 // 비교 페이지 자체 init — main-app.js의 init() 자동 실행을 막고 비교 모드만 부트
 (async function(){
+  if(window.NodoRentalInitial)return;
   const t0=performance.now();
   document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
   try{

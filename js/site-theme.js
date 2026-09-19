@@ -1,5 +1,8 @@
 /* Set before paint; a saved preference always wins over the system theme. */
 (() => {
+  let rentalPreference;try{rentalPreference=JSON.parse(localStorage.getItem('nodo:rental:preferences:v1')||'{}').tenure;}catch{}
+  const rentalType=new URLSearchParams(location.search).get('tenure')??rentalPreference;
+  window.NodoRentalInitial=['jeonse','monthly'].includes(rentalType)&&['/','/map/','/trades/','/trades/daily/','/apartment/','/compare/','/ranking/','/stats/','/market/'].includes(location.pathname.replace(/index\.html$/,''));
   const embedded=(()=>{try{return window.parent!==window&&parent.location.origin===location.origin&&new URLSearchParams(location.search).get('view')==='panel';}catch{return false;}})();
   document.documentElement.classList.toggle('apartment-embedded',embedded);
   const screen=matchMedia('(min-width:1024px)');

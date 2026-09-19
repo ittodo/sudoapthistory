@@ -1,6 +1,7 @@
 /* A single detail controller: isolated tab loading, stable identity, verified data. */
 (() => {
   'use strict';
+  if(window.NodoRentalInitial)return;
   const $=id=>document.getElementById(id),esc=s=>NodoUI.escape(s);
   const tabs={overview:'개요',trades:'실거래',rent:'전월세',investment:'투자분석',facts:'단지정보',location:'위치',comments:'의견'};
   const money=value=>{if(value==null)return '자료 없음';const n=Math.round(value),eok=Math.floor(n/10000),man=n%10000;return [eok?eok.toLocaleString()+'억':'',man?man.toLocaleString()+'만':''].filter(Boolean).join(' ')+(n===0?'0':'')+'원';};

@@ -1,4 +1,5 @@
 (function(){
+  if(window.NodoRentalInitial)return;
   const state = {
     index: null,
     stats: null,

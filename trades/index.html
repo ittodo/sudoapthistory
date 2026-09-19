@@ -1222,6 +1222,7 @@ function setSort(col) {
 
 // ==================== INIT ====================
 async function init() {
+  if(window.NodoRentalInitial)return;
   const params = decodeHash();
   applyHashToState(params);
   applyStateToInputs();

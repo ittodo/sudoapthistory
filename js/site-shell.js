@@ -62,4 +62,8 @@
     }});
     window.addEventListener('nodo:theme',()=>Object.values(Chart.instances).forEach(c=>c.update('none')));
   }
+  if(['/','/map/','/trades/','/trades/daily/','/apartment/','/compare/','/ranking/','/stats/','/market/'].includes(location.pathname.replace(/index\.html$/,''))){
+    const css=document.createElement('link');css.rel='stylesheet';css.href='/css/rental.css';document.head.append(css);
+    const model=document.createElement('script');model.src='/js/rental-model.js';model.onload=()=>{const app=document.createElement('script');app.src='/js/rental-app.js';document.head.append(app);};document.head.append(model);
+  }
 })();

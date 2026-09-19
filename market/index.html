@@ -244,6 +244,7 @@ const GU_COLORS = ['#3b82f6','var(--up)','#10b981','#f59e0b','#8b5cf6'];
 const TIER_COLORS = ['#22c55e','#3b82f6','#f59e0b','var(--up)','#a855f7'];
 
 async function init() {
+  if(window.NodoRentalInitial)return;
   try {
     const version = (typeof window !== 'undefined' && window.APT_ASSET_VERSION) || '20260603-numberfix';
     const res = await fetch('../data/market.json?v=' + encodeURIComponent(version));
@@ -809,7 +810,7 @@ const densityBandPlugin = {
     ctx.restore();
   }
 };
-Chart.register(densityBandPlugin);
+if(window.Chart)Chart.register(densityBandPlugin);
 
 // ---- Charts ----
 let priceChart = null, volumeChart = null, amountChart = null;

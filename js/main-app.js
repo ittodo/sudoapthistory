@@ -1663,6 +1663,7 @@ function applyIndexPayload(j){
 }
 
 async function init(){
+  if(window.NodoRentalInitial)return;
   const t0=performance.now();
   document.getElementById('loadMsg').textContent='인덱스 로딩 중...';
 
