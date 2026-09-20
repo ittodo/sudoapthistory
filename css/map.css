@@ -7,3 +7,28 @@
 
 .regions-disabled .leaflet-interactive{cursor:inherit;pointer-events:none}
 #parcelHint:empty{display:none}
+
+/* Date controls float above the map; opening them never resizes the canvas. */
+body.nodo-map{height:100dvh}
+.map-timeline-panel{position:absolute;top:12px;left:12px;z-index:650;width:min(430px,calc(100% - 80px));max-height:70%;display:flex;flex-direction:column;overflow:hidden;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:14px;box-shadow:0 4px 18px #0003}
+.map-timeline-heading{display:flex;align-items:center;gap:6px;padding:4px;flex-shrink:0}
+body.nodo-map :is(#workspace,#nodo-rental) .map-timeline-panel .map-timeline-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:1;min-width:0;min-height:48px;padding:6px 10px;border:0;background:transparent;text-align:left;font-size:12px;line-height:1.5}
+.map-timeline-toggle>span:first-child{min-width:0}.map-timeline-toggle strong{display:block;font-size:12px}.map-timeline-summary{display:block;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-timeline-chevron{font-size:20px;line-height:1}.map-timeline-toggle[aria-expanded=true] .map-timeline-chevron{transform:rotate(180deg)}
+body.nodo-map :is(#workspace,#nodo-rental) .map-timeline-panel .map-timeline-play{flex:0 0 44px;min-height:44px;padding:6px;font-size:16px;color:var(--accent);background:var(--accent-soft);border:1px solid var(--border);border-radius:10px}
+body.nodo-map :is(#workspace,#nodo-rental) .map-timeline-panel>.timeline{min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain;flex-shrink:1;padding:0 12px 12px;margin:0;border:0;border-radius:0;background:transparent;scrollbar-width:thin}
+.map-timeline-panel .timeline-top{display:block}.map-timeline-panel .timeline-controls{gap:8px;padding-top:8px}.map-timeline-panel .daily-link{display:inline-block;margin-top:8px;font-size:11px}.map-timeline-panel .timeline-status{line-height:1.5}
+.map-timeline-panel .district-picker .district-picker-panel{position:static;width:100%;max-width:none;margin-top:6px;box-shadow:none}
+body.nodo-map #nodo-rental .map-timeline-panel .district-field:has(.district-picker[open]){flex-basis:100%;width:100%}
+.map-notices{position:absolute;left:12px;bottom:18px;z-index:500;max-width:calc(100% - 24px);display:flex;flex-direction:column;align-items:flex-start;gap:4px;pointer-events:none}
+.nodo-map .map-notices :is(.region-status,.map-status){position:static;max-width:100%}.map-notices .region-status{pointer-events:auto}
+@media(min-width:768px){.has-selection .map-timeline-panel{left:432px;width:min(430px,calc(100% - 500px))}.has-selection .map-notices{left:432px;max-width:calc(100% - 444px)}}
+@media(max-width:767px){
+ .map-timeline-panel{top:10px;left:10px;max-height:72%;border-radius:12px}
+ body.nodo-map :is(#workspace,#nodo-rental) .map-timeline-panel>.timeline{padding:0 10px 10px}
+ body.nodo-map :is(#workspace,#nodo-rental) .map-timeline-panel :is(input:not([type=range]):not([type=checkbox]),select){font-size:16px;min-height:40px;max-width:100%}
+ .map-timeline-panel .timeline-month-picker{flex-wrap:wrap;gap:4px}
+ .map-timeline-panel .timeline-controls>button{min-height:40px}
+ .nodo-map .region-status #regionHint{display:none}
+ .nodo-map.has-selection .map-notices{display:none}
+}

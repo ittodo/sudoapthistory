@@ -100,7 +100,8 @@ body.nodo-map #nodo-tenure{flex-shrink:0}
 #nodo-rental.rental-map-page{width:100%;max-width:none!important;margin:0;padding:0;flex:1;min-height:0;overflow:hidden}
 #nodo-rental.rental-map-page:not([hidden]){display:flex;flex-direction:column}
 .rental-map-page [data-rental-map-extra]{display:none!important}
-.rental-map-page #rental-map{flex:1;min-height:180px;height:auto;border-radius:0;width:100%}
+.rental-map-workspace{position:relative;isolation:isolate;flex:1;min-height:0}
+.rental-map-page #rental-map{position:absolute;inset:0;min-height:0;height:100%;border-radius:0;width:100%}
 .rental-map-search{margin:0;flex-shrink:0}
 #nodo-rental .rental-map-toolbar{padding:12px 24px;gap:8px;flex-wrap:wrap}
 #nodo-rental .rental-map-toolbar label{display:block;margin:0}
@@ -109,7 +110,7 @@ body.nodo-map #nodo-tenure{flex-shrink:0}
 #nodo-rental .rental-map-toolbar select,#nodo-rental .rental-map-toolbar button{background:var(--card);padding:8px 12px;font-size:14px}
 #rental-map-filters{padding:12px 24px;background:var(--card);border-bottom:1px solid var(--border);max-height:30vh;overflow:auto}
 #nodo-rental #rental-map-filters .rental-primary{margin:0}
-#nodo-rental .rental-map-timeline{border:0;border-top:1px solid var(--border);border-radius:0;margin:0;padding:10px 24px;max-height:40vh;overflow:auto;flex-shrink:0}
+#nodo-rental .rental-map-timeline{border:0;border-radius:0;margin:0;padding:0 12px 12px;max-height:none;overflow:auto;flex-shrink:1;background:transparent}
 #nodo-rental .rental-map-timeline input,#nodo-rental .rental-map-timeline select,#nodo-rental .rental-map-timeline button{font-size:12px;padding:5px 8px}
 #nodo-rental .rental-map-inline{display:inline-flex;flex-direction:row;align-items:center;gap:5px;font-size:11px;min-width:0;flex:0 1 auto}
 #nodo-rental #rental-slider{flex:1;min-width:120px;width:auto;margin:0;padding:0;accent-color:var(--accent)}
@@ -121,7 +122,7 @@ body.nodo-map #nodo-tenure{flex-shrink:0}
  #nodo-rental .rental-map-toolbar{padding:9px 10px;gap:6px}
  #nodo-rental .rental-map-searchbox{width:auto;flex:1;min-width:150px}
  #nodo-rental .rental-map-toolbar select,#nodo-rental .rental-map-toolbar button{font-size:12px;padding:8px}
- #nodo-rental .rental-map-timeline{padding:8px 10px;max-height:38dvh}
+ #nodo-rental .rental-map-timeline{padding:0 10px 10px}
  #rental-map-filters{padding:12px 10px}
  #nodo-rental #rental-slider{flex-basis:100%}
  #rental-map-list{display:none}

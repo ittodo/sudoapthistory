@@ -1,4 +1,4 @@
-/* Rental maps use the same search / timeline / full-width map hierarchy as sales. */
+/* Rental maps share the sale map's search toolbar and collapsible date overlay. */
 window.NodoRentalMapLayout=({root,form,settings,getMeta,refresh,stop})=>{
   const $=id=>document.getElementById(id),label=name=>form.elements[name].closest('label');
   root.classList.add('rental-map-page');
@@ -44,6 +44,9 @@ window.NodoRentalMapLayout=({root,form,settings,getMeta,refresh,stop})=>{
   const buffer=document.createElement('p');buffer.id='rental-buffer';buffer.className='rental-note';buffer.hidden=true;buffer.setAttribute('role','status');playback.append(buffer);
   const details=document.createElement('details');details.className='rental-map-notes';details.innerHTML='<summary>자료 범위·가격 기준</summary>';playback.append(details);details.append($('rental-rate'),$('rental-coverage'));
   delete $('rental-rate').dataset.rentalMapExtra;delete $('rental-coverage').dataset.rentalMapExtra;playback.append(details);
+  const workspace=document.createElement('div');workspace.className='rental-map-workspace';
+  $('rental-map').before(workspace);workspace.append($('rental-map'));
+  const timelinePanel=NodoMapTimelinePanel.mount({host:workspace,content:playback,playButton:$('rental-play'),retryButton:$('rental-retry')});
   // Keep hidden named inputs registered with the form after moving visible controls.
   const unused=document.createElement('div');unused.hidden=true;for(const name of ['period','year'])unused.append(label(name));
   form.replaceChildren(toolbar,panel,unused);
@@ -59,6 +62,7 @@ window.NodoRentalMapLayout=({root,form,settings,getMeta,refresh,stop})=>{
   // District choices are synchronized by the shared rental form.
   return {sync(){
     const meta=getMeta(),current=$('rental-map-mode').value==='current';controls.hidden=current;form.elements.day.readOnly=current;
+    timelinePanel.sync({summary:(current?'현재 지도 · ':'표시일 · ')+(settings.day||'준비 중'),playable:!current});
     if(settings.type!=='monthly'){settings.rentMin=settings.rentMax='';form.elements.rentMin.value=form.elements.rentMax.value='';}
     $('rental-map-list').href='/trades/daily/?'+new URLSearchParams({...window.NodoApartmentSearch?.params(),tenure:settings.type,rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract,rentConvert:settings.convert?'1':'0',rental_district:settings.district});
     label('rentMin').hidden=settings.type!=='monthly';

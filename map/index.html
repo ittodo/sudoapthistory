@@ -6,7 +6,7 @@
 <meta name="description" content="서울·경기·인천 아파트를 지도에서 찾아보세요. 최근 실거래, 평형별 가격과 거래내역을 통합 상세에서 확인합니다.">
 <link rel="canonical" href="https://nodostream.com/map/">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="../css/map.css?v=20260908-map5">
+<link rel="stylesheet" href="../css/map.css?v=20260920-overlay1">
 <style>.trade.missing strong{text-decoration:line-through;color:var(--muted)}.badge.missing{color:#fbbf24}</style>
 <script defer src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -20,7 +20,8 @@
 <script defer src="/js/daily-model.js?v=20260920-district1"></script>
 <script defer src="/js/daily-client.js"></script>
 <script defer src="/js/map-effects.js"></script>
-<script defer src="/js/map-timeline.js?v=20260920-district1"></script>
+<script defer src="/js/map-timeline-panel.js?v=20260920-overlay1"></script>
+<script defer src="/js/map-timeline.js?v=20260920-overlay1"></script>
 <script defer src="../js/map-app.js?v=20260914-disappearance-v1"></script>
 <script src="/js/site-theme.js"></script>
 <link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/responsive.css">
@@ -49,8 +50,10 @@
 </form>
 <main id="workspace">
   <div id="map" aria-label="아파트 탐색 지도"></div>
+  <div class="map-notices">
   <div class="region-status"><strong id="regionMode"></strong> <a href="https://sgis.mods.go.kr/view/pss/dataProvdIntrcn" target="_blank" rel="noopener" title="경계 자료 출처">SGIS</a><small id="regionHint"></small><small id="parcelHint" role="status"></small><button id="retryParcels" hidden>단지 경계 재시도</button><button id="retryRegions" hidden>경계 다시 시도</button></div>
   <div class="map-status" id="mapStatus" role="status">지도를 준비하고 있습니다…</div>
+  </div>
   <div class="map-actions"><button id="homeView" title="수도권 전체 보기" aria-label="수도권 전체 보기">전체</button><button id="share">공유</button></div>
   <aside id="detail" class="detail" aria-label="선택 아파트 상세" hidden data-size="mid">
     <div class="sheet-controls"><button data-size="collapsed" aria-label="상세 접기">접기</button><button data-size="mid" aria-label="상세 중간 높이">중간</button><button data-size="full" aria-label="상세 전체 높이">펼치기</button></div>

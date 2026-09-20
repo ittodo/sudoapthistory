@@ -11,7 +11,7 @@ const routeDeps = [
     routes: ["/map/", "/map/index.html"],
     patterns: ["map/index.html", "css/map.css", "js/map-app.js", "js/map-model.js",
       "js/map-services.js", "js/data-loader.js", "js/calc-utils.js", "data/map/",
-      "data/tx/", "data/monthly/", "data/parcels.json", "data/daily/", "js/daily-model.js", "js/daily-client.js", "js/map-timeline.js", "js/map-effects.js", "css/daily.css"],
+      "data/tx/", "data/monthly/", "data/parcels.json", "data/daily/", "js/daily-model.js", "js/daily-client.js", "js/map-timeline.js", "js/map-timeline-panel.js", "js/map-effects.js", "css/daily.css"],
   },
   {
     routes: ["/trades/daily/", "/trades/daily/index.html"],
