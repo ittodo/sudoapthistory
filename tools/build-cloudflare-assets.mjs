@@ -9,6 +9,7 @@ import {verifyApartmentRent} from './verify-apartment-rent.mjs';
 import {verifyApartmentSale} from './verify-apartment-sale.mjs';
 import {verifyDailyData} from './verify-daily-data.mjs';
 import {verifyRentalData} from './verify-rental-data.mjs';
+import {searchAssets} from './build-search-data.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const injection = '<script src="/deployment-version.js"></script>';
@@ -49,6 +50,13 @@ export function build(root, output, sha) {
     assets.push({path,source:current,sha256:sha256(bytes),size:bytes.length});
   }
   if(existsSync(join(root,'js/admin-center.js'))) assets.push({path:'data/operations-status.json',bytes:Buffer.from(JSON.stringify(operationsMetadata(root)))});
+  const generatedSearch=searchAssets(root);
+  for(const f of generatedSearch)if(f.bytes.length>25*1024*1024)throw Error('Search asset exceeds 25 MiB: '+f.path);
+  const catalog=generatedSearch.find(f=>f.path==='data/search/apartments.json');
+  if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).sources)){
+    if(assets.find(f=>f.path===path)?.sha256!==hash)throw Error('Search source changed during packaging: '+path);
+  }
+  assets.push(...generatedSearch);
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));

@@ -8,7 +8,7 @@
   const params = new URLSearchParams(location.search);
   let manifest, data = [], entity = params.get('entity') || '', page = 0, generation = 0, loaded = new Set(), requestedMonths = [];
   const cache = new Map();
-  let apartmentLookup = {};
+  let apartmentLookup = {},aptSearch;
   const stateFields=['property','category','district','period','search','area'];
   window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('nodo:contracts',JSON.stringify({values:Object.fromEntries(stateFields.map(id=>[id,$(id).value])),entity,page}));}catch{}});
   function service() { return $('property').value + '-' + ($('category').value === 'sale' ? 'sale' : 'rent'); }
@@ -19,10 +19,11 @@
   }
   function cell(row, text) { const td = document.createElement('td'); td.textContent = text; row.append(td); return td; }
   function filtered() {
+    aptSearch?.checkScope();
     const query = $('search').value.trim().toLocaleLowerCase(), area = $('area').value, category = $('category').value;
     return data.filter(r => (!entity || r.entityId === entity) && (!area || String(r.area) === area)
       && (category === 'all-rent' || r.category === category)
-      && (!query || `${r.name} ${r.dong} ${r.jibun}`.toLocaleLowerCase().includes(query)));
+      && ($('property').value==='apartment'&&aptSearch?.selected ? aptSearch.matches({id:r.aptSeq||r.entityId}) : !query || `${r.name} ${r.dong} ${r.jibun}`.toLocaleLowerCase().includes(query)));
   }
   function areas() {
     const previous = $('area').value;
@@ -33,6 +34,7 @@
   }
   function render() {
     const rows = filtered().sort((a,b)=>b.date.localeCompare(a.date));
+    aptSearch?.reportCount(rows.length);
     page = Math.min(page, Math.max(0, Math.ceil(rows.length/100)-1));
     $('selection').textContent = entity ? `${data.find(r=>r.entityId===entity)?.name || '선택한 단지'} · ${rows.length.toLocaleString()}건` : `거래 내역 · ${rows.length.toLocaleString()}건`;
     $('rows').replaceChildren();
@@ -119,9 +121,10 @@
       $('district').onchange=()=>{entity='';load();};
       $('period').onchange=load;
       $('search').oninput=()=>{page=0;render();};$('area').onchange=()=>{page=0;render();};
-      $('clear').onclick=()=>{entity='';$('search').value='';$('area').value='';areas();render();};
+      $('clear').onclick=()=>{aptSearch?.clear({notify:false});entity='';$('search').value='';$('area').value='';areas();render();};
       $('prev').onclick=()=>{page--;render();};$('next').onclick=()=>{page++;render();};
-      await load();
+      aptSearch=NodoApartmentSearch.bind($('search'),{scope:()=>({r:$('district').value.slice(0,2),g:manifest.districts[$('district').value]?.[1]||''}),enabled:()=>$('property').value==='apartment',onSelect:()=>{entity='';page=0;render();},onClear:()=>{entity='';page=0;render();}});
+      await aptSearch.restore();await load();
       if(restored){$('area').value=restored.values?.area||'';page=Number.isInteger(restored.page)?restored.page:0;render();}
     }catch{$('status').textContent='자료를 준비 중이거나 연결이 원활하지 않습니다. 잠시 후 다시 확인해 주세요.';}
   }

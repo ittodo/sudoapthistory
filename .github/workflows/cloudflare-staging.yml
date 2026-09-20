@@ -19,6 +19,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm run test:search
       - run: npm run typecheck && npm run test:api
       - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"

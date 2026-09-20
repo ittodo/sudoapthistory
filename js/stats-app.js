@@ -559,7 +559,9 @@
     return true;
   }
 
+  let aptSearch;
   function renderRows() {
+    aptSearch?.checkScope();
     const areaMin = Number($("areaMin").value || 0);
     const areaMax = Number($("areaMax").value || 0);
     const q = $("searchInput").value.trim().toLowerCase();
@@ -572,13 +574,15 @@
       if (areaMin && py < areaMin) return false;
       if (areaMax && py > areaMax) return false;
       if (selectedBucket >= 0 && bucketIndex(Number(row.lp || 0)) !== selectedBucket) return false;
-      if (q) {
+      if(aptSearch?.selected&&!aptSearch.matches(row))return false;
+      if (!aptSearch?.selected&&q) {
         const hay = `${row.n || ""} ${row.g || ""} ${row.d || ""} ${row.j || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     }).sort((a, b) => Number(b.u || 0) - Number(a.u || 0)).slice(0, 300);
 
+    aptSearch?.reportCount(rows.length);
     $("rowCaption").textContent = `${rows.length.toLocaleString()}개 표시`;
     $("rowBody").innerHTML = rows.length ? rows.map((row) => {
       const bi = bucketIndex(Number(row.lp || 0));
@@ -635,6 +639,8 @@
       state.rows = index.d || [];
       ensureMarketCapFields(state.stats, state.rows);
       initFilters();
+      aptSearch=NodoApartmentSearch.bind($("searchInput"),{scope:()=>({r:state.selectedRegion,g:state.selectedGu}),enabled:()=>!document.body.classList.contains('rental-active'),onSelect:renderRows,onClear:renderRows});
+      await aptSearch.restore();
       render();
       $("loading").style.display = "none";
       $("app").style.display = "block";

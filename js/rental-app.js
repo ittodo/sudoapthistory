@@ -55,6 +55,7 @@
  if(settings.map){await script('/js/rental-map-layout.js?v=20260920-map-convert1');mapLayout=window.NodoRentalMapLayout({root,form,settings,getMeta:()=>meta,refresh,stop});}
  if(!window.NodoDistrictPicker)await script('/js/district-picker.js?v=20260920-1');
  const districtPicker=window.NodoDistrictPicker(form.elements.district);
+ const aptSearch=NodoApartmentSearch.bind(form.elements.q,{queryFromURL:()=>new URLSearchParams(location.search).get('rental_q')||'',scope:()=>({r:settings.region,g:settings.district}),enabled:()=>settings.type!=='sale'&&!settings.detail,onSelect:async c=>{stop();settings.q=c.name;settings.limit=50;await refresh();if(aptSearch.selected?.id!==c.id)return;if(settings.map&&map&&c.coord){map.setView(c.coord,16);drawMap();}},onClear:()=>{settings.q=form.elements.q.value;settings.limit=50;refresh();},onEdit:()=>{settings.searchIds=null;}});
  form.elements.district.onchange=()=>{stop();settings.district=form.elements.district.value;settings.limit=50;refresh();};
  const panels={daily:isDaily||path==='/apartment/',districts:['/market/','/compare/'].includes(path),rank:['/','/ranking/','/compare/'].includes(path),trend:['/market/','/compare/'].includes(path),histogram:path==='/stats/'};
  settings.panels=panels;
@@ -67,7 +68,7 @@
   $('rental-stats').after(leading);
   form.querySelector('.rental-controls').append(form.querySelector('[type=submit]'));
   form.insertAdjacentHTML('beforeend','<button type="button" id="rental-reset-filters">초기화</button>');
-  $('rental-reset-filters').onclick=()=>{for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
+  $('rental-reset-filters').onclick=()=>{aptSearch.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
   if(path==='/trades/'||path==='/market/'){
    const dateLabel=form.elements.day.closest('label'),nav=document.createElement('div');nav.className='rental-period-nav';
    dateLabel.before(nav);nav.append(dateLabel);
@@ -97,7 +98,7 @@
   if(settings.type==='monthly'&&!settings.convert&&!['all','cancelled'].includes(settings.kind))settings.kind='all';
   $('rental-date-nav').dataset.period=settings.period;
   root.querySelectorAll('[data-rental-category]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.rentalCategory===settings.kind));b.disabled=settings.type==='monthly'&&!settings.convert&&!['all','cancelled'].includes(b.dataset.rentalCategory);});
-  $('rental-daily-map').href='/map/?'+new URLSearchParams({tenure:settings.type,rentConvert:settings.convert?'1':'0',rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract,rental_district:settings.district});
+  $('rental-daily-map').href='/map/?'+new URLSearchParams({...NodoApartmentSearch.params(),tenure:settings.type,rentConvert:settings.convert?'1':'0',rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract,rental_district:settings.district});
   $('rental-title').textContent='기간별 실거래';root.querySelector('.rental-eyebrow').textContent='TRANSACTIONS · 수도권 아파트 '+(settings.type==='monthly'?'월세':'전세');
   $('rental-explorer').href='/trades/?'+new URLSearchParams({tenure:settings.type,rentConvert:settings.convert?'1':'0'});
   form.elements.period.closest('label').hidden=true;
@@ -120,7 +121,7 @@
   $('rental-latest').onclick=()=>{if(!meta)return;settings.day=meta.lastDate;settings.limit=50;refresh();};
   $('rental-week').onchange=e=>{settings.day=e.target.value;settings.limit=50;refresh();};
   form.elements.day.onchange=e=>{if(!e.target.value)return;settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
-  $('rental-reset').onclick=()=>{for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
+  $('rental-reset').onclick=()=>{aptSearch.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
  }
  function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260920-map-convert1');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
  async function ensure(){if(meta)return;if(ensuring)return ensuring;ensuring=initialize();try{await ensuring;}finally{ensuring=null;}}
@@ -140,6 +141,7 @@
   }).catch(()=>{if(playing&&prefetchKey===key)buffer.textContent='다음 달 자료는 이동할 때 다시 불러옵니다.';});
  }
  async function refresh(){const id=++frame;try{
+  aptSearch.checkScope();settings.searchIds=aptSearch.ids;
   sync();if(settings.type==='sale'){stop();return;}
   root.setAttribute('aria-busy','true');$('rental-status').textContent='전월세 자료를 불러오는 중…'+(settings.map&&renderedMapLabel?' · 지도는 '+renderedMapLabel+' 기준':'');$('rental-retry').hidden=true;
   await Promise.all([ensure(),settings.map&&!map?renderMap([]):Promise.resolve()]);if(id!==frame)return;
@@ -149,7 +151,7 @@
   if(settings.map){await renderMap(result.points);renderedMapLabel=typeName()+' '+settings.day;syncSlider();}else render(result);
   if(id!==frame)return;
   $('rental-status').textContent='자료 확인 완료 · '+(settings.map?settings.day+'까지의 마지막 거래 · '+result.count.toLocaleString()+'건 · 위치 미확인 '+result.stats.unlocated.toLocaleString()+'건':settings.detail?settings.year+'년':M.range(settings.day,settings.period).from+' ~ '+M.range(settings.day,settings.period).to);
-  persist();warmNextMonth();
+  aptSearch.reportCount(result.count);persist();warmNextMonth();
  }catch(e){if(id!==frame)return;stop();$('rental-rows').textContent='조회하지 못했습니다. 다시 시도해 주세요.';$('rental-stats').replaceChildren();$('rental-status').textContent=e.message+(settings.map&&renderedMapLabel?' · 지도는 '+renderedMapLabel+' 기준':'');$('rental-retry').hidden=false;}finally{if(id===frame)root.setAttribute('aria-busy','false');}}
  function syncSlider(){if(settings.day.slice(0,7)<$('rental-start').value)$('rental-start').value=settings.day.slice(0,7);if(settings.day.slice(0,7)>$('rental-end').value)$('rental-end').value=settings.day.slice(0,7);const start=new Date($('rental-start').value+'-01T00:00:00Z'),end=new Date($('rental-end').value+'-01T00:00:00Z');end.setUTCMonth(end.getUTCMonth()+1);end.setUTCDate(0);const max=meta?Math.min(+end,Date.parse(meta.lastDate)):+end;$('rental-slider').max=Math.max(0,(max-start)/86400000);$('rental-slider').value=Math.max(0,(Date.parse(settings.day)-start)/86400000);if(mapLayout)mapLayout.sync();}
 
@@ -194,7 +196,7 @@
  async function script(src){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('지도를 불러오지 못했습니다.'));document.head.append(s);});}
  async function renderMap(next){points=next;if(!window.L){const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.append(css);await script('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');}if(!map){map=L.map('rental-map',{preferCanvas:true}).setView([37.5,126.98],10);L.tileLayer(window.NodoMapServices?.tileURL||'https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:window.NodoMapServices?'© V-World':'© OpenStreetMap'}).addTo(map);map.on('moveend zoomend',drawMap);}map.invalidateSize();drawMap();}
  function drawMap(){const cells=new Map(),bounds=map.getBounds();for(const p of points){if(!bounds.contains(p.coord))continue;const pt=map.latLngToContainerPoint(p.coord),key=Math.floor(pt.x/38)+':'+Math.floor(pt.y/38);let cell=cells.get(key);if(!cell)cells.set(key,cell={point:p,count:0});cell.count++;if(p.date>cell.point.date)cell.point=p;}const keep=new Set();for(const {point:p,count}of cells.values()){const key=p.ci+':'+p.area+':'+p.contract;keep.add(key);const active=p.date===settings.day,color=settings.type==='monthly'&&!settings.convert?'#20a38f':p.records&8?'#ef4444':p.records&4?'#3b82f6':'#20a38f';let marker=markers.get(key);if(!marker){marker=L.circleMarker(p.coord,{radius:7,weight:1}).addTo(map);markers.set(key,marker);}marker.setLatLng(p.coord).setStyle({color,fillColor:color,fillOpacity:active?.9:.45,radius:active?10:7});const monthly=settings.type==='monthly',converted=monthly&&settings.convert;const label=monthly?(converted?'월 환산 '+money(p.value):'보증금 '+money(p.deposit)+' / 월 '+money(p.rent)):'전세 '+money(p.value);const conversion=converted?`<p>보증금 ${esc(money(p.deposit))} / 월세 ${esc(money(p.rent))}</p><p>${p.rate!=null?`연 ${esc(p.rate)}% · ${esc(p.rateMonth)} 기준`:'해당 계약 시점의 공식 환산율 없음'}</p>`:'';const tip=esc(p.name)+(count>1?' 외 '+(count-1)+'건':'')+' · '+esc(label),permanent=map.getZoom()>=14,tipKey=tip+':'+permanent;if(marker._rentalTip!==tipKey){marker.unbindTooltip();marker.bindTooltip(tip,{permanent,direction:'top'});marker._rentalTip=tipKey;}marker.bindPopup(`<b>${esc(p.name)}</b><p>${p.area}㎡ · ${p.date}</p><p>${esc(label)}</p>${conversion}${p.publicId?`<a href="${esc(detailURL(p))}" data-rental-link>단지 상세</a>`:''}`);}for(const [k,m]of markers)if(!keep.has(k)){map.removeLayer(m);markers.delete(k);}}
- strip.onclick=e=>{const b=e.target.closest('[data-tenure]');if(!b)return;stop();settings.type=b.dataset.tenure;settings.kind='all';persist();if(settings.type==='sale'&&window.NodoRentalInitial){location.reload();return;}refresh();};
+ strip.onclick=e=>{const b=e.target.closest('[data-tenure]');if(!b)return;stop();settings.type=b.dataset.tenure;settings.kind='all';persist();aptSearch.close();if(settings.type!=='sale')aptSearch.restore();if(settings.type==='sale'&&window.NodoRentalInitial){location.reload();return;}refresh();document.dispatchEvent(new Event('nodo-search-context'));};
  form.elements.region.onchange=e=>{settings.region=e.target.value;settings.district='';settings.limit=50;refresh();};
  form.elements.period.onchange=e=>{settings.period=e.target.value;sync();};
  form.onsubmit=e=>{e.preventDefault();stop();for(const [k,v]of new FormData(form))settings[k]=k==='day'&&v.length===7?v+'-01':v;settings.limit=50;refresh();};
@@ -206,8 +208,8 @@
  $('rental-slider').oninput=e=>{stop();frame++;clearTimeout(sliderTimer);const d=new Date($('rental-start').value+'-01T00:00:00Z');d.setUTCDate(d.getUTCDate()+Number(e.target.value));settings.day=d.toISOString().slice(0,10);sliderTimer=setTimeout(refresh,80);};
  $('rental-today').onclick=()=>{stop();settings.day=meta.lastDate;refresh();};
  for(const id of ['rental-start','rental-end'])$(id).onchange=()=>{stop();if($('rental-start').value>$('rental-end').value)$('rental-end').value=$('rental-start').value;settings.day=$('rental-start').value+'-01';refresh();};
- window.addEventListener('pagehide',()=>{stop();clearTimeout(sliderTimer);worker?.terminate();});window.addEventListener('popstate',()=>{Object.assign(settings,M.normalize(new URLSearchParams(location.search),{}));refresh();});
+  window.addEventListener('pagehide',()=>{stop();clearTimeout(sliderTimer);worker?.terminate();});window.addEventListener('popstate',()=>{const p=new URLSearchParams(location.search);Object.assign(settings,M.normalize(p,{}));for(const n of ['q','district','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax','year','sort'])settings[n]=p.get('rental_'+n)??(n==='sort'?'date':'');refresh();});
  // Keep links shareable, including navigation before a worker has been started.
- document.addEventListener('click',e=>{const a=e.target.closest('.nodo-header a[href]');if(!a)return;const u=new URL(a.href,location.href);if(u.origin!==location.origin||!titles[u.pathname])return;u.searchParams.set('tenure',settings.type);u.searchParams.set('rentConvert',settings.convert?'1':'0');u.searchParams.set('rentDate',settings.day);u.searchParams.set('rentContract',settings.contract);u.searchParams.set('rentRegion',settings.region);a.href=u.href;},true);
- sync();if(settings.type!=='sale')await refresh();
+ document.addEventListener('click',e=>{const a=e.target.closest('.nodo-header a[href]');if(!a)return;const u=new URL(a.href,location.href);if(u.origin!==location.origin||!titles[u.pathname])return;for(const [k,v]of Object.entries(NodoApartmentSearch.params()))u.searchParams.set(k,v);u.searchParams.set('tenure',settings.type);u.searchParams.set('rentConvert',settings.convert?'1':'0');u.searchParams.set('rentDate',settings.day);u.searchParams.set('rentContract',settings.contract);u.searchParams.set('rentRegion',settings.region);a.href=u.href;},true);
+ sync();if(settings.type!=='sale'){await aptSearch.restore();await refresh();}
 })();

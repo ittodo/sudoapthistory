@@ -48,6 +48,7 @@
 <script src="/js/site-theme.js"></script>
 <link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/responsive.css">
 <script src="/js/apartment-links.js"></script>
+<script src="/js/apartment-search.js?v=20260920-search1"></script>
 <script defer src="/js/site-shell.js"></script>
 <script defer src="/js/page-analytics.js"></script></head>
 <body>
@@ -222,8 +223,10 @@
 
   // hash 복원
   loadCompareHash();
+  if(new URLSearchParams(location.search).has('searchApt')&&areaLevel!=='complex')setAreaLevel('complex');
   syncPriceMetricButtons();
   buildAreaGuFilter();
+  await bindCompareSearch();
   renderAreaList();
   renderComparison();
 

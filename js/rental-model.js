@@ -20,7 +20,8 @@
     if(s.region&&REGIONS[t.c.r]!==s.region)return false;
     if(s.contract!=='all'&&s.contract!==''&&s.contract!=null&&t.contract!==Number(s.contract))return false;
     if(s.district&&!(','+s.district+',').includes(','+t.c.g+','))return false;
-    if(s.q&&!`${t.c.n} ${t.c.g} ${t.c.d}`.toLowerCase().includes(s.q.toLowerCase()))return false;
+    if(s.searchIds?.length){if(!s.searchIds.includes(t.c.id||t.c.publicId))return false;}
+    else if(s.q&&!`${t.c.n} ${t.c.g} ${t.c.d}`.toLowerCase().includes(s.q.toLowerCase()))return false;
     for(const [field,lo,hi] of [['area','areaMin','areaMax'],['deposit','depositMin','depositMax'],['rent','rentMin','rentMax']]){
       if(s[lo]!==''&&s[lo]!=null&&t[field]<Number(s[lo]))return false;
       if(s[hi]!==''&&s[hi]!=null&&t[field]>Number(s[hi]))return false;

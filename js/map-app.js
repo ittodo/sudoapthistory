@@ -11,7 +11,7 @@
   let map, markers, chart, payload, client, byId, regionView, parcelView, tap, navigationDone, filtered=[], matches=new Map();
   let selected=null, selectedArea=null, filters={}, restoring=false, detailToken=0, boundaryToken=0;
   let transactionRows=[], visibleTrades=30, searchTimer, toastTimer, renderFrame, tileFailed=false;
-  let temporal=null, timeline;
+  let temporal=null, timeline, aptSearch;
   const apartmentMarkers=new Map();
   const storageKey='nodoMapView';
 
@@ -57,6 +57,7 @@
     if(changed){for(const c of changed){const match=model.match(c,filters);if(match)matches.set(c.id,match);else matches.delete(c.id);}filtered=[...matches.values()];}
     else{filtered=(temporal||payload.d).map(c=>model.match(c,filters)).filter(Boolean);matches=new Map(filtered.map(m=>[m.complex.id,m]));}
     regionView?.setMatches(filtered,filters.r);
+    if(aptSearch?.selected)aptSearch.reportCount(filtered.filter(m=>aptSearch.matches(m.complex)).length);
     if(selected && !matches.has(selected.id)) {close(false);toast('선택한 단지가 필터 조건에서 제외되었습니다.');}
     else if(selected && !selectedMatch().areas.some(a=>a.i===selectedArea?.i)) select(selected.id,null,false,false);
     render();
@@ -231,16 +232,7 @@
     if(chart){chart.destroy();chart=null;}
     $('detail').hidden=true;$('workspace').classList.remove('has-selection');render();save(push);
   }
-  function search() {
-    const q=$('search').value.trim().toLocaleLowerCase(), box=$('searchResults');box.replaceChildren();
-    if(!q){box.hidden=true;$('search').setAttribute('aria-expanded','false');return;}
-    box.hidden=false;$('search').setAttribute('aria-expanded','true');
-    const found=filtered.filter(m=>(m.complex.n+' '+(m.complex.memberSources||[]).map(s=>s.n).join(' ')+' '+address(m.complex)+' '+m.complex.rd+' '+(regionView?.regionName(m.complex)||'')).toLocaleLowerCase().includes(q));
-    const regional=found.filter(m=>(address(m.complex)+' '+(regionView?.regionName(m.complex)||'')).toLocaleLowerCase().includes(q)&&m.complex.coord);
-    if(regional.length>1){const b=document.createElement('button');b.setAttribute('role','option');b.textContent=`‘${$('search').value.trim()}’ 지역 보기 · ${regional.length.toLocaleString()}개`;b.onclick=()=>{box.hidden=true;$('search').setAttribute('aria-expanded','false');close(false);map.fitBounds(L.latLngBounds(regional.map(m=>m.complex.coord)),{maxZoom:16,padding:[45,45]});save(true);};box.append(b);}
-    found.slice(0,40).forEach(m=>{const c=m.complex,b=document.createElement('button');b.setAttribute('role','option');b.innerHTML=`${esc(c.n)}<small>${esc(address(c))}${c.coord?'':' · 위치 확인 중'}</small>`;b.onclick=()=>{box.hidden=true;$('search').setAttribute('aria-expanded','false');select(c.id,null,true,true);};box.append(b);});
-    if(!found.length){const p=document.createElement('p');p.textContent='조건에 맞는 검색 결과가 없습니다.';box.append(p);}
-  }
+  function search() { $('searchResults').hidden=true;aptSearch?.checkScope(); }
   function applyFilters(event) {
     event?.preventDefault();const next={};
     if($('region').value!=='')next.r=Number($('region').value);
@@ -261,11 +253,9 @@
     $('closeDetail').onclick=()=>close();$('moreTrades').onclick=()=>{visibleTrades+=30;renderTrades();};
     $('filterToggle').onclick=()=>{const show=$('filters').hidden;$('filters').hidden=!show;$('filterToggle').setAttribute('aria-expanded',String(show));setTimeout(()=>map.invalidateSize(),0);};
     $('filters').onsubmit=applyFilters;$('region').onchange=applyFilters;
-    $('resetFilters').onclick=()=>{filters={};$('search').value='';syncForm();refilter();search();if(timeline?.active())timeline.resetFilters();else save(true);};
+    $('resetFilters').onclick=()=>{aptSearch?.clear({notify:false});filters={};$('search').value='';syncForm();refilter();search();if(timeline?.active())timeline.resetFilters();else save(true);};
     $('search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{search();if(timeline?.active())timeline.refresh();},250);};
-    $('search').onkeydown=e=>{if(e.key==='ArrowDown'||e.key==='Enter'){const first=$('searchResults').querySelector('button');if(first&&!$('searchResults').hidden){e.preventDefault();first.focus();}}};
-    $('searchResults').onkeydown=e=>{const buttons=[...$('searchResults').querySelectorAll('button')],idx=buttons.indexOf(document.activeElement);if(e.key==='ArrowDown'){e.preventDefault();buttons[Math.min(idx+1,buttons.length-1)]?.focus();}if(e.key==='ArrowUp'){e.preventDefault();if(idx>0)buttons[idx-1].focus();else $('search').focus();}};
-    document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap')){$('searchResults').hidden=true;$('search').setAttribute('aria-expanded','false');}});
+    $('search').onkeydown=null;
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('searchResults').hidden){$('searchResults').hidden=true;$('search').setAttribute('aria-expanded','false');$('search').focus();}else if(!$('filters').hidden){$('filterToggle').click();}else if(selected)close();}});
     $('homeView').onclick=()=>{restoring=true;close(false);map.fitBounds([[36.87,126.36],[38.15,127.84]],{animate:false});restoring=false;save(true);};
     $('share').onclick=async()=>{save();try{await navigator.clipboard.writeText(location.href);toast('현재 지도 링크를 복사했습니다.');}catch{toast('주소창의 링크를 복사해 공유할 수 있습니다.');}};
@@ -317,9 +307,11 @@
       });
       $('retryParcels').onclick=()=>parcelView.render(filtered,selected);
       $('retryRegions').onclick=()=>regionView.render();
-      if(!timeline)timeline=NodoMapTimeline.create({map,payload,getFilters:()=>({...filters,q:$('search').value.trim()}),
+      if(!timeline)timeline=NodoMapTimeline.create({map,payload,getFilters:()=>{aptSearch?.checkScope();return {...filters,q:aptSearch?.selected?'':$('search').value.trim(),searchIds:aptSearch?.ids};},
         apply(complexes,changed=null){temporal=complexes;selected=null;selectedArea=null;refilter(changed);if($('search').value)search();},save});
-      restore();$('startup').hidden=true;
+      restore();
+      aptSearch=NodoApartmentSearch.bind($('search'),{queryFromURL:()=>new URLSearchParams(location.hash.slice(1)).get('q')||'',scope:()=>({r:filters.r,g:timeline?.active()?document.getElementById('timeDistrict')?.value||'':''}),enabled:()=>!document.body.classList.contains('rental-active'),noticeTarget:$('mapStatus').parentElement,onSelect:async c=>{const id=c.mapIds.find(id=>byId.has(id))||c.keys.find(id=>byId.has(id));if(timeline?.active()){await timeline.refresh();if(aptSearch.selected?.id!==c.id)return;if(id)timeline.select(id);}else if(id&&matches.has(byId.get(id).id)){select(id,null,true,true);}if(c.coord)focusOn(c);aptSearch.reportCount(filtered.filter(m=>aptSearch.matches(m.complex)).length);save();},onClear:()=>{close(false);if(timeline?.active())timeline.refresh();else save();}});
+      await aptSearch.restore();$('startup').hidden=true;
     } catch(error) {
       $('startupMessage').textContent=error.message;$('retryStartup').hidden=false;$('startup').querySelector('.spinner').hidden=true;
     }

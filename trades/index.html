@@ -202,6 +202,7 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 <script src="/js/site-theme.js"></script>
 <link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/responsive.css">
 <script src="/js/apartment-links.js"></script>
+<script src="/js/apartment-search.js?v=20260920-search1"></script>
 <script defer src="/js/site-shell.js"></script>
 <script defer src="/js/page-analytics.js"></script></head>
 <body>
@@ -629,7 +630,9 @@ function updateLoadMoreBtn() {
 }
 
 // ==================== FILTERING & SORTING ====================
+let tradeAptSearch;
 function getFilteredData() {
+  tradeAptSearch?.checkScope();
   let data = state.allData;
   const f = state.filters;
 
@@ -639,7 +642,8 @@ function getFilteredData() {
   if (f.gus.size > 0) {
     data = data.filter(r => f.gus.has(r.g));
   }
-  if (f.name) {
+  if (tradeAptSearch?.selected) data=data.filter(r=>tradeAptSearch.matches(r));
+  else if (f.name) {
     const q = f.name.toLowerCase();
     data = data.filter(r => r.n && r.n.toLowerCase().includes(q));
   }
@@ -876,6 +880,7 @@ function drawDetailSparkline(canvas, priceData) {
 function render() {
   buildPrevPriceMap();
   const filtered = getFilteredData();
+  tradeAptSearch?.reportCount(filtered.length);
   const sorted = getSortedData(filtered);
 
   updateSummary(sorted);
@@ -1220,6 +1225,8 @@ async function init() {
   applyStateToInputs();
   updateSortIcons();
 
+  tradeAptSearch=NodoApartmentSearch.bind(document.getElementById('nameFilter'),{queryFromURL:()=>new URLSearchParams(location.hash.slice(1)).get('q')||'',scope:()=>({r:state.filters.region,g:[...state.filters.gus]}),enabled:()=>!document.body.classList.contains('rental-active'),onSelect:c=>{state.filters.name=c.name;render();},onClear:()=>{state.filters.name=document.getElementById('nameFilter').value;render();}});
+  await tradeAptSearch.restore();
   const targetMonth = params.m || null;
   let month;
 

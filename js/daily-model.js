@@ -28,7 +28,7 @@
   }
   function match(t,f={}) {
     return (f.r==null||t.c.r===f.r)&&(!f.g||(','+f.g+',').includes(','+t.c.g+','))&&
-      (!f.q||[t.c.n,t.c.g,t.c.d].join(' ').toLowerCase().includes(f.q.toLowerCase()))&&
+      (f.searchIds?.length ? f.searchIds.includes(t.c.id||t.c.publicId) : !f.q||[t.c.n,t.c.g,t.c.d].join(' ').toLowerCase().includes(f.q.toLowerCase()))&&
       range(t.a,f.aL,f.aH)&&range(t.p/10000,f.pL,f.pH)&&range(t.c.tu,f.uL,f.uH)&&range(t.c.b,f.bL,f.bH);
   }
   function comparison(t) {

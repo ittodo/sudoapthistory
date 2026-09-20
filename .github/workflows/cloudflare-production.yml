@@ -22,6 +22,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm run test:search
       - name: Verify explicitly approved production target and plan
         env:
           NODESTREAM_DEPLOYMENT_PROVIDER: ${{ vars.NODESTREAM_DEPLOYMENT_PROVIDER }}

@@ -52,7 +52,7 @@ window.NodoRentalMapLayout=({root,form,settings,getMeta,refresh,stop})=>{
   form.elements.day.onchange=apply;form.elements.q.onchange=apply;
   form.elements.q.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();apply();}};
   $('rental-filter-toggle').onclick=()=>{panel.hidden=!panel.hidden;$('rental-filter-toggle').setAttribute('aria-expanded',String(!panel.hidden));};
-  $('rental-map-reset').onclick=()=>{stop();for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.convert=false;refresh();};
+  $('rental-map-reset').onclick=()=>{stop();form.elements.q._aptSearch?.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.convert=false;refresh();};
   $('rental-map-mode').onchange=()=>{stop();if($('rental-map-mode').value==='current'&&getMeta())settings.day=getMeta().lastDate;refresh();};
   function shift(direction){stop();const date=new Date(settings.day+'T00:00:00Z'),step=$('rental-step').value;if(step==='month'){date.setUTCDate(1);date.setUTCMonth(date.getUTCMonth()+direction);}else date.setUTCDate(date.getUTCDate()+Number(step)*direction);const meta=getMeta();settings.day=[meta.months[0]+'-01',date.toISOString().slice(0,10),meta.lastDate].sort()[1];refresh();}
   prev.onclick=()=>shift(-1);next.onclick=()=>shift(1);
@@ -60,7 +60,7 @@ window.NodoRentalMapLayout=({root,form,settings,getMeta,refresh,stop})=>{
   return {sync(){
     const meta=getMeta(),current=$('rental-map-mode').value==='current';controls.hidden=current;form.elements.day.readOnly=current;
     if(settings.type!=='monthly'){settings.rentMin=settings.rentMax='';form.elements.rentMin.value=form.elements.rentMax.value='';}
-    $('rental-map-list').href='/trades/daily/?'+new URLSearchParams({tenure:settings.type,rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract,rentConvert:settings.convert?'1':'0',rental_district:settings.district});
+    $('rental-map-list').href='/trades/daily/?'+new URLSearchParams({...window.NodoApartmentSearch?.params(),tenure:settings.type,rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract,rentConvert:settings.convert?'1':'0',rental_district:settings.district});
     label('rentMin').hidden=settings.type!=='monthly';
     note.textContent='선택일까지 마지막으로 확인된 거래 · '+(settings.type==='jeonse'?'대표 거래의 전세 보증금':settings.convert?'월 환산액 = 월세 + 보증금 × 연 환산율 ÷ 12':'대표 거래의 보증금 / 월세')+' · 지도 위치가 확인된 단지만 표시';
     prev.disabled=next.disabled=!meta;$('rental-play').disabled=!meta;$('rental-today').disabled=!meta;$('rental-slider').disabled=!meta;

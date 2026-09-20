@@ -6,6 +6,7 @@
   const money=v=>v==null?'—':(v/10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
   let client,day,period='day',span,filters={},kind='all',sort='price',token=0,limit=50,selected=[],chartRows=[];
   const districtPicker=NodoDistrictPicker(form.elements.g);
+  const aptSearch=NodoApartmentSearch.bind(form.elements.q,{queryFromURL:()=>new URLSearchParams(location.hash.slice(1)).get('q')||'',scope:()=>({r:form.elements.r.value,g:form.elements.g.value}),enabled:()=>!document.body.classList.contains('rental-active'),onSelect:()=>client&&form.requestSubmit(),onClear:()=>client&&form.requestSubmit()});
   function districtOptions(value=form.elements.g.value){districtPicker.setOptions([...new Set(client.catalog.complexes.filter(c=>form.elements.r.value===''||c.r===Number(form.elements.r.value)).map(c=>c.g))].sort(),value);}
   function restore(){
     const p=new URLSearchParams(location.hash.slice(1));filters=M.filters(p);day=M.valid(p.get('date'))?p.get('date'):client.index.maxDate;
@@ -21,12 +22,13 @@
   function mapURL(t){const p=new URLSearchParams({mode:'price',date:t?M.iso(t.d):span.from,kind:kind==='inactive'?'all':kind,...filters});
     if(t){const c=t.c;p.set('a',c.mapId||c.id);if(c.coord){p.set('lat',c.coord[0]);p.set('lng',c.coord[1]);p.set('z',16);}}
     else if(period!=='day'){p.set('start',span.from);p.set('end',span.to);p.set('step','day');}
-    return '/map/#'+p;
+    return '/map/'+(aptSearch.selected?'?searchApt='+encodeURIComponent(aptSearch.selected.id):'')+'#'+p;
   }
   function render(){
     const s=M.summary(selected);$('dailyStats').innerHTML=[['유효 거래',s.count,'',`직거래 ${s.direct.toLocaleString()}건 포함`],['역대 신고가',s.high,'up','각 계약일 이전 역대 최고가 초과'],['직전 대비 상승',s.up,'up','직전 계약일 최고가격 초과'],['직전 대비 하락',s.down,'down','직전 계약일 최저가격 미만'],['역대 신저가',s.low,'down','각 계약일 이전 역대 최저가 미만'],['해제 거래',s.cancelled,'','선택 기간에 계약된 거래 중 해제'],['원천에서 사라짐',s.missing,'','해제 여부 미확인 · 유효 거래 제외']].map(([title,n,cls,note])=>`<article class="daily-stat ${cls}"><p>${title}</p><strong>${n.toLocaleString()}<small> 건</small></strong><small>${note}</small></article>`).join('');
     document.querySelectorAll('[data-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===kind)));
     const list=selected.filter(t=>M.category(t,kind));
+    aptSearch.reportCount(list.length);
     const rate=t=>M.changeRate(t)??(sort==='rise'?-Infinity:Infinity);
     list.sort((a,b)=>(sort==='drop'?(rate(a)-rate(b)):sort==='rise'?(rate(b)-rate(a)):sort==='area'?(a.a-b.a):b.p-a.p)||a.c.n.localeCompare(b.c.n)||a.id.localeCompare(b.id));
     const unlocated=M.summary(list).unlocated;
@@ -52,6 +54,8 @@
     $('dailyChart').innerHTML=days.map(s=>`<button data-date="${s.d}" ${s.d===day?'aria-current="date"':''} ${s.d<client.index.minDate||s.d>client.index.maxDate?'disabled':''} aria-label="${s.d} ${s.d<client.index.minDate||s.d>client.index.maxDate?'보유 자료 없음':`전체 ${s.count}건 신고가 ${s.high}건 상승 ${s.up}건 하락 ${s.down}건`}" title="${s.d} · ${s.d<client.index.minDate||s.d>client.index.maxDate?'보유 자료 없음':`전체 ${s.count} · 신고가 ${s.high} · 상승 ${s.up} · 하락 ${s.down}`}"><span class="daily-bar-stack"><i style="height:${s.count/max*100}%"></i><i style="height:${s.high/max*100}%"></i><i style="height:${s.down/max*100}%"></i><i style="height:${s.up/max*100}%"></i></span><small>${s.d.slice(5).replace('-','.')}</small></button>`).join('');
   }
   async function load(){
+    aptSearch.checkScope();
+    const applied={...filters,searchIds:aptSearch.ids};
     const request=++token;limit=50;selected=[];chartRows=[];span=M.periodRange(day,period,client.index.minDate,client.index.maxDate);
     $('dayDate').hidden=period!=='day';$('dayWeek').hidden=period!=='week';$('dayWeek').value=M.periodRange(day,'week').start;$('dayLabel').textContent={day:'계약일',week:'조회 주간',month:'조회 월'}[period];$('dayMonth').hidden=period!=='month';$('dayDate').value=day;$('dayMonth').value=day.slice(0,7);
     $('dayPrev').disabled=span.from<=client.index.minDate;$('dayNext').disabled=span.to>=client.index.maxDate;
@@ -62,8 +66,8 @@
     $('dailyStatus').textContent='계약일별 거래를 불러오는 중…';$('dailyRetry').hidden=true;$('dailyRows').innerHTML='';$('dailyStats').innerHTML='';$('dailyChart').innerHTML='';$('dailyCount').textContent='';$('dailyMore').hidden=true;
     try{
       const first=period==='day'?M.shift(day,-29):span.from,last=span.to,months=M.monthsBetween(first<client.index.minDate?client.index.minDate:first,last);
-      const all=(await Promise.all(months.map(m=>client.trades(m,filters)))).flat();if(request!==token)return;
-      chartRows=all.filter(t=>M.iso(t.d)>=first&&M.iso(t.d)<=last&&M.match(t,filters));selected=chartRows.filter(t=>t.d>=M.number(span.from)&&t.d<=M.number(span.to));
+      const all=(await Promise.all(months.map(m=>client.trades(m,applied)))).flat();if(request!==token)return;
+      chartRows=all.filter(t=>M.iso(t.d)>=first&&M.iso(t.d)<=last&&M.match(t,applied));selected=chartRows.filter(t=>t.d>=M.number(span.from)&&t.d<=M.number(span.to));
       render();chart();
       $('dailyStatus').textContent='계약일 기준 · 최근 날짜는 미신고 거래로 건수가 추가될 수 있습니다. 직거래는 가격 판정에서 제외합니다.';
     }catch(e){if(request!==token)return;$('dailyStatus').textContent=e.message;$('dailyRetry').hidden=false;}
@@ -73,7 +77,7 @@
     try{client=await NodoDailyClient.create();$('dayDate').min=client.index.minDate;$('dayDate').max=client.index.maxDate;$('dayMonth').min=client.index.minDate.slice(0,7);$('dayMonth').max=client.index.maxDate.slice(0,7);
       $('dailyStamp').textContent=`보유 기간 ${client.index.minDate} ~ ${client.index.maxDate} · 갱신 ${new Date(client.index.updated).toLocaleString('ko-KR')} · 국토교통부 실거래가`;
       const weeks=[];for(let d=M.periodRange(client.index.minDate,'week').start;d<=client.index.maxDate;d=M.shift(d,1,'week'))weeks.push(`<option value="${d}">${d.replaceAll('-','.')} (월) ~ ${M.shift(d,6).replaceAll('-','.')} (일)</option>`);$('dayWeek').innerHTML=weeks.reverse().join('');
-      restore();
+      restore();await aptSearch.restore();
     }catch(e){$('dailyStatus').textContent=e.message;$('dailyRetry').hidden=false;}
   }
   $('dailyRetry').onclick=()=>location.reload();
@@ -83,7 +87,7 @@
   $('dayDate').onchange=e=>client&&chooseDate(e.target.value);
   function move(n){if(!client)return;const next=M.shift(period==='month'?day.slice(0,7)+'-01':day,n,period);chooseDate(next<client.index.minDate?client.index.minDate:next>client.index.maxDate?client.index.maxDate:next);}
   $('dayPrev').onclick=()=>move(-1);$('dayNext').onclick=()=>move(1);$('dayLatest').onclick=()=>client&&chooseDate(client.index.maxDate);
-  form.elements.r.onchange=()=>client&&districtOptions();
+  form.elements.r.onchange=()=>{if(client){districtOptions();aptSearch.checkScope();}};
   form.elements.g.onchange=()=>{if(client)form.requestSubmit();};
   form.onsubmit=e=>{e.preventDefault();if(!client)return;const p=new URLSearchParams(new FormData(form));for(const prefix of ['a','p']){const lo=p.get(prefix+'L'),hi=p.get(prefix+'H');if(lo!==''&&hi!==''&&Number(lo)>Number(hi)){$('dailyStatus').textContent='최솟값은 최댓값보다 클 수 없습니다.';return;}}filters=M.filters(p);load();};
   $('dailyReset').onclick=()=>{if(!client)return;form.reset();filters={};districtOptions('');load();};

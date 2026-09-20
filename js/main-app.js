@@ -208,6 +208,7 @@ function switchView(mode){
 }
 
 function setAreaLevel(level){
+  if(level!=='complex')compareAptSearch?.close();
   areaLevel=level;
   document.getElementById('lvComplex').className='level-tab'+(level==='complex'?' active':'');
   document.getElementById('lvGu').className='level-tab'+(level==='gu'?' active':'');
@@ -215,6 +216,7 @@ function setAreaLevel(level){
   document.getElementById('aGuFilter').style.display=(level==='dong'||level==='complex')?'':'none';
   selectedAreas=[]; areaCache={};
   if(level==='dong'||level==='complex') buildAreaGuFilter();
+  if(level==='complex')compareAptSearch?.restore();
   renderAreaList(); renderComparison(); saveHash();
 }
 
@@ -320,6 +322,7 @@ function sortAreaItems(items){
 }
 
 function getAreaNames(){
+  if(areaLevel==='complex')compareAptSearch?.checkScope();
   const rv=document.getElementById('aR').value;
   const sq=document.getElementById('aSearch').value.toLowerCase();
   const names=[];
@@ -334,7 +337,7 @@ function getAreaNames(){
       if(guF&&x.g!==guF) continue;
       const label=x.n;
       const searchLabel=x.n+' '+fmtArea(x.a)+' '+x.g+' '+(x.d||'');
-      if(sq&&!searchLabel.toLowerCase().includes(sq)) continue;
+      if(compareAptSearch?.selected ? !compareAptSearch.matches(x) : sq&&!searchLabel.toLowerCase().includes(sq)) continue;
       const key='idx:'+x.i;
       if(!seen.has(key)){
         seen.add(key);
@@ -488,6 +491,7 @@ function renderAreaList(){
     h+=renderAreaItem(item,checked);
   });
   el.innerHTML=h||'<div style="color:var(--muted);padding:12px;text-align:center;font-size:11px">검색 결과 없음</div>';
+  if(areaLevel==='complex')compareAptSearch?.reportCount(items.length);
   renderBadges();
 }
 
@@ -1678,6 +1682,7 @@ async function init(){
   syncPriceMetricButtons();
 
   if(!loadHash()) af();
+  await bindHomeSearch();
 
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
@@ -1909,7 +1914,17 @@ function onGUpdate(){
 function gv(id){return document.getElementById(id).value}
 function gn(id){const v=document.getElementById(id).value;return v===''?null:parseFloat(v)}
 
+let homeAptSearch,compareAptSearch;
+function bindHomeSearch(){
+  homeAptSearch=NodoApartmentSearch.bind(document.getElementById('fS'),{queryFromURL:()=>new URLSearchParams(location.hash.slice(1)).get('s')||'',scope:()=>({r:gv('fR'),g:selGus}),enabled:()=>!document.body.classList.contains('rental-active'),onSelect:()=>af(),onClear:()=>af()});
+  return homeAptSearch.restore();
+}
+function bindCompareSearch(){
+  compareAptSearch=NodoApartmentSearch.bind(document.getElementById('aSearch'),{scope:()=>({r:gv('aR'),g:gv('aGu')}),enabled:()=>areaLevel==='complex'&&!document.body.classList.contains('rental-active'),selectionMessage:c=>c.name+' · 아래에서 비교할 평형을 선택해 주세요',onSelect:()=>renderAreaList(),onClear:()=>renderAreaList()});
+  return compareAptSearch.restore();
+}
 function af(){
+  homeAptSearch?.checkScope();
   applyMobileFilterVisibility();
   const fR=gv('fR'),fD=gv('fD'),fS=gv('fS').toLowerCase();
   const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH'),bL=gn('bL'),bH=gn('bH');
@@ -1919,7 +1934,8 @@ function af(){
     if(selGus.length>0){if(!selGus.includes(x.g))return false;}
     else if(fR!==''&&x.r!==parseInt(fR))return false;
     if(fD&&x.d!==fD)return false;
-    if(fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!(x.j||'').toLowerCase().includes(fS)&&!(x.rd||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
+    if(homeAptSearch?.selected&&!homeAptSearch.matches(x))return false;
+    if(!homeAptSearch?.selected&&fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!(x.j||'').toLowerCase().includes(fS)&&!(x.rd||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
     if(aL!==null||aH!==null){const ap=typeof x.a==='number'?x.a/3.3058:(()=>{const m=String(x.a).match(/^([\d.]+)~([\d.]+)$/);return m?[parseFloat(m[1])/3.3058,parseFloat(m[2])/3.3058]:null})();if(ap===null)return false;if(typeof ap==='number'){if(aL!==null&&ap<aL)return false;if(aH!==null&&ap>aH)return false;}else{if(aL!==null&&ap[1]<aL)return false;if(aH!==null&&ap[0]>aH)return false;}}
     if(cL!==null&&(x.c===null||x.c<cL))return false;
     if(cH!==null&&(x.c===null||x.c>cH))return false;
@@ -1936,7 +1952,7 @@ function af(){
     if(bH!==null&&(!x.b||x.b>bH))return false;
     return true;
   });
-  ds();cp=1;rt();
+  ds();cp=1;rt();homeAptSearch?.reportCount(F.length);
   saveHash();
 }
 
@@ -3077,6 +3093,7 @@ function pp(){if(cp>1){cp--;rt();document.getElementById('tableWrap').scrollTop=
 function np(){if(cp<Math.ceil(F.length/ps)){cp++;rt();document.getElementById('tableWrap').scrollTop=0;saveHash();}}
 function cps(){ps=parseInt(document.getElementById('ps').value);cp=1;rt();saveHash();}
 function resetF(){
+  homeAptSearch?.clear({notify:false});
   ['fR','fG','fD','fS','aL','aH','cL','cH','mL','mH','pL','pH','sL','sH','uL','uH','bL','bH'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.value='';

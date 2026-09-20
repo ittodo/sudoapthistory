@@ -47,7 +47,7 @@
         districtSelect.value=district;
       }
       $('timePrev').disabled=day<=start;$('timeNext').disabled=day>=end;
-      const p=new URLSearchParams({date:day,kind:mode==='day'?kind:'all',...settings()});$('timeList').href='/trades/daily/#'+p;
+      const {searchIds,...urlFilters}=settings(),p=new URLSearchParams({date:day,kind:mode==='day'?kind:'all',...urlFilters}),selection=new URLSearchParams(window.NodoApartmentSearch?.params());$('timeList').href='/trades/daily/'+(selection.size?'?'+selection:'')+'#'+p;
       document.querySelector('.legend').innerHTML=mode==='current'?'<span></span>최근 실거래 <small>지역별 단지 평균 · 매매</small>':`<span></span>${esc(day)} ${mode==='day'?'당일 거래':'날짜별 가격'} <small>지역: 대표면적 평균 · 직거래 제외</small>`;
       document.querySelector('.legend').title=mode==='current'?'필터에 맞는 단지별 최신 실거래의 산술평균':'선택 시점의 단지 대표면적별 평균가격을 지역 단위로 집계합니다. 직거래는 제외합니다.';
     }

@@ -1,7 +1,34 @@
 {
-  "name": "nodostream-cloudflare", "private": true, "type": "module",
-  "scripts": {"test:daily": "python -m unittest discover -s tools -p test_daily_data.py && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs", "build:daily": "python tools/daily_data.py", "build:apartments": "node tools/build-apartment-data.mjs", "test:site": "node --test tools/test-apartment-data.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs", "preview": "node tools/preview-site.mjs", "build": "node tools/build-cloudflare-assets.mjs", "typecheck": "tsc --noEmit", "test:api": "tsx --test cloudflare/test/*.test.ts"},
-  "dependencies": {"oauth4webapi": "^3.8.0"},
-  "overrides": {"undici": "^7.29.0", "sharp": "^0.35.4"},
-  "devDependencies": {"@cloudflare/workers-types": "^5.20260911.1", "typescript": "^5.9.2", "tsx": "^4.20.5", "miniflare": "^4.20250906.0", "wrangler": "^4.34.0", "@types/node": "^22.18.0", "esbuild": "^0.25.9"}
+  "name": "nodostream-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:search": "node --test tools/test-apartment-search*.mjs",
+    "bench:search": "node --expose-gc tools/benchmark-apartment-search.mjs",
+    "test:daily": "python -m unittest discover -s tools -p test_daily_data.py && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs",
+    "build:daily": "python tools/daily_data.py",
+    "build:apartments": "node tools/build-apartment-data.mjs",
+    "test:site": "node --test tools/test-apartment-data.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs",
+    "preview": "node tools/preview-site.mjs",
+    "build": "node tools/build-cloudflare-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:api": "tsx --test cloudflare/test/*.test.ts"
+  },
+  "dependencies": {
+    "es-hangul": "2.4.0",
+    "oauth4webapi": "^3.8.0"
+  },
+  "overrides": {
+    "undici": "^7.29.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "@types/node": "^22.18.0",
+    "esbuild": "^0.25.9",
+    "miniflare": "^4.20250906.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "wrangler": "^4.34.0"
+  }
 }
