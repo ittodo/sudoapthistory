@@ -698,11 +698,10 @@ async function renderComparison(){
     ['CAGR(%)',d=>d.avgCagr,v=>v!==null?v.toFixed(1):'-','max'],
     ['MDD(%)',d=>d.avgMdd,v=>v!==null?v.toFixed(1):'-','max'],
     ['샤프비율',d=>d.avgSharpe,v=>v!==null?v.toFixed(2):'-','max'],
-    [retYearFrom+'→'+retYearTo+' 연환산(%)',d=>{
+    [retYearFrom+'→'+retYearTo+' 연복리(%)',d=>{
       const iF=Y.indexOf(retYearFrom),iT=Y.indexOf(retYearTo);
       if(iF<0||iT<0||!d.yearAvg||!d.yearAvg[iF]||!d.yearAvg[iT])return null;
-      const totalRet=(d.yearAvg[iT]-d.yearAvg[iF])/d.yearAvg[iF]*100;
-      return totalRet/retMonths()*12;
+      return compoundAnnualReturn(d.yearAvg[iF],d.yearAvg[iT],retMonths());
     },v=>v!==null?v.toFixed(1):'-','max']
   ];
 
@@ -1722,7 +1721,7 @@ function onReturnRange(){
 }
 function updateRetLabel(){
   const m=retMonths();
-  document.getElementById('retLabel').textContent=retYearFrom+'→'+retYearTo+' ('+m+'개월→연환산)';
+  document.getElementById('retLabel').textContent=retYearFrom+'→'+retYearTo+' ('+m+'개월→연복리)';
   const th=document.getElementById('thRet');
   if(th){th.childNodes[0].textContent=retYearFrom%100+'→'+retYearTo%100+' ';}
 }

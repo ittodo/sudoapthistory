@@ -87,6 +87,12 @@ function calcRetMonths(actualFromY,toY){
   return Math.max(m,1);
 }
 
+function compoundAnnualReturn(pFrom,pTo,months){
+  if(![pFrom,pTo,months].every(Number.isFinite)||pFrom<=0||pTo<=0||months<=0) return null;
+  const rate=Math.expm1(Math.log(pTo/pFrom)*12/months)*100;
+  return Number.isFinite(rate)?rate:null;
+}
+
 function calcReturnObj(x){
   // returns {val, years} or null  (years = "1.3" 형태 실제 기간)
   if(!PRICES) return null;
@@ -103,8 +109,8 @@ function calcReturnObj(x){
     const pFrom=p[actualFromI], pTo=p[iTo];
     if(!pFrom||!pTo) return null;
     const months=calcRetMonths(Y[actualFromI],retYearTo);
-    const totalRet=(pTo-pFrom)/pFrom*100;
-    return {val:totalRet/months*12, years:(months/12)};
+    const val=compoundAnnualReturn(pFrom,pTo,months);
+    return val===null?null:{val, years:(months/12)};
   }
 
   // 통합 엔트리: 시블링 세대수 가중평균

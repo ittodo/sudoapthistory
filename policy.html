@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>부동산 정책 현황 — 서울·경기 아파트 투자 스크리너</title>
-<meta name="description" content="2026년 3월 기준 부동산 세제·대출규제·청약·재건축 등 주요 정책 한눈에 보기">
+<meta name="description" content="2026년 9월 21일 확인한 부동산 세제·대출규제·청약·임대차·정비사업 정책. 시행 중인 제도와 시행 예정·정부안을 공식 출처와 함께 구분합니다.">
 <link rel="canonical" href="https://nodostream.com/policy.html">
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <style>
@@ -24,7 +24,7 @@
   .section h3:first-of-type { margin-top: 8px; }
   table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 13px; }
   th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-  th { background: rgba(15,23,42,.5); color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  th { background: var(--surface); color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
   td { color: var(--text); }
   .highlight { color: var(--up); font-weight: 700; }
   .blue { color: var(--accent); font-weight: 700; }
@@ -49,6 +49,16 @@
   .toc-list a { font-size: 13px; color: var(--text); display: flex; align-items: center; gap: 6px; padding: 3px 0; }
   .toc-list a:hover { color: var(--accent); text-decoration: none; }
   .toc-num { color: var(--muted); font-size: 11px; min-width: 18px; }
+  .sources { color: var(--muted); font-size: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .sources a { display: inline; overflow-wrap: anywhere; }
+  .section { scroll-margin-top: 90px; }
+  .section h2 { flex-wrap: wrap; }
+  .section th { white-space: normal; }
+  .pending { border-left: 3px solid #d97706; }
+  html[data-theme="light"] .tag-red, html[data-theme="light"] .chip-red { color: #b91c1c; }
+  html[data-theme="light"] .tag-green { color: #047857; }
+  html[data-theme="light"] .tag-yellow { color: #92400e; }
+  @media (max-width: 640px) { .section { padding: 18px 14px; } .toc-list { grid-template-columns: 1fr; } th, td { padding: 7px 5px; } h1 { font-size: 25px; } }
 </style>
 <script src="/js/site-theme.js"></script>
 <link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/css/responsive.css">
@@ -61,7 +71,17 @@
 <a href="index.html" class="back">← 스크리너로 돌아가기</a>
 
 <h1>부동산 정책 현황</h1>
-<p class="subtitle">2026년 3월 기준 · 서울·경기 아파트 투자자 관점 핵심 정리</p>
+<p class="subtitle">확인 기준일 <time datetime="2026-09-21">2026년 9월 21일</time> · 서울·경기·인천 주택 정책 · 항목별 공식 출처 제공</p>
+
+<div class="section">
+  <h2>이번에 확인할 변화</h2>
+  <ul>
+    <li><span class="tag tag-green">시행 중</span> 경기 규제지역에 <a href="#s1">화성 동탄구·용인 기흥구·구리시</a>가 추가됐습니다.</li>
+    <li><span class="tag tag-green">시행 중</span> <a href="#s3">다주택 양도세 중과 유예는 종료</a>됐고, 기존 계약·허가신청분의 경과규정을 따로 확인해야 합니다.</li>
+    <li><span class="tag tag-yellow">10월 시행 예정</span> <a href="#s9">토지거래허가구역 실거주 유예 확대</a>는 9월 17일 발표된 개정안입니다.</li>
+    <li><span class="tag tag-yellow">정부안</span> <a href="#s9">2026 세제개편안</a>의 향후 세율·공제 변경은 현행 세금과 구분합니다.</li>
+  </ul>
+</div>
 
 <div class="toc">
   <div class="toc-title">목차</div>
@@ -74,13 +94,14 @@
     <li><a href="#s6"><span class="toc-num">6</span> 청약제도</a></li>
     <li><a href="#s7"><span class="toc-num">7</span> 임대차 3법</a></li>
     <li><a href="#s8"><span class="toc-num">8</span> 재건축·재개발</a></li>
+    <li><a href="#s9"><span class="toc-num">9</span> 시행 예정·정부안</a></li>
   </ol>
 </div>
 
 <!-- 1. 조정대상지역 -->
 <div class="section" id="s1">
   <h2>1. 조정대상지역 현황</h2>
-  <p style="margin-bottom:12px">2025.10.15 대책으로 서울 전역 + 경기 12곳으로 대폭 확대. <span class="tag tag-red">투기과열지구 동일 범위</span></p>
+  <p style="margin-bottom:12px">서울 25개 구와 경기 15개 지역. 2025년 10월 지정 지역에 2026년 7월 1일부터 동탄구·기흥구·구리시가 추가됐습니다. <span class="tag tag-red">투기과열지구 동일 범위</span></p>
 
   <h3>서울 — 25개 구 전역 지정</h3>
   <div class="region-map">
@@ -99,7 +120,7 @@
     <span class="region-chip chip-red">중랑구</span>
   </div>
 
-  <h3>경기 — 12개 지역</h3>
+  <h3>경기 — 15개 지역</h3>
   <div class="region-map">
     <span class="region-chip chip-red">과천시</span><span class="region-chip chip-red">광명시</span>
     <span class="region-chip chip-red">성남 분당구</span><span class="region-chip chip-red">성남 수정구</span>
@@ -107,21 +128,24 @@
     <span class="region-chip chip-red">수원 장안구</span><span class="region-chip chip-red">수원 팔달구</span>
     <span class="region-chip chip-red">안양 동안구</span><span class="region-chip chip-red">용인 수지구</span>
     <span class="region-chip chip-red">의왕시</span><span class="region-chip chip-red">하남시</span>
+    <span class="region-chip chip-red">화성 동탄구 · 7월 추가</span><span class="region-chip chip-red">용인 기흥구 · 7월 추가</span>
+    <span class="region-chip chip-red">구리시 · 7월 추가</span>
   </div>
 
   <h3>비조정 주요 경기 지역</h3>
   <div class="region-map">
     <span class="region-chip chip-gray">고양시</span><span class="region-chip chip-gray">김포시</span>
     <span class="region-chip chip-gray">파주시</span><span class="region-chip chip-gray">남양주시</span>
-    <span class="region-chip chip-gray">구리시</span><span class="region-chip chip-gray">의정부시</span>
-    <span class="region-chip chip-gray">화성시</span><span class="region-chip chip-gray">평택시</span>
+    <span class="region-chip chip-gray">의정부시</span>
+    <span class="region-chip chip-gray">화성시 동탄구 외</span><span class="region-chip chip-gray">평택시</span>
     <span class="region-chip chip-gray">안산시</span><span class="region-chip chip-gray">시흥시</span>
-    <span class="region-chip chip-gray">양주시</span><span class="region-chip chip-gray">용인 기흥·처인</span>
+    <span class="region-chip chip-gray">양주시</span><span class="region-chip chip-gray">용인 처인구</span>
   </div>
 
   <div class="note">
-    <strong>토지거래허가구역:</strong> 강남3구(강남·서초·송파) + 용산은 2026년 말까지 연장. 허가구역 내 주택 매수 시 실거주 의무.
+    <strong>토지거래허가구역은 별도 확인:</strong> 서울·경기 지정 아파트 등에 적용되며, 동탄구·기흥구·구리시는 2026년 7월 5일부터 추가 지정됐습니다. 규제지역 여부만으로 개별 주택의 허가 필요 여부를 판단할 수 없습니다. 대상 주택·토지면적·지정기간은 관할 지자체 고시로 확인합니다. 임대 중인 주택의 실거주 유예 확대안은 <a href="#s9">시행 예정 항목</a>에 정리했습니다.
   </div>
+  <p class="sources">근거: <a href="https://www.fsc.go.kr/no040101?cnId=2914">금융위 2025.10.15 지정 범위</a> · <a href="https://www.molit.go.kr/USR/NEWS/m_72/dtl.jsp/dtl.jsp?id=95092167&amp;lcmspage=1">국토부 2026.6.30 추가 지정</a> · <a href="https://www.fsc.go.kr/no010101/87222">금융위 2026.6.30 적용 안내</a></p>
 </div>
 
 <!-- 2. 취득세 -->
@@ -133,7 +157,7 @@
     <thead><tr><th>매매가</th><th>세율</th></tr></thead>
     <tbody>
       <tr><td>6억 이하</td><td>1%</td></tr>
-      <tr><td>6억 ~ 9억</td><td>1 ~ 3% (구간별 누진)</td></tr>
+      <tr><td>6억 초과 ~ 9억 이하</td><td>1 ~ 3% · 세율(%) = 취득가액(억원) × 2/3 − 3</td></tr>
       <tr><td>9억 초과</td><td>3%</td></tr>
     </tbody>
   </table>
@@ -143,11 +167,13 @@
     <thead><tr><th>구분</th><th>비조정대상지역</th><th>조정대상지역</th></tr></thead>
     <tbody>
       <tr><td>2주택</td><td>1 ~ 3% (기본)</td><td class="highlight">8%</td></tr>
-      <tr><td>3주택 이상</td><td class="highlight">8%</td><td class="highlight">12%</td></tr>
+      <tr><td>3주택</td><td class="highlight">8%</td><td class="highlight">12%</td></tr>
+      <tr><td>4주택 이상</td><td class="highlight">12%</td><td class="highlight">12%</td></tr>
       <tr><td>법인</td><td class="highlight">12%</td><td class="highlight">12%</td></tr>
     </tbody>
   </table>
-  <div class="note">지방교육세·농어촌특별세 별도. 저가주택 중과 제외: 수도권 1억 이하.</div>
+  <div class="note">유상취득의 일반적인 세율이며, 새로 취득하는 주택을 포함해 세대별 주택 수를 판단합니다. 일시적 2주택·중과 제외 주택·감면은 별도 요건이 있습니다. 지방교육세·농어촌특별세는 별도입니다.</div>
+  <p class="sources">근거: <a href="https://etax.seoul.go.kr/AcqutaxCalcAction.view">서울시 ETAX 취득세 세율표</a> · <a href="https://www.dobong.go.kr/Contents.asp?code=10009938">도봉구 세목별 안내(2026.8.13 수정)</a></p>
 </div>
 
 <!-- 3. 양도소득세 -->
@@ -169,7 +195,7 @@
     </tbody>
   </table>
 
-  <h3>단기 양도 가산</h3>
+  <h3>주택 단기 양도 세율</h3>
   <table>
     <thead><tr><th>보유기간</th><th>세율</th></tr></thead>
     <tbody>
@@ -183,12 +209,12 @@
   <table>
     <thead><tr><th>구분</th><th>가산</th><th>비고</th></tr></thead>
     <tbody>
-      <tr><td>2주택</td><td>기본세율 + 20%p</td><td rowspan="2"><span class="tag tag-yellow">2026.5.9까지 유예</span></td></tr>
+      <tr><td>2주택</td><td>기본세율 + 20%p</td><td rowspan="2"><span class="tag tag-red">2026.5.10부터 원칙 적용</span></td></tr>
       <tr><td>3주택+</td><td>기본세율 + 30%p</td></tr>
     </tbody>
   </table>
   <div class="note">
-    <strong>다주택 중과 유예:</strong> 2022.5.10 ~ 2026.5.9 양도분은 중과 유예. 기본세율 적용 + 장기보유특별공제 가능. <strong class="highlight">2026.5.10 이후 유예 종료 예정.</strong>
+    <strong>유예 종료와 경과규정:</strong> 중과 한시 배제는 2026년 5월 9일 종료됐습니다. 5월 9일까지 토지거래허가를 신청한 주택 등은 허가 후 계약·계약금 증빙과 양도기한 요건을 충족하면 경과규정을 적용합니다. 강남·서초·송파·용산은 계약일부터 4개월 이내이면서 9월 9일까지, 2025년 10월 16일 신규 지정 지역은 6개월 이내이면서 11월 9일까지입니다. 허가대상이 아닌 주택은 5월 9일 이전 매매계약 요건을 확인합니다. <strong>9월 21일 현재 강남3구·용산의 위 경과기한은 지났습니다.</strong> 중과 적용 시 장기보유특별공제를 받을 수 없으며, 2027년 이후 한시 완화는 <a href="#s9">정부안</a>입니다.
   </div>
 
   <h3>1세대 1주택 비과세</h3>
@@ -196,7 +222,7 @@
     <li>양도가액 <strong class="blue">12억 원</strong> 이하 전액 비과세 (2021.12~ 9억→12억 상향)</li>
     <li>보유 2년 이상 필수</li>
     <li>조정대상지역 취득(2017.8.3 이후): <strong>2년 거주</strong> 요건 추가</li>
-    <li>12억 초과분만 과세 (장기보유특별공제 적용)</li>
+    <li>12억 초과 고가주택은 양도차익 중 초과가액 비율에 해당하는 부분을 과세</li>
   </ul>
 
   <h3>장기보유특별공제 (1세대 1주택)</h3>
@@ -208,6 +234,8 @@
       <tr><td><strong>합산</strong></td><td></td><td><strong class="blue">최대 80%</strong></td></tr>
     </tbody>
   </table>
+  <p class="note">위 공제율은 보유 3년 이상·거주 2년 이상 등 1세대 1주택 요건을 충족할 때 적용합니다. 실제 공제율은 보유·거주기간에 따라 달라지며, 각각 10년 이상일 때 합계 80%입니다. 지방소득세는 별도이며, 주택 수 제외·상속·일시적 2주택 등 특례에 따라 결과가 달라집니다.</p>
+  <p class="sources">근거: <a href="https://b.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7711&amp;mi=2312">국세청 양도소득세 세율</a> · <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148963387">국세청 중과 유예 종료·경과규정 안내</a> · <a href="https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7707&amp;mi=2293">국세청 양도소득세 안내</a></p>
 </div>
 
 <!-- 4. 종합부동산세 -->
@@ -227,27 +255,28 @@
       <h3>핵심 변수</h3>
       <ul>
         <li>공정시장가액비율: <strong>60%</strong></li>
-        <li>공시가격 현실화율: <strong>69%</strong> (4년 연속 동결)</li>
+        <li>과세기준일: 매년 <strong>6월 1일</strong></li>
+        <li>시가가 아닌 해당 연도 <strong>공시가격</strong>으로 계산</li>
       </ul>
     </div>
   </div>
 
-  <h3>세율 (개인, 2주택 이하)</h3>
+  <h3>세율 (개인, 주택분)</h3>
   <table>
-    <thead><tr><th>과세표준</th><th>세율</th></tr></thead>
+    <thead><tr><th>과세표준</th><th>2주택 이하</th><th>3주택 이상</th></tr></thead>
     <tbody>
-      <tr><td>3억 이하</td><td>0.5%</td></tr>
-      <tr><td>3억 ~ 6억</td><td>0.7%</td></tr>
-      <tr><td>6억 ~ 12억</td><td>1.0%</td></tr>
-      <tr><td>12억 ~ 25억</td><td>1.3%</td></tr>
-      <tr><td>25억 ~ 50억</td><td>1.5%</td></tr>
-      <tr><td>50억 ~ 94억</td><td>2.0%</td></tr>
-      <tr><td>94억 초과</td><td>2.7%</td></tr>
+      <tr><td>3억 이하</td><td>0.5%</td><td>0.5%</td></tr>
+      <tr><td>3억 초과 ~ 6억 이하</td><td>0.7%</td><td>0.7%</td></tr>
+      <tr><td>6억 초과 ~ 12억 이하</td><td>1.0%</td><td>1.0%</td></tr>
+      <tr><td>12억 초과 ~ 25억 이하</td><td>1.3%</td><td>2.0%</td></tr>
+      <tr><td>25억 초과 ~ 50억 이하</td><td>1.5%</td><td>3.0%</td></tr>
+      <tr><td>50억 초과 ~ 94억 이하</td><td>2.0%</td><td>4.0%</td></tr>
+      <tr><td>94억 초과</td><td>2.7%</td><td>5.0%</td></tr>
     </tbody>
   </table>
 
   <div class="note">
-    <strong>중과세율 사실상 폐지:</strong> 2023년 세법 개정으로 3주택 이상·조정지역 2주택도 기본세율과 동일하게 조정됨. 법인은 2주택 이하 2.7%, 3주택+ 5.0% 단일세율.
+    <strong>3주택 이상 중과세율 유지:</strong> 과세표준 12억 원 초과 구간부터 2주택 이하와 세율이 다릅니다. 일반 법인은 2주택 이하 2.7%, 3주택 이상 5.0% 단일세율이며 공익법인 등 특례가 있습니다. 세제개편안의 공제·세율 개편을 2026년 현행 표에 섞어 적용하지 않습니다.
   </div>
 
   <h3>1세대 1주택 세액공제</h3>
@@ -263,6 +292,8 @@
       <tr><td><strong>합산 최대</strong></td><td><strong class="blue">80%</strong></td></tr>
     </tbody>
   </table>
+  <div class="note"><strong>9월 신고 일정:</strong> 2026년 종부세 합산배제·과세특례 신고·신청 기간은 9월 16일~30일입니다. 임대주택 합산배제, 일시적 2주택·상속주택 등 대상 여부와 신규·변동 사항을 확인하세요.</div>
+  <p class="sources">근거: <a href="https://b.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7739&amp;mi=40401">국세청 종부세 과세표준·세율·공제</a> · <a href="https://www.nts.go.kr/nts/na/ntt/selectNttInfo.do?nttSn=1354762">국세청 2026년 9월 합산배제·특례 안내</a></p>
 </div>
 
 <!-- 5. 대출규제 -->
@@ -279,48 +310,54 @@
   </table>
 
   <div class="note">
-    <strong>스트레스 DSR 3단계</strong> (2025.7~ 시행): 주담대 + 신용대출 + 기타대출 모두 적용. 가산금리 수도권 1.5%, 지방 0.75%. 실질 대출한도 축소 효과.
+    <strong>2026년 하반기 스트레스 DSR:</strong> 수도권·규제지역 주담대의 스트레스 금리 하한은 3.0%입니다. 지방 비규제지역 주담대는 12월 31일까지 2단계 적용을 유지합니다(산정금리 1.5%인 경우 변동형에 50%를 반영해 0.75%p 적용). 혼합형·주기형·고정형은 반영비율이 다릅니다. 실제 이자에 더하는 금리가 아니라 대출한도를 심사할 때 사용하는 가산금리입니다.
   </div>
 
-  <h3>LTV (담보인정비율)</h3>
+  <h3>LTV (일반 주택구입 목적, 수도권 중심)</h3>
   <table>
-    <thead><tr><th>구분</th><th>규제지역</th><th>비규제지역</th></tr></thead>
+    <thead><tr><th>구분</th><th>규제지역</th><th>수도권 비규제지역</th></tr></thead>
     <tbody>
-      <tr><td>일반 무주택</td><td>50%</td><td>70%</td></tr>
-      <tr><td>생애최초</td><td class="blue">70%</td><td>80%</td></tr>
-      <tr><td>1주택 갈아타기</td><td>50%</td><td>70%</td></tr>
-      <tr><td>다주택</td><td class="highlight">불가</td><td>60%</td></tr>
-      <tr><td>서민 실수요자</td><td>70%</td><td>70%</td></tr>
+      <tr><td>무주택·처분조건부 1주택</td><td>40%</td><td>70%</td></tr>
+      <tr><td>다주택자의 추가 주택 구입</td><td>0%</td><td>0%</td></tr>
     </tbody>
   </table>
 
   <div class="note">
-    <strong>고가 주택 제한:</strong> 규제지역 15억 초과 아파트 주담대 금지. 25억 초과 주택은 최대 대출 2억 원 (2025.10 대책).
+    생애최초·정책모기지 등은 상품별 완화비율(60~70% 등)과 별도 한도가 적용됩니다. 수도권과 지방을 구분하며 LTV·DSR·금액 한도를 함께 충족해야 합니다.
   </div>
+  <h3>수도권·규제지역 주택구입 목적 주담대 한도</h3>
+  <table><thead><tr><th>주택 시가</th><th>최대한도</th></tr></thead><tbody>
+    <tr><td>15억 원 이하</td><td>6억 원</td></tr>
+    <tr><td>15억 초과 ~ 25억 원 이하</td><td>4억 원</td></tr>
+    <tr><td>25억 원 초과</td><td>2억 원</td></tr>
+  </tbody></table>
+  <p>15억 원을 넘는다고 주담대가 일괄 금지되는 것은 아닙니다. 중도금·이주비·생활안정자금은 목적별 규정이 다릅니다. 다주택자의 수도권·규제지역 아파트 주담대는 2026년 4월 17일부터 만기연장이 원칙적으로 제한되며, 기존 임차인 보호 등 예외요건을 확인해야 합니다.</p>
+  <p class="sources">근거: <a href="https://www.fsc.go.kr/no040101?cnId=3374">금융위 2026.8.13 금융 종합대책</a> · <a href="https://www.fsc.go.kr/no010101/87222">2026.6.30 LTV 안내</a> · <a href="https://better.fsc.go.kr/fsc_new/status/adminMap/OpertnDetail.do?muNo=145&amp;postNo=4215&amp;stNo=11">2026.7~12월 스트레스 DSR 시행 문서</a> · <a href="https://www.fsc.go.kr/no010101/85432">주택가격별 대출한도</a> · <a href="https://www.fsc.go.kr/no040000?cnId=3150">다주택자 만기연장 제한</a></p>
 </div>
 
 <!-- 6. 청약제도 -->
 <div class="section" id="s6">
   <h2>6. 청약제도</h2>
 
-  <h3>가점제/추첨제 배분 (민영주택)</h3>
+  <h3>가점제/추첨제 배분 (민영주택 일반공급)</h3>
   <table>
-    <thead><tr><th>면적</th><th colspan="2">규제지역</th><th colspan="2">비규제지역</th></tr>
-    <tr><th></th><th>가점</th><th>추첨</th><th>가점</th><th>추첨</th></tr></thead>
+    <thead><tr><th>전용면적</th><th>투기과열지구<br>가점 / 추첨</th><th>청약과열지역<br>가점 / 추첨</th></tr></thead>
     <tbody>
-      <tr><td>60㎡ 이하</td><td>40%</td><td>60%</td><td>40%</td><td>60%</td></tr>
-      <tr><td>60 ~ 85㎡</td><td>70%</td><td>30%</td><td>40%</td><td>60%</td></tr>
-      <tr><td>85㎡ 초과</td><td>80%</td><td>20%</td><td>50%</td><td>50%</td></tr>
+      <tr><td>60㎡ 이하</td><td>40% / 60%</td><td>40% / 60%</td></tr>
+      <tr><td>60㎡ 초과 ~ 85㎡ 이하</td><td>70% / 30%</td><td>70% / 30%</td></tr>
+      <tr><td>85㎡ 초과</td><td>80% / 20%</td><td>50% / 50%</td></tr>
     </tbody>
   </table>
 
-  <h3>특별공급 (전체 물량의 약 43%)</h3>
+  <p>그 밖의 지역은 85㎡ 이하의 가점 비율을 지자체가 40% 이하 범위에서 정할 수 있고, 85㎡ 초과는 원칙적으로 추첨합니다. 수도권 일부 공공주택지구는 별도 규정이 있으므로 최종 비율은 모집공고문에서 확인합니다.</p>
+  <h3>특별공급·무순위</h3>
   <ul>
     <li>유형: 신혼부부, 생애최초, 다자녀, 노부모부양, 기관추천</li>
-    <li>예비당첨자: 가구 수의 <strong>500% 이상</strong>으로 확대</li>
-    <li>예비입주자 명단 공개: 60일 → <strong>180일</strong> 연장</li>
-    <li>무순위 청약: 거주지역 요건 <strong>폐지</strong></li>
+    <li>특별공급 비율과 소득·자산·출산 요건은 민영·공공, 유형과 모집공고일에 따라 다릅니다.</li>
+    <li>무순위(사후) 청약은 <strong>무주택세대구성원인 성년자</strong>가 대상이며, 지자체 등이 거주지역 요건을 설정할 수 있습니다.</li>
+    <li>임의공급·계약취소주택 재공급은 별도 자격을 적용합니다. 무순위라는 명칭만으로 전국 누구나 신청 가능하다고 판단하지 않습니다.</li>
   </ul>
+  <p class="sources">근거: <a href="https://www.law.go.kr/LSW/lsInfoP.do?ancYnChk=0&amp;lsId=008243">주택공급에 관한 규칙 제26조·제28조</a> · <a href="https://www.law.go.kr/LSW/lsRvsDocListP.do?chrClsCd=010102&amp;lsId=008243">무순위 요건 개정문</a></p>
 </div>
 
 <!-- 7. 임대차 3법 -->
@@ -332,26 +369,28 @@
       <h3>계약갱신청구권</h3>
       <ul>
         <li>세입자 <strong>1회</strong> 행사 가능</li>
-        <li>2+2년 = 최대 <strong>4년</strong> 거주</li>
+        <li>행사 시 <strong>2년 갱신</strong> (통상 최초 2년 + 갱신 2년)</li>
         <li>행사 시점: 만료 6개월 ~ 2개월 전</li>
-        <li>2020.7.31 시행, 현재 유지</li>
+        <li>임대인 본인·직계존비속 실거주 등 법정 갱신거절 사유는 별도</li>
       </ul>
     </div>
     <div>
       <h3>전월세상한제</h3>
       <ul>
-        <li>갱신 시 인상 상한: <strong class="highlight">5%</strong></li>
-        <li>신규 계약에는 미적용</li>
-        <li>갱신청구권 행사 시에만 적용</li>
+        <li>계약갱신요구권으로 갱신할 때 증액 상한: <strong class="highlight">5%</strong></li>
+        <li>존속 중인 계약의 증액청구에도 법정 상한·1년 내 재증액 제한 적용</li>
+        <li>신규 임차인과의 계약 및 합의 갱신은 계약 유형과 적용 법령을 구분</li>
       </ul>
     </div>
   </div>
 
   <h3>전월세신고제</h3>
   <ul>
-    <li>보증금 6,000만 원 초과 또는 월세 30만 원 초과 시 신고 의무</li>
-    <li>과태료 부과 유예 기간 반복 연장 중</li>
+    <li>수도권·광역시·세종·제주 및 도의 시 지역에서 보증금 6,000만 원 초과 또는 월세 30만 원 초과 계약이 대상</li>
+    <li>계약 체결일부터 <strong>30일 이내</strong> 신고. 금액 변동 없는 갱신계약 등은 제외</li>
+    <li><strong>계도기간은 2025년 5월 31일 종료</strong>. 6월 1일 이후 체결 계약부터 미신고 과태료 2만~30만 원, 거짓신고 100만 원</li>
   </ul>
+  <p class="sources">근거: <a href="https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=4&amp;cciNo=4&amp;cnpClsNo=1&amp;csmSeq=629">생활법령정보 임대차 갱신(2026.8.31 기준)</a> · <a href="https://www.changwon.go.kr/cwportal/10310/10429/10430.web?amode=view&amp;gcode=1009&amp;idx=857197">지자체 주택 임대차 신고 안내</a></p>
 </div>
 
 <!-- 8. 재건축·재개발 -->
@@ -362,29 +401,47 @@
   <ul>
     <li>'재건축진단'으로 명칭 변경</li>
     <li>진단 시점을 사업시행계획인가 전까지 <strong>유예</strong> 가능</li>
-    <li>구조안전성 비중 축소, 주거환경 비중 확대</li>
+    <li>진단 시기 조정은 진단 자체의 일괄 면제를 뜻하지 않음</li>
   </ul>
 
   <h3>재건축초과이익환수제</h3>
   <table>
     <thead><tr><th>항목</th><th>내용</th></tr></thead>
     <tbody>
-      <tr><td>면제 기준</td><td>초과이익 <strong class="blue">8,000만 원</strong> 이하</td></tr>
+      <tr><td>면제 기준</td><td>조합원 1인당 평균 초과이익 <strong class="blue">8,000만 원</strong> 이하</td></tr>
       <tr><td>부과 구간</td><td>5,000만 원 단위 (기존 2,000만→상향)</td></tr>
       <tr><td>부과율</td><td>구간별 10 ~ 50%</td></tr>
-      <tr><td>대상</td><td>전국 약 68곳 (서울 31곳)</td></tr>
-      <tr><td>1인 평균 부담</td><td>약 <strong class="highlight">1억 467만 원</strong></td></tr>
     </tbody>
   </table>
 
   <div class="note">
-    <strong>서울시 신속통합기획:</strong> 정비사업 기간 단축 목표. 2026년 기준 약 100여 곳 지정.
+    <strong>8월 13일 주택 신속공급 방안:</strong> 수도권 23만 호+α 추가 공급, 조기 착공 인센티브와 정비사업 절차 개선을 발표했습니다. 공급 목표와 제도 개선 과제는 실제 인허가·착공·법령 개정 진행 여부를 구분해서 확인합니다.
   </div>
+  <p class="sources">근거: <a href="https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&amp;lsJoLnkSeq=1029443467">도시정비법 제12조 재건축진단</a> · <a href="https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&amp;joBrNo=00&amp;joNo=0012&amp;lsiSeq=277019&amp;urlMode=lsScJoRltInfoR">재건축이익환수법 제12조</a> · <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148970016">정부 2026.8.13 주택 신속공급 방안</a></p>
+</div>
+
+<div class="section pending" id="s9">
+  <h2>9. 시행 예정·정부안 <span class="tag tag-yellow">현행 제도와 구분</span></h2>
+  <h3>토지거래허가구역 실거주 유예 확대 · 10월 1일 시행 예정</h3>
+  <p>국토부가 9월 17일 발표하고 9월 18일부터 입법예고한 시행령 개정안입니다. 신청기한을 2026년 말에서 <strong>2027년 12월 31일</strong>로 연장하고, 잔여 임차기간에 더해 <strong>갱신계약 1회·최대 2년</strong>까지 유예를 인정할 계획입니다. 매수자는 2026년 5월 12일부터 계속 무주택을 유지해야 하며 입주 후 2년 거주의무는 유지됩니다. 9월 21일 현재 시행 전이므로 현재 계약에 확대안을 바로 적용하지 않습니다.</p>
+  <p class="sources">근거: <a href="https://www.korea.kr/news/policyNewsView.do?newsId=148972092">국토부 2026.9.17 실거주 유예 연장·확대 발표</a></p>
+
+  <h3>2026 세제개편안 · 정부 제안</h3>
+  <p>2027~2028년 다주택 양도세 중과세율 한시 완화, 종부세 공제·세율 체계 조정, 장기보유특별공제의 거주 중심 전환 등을 담고 있습니다. <strong>국회 심의·법령 확정과 부칙의 적용시기를 확인할 사안</strong>이며, 위의 2026년 현행 세율·공제에 합쳐 계산하지 않습니다.</p>
+  <p class="sources">근거: <a href="https://mofe.go.kr/nw/mosfnw/detailCardNewsView.do?menuNo=4040600&amp;searchNttId1=MOSF_000000000078928">재정경제부 2026 세제개편안 PART 02(8.10)</a></p>
+
+  <h3>실수요자 금융지원·전세대출 보증 개편 · 발표 일정</h3>
+  <ul>
+    <li><strong>2026년 10월 예정:</strong> 청년특례 전세대출보증 확대, 보금자리론 신혼부부 소득요건 개선</li>
+    <li><strong>2027년 1월 1일 예정:</strong> 요건에 해당하는 비거주 1주택자 전세대출 보증 제한, 1주택자 보증비율 조정 등</li>
+    <li>세부 자격·예외·접수 개시일은 금융위와 주택금융공사의 시행·상품 공고로 확인합니다.</li>
+  </ul>
+  <p class="sources">근거: <a href="https://www.fsc.go.kr/no040101?cnId=3374">금융위 2026.8.13 금융 종합대책의 시행 일정</a></p>
 </div>
 
 <p style="text-align:center; color:var(--muted); font-size:12px; margin-top:32px">
   본 페이지는 투자 참고용이며, 법적 효력이 없습니다. 정확한 세율·규정은 관련 법령 및 전문가를 통해 확인하시기 바랍니다.<br>
-  마지막 업데이트: 2026년 3월
+  마지막 확인·업데이트: <time datetime="2026-09-21">2026년 9월 21일</time> · 시행일·계약일·지역·개별 특례를 함께 확인하세요.
 </p>
 
 </div>

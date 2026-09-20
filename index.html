@@ -21,7 +21,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="js/calc-utils.js?v=20260816-gap-recovery"></script>
+<script src="js/calc-utils.js?v=20260921-compound-return"></script>
 <script src="js/data-loader.js?v=20260907-parcel-index-v2"></script>
 <link rel="stylesheet" href="css/main.css?v=20260914-disappearance-v1">
 <script src="/js/site-theme.js"></script>
@@ -86,7 +86,7 @@
             <th onclick="sb('d')" class="text-left">동 <span class="sa" data-c="d">▼</span></th>
             <th onclick="sb('a')">면적 <span class="sa" data-c="a">▼</span></th>
             <th onclick="sb('lp')"><span id="priceColumnLabel">최근가</span> <span class="sa" data-c="lp">▼</span></th>
-            <th onclick="sb('ret')" title="선택한 기간의 수익률" id="thRet">수익률 <span class="sa" data-c="ret">▼</span></th>
+            <th onclick="sb('ret')" title="선택 기간의 연평균 복리 수익률: ((종료가/시작가)^(12/개월수)-1)×100" id="thRet">수익률 <span class="sa" data-c="ret">▼</span></th>
             <th onclick="sb('c')" title="연평균성장률: 첫 거래연도~2025년 기준. 신축일수록 기간이 짧아 높게 나올 수 있음">CAGR <span class="sa" data-c="c">▼</span></th>
             <th onclick="sb('m')">MDD <span class="sa" data-c="m">▼</span></th>
             <th onclick="sb('s')">샤프 <span class="sa" data-c="s">▼</span></th>
@@ -196,7 +196,7 @@
 
 <script>window.APT_ASSET_VERSION='20260907-parcel-index-v2';</script>
 <script src="js/map-services.js?v=20260908-map1"></script>
-<script src="js/main-app.js?v=20260914-disappearance-v1"></script>
+<script src="js/main-app.js?v=20260921-compound-return"></script>
 <script src="js/auth-client.js"></script>
 <script src="js/comments.js"></script>
 <footer style="text-align:center;padding:20px"><a href="/privacy.html" style="color:var(--accent)">개인정보처리방침 · nodostream.com</a></footer>
