@@ -27,7 +27,7 @@
     return {ai,d,p,f,flags,previousDate,previousMin,previousMax,high,low,records,id,a:Number(a),c:catalog.complexes[ci]};
   }
   function match(t,f={}) {
-    return (f.r==null||t.c.r===f.r)&&(!f.g||t.c.g===f.g)&&
+    return (f.r==null||t.c.r===f.r)&&(!f.g||(','+f.g+',').includes(','+t.c.g+','))&&
       (!f.q||[t.c.n,t.c.g,t.c.d].join(' ').toLowerCase().includes(f.q.toLowerCase()))&&
       range(t.a,f.aL,f.aH)&&range(t.p/10000,f.pL,f.pH)&&range(t.c.tu,f.uL,f.uH)&&range(t.c.b,f.bL,f.bH);
   }
@@ -95,7 +95,8 @@
     const f={};for(const k of ['r','aL','aH','pL','pH','uL','uH','bL','bH']){const s=params.get(k),v=Number(s);if(s!==null&&s!==''&&Number.isFinite(v)&&v>=0)f[k]=v;}
     if(![0,1,2].includes(f.r))delete f.r;
     for(const p of ['a','p','u','b'])if(f[p+'L']>f[p+'H'])delete f[p+'H'];
-    for(const k of ['g','q'])if(params.get(k))f[k]=params.get(k).slice(0,100);return f;
+    if(params.get('q'))f.q=params.get('q').slice(0,100);
+    const districts=[...new Set((params.get('g')||'').slice(0,2048).split(',').map(s=>s.trim()).filter(Boolean))];if(districts.length)f.g=districts.join(',');return f;
   }
   const api={DAY,iso,number,valid,shift,periodRange,monthsBetween,range,detailArea,decode,match,comparison,changeRate,isUp,category,summary,snapshot,priceCursor,effectClusters,annualChange,badge,filters};
   root.NodoDailyModel=api;

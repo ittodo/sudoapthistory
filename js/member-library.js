@@ -60,7 +60,7 @@
    new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(()=>scan().catch(()=>{}),300);}).observe(document.body,{childList:true,subtree:true});scan().catch(()=>{});
   }
   document.addEventListener('click',e=>{const b=e.target.closest('[data-calc-trade]');if(b&&window.NodoCurrentApartment){const {apartment,area}=window.NodoCurrentApartment;toCalculator(apartment,area,JSON.parse(b.dataset.calcTrade));}});
-  if(location.pathname==='/'||location.pathname==='/index.html'){const section=document.createElement('section');section.className='nodo-card member-main';section.innerHTML='<h2>관심 많은 아파트 TOP 10</h2><a href="/ranking/">전체 랭킹 보기</a><div id="member-top"></div>';(document.querySelector('main')||document.body).append(section);ranking($('member-top'),true);}
+  if(location.pathname==='/'||location.pathname==='/index.html'){const section=document.createElement('section');section.className='nodo-card member-main';section.innerHTML='<h2>관심 많은 아파트 TOP 10</h2><a href="/ranking/">전체 랭킹 보기</a><div id="member-top"></div>';(document.getElementById('app')||document.querySelector('main:not(#nodo-rental)')||document.body).append(section);ranking($('member-top'),true);}
  }
  init().catch(e=>{const box=$('member-content');if(box)pageError(box,e,()=>location.reload());});
 })();

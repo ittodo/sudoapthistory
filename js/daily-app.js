@@ -5,7 +5,8 @@
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>v==null?'—':(v/10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
   let client,day,period='day',span,filters={},kind='all',sort='price',token=0,limit=50,selected=[],chartRows=[];
-  function districtOptions(){const g=form.elements.g.value;form.elements.g.innerHTML='<option value="">전체</option>'+[...new Set(client.catalog.complexes.filter(c=>form.elements.r.value===''||c.r===Number(form.elements.r.value)).map(c=>c.g))].sort().map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');form.elements.g.value=g;}
+  const districtPicker=NodoDistrictPicker(form.elements.g);
+  function districtOptions(value=form.elements.g.value){districtPicker.setOptions([...new Set(client.catalog.complexes.filter(c=>form.elements.r.value===''||c.r===Number(form.elements.r.value)).map(c=>c.g))].sort(),value);}
   function restore(){
     const p=new URLSearchParams(location.hash.slice(1));filters=M.filters(p);day=M.valid(p.get('date'))?p.get('date'):client.index.maxDate;
     day=day<client.index.minDate?client.index.minDate:day>client.index.maxDate?client.index.maxDate:day;
@@ -13,7 +14,7 @@
     kind=['all','high','low','down','up','inactive'].includes(p.get('kind'))?p.get('kind'):'all';
     sort=['price','drop','rise','area'].includes(p.get('sort'))?p.get('sort'):kind==='down'?'drop':kind==='up'?'rise':'price';
     for(const k of ['r','q','aL','aH','pL','pH'])form.elements[k].value=filters[k]??'';
-    districtOptions();form.elements.g.value=filters.g||'';$('dailySort').value=sort;load();
+    districtOptions(filters.g||'');if(form.elements.g.value)filters.g=form.elements.g.value;else delete filters.g;$('dailySort').value=sort;load();
   }
   function save(){const p=new URLSearchParams({period,date:day,kind,sort});for(const [k,v]of Object.entries(filters))p.set(k,v);history.replaceState(null,'','#'+p);}
   const periodText=()=>span.from===span.to?span.from:span.from+' ~ '+span.to;
@@ -83,8 +84,9 @@
   function move(n){if(!client)return;const next=M.shift(period==='month'?day.slice(0,7)+'-01':day,n,period);chooseDate(next<client.index.minDate?client.index.minDate:next>client.index.maxDate?client.index.maxDate:next);}
   $('dayPrev').onclick=()=>move(-1);$('dayNext').onclick=()=>move(1);$('dayLatest').onclick=()=>client&&chooseDate(client.index.maxDate);
   form.elements.r.onchange=()=>client&&districtOptions();
+  form.elements.g.onchange=()=>{if(client)form.requestSubmit();};
   form.onsubmit=e=>{e.preventDefault();if(!client)return;const p=new URLSearchParams(new FormData(form));for(const prefix of ['a','p']){const lo=p.get(prefix+'L'),hi=p.get(prefix+'H');if(lo!==''&&hi!==''&&Number(lo)>Number(hi)){$('dailyStatus').textContent='최솟값은 최댓값보다 클 수 없습니다.';return;}}filters=M.filters(p);load();};
-  $('dailyReset').onclick=()=>{if(!client)return;form.reset();filters={};districtOptions();load();};
+  $('dailyReset').onclick=()=>{if(!client)return;form.reset();filters={};districtOptions('');load();};
   document.querySelector('.daily-results .daily-tabs').onclick=e=>{const button=e.target.closest('[data-kind]');if(!button||!client)return;kind=button.dataset.kind;sort=kind==='down'?'drop':kind==='up'?'rise':'price';$('dailySort').value=sort;limit=50;render();};
   $('dailySort').onchange=e=>{if(!client)return;sort=e.target.value;render();};$('dailyMore').onclick=()=>{limit+=50;render();};
   $('dailyChart').onclick=e=>{const b=e.target.closest('[data-date]');if(b&&!b.disabled){period='day';chooseDate(b.dataset.date);}};

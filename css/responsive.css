@@ -1,5 +1,11 @@
 /* Shared layout, loaded after legacy page styles by the site shell. */
 :root{--page-width:1600px;--page-gutter:32px}
+/* Housing workspaces share one fluid edge with the tenure bar and map. */
+body:is([data-site-section="housing"],[data-site-page="ranking"]){--page-width:100%;--page-gutter:24px}
+body:is([data-site-section="housing"],[data-site-page="ranking"]) .nodo-top,body:is([data-site-section="housing"],[data-site-page="ranking"]) .nodo-subnav{width:100%;max-width:none;margin-inline:0;padding-left:var(--page-gutter);padding-right:var(--page-gutter);box-sizing:border-box}
+body:is([data-site-section="housing"],[data-site-page="ranking"]) .nodo-top{flex-wrap:wrap;min-width:0}
+body:is([data-site-section="housing"],[data-site-page="ranking"]) .nodo-primary{min-width:0}
+@media(max-width:767px){body:is([data-site-section="housing"],[data-site-page="ranking"]){--page-gutter:12px}}
 .nodo-main,.member-main{width:calc(100% - var(--page-gutter)*2);max-width:var(--page-width)!important;margin:28px auto 48px;padding:0}
 .nodo-top,.nodo-subnav{max-width:var(--page-width);padding-left:var(--page-gutter);padding-right:var(--page-gutter)}
 body[data-site-page] #app,body[data-site-page]>.mx-auto,body[data-site-page="market"]>div[style*="max-width"],body[data-site-page="div"]>div[style*="max-width"],body[data-site-page="trades"]>main,body[data-site-page="stats"]>main,body[data-site-page="kapt-v2"]>main{width:calc(100% - var(--page-gutter)*2);max-width:var(--page-width)!important;margin-left:auto;margin-right:auto;padding-left:0;padding-right:0}

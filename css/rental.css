@@ -3,6 +3,31 @@
 #nodo-rental.rental-map-page{padding-top:12px}.rental-map-page .rental-eyebrow{display:none}#nodo-rental.rental-map-page h1{font-size:22px;margin:0}.rental-map-page .rental-card{margin:10px 0;padding:12px}.rental-map-page .rental-heading{align-items:center}.rental-map-page #rental-convert-wrap{flex-direction:row;align-items:center}.rental-map-page #rental-playback p{margin:0;font-size:11px}.rental-map-page #rental-coverage{font-size:11px}
 
 .rental-row>div{min-width:0;overflow-wrap:anywhere}#nodo-rental input,#nodo-rental select{min-width:0;max-width:100%}
+/* Keep ordinary rental tabs at the same compact scale as sale workspaces. */
+#nodo-rental.rental-standard-page{max-width:1440px;padding:24px 32px 48px;margin:0 auto}
+#nodo-rental.rental-standard-page .rental-eyebrow{display:none}
+#nodo-rental.rental-standard-page h1{font-size:20px;line-height:1.4;margin:0}
+#nodo-rental.rental-standard-page .rental-heading{align-items:center;margin-bottom:16px}
+#nodo-rental.rental-standard-page #rental-convert-wrap{flex-direction:row;align-items:center}
+#nodo-rental.rental-standard-page .rental-card{padding:14px 16px;border-radius:9px;margin:12px 0}
+#nodo-rental.rental-standard-page #rental-filters .rental-controls{gap:10px}
+#nodo-rental.rental-standard-page #rental-filters details{display:inline-block;margin-top:10px;margin-right:14px;font-size:12px}
+#nodo-rental.rental-standard-page #rental-reset-filters{font-size:12px;padding:5px 10px}
+#nodo-rental.rental-standard-page .rental-primary{margin:0}
+#nodo-rental.rental-standard-page .rental-stats{gap:8px;margin:14px 0;grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}
+#nodo-rental.rental-standard-page .rental-stats article{padding:10px 12px;border-radius:8px}
+#nodo-rental.rental-standard-page .rental-stats strong{font-size:22px;margin-top:4px}
+#nodo-rental.rental-standard-page #rental-status{font-size:12px;color:var(--muted)}
+#nodo-rental.rental-standard-page #rental-coverage{font-size:11px}
+#nodo-rental.rental-standard-page .rental-row{padding:10px 0;gap:12px}
+.rental-period-nav{display:flex;align-items:end;gap:8px}
+.rental-contract-table{max-height:650px}.rental-contract-table small{display:block;color:var(--muted);font-size:10px}.rental-contract-table a{color:var(--accent);text-decoration:none}.rental-contract-table th:nth-child(2),.rental-contract-table td:nth-child(2),.rental-contract-table th:nth-child(3),.rental-contract-table td:nth-child(3){text-align:left}
+@media(max-width:760px){
+ #nodo-rental.rental-standard-page{padding:18px 12px 40px}
+ #nodo-rental.rental-standard-page .rental-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #nodo-rental.rental-standard-page .rental-card{padding:12px}
+ #nodo-rental.rental-standard-page .rental-period-nav{flex:1;min-width:210px}
+}
 /* Period rentals share the sale page's hierarchy, spacing and responsive controls. */
 #nodo-rental.rental-daily-page{padding:32px 28px 60px}
 #nodo-rental.rental-daily-page h1{font-size:clamp(26px,3vw,38px);letter-spacing:-1.5px;margin:8px 0}
@@ -47,3 +72,57 @@
 #nodo-rental.rental-daily-page .rental-result-tabs{margin-bottom:18px}
 #nodo-rental.rental-daily-page .daily-tabs button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
 @media(max-width:760px){#nodo-rental.rental-daily-page #rental-date-nav[data-period=week] .rental-date-label{order:-1;flex-basis:100%}}
+
+/* Match the sale map's full-viewport workspace, including at browser zoom. */
+/* Override legacy page-specific main widths as well as the standard/daily widths. */
+body[data-site-page] #nodo-rental:not(.rental-map-page){width:calc(100% - var(--page-gutter,24px)*2);max-width:none!important;margin-inline:var(--page-gutter,24px);padding-left:0;padding-right:0;overflow-x:visible}
+body[data-site-page] #nodo-tenure{padding-left:var(--page-gutter,24px);padding-right:var(--page-gutter,24px);flex-wrap:wrap}
+#nodo-rental .rental-card,#nodo-rental .rental-controls,#nodo-rental .rental-heading,#nodo-rental .rental-stats{min-width:0;max-width:100%;box-sizing:border-box}
+#nodo-rental .rental-controls>label{max-width:100%;min-width:0}
+#nodo-rental .rental-controls>label>span{display:flex;align-items:center;gap:5px;min-width:0}
+#nodo-rental .rental-controls input[type=number]{min-width:0;max-width:calc(50% - 10px)}
+#nodo-rental .rental-table{width:100%;min-width:0;overscroll-behavior-x:contain}
+@media(max-width:1000px){
+ #nodo-rental:not(.rental-map-page) #rental-filters>.rental-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end}
+ #nodo-rental:not(.rental-map-page) #rental-filters>.rental-controls>label{width:100%;min-width:0}
+ #nodo-rental .rental-period-nav{grid-column:1/-1;min-width:0}
+ #nodo-rental .rental-period-nav>label{flex:1;min-width:0}
+ #nodo-rental:not(.rental-map-page) #rental-filters input,#nodo-rental:not(.rental-map-page) #rental-filters select{width:100%;box-sizing:border-box}
+ #nodo-rental #rental-filters input[type=checkbox]{width:auto}
+}
+@media(min-width:601px) and (max-width:1000px){
+ #nodo-rental:not(.rental-map-page) #rental-filters>.rental-controls{grid-template-columns:repeat(3,minmax(0,1fr))}
+ #nodo-rental .rental-period-nav{grid-column:span 2}
+}
+@media(max-width:600px){#nodo-rental #rental-filters>.rental-controls>label:has([name=period]){grid-column:1/-1}}
+body.nodo-map.rental-active{display:flex!important;flex-direction:column;height:100dvh!important;overflow:hidden!important}
+body.nodo-map #nodo-tenure{flex-shrink:0}
+#nodo-rental.rental-map-page{width:100%;max-width:none!important;margin:0;padding:0;flex:1;min-height:0;overflow:hidden}
+#nodo-rental.rental-map-page:not([hidden]){display:flex;flex-direction:column}
+.rental-map-page [data-rental-map-extra]{display:none!important}
+.rental-map-page #rental-map{flex:1;min-height:180px;height:auto;border-radius:0;width:100%}
+.rental-map-search{margin:0;flex-shrink:0}
+#nodo-rental .rental-map-toolbar{padding:12px 24px;gap:8px;flex-wrap:wrap}
+#nodo-rental .rental-map-toolbar label{display:block;margin:0}
+#nodo-rental .rental-map-searchbox{width:330px;max-width:100%}
+#nodo-rental .rental-map-searchbox input{width:100%;padding:8px 12px;background:var(--card)}
+#nodo-rental .rental-map-toolbar select,#nodo-rental .rental-map-toolbar button{background:var(--card);padding:8px 12px;font-size:14px}
+#rental-map-filters{padding:12px 24px;background:var(--card);border-bottom:1px solid var(--border);max-height:30vh;overflow:auto}
+#nodo-rental #rental-map-filters .rental-primary{margin:0}
+#nodo-rental .rental-map-timeline{border:0;border-top:1px solid var(--border);border-radius:0;margin:0;padding:10px 24px;max-height:40vh;overflow:auto;flex-shrink:0}
+#nodo-rental .rental-map-timeline input,#nodo-rental .rental-map-timeline select,#nodo-rental .rental-map-timeline button{font-size:12px;padding:5px 8px}
+#nodo-rental .rental-map-inline{display:inline-flex;flex-direction:row;align-items:center;gap:5px;font-size:11px;min-width:0;flex:0 1 auto}
+#nodo-rental #rental-slider{flex:1;min-width:120px;width:auto;margin:0;padding:0;accent-color:var(--accent)}
+#nodo-rental .rental-map-timeline p{margin:6px 0 0;font-size:11px}
+#rental-map-list{margin-left:auto;font-size:12px}
+.rental-map-notes{font-size:11px;color:var(--muted);margin-top:4px}
+.rental-map-notes summary{cursor:pointer}
+@media(max-width:767px){
+ #nodo-rental .rental-map-toolbar{padding:9px 10px;gap:6px}
+ #nodo-rental .rental-map-searchbox{width:auto;flex:1;min-width:150px}
+ #nodo-rental .rental-map-toolbar select,#nodo-rental .rental-map-toolbar button{font-size:12px;padding:8px}
+ #nodo-rental .rental-map-timeline{padding:8px 10px;max-height:38dvh}
+ #rental-map-filters{padding:12px 10px}
+ #nodo-rental #rental-slider{flex-basis:100%}
+ #rental-map-list{display:none}
+}

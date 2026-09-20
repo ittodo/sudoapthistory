@@ -19,7 +19,7 @@
       if(mode==='price')preferences.price={date:day,start,end,step,speed,fx:$('timeEffects').checked?'1':'0',g:district};
       preferences.mode=mode;try{const value=JSON.stringify(preferences);if(localStorage.getItem(preferenceKey)!==value)localStorage.setItem(preferenceKey,value);}catch{}
     }
-    function applyPreference(p){day=p.get('date')||'';start=p.get('start')||'';end=p.get('end')||'';district=(p.get('g')||'').slice(0,100);step=['week','month'].includes(p.get('step'))?p.get('step'):'day';speed=[1,2,4].includes(Number(p.get('speed')))?Number(p.get('speed')):1;$('timeEffects').checked=p.get('fx')!=='0';}
+    function applyPreference(p){day=p.get('date')||'';start=p.get('start')||'';end=p.get('end')||'';district=M.filters(p).g||'';step=['week','month'].includes(p.get('step'))?p.get('step'):'day';speed=[1,2,4].includes(Number(p.get('speed')))?Number(p.get('speed')):1;$('timeEffects').checked=p.get('fx')!=='0';}
     const original=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])]));
     const effects=NodoMapEffects.create(map);
     let renderedMode='current',renderedDay='',priceSignature='',priceGroups=new Map(),priceAreaOwners=new Map(),districtRegion;
@@ -40,7 +40,11 @@
       if(client){for(const id of ['timeDate','timeStart','timeEnd']){$(id).min=client.index.minDate;$(id).max=client.index.maxDate;}
         $('timeSlider').max=Math.max(0,Math.round((Date.parse(end)-Date.parse(start))/M.DAY));$('timeSlider').value=Math.max(0,Math.round((Date.parse(day)-Date.parse(start))/M.DAY));
         const r=getFilters().r??'all';if(districtRegion!==r){const options=[...new Set(client.catalog.complexes.filter(c=>r==='all'||c.r===r).map(c=>c.g))].sort();
-          $('timeDistrict').innerHTML='<option value="">전체 시·군·구</option>'+options.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');districtRegion=r;}$('timeDistrict').value=district;
+          $('timeDistrict').innerHTML='<option value="">전체 시·군·구</option>'+options.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');districtRegion=r;}
+        // Keep a multi-district filter from the period list visible in the map selector.
+        const districtSelect=$('timeDistrict');districtSelect.querySelector('[data-combined-districts]')?.remove();
+        if(district.includes(',')){const names=district.split(','),option=new Option(names[0]+' 외 '+(names.length-1)+'곳',district);option.dataset.combinedDistricts='';districtSelect.append(option);}
+        districtSelect.value=district;
       }
       $('timePrev').disabled=day<=start;$('timeNext').disabled=day>=end;
       const p=new URLSearchParams({date:day,kind:mode==='day'?kind:'all',...settings()});$('timeList').href='/trades/daily/#'+p;

@@ -1,0 +1,16 @@
+.district-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-size:11px;color:var(--muted)}
+.district-picker{position:relative;min-width:150px;max-width:100%;color:var(--text)}
+.district-picker>summary{box-sizing:border-box;cursor:pointer;list-style:none;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);font-size:13px;min-height:38px;white-space:nowrap;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.district-picker>summary::-webkit-details-marker{display:none}
+.district-picker>summary::after{content:'⌄'}
+.district-picker[open]{z-index:1100}
+.district-picker[open]>summary{border-color:var(--accent)}
+.district-picker .district-picker-panel{position:absolute;top:calc(100% + 5px);left:0;box-sizing:border-box;width:280px;max-width:calc(100vw - 64px);border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:0 8px 24px #0002;padding:10px}
+.district-picker .district-picker-actions{display:flex;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.district-picker .district-picker-actions button{font-size:12px;padding:6px 10px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:6px;cursor:pointer}
+.district-picker .district-picker-list{max-height:260px;overflow-y:auto;overscroll-behavior:contain;padding-top:5px}
+:is(#nodo-rental,.daily-page) .district-picker .district-picker-list label{display:flex;flex-direction:row;align-items:center;gap:9px;min-width:0;flex:none;font-size:13px;padding:7px 4px;color:var(--text);cursor:pointer}
+:is(#nodo-rental,.daily-page) .district-picker .district-picker-list input{width:16px;min-width:16px;height:16px;margin:0;padding:0;accent-color:var(--accent)}
+.district-picker :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rental-map-inline.district-field{display:block}.rental-map-inline.district-field>span{display:none}
+@media(max-width:760px){.daily-filters>.district-field{flex:1;min-width:125px}.district-picker{min-width:0}.district-picker .district-picker-panel{width:260px}.district-picker .district-picker-list{max-height:220px}}

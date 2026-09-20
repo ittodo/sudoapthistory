@@ -4,7 +4,7 @@
   'use strict';
   const path = location.pathname;
   const section = path.startsWith('/admin') ? 'admin' : path.startsWith('/div') ? 'company' : /\/(calc|savings)/.test(path) ? 'calc' : path.startsWith('/board') ? 'board' : /^\/(library|ranking)/.test(path)?'library':'housing';
-  if(!document.querySelector('link[href="/css/responsive.css"]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/css/responsive.css';document.head.append(style);}
+  if(!document.querySelector('link[href^="/css/responsive.css"]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/css/responsive.css?v=20260920-map-convert1';document.head.append(style);}
   document.body.dataset.siteSection=section;
   document.body.dataset.sitePage=path==='/'?'search':path.split('/').filter(Boolean)[0].replace('.html','');
   const groups = {admin:[],library:[['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']],housing:[['단지 검색','/'],['지도','/map/'],['지역·단지 비교','/compare/'],['시장 동향','/market/'],['가격대 통계','/stats/'],['실거래가','/trades/'],['기간별 실거래','/trades/daily/'],['정책','/policy.html']],company:[['배당·소각','/div/'],['기업 목록','/div/stocks/']],calc:[['부동산 계산기','/calc/'],['예적금 계산기','/calc/savings.html']],board:[]};
@@ -63,7 +63,7 @@
     window.addEventListener('nodo:theme',()=>Object.values(Chart.instances).forEach(c=>c.update('none')));
   }
   if(['/','/map/','/trades/','/trades/daily/','/apartment/','/compare/','/ranking/','/stats/','/market/'].includes(location.pathname.replace(/index\.html$/,''))){
-    const css=document.createElement('link');css.rel='stylesheet';css.href='/css/rental.css';document.head.append(css);
-    const model=document.createElement('script');model.src='/js/rental-model.js';model.onload=()=>{const app=document.createElement('script');app.src='/js/rental-app.js';document.head.append(app);};document.head.append(model);
+    const css=document.createElement('link');css.rel='stylesheet';css.href='/css/rental.css?v=20260920-map-convert1';document.head.append(css);
+    const model=document.createElement('script');model.src='/js/rental-model.js?v=20260920-map-convert1';model.onload=()=>{const app=document.createElement('script');app.src='/js/rental-app.js?v=20260920-map-convert1';document.head.append(app);};document.head.append(model);
   }
 })();

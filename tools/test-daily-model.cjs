@@ -90,3 +90,14 @@ assert.equal(M.comparison({...rangeTrade,previousMin:110000,previousMax:110000,p
 assert.equal(M.comparison({...rangeTrade,previousMin:110000,previousMax:110000,p:120000}).direction,1);
 assert.equal(M.category({...rangeTrade,previousMax:undefined,p:130000},'up'),false);
 console.log('Range comparison: boundaries, reset, rates and legacy-data exclusion passed');
+
+const multi=M.filters(new URLSearchParams({g:' 강북구,중구,강북구 ',q:'단지'}));
+assert.equal(multi.g,'강북구,중구');
+assert.equal(M.match({...t,c:{...t.c,g:'중구'}},{g:multi.g}),true);
+assert.equal(M.match({...t,c:{...t.c,g:'강북구'}},{g:multi.g}),true);
+assert.equal(M.match({...t,c:{...t.c,g:'북구'}},{g:multi.g}),false);
+assert.equal(M.match({...t,c:{...t.c,g:'종로구'}},{g:multi.g}),false);
+const manyDistricts=Array.from({length:82},(_,i)=>'시군구'+i).join(',');
+assert.equal(M.filters(new URLSearchParams({g:manyDistricts})).g,manyDistricts);
+assert.equal(M.filters(new URLSearchParams({g:', ,'})).g,undefined);
+console.log('Daily district union and URL round-trip passed');

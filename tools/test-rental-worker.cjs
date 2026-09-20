@@ -4,25 +4,73 @@ const base=path.join(__dirname,'..'),files={},sources={};
 function add(name,value){let bytes=Buffer.from(JSON.stringify(value));if(name.endsWith('.bin'))bytes=gzipSync(bytes);files[name]=bytes;sources[name]=createHash('sha256').update(bytes).digest('hex');}
 const rows=Array.from({length:60},(_,i)=>[0,'84',20260917,10000,i+1,1,3,0,20250917,40,50,30,50,51+i,9,'2026-07',6,'r'+i]);
 rows.push([0,'84',20260917,10000,99,2,3,1,null,null,null,null,null,null,0,'2026-07',6,'cancel']);
-add('data/rental/catalog.bin',{complexes:[{id:'a',publicId:'a',r:1,g:'종로구',d:'창신동',n:'테스트',coord:[37.5,127]}]});
+add('data/rental/catalog.bin',{complexes:[{id:'a',publicId:'a',r:1,g:'11110',d:'창신동',n:'테스트',coord:[37.5,127]},{id:'11110-100',r:1,g:'종로구'}]});
 add('data/rental/rates.json',{rates:{11:{'2026-07':6}}});add('data/rental/summary.json',{});
-for(const r of ['11','41','28']){add(`data/rental/months/2026-09-${r}.bin`,{rows:r==='11'?rows:[]});add(`data/rental/months/2026-09-${r}-state.bin`,{opening:[],updates:r==='11'?rows.filter(x=>!x[7]):[]});}
+const opening=[...rows[0]];opening[2]=20260831;opening[3]=5000;opening[4]=20;opening[14]=32;
+for(const r of ['11','41','28'])add(`data/rental/months/2026-08-${r}.bin`,{rows:r==='11'?[opening]:[]});
+for(const r of ['11','41','28']){add(`data/rental/months/2026-09-${r}.bin`,{rows:r==='11'?rows:[]});add(`data/rental/months/2026-09-${r}-state.bin`,{opening:r==='11'?[opening]:[],updates:r==='11'?rows.filter(x=>!x[7]):[]});}
+const october=[...opening];october[3]=6000;october[2]=20260930;
+for(const r of ['11','41','28'])add(`data/rental/months/2026-10-${r}-state.bin`,{opening:r==='11'?[october]:[],updates:[]});
+for(const month of ['2026-11','2026-12'])for(const r of ['11','41','28'])add(`data/rental/months/${month}-${r}-state.bin`,{opening:r==='11'?[october]:[],updates:[]});
 add('data/rental/history/2026/00.bin',{rows});
 files['data/rental/index.json']=Buffer.from(JSON.stringify({schema:1,version:'v1',sources,months:['2026-09'],historyYears:['2026'],coverage:{11110:{'2026-09':{rows:61}}}}));
-const pending=new Map();let sequence=0;
-const context=vm.createContext({console,Response,Blob,TextDecoder,DecompressionStream,crypto:webcrypto,fetch:async url=>{const name=String(url).split('?')[0].replace(/^\//,'');return new Response(files[name],{status:files[name]?200:404});},postMessage:data=>{pending.get(data.id)(data);pending.delete(data.id);}});
+const pending=new Map();let sequence=0,fetchCount=0;
+const gates=new Map(),failOnce=new Set(),fetched=[];
+function hold(name){let started,release;const gate={started:new Promise(r=>started=r),wait:new Promise(r=>release=r),begin:()=>started(),release:()=>release()};gates.set(name,gate);return gate;}
+const context=vm.createContext({console,Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async(url,options={})=>{fetchCount++;const name=String(url).split('?')[0].replace(/^\//,'');fetched.push(name);const gate=gates.get(name);if(gate){gates.delete(name);gate.begin();await Promise.race([gate.wait,new Promise((_,reject)=>{if(options.signal?.aborted)reject(Error('aborted'));else options.signal?.addEventListener('abort',()=>reject(Error('aborted')),{once:true});})]);}if(failOnce.delete(name))return new Response('',{status:503});return new Response(files[name],{status:files[name]?200:404});},postMessage:data=>{pending.get(data.id)(data);pending.delete(data.id);}});
 context.self=context;context.importScripts=()=>vm.runInContext(fs.readFileSync(path.join(base,'js/rental-model.js'),'utf8'),context);
 vm.runInContext(fs.readFileSync(path.join(base,'js/rental-worker.js'),'utf8'),context);
 function request(action,settings){const id=++sequence;return new Promise(resolve=>{pending.set(id,resolve);context.onmessage({data:{id,action,settings}});});}
 (async()=>{
- assert.equal((await request('init')).meta.lastDate,'2026-09-17');
+ const init=await request('init');assert.equal(init.meta.lastDate,'2026-09-17');
+ assert.deepEqual(Array.from(init.districts),['종로구']);assert.equal(init.districtNames['11110'],'종로구');
  const settings={type:'monthly',convert:true,day:'2026-09-17',period:'month',contract:'all',kind:'all',limit:50,sort:'value'};
  const r=await request('view',settings);assert.equal(r.error,undefined);assert.equal(r.stats.count,60);assert.equal(r.stats.cancelled,1);assert.equal(r.count,60);assert.equal(r.rows.length,50);assert.equal(r.histogram.reduce((n,b)=>n+b.count,0),60);
+ assert.equal(r.rows[0].c.g,'종로구');assert.ok(r.districts['종로구 · 신규']);
+ const district=await request('view',{...settings,district:'종로구',q:'종로구'});assert.equal(district.count,60);
+ const panels=await request('view',{...settings,panels:{daily:false,districts:false,rank:false,trend:false,histogram:false}});
+ assert.deepEqual(panels.rows,r.rows);assert.deepEqual(panels.stats,r.stats);assert.equal(panels.count,r.count);
+ assert.equal(Object.keys(panels.daily).length,0);assert.equal(Object.keys(panels.districts).length,0);assert.equal(panels.rank.length,0);assert.equal(panels.trend.length,0);assert.equal(panels.histogram.length,0);
  const raw=await request('view',{...settings,convert:false});assert.equal(raw.stats.up,0);assert.equal(raw.rows[0].change,null);
  const cancel=await request('view',{...settings,kind:'cancelled'});assert.equal(cancel.count,1);
  const map=await request('view',{...settings,map:true});assert.equal(map.points.length,1);assert.equal(map.stats.cancelled,0);
+ assert.equal(map.points[0].value,110);assert.equal(map.points[0].rate,6);assert.equal(map.points[0].rateMonth,'2026-07');
+ const rawMap=await request('view',{...settings,map:true,convert:false});assert.equal(rawMap.points[0].value,60);assert.equal(rawMap.points[0].deposit,10000);
+ const convertedMap=await request('view',{...settings,map:true});assert.deepEqual(convertedMap.points,map.points,'conversion toggle restores the monthly equivalent and rate');
+ const cached=fetchCount;
+ const rewind=await request('view',{...settings,map:true,day:'2026-09-16'});assert.equal(rewind.points[0].deposit,5000);assert.equal(rewind.points[0].date,'2026-08-31');
+ const forward=await request('view',{...settings,map:true});assert.deepEqual(forward.points,map.points);
+ assert.equal((await request('view',{...settings,map:true,contract:'2'})).points.length,0);
+ assert.equal((await request('view',{...settings,map:true,type:'jeonse'})).points.length,0);
+ assert.equal((await request('view',{...settings,map:true,region:'41'})).points.length,0);
+ assert.equal(fetchCount,cached,'same-month playback and filter changes reuse downloaded shards');
+ assert.equal(map.daily,undefined,'map frames do not compute offscreen charts');
+ const gate=hold('data/rental/months/2026-10-11-state.bin');
+ const warming=request('prefetch',{...settings,map:true,endMonth:'2026-10'});await gate.started;
+ const during=await request('view',{...settings,map:true});assert.equal(during.stale,undefined);assert.deepEqual(during.points,map.points,'prefetch preserves the displayed month');
+ const downloaded=fetchCount;
+ const entering=request('view',{...settings,map:true,day:'2026-10-01'});
+ // Worker messages run as separate tasks; let the foreground claim its downloads.
+ await new Promise(resolve=>setImmediate(resolve));
+ await request('cancel-prefetch');gate.release();
+ const nextMonth=await entering;await warming;
+ assert.equal(nextMonth.error,undefined,'pausing prefetch must not abort a download already needed by the foreground');assert.equal(nextMonth.points[0].deposit,6000);assert.equal(fetchCount,downloaded,'month transition shares the in-flight preload');
+ const previousMonth=await request('view',{...settings,map:true});assert.deepEqual(previousMonth.points,map.points);
+ assert.equal(fetchCount,downloaded,'warming the next month does not evict the current month');
+ const stopping=hold('data/rental/months/2026-11-11-state.bin');
+ const cancelled=request('prefetch',{...settings,map:true,day:'2026-10-01',endMonth:'2026-11'});await stopping.started;await request('cancel-prefetch');
+ const cancelledResult=await cancelled;assert.equal(cancelledResult.cancelled,true);assert.ok(cancelledResult.failed>0);stopping.release();
+ const resumed=await request('view',{...settings,map:true,day:'2026-11-01'});assert.equal(resumed.error,undefined,'cancelled prefetch can be fetched again');assert.equal(resumed.points[0].deposit,6000);
+ const idleCount=fetchCount;await request('prefetch',{...settings,map:true,day:'2026-11-01',endMonth:'2026-11'});assert.equal(fetchCount,idleCount,'never preload past the playback end');
+ const failedPath='data/rental/months/2026-12-11-state.bin';failOnce.add(failedPath);
+ const failed=await request('prefetch',{...settings,map:true,region:'11',day:'2026-11-01',endMonth:'2026-12'});assert.equal(failed.failed,1);assert.equal(fetched.at(-1),failedPath);assert.equal(fetchCount,idleCount+1,'regional playback only warms the selected region');
+ const retry=await request('view',{...settings,map:true,region:'11',day:'2026-12-01'});assert.equal(retry.points[0].deposit,6000);assert.equal(retry.error,undefined,'failed background loads do not poison the cache');
+ const withPrefetch=await Promise.all([request('view',{...settings,map:true}),request('prefetch',{...settings,map:true,endMonth:'2026-10'})]);assert.equal(withPrefetch[0].stale,undefined,'background requests cannot supersede foreground views');
  const detail=await request('view',{...settings,detail:'a',year:'2026'});assert.equal(detail.count,60);
  const none=await request('view',{...settings,detail:'missing',year:'2026'});assert.equal(none.count,0);
+ const week=await request('view',{...settings,period:'week',day:'2026-09-01'});assert.equal(week.count,1);
+ const weekCached=fetchCount;
+ const weekAgain=await request('view',{...settings,period:'week',day:'2026-09-01',sort:'deposit'});assert.equal(weekAgain.count,1);assert.equal(fetchCount,weekCached,'cross-month week reuses all six regional month shards');
  const overlap=await Promise.all([request('view',settings),request('view',settings)]);assert.equal(overlap[0].stale,true);assert.equal(overlap[1].count,60);
  console.log('Rental worker integration tests passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});
