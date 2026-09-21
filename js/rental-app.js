@@ -129,7 +129,7 @@
   form.elements.day.onchange=e=>{if(!e.target.value)return;settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
   $('rental-reset').onclick=()=>{aptSearch.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
  }
- function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-shared-detail2');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
+ function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-latest-request3');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
  async function ensure(){if(meta)return;if(ensuring)return ensuring;ensuring=initialize();try{await ensuring;}finally{ensuring=null;}}
  async function initialize(){
   if(settings.detail&&params.has('row')&&!params.has('id')){const response=await fetch('/data/apartments/index.json');if(!response.ok)throw Error('단지 정보를 불러오지 못했습니다.');const index=await response.json();settings.detail=index.legacy?.[params.get('row')]?.[0]||'__unresolved__';}
@@ -207,8 +207,9 @@
  }
  function drawMap(){mapView?.redraw();}
  strip.onclick=e=>{const b=e.target.closest('[data-tenure]');if(!b)return;stop();settings.type=b.dataset.tenure;settings.kind='all';persist();aptSearch.close();if(settings.type!=='sale')aptSearch.restore();if(settings.type==='sale'&&window.NodoRentalInitial){location.reload();return;}refresh();document.dispatchEvent(new Event('nodo-search-context'));};
- form.elements.region.onchange=e=>{settings.region=e.target.value;settings.district='';settings.limit=50;refresh();};
- form.elements.period.onchange=e=>{settings.period=e.target.value;sync();};
+ form.elements.region.onchange=e=>{stop();settings.region=e.target.value;settings.district='';settings.limit=50;refresh();};
+ form.elements.period.onchange=e=>{stop();settings.period=e.target.value;settings.limit=50;refresh();};
+ if(!settings.map&&!isDaily)form.elements.day.onchange=e=>{if(!e.target.value)return;stop();settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
  form.onsubmit=e=>{e.preventDefault();stop();for(const [k,v]of new FormData(form))settings[k]=k==='day'&&v.length===7?v+'-01':v;settings.limit=50;refresh();};
  $('rental-convert').onchange=e=>{stop();settings.convert=e.target.checked;settings.kind='all';if(!settings.convert&&['rise','drop'].includes(settings.sort))settings.sort='date';refresh();};
  $('rental-kind').onchange=e=>{settings.kind=e.target.value;settings.limit=50;refresh();};$('rental-sort').onchange=e=>{settings.sort=e.target.value;refresh();};$('rental-more').onclick=()=>{settings.limit+=50;refresh();};$('rental-retry').onclick=refresh;

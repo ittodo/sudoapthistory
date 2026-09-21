@@ -81,6 +81,25 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  const weekCached=fetchCount;
  const weekAgain=await request('view',{...settings,period:'week',day:'2026-09-01',sort:'deposit'});assert.equal(weekAgain.count,1);assert.equal(fetchCount,weekCached,'cross-month week reuses all six regional month shards');
  const overlap=await Promise.all([request('view',settings),request('view',settings)]);assert.equal(overlap[0].stale,true);assert.equal(overlap[1].count,60);
+ // A blocked older month must not occupy downloads after a date jump.
+ vm.runInContext("for(const p of [...cache.keys()])if(p.includes('2026-10'))cache.delete(p)",context);
+ const oldMapGate=hold('data/rental/months/2026-10-11-state.bin');
+ const oldMap=request('view',{...settings,map:true,day:'2026-10-01'});await oldMapGate.started;
+ const jumped=await request('view',{...settings,map:true,day:'2026-12-01'});
+ assert.equal(jumped.error,undefined);assert.equal(jumped.points[0].deposit,6000);
+ assert.equal((await oldMap).stale,true,'obsolete map fetch is aborted without waiting for its server');oldMapGate.release();
+ vm.runInContext("for(const p of [...cache.keys()])if(p.includes('2026-08'))cache.delete(p)",context);
+ const oldStatsGate=hold('data/rental/months/2026-08-11.bin');
+ const oldStats=request('view',{...settings,day:'2026-08-01'});await oldStatsGate.started;
+ const newStats=await request('view',settings);assert.equal(newStats.count,60);
+ assert.equal((await oldStats).stale,true,'statistics also cancel superseded month downloads');oldStatsGate.release();
+ vm.runInContext("for(const p of [...cache.keys()])if(p.includes('2026-10'))cache.delete(p)",context);
+ const sharedGate=hold('data/rental/months/2026-10-11-state.bin');
+ const firstDay=request('view',{...settings,map:true,day:'2026-10-01'});await sharedGate.started;
+ const downloads=fetchCount,secondDay=request('view',{...settings,map:true,day:'2026-10-02'});
+ sharedGate.release();const sameMonth=await Promise.all([firstDay,secondDay]);
+ assert.equal(sameMonth[0].stale,true);assert.equal(sameMonth[1].error,undefined);
+ assert.equal(fetchCount,downloads,'a new day in the same month reuses its ongoing download');
  // Real map states have many areas/contracts per complex. Send one latest
  // representative while keeping all observations in totals and region counts global.
  const grouped=vm.runInContext(`(()=>{mapStates.clear();catalog[0].admin=['dong'];catalog[1]={id:'rental-only',r:1,g:'종로구',n:'임대단지',coord:[37.51,127],admin:['dong']};
@@ -89,5 +108,12 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  assert.equal(grouped.count,3);assert.equal(grouped.complexCount,2);assert.equal(grouped.points.length,1);assert.equal(grouped.points[0].deposit,2000);assert.equal(grouped.regionSummaries[0][1].count,2);
  const rentalOnly=await request('view',{...settings,map:true,compactMap:true,day:'2026-09-01',bounds:{south:37.505,north:37.515,west:126,east:128}});
  assert.equal(rentalOnly.points[0].id,'rental-only');assert.equal(rentalOnly.points[0].publicId,undefined,'source ID survives when sale catalog has no public ID');
+ vm.runInContext('cache.clear();catalog=null;initializing=null',context);
+ const catalogGate=hold('data/rental/catalog.bin'),beforeInit=fetched.filter(p=>p.includes('2026-08')).length;
+ const queuedOld=request('view',{...settings,day:'2026-08-01'});await catalogGate.started;
+ const queuedNew=request('view',settings);catalogGate.release();
+ const initialized=await Promise.all([queuedOld,queuedNew]);
+ assert.equal(initialized[0].stale,true);assert.equal(initialized[1].count,60);
+ assert.equal(fetched.filter(p=>p.includes('2026-08')).length,beforeInit,'a superseded query waiting for initialization never starts downloads');
  console.log('Rental worker integration tests passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

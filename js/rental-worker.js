@@ -3,6 +3,24 @@ importScripts('/js/rental-model.js?v=20260920-map-convert1');
 const M=globalThis.NodoRental;
 let manifest,catalog,rates,summary,initializing,districtNames;const cache=new Map();let serial=0,prefetchSerial=0;
 let activeMapPaths=new Set();
+let viewPathsKey='';
+function beginView(s){
+  if(s.detail)return;
+  const regions=s.region?[s.region]:M.REGIONS,span=s.map?null:M.range(s.day,s.period);
+  const months=s.map?[s.day.slice(0,7)]:M.months(span.from,span.to);
+  const wanted=new Set(months.flatMap(month=>regions.map(region=>`data/rental/months/${month}-${region}${s.map?'-state':''}.bin`)));
+  const key=[...wanted].sort().join('|');
+  if(key===viewPathsKey)return;
+  viewPathsKey=key;prefetchSerial++;
+  const next=new Date(s.day+'T00:00:00Z');next.setUTCDate(1);next.setUTCMonth(next.getUTCMonth()+1);
+  const warm=s.map?new Set(regions.map(region=>`data/rental/months/${next.toISOString().slice(0,7)}-${region}-state.bin`)):new Set();
+  // Promote a warmed file before cancelling other obsolete downloads.
+  for(const [path,entry]of cache){
+    if(wanted.has(path))entry.background=false;
+    else if(path.startsWith('data/rental/months/')&&!entry.settled&&!(entry.background&&warm.has(path))){entry.controller.abort();cache.delete(path);}
+  }
+  activeMapPaths=s.map?wanted:new Set();
+}
 const mapStates=new Map();
 function mapRows(region,month,day,shard){
   let state=mapStates.get(region);
@@ -63,7 +81,7 @@ async function load(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
   const expected=manifest.sources[path];if(!expected)throw Error('수집된 자료가 없는 구간입니다.');
   const entry={background,controller:new AbortController(),settled:false};
-  entry.promise=(async()=>{const response=await fetch('/'+path+'?v='+expected,{signal:entry.controller.signal,priority:background?'low':'auto'});if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');if(digest!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
+  entry.promise=(async()=>{const response=await fetch('/'+path+'?v='+expected,{signal:entry.controller.signal,priority:background?'low':'high'});if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');if(digest!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
   cache.set(path,entry);const large=path.endsWith('-state.bin'),peers=[...cache.keys()].filter(k=>k.endsWith('-state.bin')===large);
   if(peers.length>(large?6:9)){const oldest=peers.find(k=>!activeMapPaths.has(k));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
   try{return await entry.promise;}catch(e){if(cache.get(path)===entry)cache.delete(path);throw e;}finally{entry.settled=true;}
@@ -78,7 +96,7 @@ function aggregate(rows,s){
   }
   return {stats:out,daily,districts,rank:[...rank.values()].sort((a,b)=>(b.n?b.sum/b.n:-Infinity)-(a.n?a.sum/a.n:-Infinity)).slice(0,100)};
 }
-self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetch();postMessage({id:data.id,cancelled:true});return;}const revision=data.action==='view'?++serial:serial;if(data.action==='prefetch')cancelPrefetch();const backgroundRevision=prefetchSerial;try{await init();if(data.action==='prefetch'){postMessage({id:data.id,...await prefetch(data.settings,backgroundRevision)});return;}if(data.action==='init'){let lastDate=manifest.months.at(-1)+'-01';const latest=await Promise.all(M.REGIONS.map(region=>load(`data/rental/months/${manifest.months.at(-1)}-${region}.bin`)));for(const shard of latest)for(const row of shard.rows)if(M.iso(row[2])>lastDate)lastDate=M.iso(row[2]);postMessage({id:data.id,meta:{detail:data.settings?.detail?catalog.find(c=>[c.id,c.publicId,c.mapId].includes(data.settings.detail)):null,lastDate,months:manifest.months,coverage:manifest.coverage,historyYears:manifest.historyYears,rates,regions:M.REGIONS,districtsByRegion:Object.fromEntries(M.REGIONS.map(region=>[region,[...new Set(catalog.filter(c=>M.REGIONS[c.r]===region).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))},districtNames,districts:[...new Set(catalog.map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))});return;}
+self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetch();postMessage({id:data.id,cancelled:true});return;}const revision=data.action==='view'?++serial:serial;if(data.action==='prefetch')cancelPrefetch();const backgroundRevision=prefetchSerial;try{if(data.action==='view')beginView(data.settings);await init();if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}if(data.action==='prefetch'){postMessage({id:data.id,...await prefetch(data.settings,backgroundRevision)});return;}if(data.action==='init'){let lastDate=manifest.months.at(-1)+'-01';const latest=await Promise.all(M.REGIONS.map(region=>load(`data/rental/months/${manifest.months.at(-1)}-${region}.bin`)));for(const shard of latest)for(const row of shard.rows)if(M.iso(row[2])>lastDate)lastDate=M.iso(row[2]);postMessage({id:data.id,meta:{detail:data.settings?.detail?catalog.find(c=>[c.id,c.publicId,c.mapId].includes(data.settings.detail)):null,lastDate,months:manifest.months,coverage:manifest.coverage,historyYears:manifest.historyYears,rates,regions:M.REGIONS,districtsByRegion:Object.fromEntries(M.REGIONS.map(region=>[region,[...new Set(catalog.filter(c=>M.REGIONS[c.r]===region).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))},districtNames,districts:[...new Set(catalog.map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))});return;}
   const s=M.cleanFilters(data.settings),regions=s.region?[s.region]:M.REGIONS;let raw=[];let coverage=[];
   if(s.map){
     activeMapPaths=new Set(regions.map(region=>`data/rental/months/${s.day.slice(0,7)}-${region}-state.bin`));
@@ -103,4 +121,4 @@ self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetc
   const values=s.panels?.histogram===false?[]:filtered.filter(t=>!t.cancelled).map(t=>M.metric(t,s)).filter(v=>v!=null);let histogram=[];
   if(values.length){let hi=0;for(const v of values)hi=Math.max(hi,v);const width=Math.max(1,Math.ceil(hi/10));histogram=Array.from({length:10},(_,i)=>({low:i*width,high:(i+1)*width,count:0}));for(const v of values)histogram[Math.min(9,Math.floor(v/width))].count++;}
   postMessage({id:data.id,...totals,rows:page,count,points,coverage,trend,histogram,version:manifest.version});
-}catch(error){postMessage({id:data.id,error:error.message});}};
+}catch(error){postMessage(data.action==='view'&&revision!==serial?{id:data.id,stale:true}:{id:data.id,error:error.message});}};
