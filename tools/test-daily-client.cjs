@@ -7,13 +7,16 @@ const bodies={'data/daily/catalog.json':{areas:[[0,'84.9']],complexes:[{id:'A',r
 for(const r of [0,1,2])for(const [ym,state]of [['2026-01',january],['2026-02',february]])bodies[`data/daily/${r}/${ym}-state.json`]=r===1?state:{opening:[],updates:[]};
 const encoded=Object.fromEntries(Object.entries(bodies).map(([p,b])=>[p,Buffer.from(JSON.stringify(b))]));
 const index={schema:1,months:['2026-01','2026-02'],sources:Object.fromEntries(Object.entries(encoded).map(([p,b])=>[p,createHash('sha256').update(b).digest('hex')]))};
-let fetched=0,hold=null,block=false;
-const scope={window:{},NodoDailyModel:M,Map,Promise,Uint8Array,TextDecoder,crypto:webcrypto,fetch:async path=>{
+let fetched=0,hold=null,block=false,aborted=false;
+const stored=new Map(),storage={match:async k=>stored.get(k)?.clone(),put:async(k,v)=>stored.set(k,v.clone()),keys:async()=>[...stored.keys()],delete:async k=>stored.delete(k)};
+const scope={window:{},caches:{open:async()=>storage},NodoDailyModel:M,Map,Promise,Uint8Array,TextDecoder,AbortController,Response,crypto:webcrypto,fetch:async (path,options={})=>{
+  path=path.split('?')[0];
   fetched++;if(path.endsWith('index.json'))return {ok:true,json:async()=>index};
   const b=encoded[path.slice(1)];if(!b)return {ok:false};
-  if(block&&path.includes('0/2026-02'))await new Promise(resolve=>hold=resolve);
+  if(block&&path.includes('0/2026-02'))await new Promise((resolve,reject)=>{hold=resolve;options.signal.addEventListener('abort',()=>{aborted=true;reject(Error('aborted'));},{once:true});});
   return {ok:true,arrayBuffer:async()=>b};
 }};
+vm.runInNewContext(fs.readFileSync(require.resolve('../js/verified-data-cache.js'),'utf8'),scope);
 vm.runInNewContext(fs.readFileSync(require.resolve('../js/daily-client.js'),'utf8'),scope);
 (async()=>{
   const c=await scope.window.NodoDailyClient.create();
@@ -27,8 +30,11 @@ vm.runInNewContext(fs.readFileSync(require.resolve('../js/daily-client.js'),'utf
   f=await c.priceFrame('2026-01-31',{r:1});assert.equal(f.changes.length,1);assert.equal(f.events[0].state[5],2);
   block=true;const old=c.priceFrame('2026-02-01',{},'2026-01-31');
   await new Promise(resolve=>setImmediate(resolve));
-  const latest=await c.priceFrame('2026-01-01',{r:1});hold();await old;
+  const latest=await c.priceFrame('2026-01-01',{r:1});assert.equal(aborted,true,'obsolete request is aborted, not just ignored');hold();await old;
   assert.equal(latest.values[0].get(0)[4],90,'stale async month request cannot mutate the latest cursor');
   assert.equal((await c.priceFrame('2026-01-02',{r:1})).values[0].get(0)[4],90);
+  block=false;const count=fetched,reopened=await scope.window.NodoDailyClient.create();
+  assert.equal((await reopened.priceFrame('2026-01-02',{r:1})).values[0].get(0)[4],90);
+  assert.equal(fetched-count,2,'new client downloads index and catalog, but reuses stored state');
   console.log('Price client: month boundaries, interval effects, reverse seeks, no-fetch playback and stale requests passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

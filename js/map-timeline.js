@@ -99,6 +99,7 @@
     async function refresh({keepPlaying=false}={}){
       if(!keepPlaying)stop();const serial=++request;loading=true;el.setAttribute('aria-busy','true');selectedId=null;map.closePopup();effects.clear();$('timeRetry').hidden=true;
       if(mode==='current'){
+        client?.cancelPrices();
         loading=false;el.setAttribute('aria-busy','false');complexes=[];renderedMode='current';priceGroups.clear();priceAreaOwners.clear();document.body.classList.remove('timeline-loading');apply(null);sync();save();
         $('timeStatus').textContent='현재 지도 · 조회 월을 고르면 해당 월말 가격으로 이동합니다.';
         try{await ensure();if(serial!==request)return false;sync();$('timeStatus').textContent='오늘 '+today()+' 기준 현재 지도 · 거래 자료는 '+client.index.maxDate+'까지 · 조회 월 선택 시 해당 월말 가격으로 이동합니다.';}

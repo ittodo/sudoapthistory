@@ -1,5 +1,5 @@
 'use strict';
-importScripts('/js/rental-model.js?v=20260920-map-convert1');
+importScripts('/js/rental-model.js?v=20260920-map-convert1','/js/verified-data-cache.js?v=20260921-shared1');
 const M=globalThis.NodoRental;
 let manifest,catalog,rates,summary,initializing,districtNames;const cache=new Map();let serial=0,prefetchSerial=0;
 let activeMapPaths=new Set();
@@ -92,25 +92,9 @@ async function prefetch(s,revision){
   const results=await Promise.allSettled(paths.map(path=>load(path,true)));
   return {prefetched:results.filter(r=>r.status==='fulfilled').length,failed:results.filter(r=>r.status==='rejected').length,cancelled:revision!==prefetchSerial};
 }
-let diskCache;
-async function storedMapFile(){
-  if(typeof caches==='undefined')return null;
-  if(!diskCache)diskCache=caches.open('nodo-rental-map-v1').catch(()=>null);
-  return diskCache;
-}
+const fileCache=globalThis.NodoVerifiedDataCache.create('nodo-rental-map-v1');
 async function download(path,expected,entry,background){
-  const url='/'+path+'?v='+expected,store=path.startsWith(mapCachePrefix)?await storedMapFile():null;
-  const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
-  if(store){
-    const saved=await store.match(url).catch(()=>null);
-    if(saved){const bytes=await saved.arrayBuffer();entry.controller.signal.throwIfAborted();if(await digest(bytes)===expected)return bytes;await store.delete(url).catch(()=>{});}
-  }
-  const response=await fetch(url,{signal:entry.controller.signal,priority:background?'low':'high'});
-  if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');
-  const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();
-  if(await digest(bytes)!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');
-  if(store)try{await store.put(url,new Response(bytes));const keys=await store.keys();for(const key of keys.slice(0,Math.max(0,keys.length-18)))await store.delete(key);}catch{}
-  return bytes;
+  return fileCache.download(path,expected,{signal:entry.controller.signal,background,persist:path.startsWith(mapCachePrefix)});
 }
 async function load(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}

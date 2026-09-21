@@ -13,7 +13,7 @@ const shard={opening:[row(0,59,20170101,0,'b'),row(0,84,20170101,0,'a'),row(0,59
 const catalog=[{id:'a',publicId:'a',n:'단지',g:'구',d:'동',r:1,coord:[37.5,127],admin:['dong']},{id:'b',n:'미위치',g:'구',d:'동',r:1,coord:null,admin:[]}];
 function worker(extras={}){
  const c=vm.createContext({console,Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,...extras});c.self=c;
- c.importScripts=()=>vm.runInContext(readFileSync(new URL('../js/rental-model.js',import.meta.url),'utf8'),c);
+ c.importScripts=(...urls)=>urls.forEach(url=>vm.runInContext(readFileSync(new URL('..'+url.split('?')[0],import.meta.url),'utf8'),c));
  vm.runInContext(readFileSync(new URL('../js/rental-worker.js',import.meta.url),'utf8'),c);c.fixtureCatalog=catalog;vm.runInContext('catalog=fixtureCatalog',c);return c;
 }
 const plain=x=>JSON.parse(JSON.stringify(x));

@@ -18,7 +18,7 @@ const pending=new Map();let sequence=0,fetchCount=0;
 const gates=new Map(),failOnce=new Set(),fetched=[];
 function hold(name){let started,release;const gate={started:new Promise(r=>started=r),wait:new Promise(r=>release=r),begin:()=>started(),release:()=>release()};gates.set(name,gate);return gate;}
 const context=vm.createContext({console,Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async(url,options={})=>{fetchCount++;const name=String(url).split('?')[0].replace(/^\//,'');fetched.push(name);const gate=gates.get(name);if(gate){gates.delete(name);gate.begin();await Promise.race([gate.wait,new Promise((_,reject)=>{if(options.signal?.aborted)reject(Error('aborted'));else options.signal?.addEventListener('abort',()=>reject(Error('aborted')),{once:true});})]);}if(failOnce.delete(name))return new Response('',{status:503});return new Response(files[name],{status:files[name]?200:404});},postMessage:data=>{pending.get(data.id)(data);pending.delete(data.id);}});
-context.self=context;context.importScripts=()=>vm.runInContext(fs.readFileSync(path.join(base,'js/rental-model.js'),'utf8'),context);
+context.self=context;context.importScripts=(...urls)=>urls.forEach(url=>vm.runInContext(fs.readFileSync(path.join(base,url.split('?')[0]),'utf8'),context));
 vm.runInContext(fs.readFileSync(path.join(base,'js/rental-worker.js'),'utf8'),context);
 function request(action,settings){const id=++sequence;return new Promise(resolve=>{pending.set(id,resolve);context.onmessage({data:{id,action,settings}});});}
 (async()=>{
