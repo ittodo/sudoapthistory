@@ -104,7 +104,19 @@
       }
     };
   }
-  const api = {latestArea, range, match, trades, combinedTrades, monthlyTrades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
+  // Move only the price label; parcel coordinates and identities stay unchanged.
+  function labelPosition(complex,map) {
+    const center=map.latLngToContainerPoint(complex.coord),bounds=complex.parcelBounds;
+    let y=center.y-36;
+    if(bounds?.length===2&&bounds.flat().every(Number.isFinite)){
+      const top=map.latLngToContainerPoint([bounds[1][0],complex.coord[1]]);
+      const bottom=map.latLngToContainerPoint([bounds[0][0],complex.coord[1]]);
+      const height=bottom.y-top.y;
+      if(height>0)y=Math.min(y,top.y+Math.max(26,Math.min(40,height*.22)));
+    }
+    return map.containerPointToLatLng([center.x,y]);
+  }
+  const api = {labelPosition,latestArea, range, match, trades, combinedTrades, monthlyTrades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
   root.NodoMapModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

@@ -71,6 +71,11 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  const retry=await request('view',{...settings,map:true,region:'11',day:'2026-12-01'});assert.equal(retry.points[0].deposit,6000);assert.equal(retry.error,undefined,'failed background loads do not poison the cache');
  const withPrefetch=await Promise.all([request('view',{...settings,map:true}),request('prefetch',{...settings,map:true,endMonth:'2026-10'})]);assert.equal(withPrefetch[0].stale,undefined,'background requests cannot supersede foreground views');
  const detail=await request('view',{...settings,detail:'a',year:'2026'});assert.equal(detail.count,60);
+ const history=await request('history',{detail:'canonical',detailIds:['a'],year:'2026'});
+ assert.equal(history.rows.length,61,'common detail includes cancelled contracts and resolves approved source IDs');
+ assert.equal(history.rows.filter(r=>r.cancelled).length,1,'cancelled history remains visible but excluded from chart averages');
+ const historyMissing=await request('history',{detail:'unmatched',detailIds:[],year:'2026'});
+ assert.equal(historyMissing.rows.length,0,'history cannot fall back to a different apartment');
  const none=await request('view',{...settings,detail:'missing',year:'2026'});assert.equal(none.count,0);
  const week=await request('view',{...settings,period:'week',day:'2026-09-01'});assert.equal(week.count,1);
  const weekCached=fetchCount;

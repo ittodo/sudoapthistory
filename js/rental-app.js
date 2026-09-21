@@ -12,6 +12,12 @@
  let worker,meta,ensuring,mapLayout,mapView,mapCreating,districtRegion,sliderTimer,renderedMapLabel,prefetchKey,playbackGeneration=0,seq=0,pending=new Map(),playing=false,timer,frame=0,map;
  const strip=document.createElement('div');strip.id='nodo-tenure';strip.innerHTML='<div role="group" aria-label="거래 유형">'+[['sale','매매'],['jeonse','전세'],['monthly','월세']].map(([v,n])=>`<button type="button" data-tenure="${v}" aria-pressed="false">${n}</button>`).join('')+'</div><span>아파트</span>';
  document.querySelector('.nodo-header').after(strip);
+ // Apartment headers, tabs and contract tables are owned by the common detail view.
+ if(path==='/apartment/'){
+  const sync=()=>{const p=new URLSearchParams(location.search),type=p.get('tab')==='rent'?(p.get('rentType')||'all'):'sale';strip.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tenure===type)));};
+  strip.onclick=e=>{const b=e.target.closest('[data-tenure]');if(!b)return;const u=new URL(location.href);u.searchParams.delete('tenure');u.searchParams.set('tab',b.dataset.tenure==='sale'?'trades':'rent');if(b.dataset.tenure!=='sale')u.searchParams.set('rentType',b.dataset.tenure);location.replace(u);};
+  document.addEventListener('nodo:apartment-view',sync);document.addEventListener('change',sync);window.addEventListener('popstate',sync);sync();return;
+ }
  const root=document.createElement('main');root.id='nodo-rental';root.hidden=true;strip.after(root);
  root.innerHTML=`<div class="rental-heading"><div><p class="rental-eyebrow">서울 · 경기 · 인천 아파트</p><h1 id="rental-title"></h1></div><label id="rental-convert-wrap"><input type="checkbox" id="rental-convert"> 월 환산액으로 비교</label></div>
  <form id="rental-filters" class="rental-card"><div class="rental-controls"><label>기간<select name="period"><option value="day">일별</option><option value="week">주별 · 월~일</option><option value="month">월별</option></select></label><label>계약일<input type="date" name="day"></label><label id="rental-year-wrap" hidden>조회 연도<select name="year"></select></label><label>지역<select name="region"><option value="">서울·경기·인천</option><option value="11">서울</option><option value="41">경기</option><option value="28">인천</option></select></label><label>시군구<select name="district"><option value="">전체</option></select></label><label>계약 구분<select name="contract"><option value="all">전체 · 구분별 판정</option><option value="1">신규</option><option value="2">갱신</option><option value="0">구분 미상</option></select></label><label>단지·지역 검색<input name="q" type="search" placeholder="단지명 또는 지역"></label></div>
@@ -76,7 +82,7 @@
   }
  }
  const typeName=()=>settings.type==='jeonse'?'전세':settings.convert?'월세 · 월 환산액':'월세 · 보증금/월세';
- const detailURL=t=>'/apartment/?'+new URLSearchParams({id:t.c?.publicId||t.publicId||t.c?.id||t.id,tenure:settings.type,rentConvert:settings.convert?'1':'0',rentContract:settings.contract,rentDate:settings.day,rental_year:(t.date||settings.day).slice(0,4),view:'full'});
+ const detailURL=t=>'/apartment/?'+new URLSearchParams({id:t.c?.publicId||t.publicId||t.c?.id||t.id,tab:'rent',rentType:settings.type,rentPeriod:(t.date||settings.day).slice(0,4),rentArea:String(t.area),area:String(Math.round(t.area)),view:'full'});
  function persist(){const values={tenure:settings.type,rentConvert:settings.convert?'1':'0',rentRegion:settings.region,rentContract:settings.contract,rentDate:settings.day,rentPeriod:settings.period,rentKind:settings.kind};for(const n of ['q','district','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax','year','sort'])values['rental_'+n]=settings[n];try{localStorage.setItem(key,JSON.stringify(values));}catch{}const u=new URL(location.href);Object.entries(values).forEach(([k,v])=>u.searchParams.set(k,v));history.replaceState(null,'',u);}
  function sync(){
   M.cleanFilters(settings,meta?.districtsByRegion);
@@ -123,7 +129,7 @@
   form.elements.day.onchange=e=>{if(!e.target.value)return;settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
   $('rental-reset').onclick=()=>{aptSearch.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
  }
- function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-viewport1');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
+ function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-shared-detail2');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
  async function ensure(){if(meta)return;if(ensuring)return ensuring;ensuring=initialize();try{await ensuring;}finally{ensuring=null;}}
  async function initialize(){
   if(settings.detail&&params.has('row')&&!params.has('id')){const response=await fetch('/data/apartments/index.json');if(!response.ok)throw Error('단지 정보를 불러오지 못했습니다.');const index=await response.json();settings.detail=index.legacy?.[params.get('row')]?.[0]||'__unresolved__';}
@@ -196,7 +202,7 @@
  function table(headers,rows){return '<div class="rental-table"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
  async function script(src){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('지도를 불러오지 못했습니다.'));document.head.append(s);});}
  async function renderMap(next,summaries=[]){
-  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260921-viewport1');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
+  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260921-shared-detail2');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
   mapView.setData(next,summaries);
  }
  function drawMap(){mapView?.redraw();}

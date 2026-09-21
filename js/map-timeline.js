@@ -163,7 +163,7 @@
       let rows=mode==='day'?c.dailyRows.map(t=>`<div class="timeline-item"><b>${money(t.p)}</b> · ${t.a}㎡ · ${t.f??'미상'}층<p>${esc(M.badge(t))}</p>${t.previousMin?`<p>직전 ${M.iso(t.previousDate)} 최저 ${money(t.previousMin)}<br>대비 ${((t.p/t.previousMin-1)*100).toFixed(2)}%</p>`:''}</div>`):c.areas.map(a=>`<div class="timeline-item"><b>${spread(a.min,a.max)}</b> · ${a.a}㎡<p>${M.iso(a.latest[0])} 계약 · ${a.latest[4]}건 · ${esc(a.sourceName)}</p></div>`);
       const detail= '/apartment/?'+new URLSearchParams({id:c.publicationId||c.publicId||c.id,tab:'trades'});
       div.innerHTML=`<h3>${esc(c.n)}</h3><p>${esc(day)} ${mode==='day'?'당일 거래':'이전 마지막 가격'}</p>${rows.join('')}<p><a href="${esc(detail)}">최신 단지 상세로 이동 ↗</a></p>`;
-      L.popup({maxWidth:340,autoPanPaddingTopLeft:[10,75],autoPanPaddingBottomRight:[10,20]}).setLatLng(c.coord).setContent(div).openOn(map);
+      L.popup({maxWidth:340,autoPanPaddingTopLeft:[10,75],autoPanPaddingBottomRight:[10,20]}).setLatLng(root.NodoMapModel.labelPosition(c,map)).setContent(div).openOn(map);
     }
     async function tick(){if(!playing)return;const next=M.shift(day,1,step);if(day>=end){stop();return;}day=next>end?end:next;const ok=await refresh({keepPlaying:true});if(ok&&playing){if(day>=end)stop();else timer=setTimeout(tick,1000/speed);}}
     $('timePlay').onclick=()=>{if(playing){stop();return;}if(!client)return;playing=true;$('timePlay').textContent='❚❚ 일시정지';$('timePlay').setAttribute('aria-pressed','true');if(day>=end)day=start;refresh({keepPlaying:true}).then(ok=>{if(ok&&playing)timer=setTimeout(tick,1000/speed);});};

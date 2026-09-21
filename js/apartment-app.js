@@ -1,7 +1,14 @@
 /* A single detail controller: isolated tab loading, stable identity, verified data. */
 (() => {
   'use strict';
-  if(window.NodoRentalInitial)return;
+  // Old rental links use the same apartment controller and rent tab.
+  const entry=new URL(location.href),tenure=entry.searchParams.get('tenure');
+  if(['jeonse','monthly'].includes(tenure)){
+    entry.searchParams.set('tab','rent');entry.searchParams.set('rentType',tenure);
+    const year=entry.searchParams.get('rental_year')||entry.searchParams.get('rentDate')?.slice(0,4);
+    if(year)entry.searchParams.set('rentPeriod',year);
+    entry.searchParams.delete('tenure');history.replaceState(history.state,'',entry);
+  }
   const $=id=>document.getElementById(id),esc=s=>NodoUI.escape(s);
   const tabs={overview:'개요',trades:'실거래',rent:'전월세',investment:'투자분석',facts:'단지정보',location:'위치',comments:'의견'};
   const money=value=>{if(value==null)return '자료 없음';const n=Math.round(value),eok=Math.floor(n/10000),man=n%10000;return [eok?eok.toLocaleString()+'억':'',man?man.toLocaleString()+'만':''].filter(Boolean).join(' ')+(n===0?'0':'')+'원';};
@@ -52,7 +59,7 @@
     $('apartment-panel').innerHTML=`<div class="nodo-card"><div class="nodo-actions" style="justify-content:space-between;margin-bottom:18px"><h2 style="margin:0">${esc(area.area)}㎡ 매매 실거래</h2><label class="nodo-field">기간<select id="trade-year"><option value="">전체 기간</option>${[...new Set(rows.map(t=>Math.floor(t.date/10000)))].map(y=>`<option>${y}</option>`).join('')}</select></label></div><p class="nodo-muted">해제·원천에서 사라진 거래는 표시하되 가격 통계에서 제외합니다.</p><div class="nodo-table-wrap"><table class="nodo-table"><thead><tr><th>거래일</th><th class="numeric">거래금액</th><th>층</th><th>거래기록 단지명</th><th>계산</th></tr></thead><tbody id="trade-rows"></tbody></table></div><button id="trade-more" class="nodo-button" style="margin-top:16px">이전 거래 더 보기</button><div id="trade-count" class="nodo-muted"></div></div>`;
     let count=30;const render=()=>{const filtered=rows.filter(r=>!$('trade-year').value||String(r.date).startsWith($('trade-year').value));$('trade-rows').innerHTML=txRows(filtered.slice(0,count))||'<tr><td colspan="4">선택한 기간에 거래가 없습니다.</td></tr>';$('trade-more').hidden=count>=filtered.length;$('trade-count').textContent=`${Math.min(count,filtered.length)} / ${filtered.length}건`;};$('trade-more').onclick=()=>{count+=30;render();};$('trade-year').onchange=()=>{count=30;render();};render();
   }
-  async function render(){const token=++generation;window.NodoRent?.clear();if(chart){chart.destroy();chart=null;}if(map){map.remove();map=null;}
+  async function render(){document.dispatchEvent(new Event('nodo:apartment-view'));const token=++generation;window.NodoRent?.clear();if(chart){chart.destroy();chart=null;}if(map){map.remove();map=null;}
     $('apartment-tabs').innerHTML=Object.entries(tabs).map(([id,n])=>`<button id="tab-${id}" role="tab" aria-controls="apartment-panel" aria-selected="${id===tab}" tabindex="${id===tab?0:-1}" data-tab="${id}">${n}</button>`).join('');
     $('apartment-panel').setAttribute('aria-labelledby','tab-'+tab);$('apartment-panel').innerHTML=status('자료를 불러오고 있습니다…');
     try{

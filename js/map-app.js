@@ -110,21 +110,21 @@
     const stale=trade && Date.now()-new Date(fmtDate(trade[0])).getTime()>365*86400000;
     const label=timeline?.active()?timeline.label(match):`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
     const title=`${c.n} · ${a?fmtArea(a.a):''} · ${timeline?.active()?'선택 시점':'최근 실거래'} ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`;
-    const cached=apartmentMarkers.get(c.id);
-    if(cached){if(cached.label!==label){cached.marker.getElement().innerHTML=label;cached.label=label;}cached.marker.getElement().title=title;cached.marker.setZIndexOffset(isSelected?1000:0);return;}
-    const marker=L.marker(c.coord,{icon:L.divIcon({className:'apt-marker',html:label,iconSize:[98,46],iconAnchor:[49,23]}),zIndexOffset:isSelected?1000:0,title}).addTo(markers);
+    const anchor=model.labelPosition(c,map),cached=apartmentMarkers.get(c.id);
+    if(cached){cached.marker.setLatLng(anchor);if(cached.label!==label){cached.marker.getElement().innerHTML=label;cached.label=label;}cached.marker.getElement().title=title;cached.marker.setZIndexOffset(isSelected?1000:0);return;}
+    const marker=L.marker(anchor,{icon:L.divIcon({className:'apt-marker',html:label,iconSize:[98,46],iconAnchor:[49,23]}),zIndexOffset:isSelected?1000:0,title}).addTo(markers);
     marker.getElement().dataset.mapTarget='apt:'+c.id;
     apartmentMarkers.set(c.id,{marker,label});
     const activate=event=>{
       const e=event.originalEvent;
       if(e?.type!=='keydown' && !tap.accept('apt:'+c.id,e?.timeStamp))return;
-      const point=map.latLngToContainerPoint(c.coord);
+      const point=map.latLngToContainerPoint(marker.getLatLng());
       const near=filtered.filter(m=>{
         if(!m.complex.coord)return false;
-        const p=map.latLngToContainerPoint(m.complex.coord);
+        const p=map.latLngToContainerPoint(model.labelPosition(m.complex,map));
         return Math.abs(p.x-point.x)<90&&Math.abs(p.y-point.y)<42;
       });
-      if(near.length>1)showOverlap(near,c.coord);else select(c.id,null,true,false);
+      if(near.length>1)showOverlap(near,marker.getLatLng());else select(c.id,null,true,false);
     };
     marker.on('click',activate);
     marker.on('keydown',event=>{const e=event.originalEvent;if(!e.repeat&&['Enter',' '].includes(e.key)){L.DomEvent.stop(e);activate(event);}});

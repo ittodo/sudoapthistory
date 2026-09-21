@@ -86,10 +86,11 @@ self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetc
     if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}
     postMessage({id:data.id,...mapView(shards,regions,s),version:manifest.version});return;
   }
-  if(s.detail){const ids=catalog.map((c,i)=>c.publicId===s.detail||c.id===s.detail||c.mapId===s.detail?i:-1).filter(i=>i>=0);const buckets=[...new Set(ids.map(i=>i%64))];for(const b of buckets){const path=`data/rental/history/${s.year}/${String(b).padStart(2,'0')}.bin`;if(manifest.sources[path])raw.push(...(await load(path)).rows.filter(r=>ids.includes(r[0])));}}
+  if(s.detail){const wanted=new Set([s.detail,...(data.action==='history'?data.settings.detailIds||[]:[])]);const ids=catalog.map((c,i)=>[c.publicId,c.id,c.mapId].some(id=>wanted.has(id))?i:-1).filter(i=>i>=0);const buckets=[...new Set(ids.map(i=>i%64))];for(const b of buckets){const path=`data/rental/history/${s.year}/${String(b).padStart(2,'0')}.bin`;if(manifest.sources[path])raw.push(...(await load(path)).rows.filter(r=>ids.includes(r[0])));}}
 
   else{const span=M.range(s.day,s.period),paths=[];for(const month of M.months(span.from,span.to))for(const region of regions){const path=`data/rental/months/${month}-${region}.bin`;if(manifest.sources[path])paths.push(path);}for(const shard of await Promise.all(paths.map(path=>load(path))))raw.push(...shard.rows.filter(r=>M.iso(r[2])>=span.from&&M.iso(r[2])<=span.to));}
   if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}
+  if(data.action==='history'){postMessage({id:data.id,rows:raw.map(r=>M.decode(r,catalog))});return;}
   const rows=raw.map(r=>M.decode(r,catalog)).filter(t=>M.match(t,s));const totals=aggregate(rows,s),filtered=rows.filter(t=>M.category(t,s));
   const key=t=>s.sort==='deposit'?t.deposit:s.sort==='rent'?t.rent:s.sort==='rise'?(M.change(t,s)??-Infinity):s.sort==='drop'?-(M.change(t,s)??Infinity):s.sort==='date'?Date.parse(t.date):M.metric(t,s)??-Infinity;
   const sortKeys=new Map(filtered.map(t=>[t,key(t)]));
