@@ -1,7 +1,7 @@
 /* Region totals never depend on the viewport or on the apartment detail selection. */
 (function(root) {
   'use strict';
-  function create({map, payload, client, tap, navigate, report}) {
+  function create({map, payload, client, tap, navigate, report,formatAverage,summaryBasis='대표면적 가격 산술평균'}) {
     const model = root.NodoMapModel, meta = payload.admin;
     const regions = new Map(meta.regions.map(r => [r.id, r]));
     let groups = new Map(), summaries = new Map(), filterRegion = null, token = 0;
@@ -32,8 +32,8 @@
     }
     function describe(region) {
       const summary = summaries.get(region.id) || {average:null,count:0,pricedCount:0};
-      const average = summary.average == null ? '가격 없음' : `평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
-      return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 대표면적 가격 산술평균 · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 전체 범위 보기`};
+      const average = formatAverage ? formatAverage(summary.average) : summary.average == null ? '가격 없음' : `평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
+      return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 ${summaryBasis} · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 전체 범위 보기`};
     }
     function fetchShard(path) {
       if (!loading.has(path)) loading.set(path, client(path).then(data => {
@@ -125,6 +125,7 @@
     }
     return {
       render,
+      setSummaries(values,region){summaries=new Map(values);filterRegion=region;},
       setMatches(matches, region) {
         groups = model.regionGroups(matches);
         summaries = new Map([...groups].map(([id,members])=>[id,model.clusterSummary(members)]));

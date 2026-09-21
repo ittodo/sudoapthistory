@@ -7,9 +7,9 @@
  const isDaily=path==='/trades/daily/';
  const key='nodo:rental:preferences:v1';let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch{}
  const params=new URLSearchParams(location.search),initial=M.normalize(params,saved);
- let settings={...initial,q:'',district:'',areaMin:'',areaMax:'',depositMin:'',depositMax:'',rentMin:'',rentMax:'',sort:'date',limit:50,map:path==='/map/',detail:path==='/apartment/'?(params.get('id')||'__unresolved__'):null,year:''};
+ let settings={...initial,q:'',district:'',areaMin:'',areaMax:'',depositMin:'',depositMax:'',rentMin:'',rentMax:'',sort:'date',limit:50,map:path==='/map/',compactMap:true,detail:path==='/apartment/'?(params.get('id')||'__unresolved__'):null,year:''};
  for(const n of ['q','district','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax','year','sort'])settings[n]=params.get('rental_'+n)??saved['rental_'+n]??settings[n];
- let worker,meta,ensuring,mapLayout,districtRegion,sliderTimer,renderedMapLabel,prefetchKey,playbackGeneration=0,seq=0,pending=new Map(),playing=false,timer,frame=0,map,markers=new Map(),points=[],chart;
+ let worker,meta,ensuring,mapLayout,mapView,mapCreating,districtRegion,sliderTimer,renderedMapLabel,prefetchKey,playbackGeneration=0,seq=0,pending=new Map(),playing=false,timer,frame=0,map;
  const strip=document.createElement('div');strip.id='nodo-tenure';strip.innerHTML='<div role="group" aria-label="거래 유형">'+[['sale','매매'],['jeonse','전세'],['monthly','월세']].map(([v,n])=>`<button type="button" data-tenure="${v}" aria-pressed="false">${n}</button>`).join('')+'</div><span>아파트</span>';
  document.querySelector('.nodo-header').after(strip);
  const root=document.createElement('main');root.id='nodo-rental';root.hidden=true;strip.after(root);
@@ -76,7 +76,7 @@
   }
  }
  const typeName=()=>settings.type==='jeonse'?'전세':settings.convert?'월세 · 월 환산액':'월세 · 보증금/월세';
- const detailURL=t=>'/apartment/?'+new URLSearchParams({id:t.c?.publicId||t.publicId||t.c?.id,tenure:settings.type,rentConvert:settings.convert?'1':'0',rentContract:settings.contract,rentDate:settings.day,rental_year:(t.date||settings.day).slice(0,4),view:'full'});
+ const detailURL=t=>'/apartment/?'+new URLSearchParams({id:t.c?.publicId||t.publicId||t.c?.id||t.id,tenure:settings.type,rentConvert:settings.convert?'1':'0',rentContract:settings.contract,rentDate:settings.day,rental_year:(t.date||settings.day).slice(0,4),view:'full'});
  function persist(){const values={tenure:settings.type,rentConvert:settings.convert?'1':'0',rentRegion:settings.region,rentContract:settings.contract,rentDate:settings.day,rentPeriod:settings.period,rentKind:settings.kind};for(const n of ['q','district','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax','year','sort'])values['rental_'+n]=settings[n];try{localStorage.setItem(key,JSON.stringify(values));}catch{}const u=new URL(location.href);Object.entries(values).forEach(([k,v])=>u.searchParams.set(k,v));history.replaceState(null,'',u);}
  function sync(){
   M.cleanFilters(settings,meta?.districtsByRegion);
@@ -123,11 +123,11 @@
   form.elements.day.onchange=e=>{if(!e.target.value)return;settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
   $('rental-reset').onclick=()=>{aptSearch.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
  }
- function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260920-map-convert1');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
+ function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-viewport1');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
  async function ensure(){if(meta)return;if(ensuring)return ensuring;ensuring=initialize();try{await ensuring;}finally{ensuring=null;}}
  async function initialize(){
   if(settings.detail&&params.has('row')&&!params.has('id')){const response=await fetch('/data/apartments/index.json');if(!response.ok)throw Error('단지 정보를 불러오지 못했습니다.');const index=await response.json();settings.detail=index.legacy?.[params.get('row')]?.[0]||'__unresolved__';}
-  const init=await request('init',{settings:{detail:settings.detail}});meta=init.meta;settings.district=settings.district.split(',').map(n=>init.districtNames[n]||n).join(',');const last=meta.months.at(-1);if(!settings.day)settings.day=meta.lastDate;if(!/^\d{4}-\d{2}-\d{2}$/.test(settings.day)||settings.day>meta.lastDate)settings.day=meta.lastDate;if(settings.day<meta.months[0]+'-01')settings.day=meta.months[0]+'-01';settings.year=settings.year||last.slice(0,4);if(settings.map)$('rental-coverage').textContent='자료 보유 기간 '+meta.months[0]+' ~ '+meta.lastDate+' · 일부 지역·단지의 과거 이력은 추가 수집 중';form.elements.day.min=meta.months[0]+'-01';form.elements.day.max=meta.lastDate;form.elements.year.innerHTML=[...meta.historyYears].reverse().map(y=>`<option>${y}</option>`).join('');districtPicker.setOptions(init.districts,settings.district);$('rental-start').value=settings.day.slice(0,7);$('rental-end').value=last;}
+  const init=await request('init',{settings:{detail:settings.detail}});meta=init.meta;settings.district=settings.district.split(',').map(n=>init.districtNames[n]||n).join(',');const last=meta.months.at(-1);if(!settings.day)settings.day=meta.lastDate;if(!/^\d{4}-\d{2}-\d{2}$/.test(settings.day)||settings.day>meta.lastDate)settings.day=meta.lastDate;if(settings.day<meta.months[0]+'-01')settings.day=meta.months[0]+'-01';settings.year=settings.year||last.slice(0,4);if(settings.map)$('rental-coverage').textContent='자료 보유 기간 '+meta.months[0]+' ~ '+meta.lastDate+' · 일부 지역·단지의 과거 이력은 추가 수집 중';form.elements.day.min=meta.months[0]+'-01';form.elements.day.max=meta.lastDate;form.elements.year.innerHTML=[...meta.historyYears].reverse().map(y=>`<option>${y}</option>`).join('');districtPicker.setOptions(init.districts,settings.district);const h=new URLSearchParams(location.hash.slice(1)),clampMonth=v=>/^\d{4}-\d{2}$/.test(v||'')?[meta.months[0],v,last].sort()[1]:null;$('rental-start').value=clampMonth(h.get('start')?.slice(0,7))||settings.day.slice(0,7);$('rental-end').value=clampMonth(h.get('end')?.slice(0,7))||last;if($('rental-start').value>$('rental-end').value)$('rental-end').value=$('rental-start').value;if(['1','7','month'].includes(h.get('step')))$('rental-step').value=h.get('step');if(['1','2','4'].includes(h.get('speed')))$('rental-speed').value=String(1000/Number(h.get('speed')));}
  function rateText(){if(settings.type!=='monthly'){ $('rental-rate').textContent='전세 보증금 기준 · 보유 이력 범위에서 비교';return;}const regions=settings.region?[settings.region]:M.REGIONS;const rates=regions.map(r=>{const a=M.rateFor(meta.rates,r,settings.day.slice(0,7));return ({'11':'서울','41':'경기','28':'인천'}[r])+': '+(a?`연 ${a.value}% (${a.month} 기준)`:'공식 값 없음');});$('rental-rate').innerHTML=(settings.convert?'월 환산액 적용 · ':'환산을 켜면 적용 · ')+rates.map(esc).join(' / ')+` · <a href="${esc(meta.rates.source)}" target="_blank" rel="noopener">한국부동산원 공식 통계</a><br>과거 거래 내역에는 각 계약 월의 적용값을 별도로 표시합니다.`;}
  function stop(){playbackGeneration++;if(prefetchKey&&worker)request('cancel-prefetch').catch(()=>{});prefetchKey=null;if($('rental-buffer'))$('rental-buffer').hidden=true;clearTimeout(sliderTimer);playing=false;clearTimeout(timer);$('rental-play').textContent='▶ 재생';$('rental-play').setAttribute('aria-pressed','false');}
  function warmNextMonth(){
@@ -147,8 +147,9 @@
   await Promise.all([ensure(),settings.map&&!map?renderMap([]):Promise.resolve()]);if(id!==frame)return;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(settings.day))settings.day=meta.lastDate;
   settings.day=[meta.months[0]+'-01',settings.day,meta.lastDate].sort()[1];sync();rateText();
+  if(settings.map&&map){const b=map.getBounds().pad(.12);settings.bounds={south:b.getSouth(),north:b.getNorth(),west:b.getWest(),east:b.getEast()};}
   const result=await request('view',{settings});if(id!==frame||result.stale)return;
-  if(settings.map){await renderMap(result.points);renderedMapLabel=typeName()+' '+settings.day;syncSlider();}else render(result);
+  if(settings.map){await renderMap(result.points,result.regionSummaries);renderedMapLabel=typeName()+' '+settings.day;syncSlider();}else render(result);
   if(id!==frame)return;
   $('rental-status').textContent='자료 확인 완료 · '+(settings.map?settings.day+'까지의 마지막 거래 · '+result.count.toLocaleString()+'건 · 위치 미확인 '+result.stats.unlocated.toLocaleString()+'건':settings.detail?settings.year+'년':M.range(settings.day,settings.period).from+' ~ '+M.range(settings.day,settings.period).to);
   aptSearch.reportCount(result.count);persist();warmNextMonth();
@@ -194,18 +195,11 @@
  }
  function table(headers,rows){return '<div class="rental-table"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
  async function script(src){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('지도를 불러오지 못했습니다.'));document.head.append(s);});}
- async function renderMap(next){
-  points=next;
-  if(!window.L){const css=document.createElement('link');css.rel='stylesheet';css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';document.head.append(css);await script('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');}
-  if(!map){
-   map=L.map('rental-map',{preferCanvas:true,zoomControl:false}).setView([37.5,126.98],10);
-   L.control.zoom({position:'topright'}).addTo(map);
-   L.tileLayer(window.NodoMapServices?.tileURL||'https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:window.NodoMapServices?'© V-World':'© OpenStreetMap'}).addTo(map);
-   map.on('moveend zoomend',drawMap);
-  }
-  map.invalidateSize();drawMap();
+ async function renderMap(next,summaries=[]){
+  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260921-viewport1');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
+  mapView.setData(next,summaries);
  }
- function drawMap(){const cells=new Map(),bounds=map.getBounds();for(const p of points){if(!bounds.contains(p.coord))continue;const pt=map.latLngToContainerPoint(p.coord),key=Math.floor(pt.x/38)+':'+Math.floor(pt.y/38);let cell=cells.get(key);if(!cell)cells.set(key,cell={point:p,count:0});cell.count++;if(p.date>cell.point.date)cell.point=p;}const keep=new Set();for(const {point:p,count}of cells.values()){const key=p.ci+':'+p.area+':'+p.contract;keep.add(key);const active=p.date===settings.day,color=settings.type==='monthly'&&!settings.convert?'#20a38f':p.records&8?'#ef4444':p.records&4?'#3b82f6':'#20a38f';let marker=markers.get(key);if(!marker){marker=L.circleMarker(p.coord,{radius:7,weight:1}).addTo(map);markers.set(key,marker);}marker.setLatLng(p.coord).setStyle({color,fillColor:color,fillOpacity:active?.9:.45,radius:active?10:7});const monthly=settings.type==='monthly',converted=monthly&&settings.convert;const label=monthly?(converted?'월 환산 '+money(p.value):'보증금 '+money(p.deposit)+' / 월 '+money(p.rent)):'전세 '+money(p.value);const conversion=converted?`<p>보증금 ${esc(money(p.deposit))} / 월세 ${esc(money(p.rent))}</p><p>${p.rate!=null?`연 ${esc(p.rate)}% · ${esc(p.rateMonth)} 기준`:'해당 계약 시점의 공식 환산율 없음'}</p>`:'';const tip=esc(p.name)+(count>1?' 외 '+(count-1)+'건':'')+' · '+esc(label),permanent=map.getZoom()>=14,tipKey=tip+':'+permanent;if(marker._rentalTip!==tipKey){marker.unbindTooltip();marker.bindTooltip(tip,{permanent,direction:'top'});marker._rentalTip=tipKey;}marker.bindPopup(`<b>${esc(p.name)}</b><p>${p.area}㎡ · ${p.date}</p><p>${esc(label)}</p>${conversion}${p.publicId?`<a href="${esc(detailURL(p))}" data-rental-link>단지 상세</a>`:''}`);}for(const [k,m]of markers)if(!keep.has(k)){map.removeLayer(m);markers.delete(k);}}
+ function drawMap(){mapView?.redraw();}
  strip.onclick=e=>{const b=e.target.closest('[data-tenure]');if(!b)return;stop();settings.type=b.dataset.tenure;settings.kind='all';persist();aptSearch.close();if(settings.type!=='sale')aptSearch.restore();if(settings.type==='sale'&&window.NodoRentalInitial){location.reload();return;}refresh();document.dispatchEvent(new Event('nodo-search-context'));};
  form.elements.region.onchange=e=>{settings.region=e.target.value;settings.district='';settings.limit=50;refresh();};
  form.elements.period.onchange=e=>{settings.period=e.target.value;sync();};

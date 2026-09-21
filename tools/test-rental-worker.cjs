@@ -34,6 +34,10 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  const raw=await request('view',{...settings,convert:false});assert.equal(raw.stats.up,0);assert.equal(raw.rows[0].change,null);
  const cancel=await request('view',{...settings,kind:'cancelled'});assert.equal(cancel.count,1);
  const map=await request('view',{...settings,map:true});assert.equal(map.points.length,1);assert.equal(map.stats.cancelled,0);
+ const compact=await request('view',{...settings,map:true,compactMap:true,bounds:{south:37,north:38,west:126,east:128}});
+ assert.equal(compact.count,map.count);assert.equal(compact.complexCount,1);assert.deepEqual(compact.points,map.points);assert.equal(compact.points[0].id,'a');
+ const outside=await request('view',{...settings,map:true,compactMap:true,bounds:{south:33,north:34,west:126,east:128}});
+ assert.equal(outside.points.length,0);assert.equal(outside.count,map.count,'viewport does not change global totals');assert.equal(outside.complexCount,1);
  assert.equal(map.points[0].value,110);assert.equal(map.points[0].rate,6);assert.equal(map.points[0].rateMonth,'2026-07');
  const rawMap=await request('view',{...settings,map:true,convert:false});assert.equal(rawMap.points[0].value,60);assert.equal(rawMap.points[0].deposit,10000);
  const convertedMap=await request('view',{...settings,map:true});assert.deepEqual(convertedMap.points,map.points,'conversion toggle restores the monthly equivalent and rate');
@@ -72,5 +76,13 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  const weekCached=fetchCount;
  const weekAgain=await request('view',{...settings,period:'week',day:'2026-09-01',sort:'deposit'});assert.equal(weekAgain.count,1);assert.equal(fetchCount,weekCached,'cross-month week reuses all six regional month shards');
  const overlap=await Promise.all([request('view',settings),request('view',settings)]);assert.equal(overlap[0].stale,true);assert.equal(overlap[1].count,60);
+ // Real map states have many areas/contracts per complex. Send one latest
+ // representative while keeping all observations in totals and region counts global.
+ const grouped=vm.runInContext(`(()=>{mapStates.clear();catalog[0].admin=['dong'];catalog[1]={id:'rental-only',r:1,g:'종로구',n:'임대단지',coord:[37.51,127],admin:['dong']};
+ const row=(ci,area,date,deposit)=>[ci,area,date,deposit,20,1,3,0,null,null,null,null,null,30,0,'2026-07',6,String(date)];
+ return mapView([{opening:[row(0,'59',20260829,1000),row(0,'84',20260831,2000),row(1,'59',20260830,3000)],updates:[]}],['11'],{type:'monthly',convert:false,day:'2026-09-01',contract:'all',kind:'all',compactMap:true,bounds:{south:37.499,north:37.501,west:126,east:128}});})()`,context);
+ assert.equal(grouped.count,3);assert.equal(grouped.complexCount,2);assert.equal(grouped.points.length,1);assert.equal(grouped.points[0].deposit,2000);assert.equal(grouped.regionSummaries[0][1].count,2);
+ const rentalOnly=await request('view',{...settings,map:true,compactMap:true,day:'2026-09-01',bounds:{south:37.505,north:37.515,west:126,east:128}});
+ assert.equal(rentalOnly.points[0].id,'rental-only');assert.equal(rentalOnly.points[0].publicId,undefined,'source ID survives when sale catalog has no public ID');
  console.log('Rental worker integration tests passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

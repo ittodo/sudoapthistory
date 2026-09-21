@@ -22,18 +22,30 @@ function mapRows(region,month,day,shard){
   return state.latest.values();
 }
 function mapView(shards,regions,s){
-  const points=[],stats={count:0,cancelled:0,unlocated:0};let count=0;
+  const points=[],complexes=new Map(),stats={count:0,cancelled:0,unlocated:0};let count=0;
   for(let i=0;i<regions.length;i++){
     if(!shards[i])continue;
     for(const t of mapRows(regions[i],s.day.slice(0,7),s.day,shards[i])){
       if(!M.match(t,s)||t.cancelled)continue;
       stats.count++;if(!t.c.coord)stats.unlocated++;
       if(!M.category(t,s))continue;count++;
-      if(t.c.coord)points.push({ci:t.ci,area:t.area,contract:t.contract,date:t.date,coord:t.c.coord,name:t.c.n,publicId:t.c.publicId,deposit:t.deposit,rent:t.rent,value:M.metric(t,s),rate:t.rate,rateMonth:t.rateMonth,records:t.records});
+      if(t.c.coord){
+        if(s.compactMap){const previous=complexes.get(t.ci);if(!previous||t.date>previous.date||(t.date===previous.date&&t.id>previous.id))complexes.set(t.ci,t);}
+        else points.push(point(t,s));
+      }
     }
   }
-  return {stats,count,points};
+  if(!s.compactMap)return {stats,count,points};
+  const summaries=new Map();
+  for(const t of complexes.values()){
+    const value=M.metric(t,s);
+    for(const id of t.c.admin||[]){const a=summaries.get(id)||{count:0,pricedCount:0,sum:0};a.count++;if(Number.isFinite(value)&&value>0){a.pricedCount++;a.sum+=value;}summaries.set(id,a);}
+    const [lat,lng]=t.c.coord,b=s.bounds;
+    if(!b||(lat>=b.south&&lat<=b.north&&lng>=b.west&&lng<=b.east))points.push(point(t,s));
+  }
+  return {stats,count,points,complexCount:complexes.size,regionSummaries:[...summaries].map(([id,a])=>[id,{count:a.count,pricedCount:a.pricedCount,average:a.pricedCount?a.sum/a.pricedCount:null}])};
 }
+function point(t,s){return {ci:t.ci,id:t.c.id,admin:t.c.admin||[],area:t.area,contract:t.contract,date:t.date,coord:t.c.coord,name:t.c.n,publicId:t.c.publicId,deposit:t.deposit,rent:t.rent,value:M.metric(t,s),rate:t.rate,rateMonth:t.rateMonth,records:t.records};}
 function cancelPrefetch(){
   prefetchSerial++;
   for(const [path,entry]of cache)if(entry.background&&!entry.settled){entry.controller.abort();cache.delete(path);}
@@ -51,12 +63,12 @@ async function load(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
   const expected=manifest.sources[path];if(!expected)throw Error('수집된 자료가 없는 구간입니다.');
   const entry={background,controller:new AbortController(),settled:false};
-  entry.promise=(async()=>{const response=await fetch('/'+path+'?v='+manifest.version,{signal:entry.controller.signal,priority:background?'low':'auto'});if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');if(digest!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
+  entry.promise=(async()=>{const response=await fetch('/'+path+'?v='+expected,{signal:entry.controller.signal,priority:background?'low':'auto'});if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');if(digest!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
   cache.set(path,entry);const large=path.endsWith('-state.bin'),peers=[...cache.keys()].filter(k=>k.endsWith('-state.bin')===large);
   if(peers.length>(large?6:9)){const oldest=peers.find(k=>!activeMapPaths.has(k));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
   try{return await entry.promise;}catch(e){if(cache.get(path)===entry)cache.delete(path);throw e;}finally{entry.settled=true;}
 }
-async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 준비 중입니다.');manifest=await r.json();if(manifest.schema!==1)throw Error('자료 형식이 바뀌었습니다. 새로고침해 주세요.');const loaded=await Promise.all([load('data/rental/catalog.bin'),load('data/rental/rates.json'),load('data/rental/summary.json')]);[catalog,rates,summary]=[loaded[0].complexes,loaded[1],loaded[2]];districtNames=M.normalizeDistricts(catalog);})();try{await initializing;}finally{initializing=null;}}
+async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 준비 중입니다.');manifest=await r.json();if(manifest.schema!==1)throw Error('자료 형식이 바뀌었습니다. 새로고침해 주세요.');const loaded=await Promise.all([load('data/rental/catalog.bin'),load('data/rental/rates.json')]);[catalog,rates]=[loaded[0].complexes,loaded[1]];districtNames=M.normalizeDistricts(catalog);})();try{await initializing;}finally{initializing=null;}}
 function aggregate(rows,s){
   const out={count:0,cancelled:0,up:0,down:0,high:0,low:0,within:0,unlocated:0},daily={},districts={},rank=new Map();
   for(const t of rows){if(t.cancelled){out.cancelled++;continue;}out.count++;if(!t.c.coord)out.unlocated++;const comparable=s.type==='jeonse'||s.convert;for(const [k,bit]of Object.entries({up:8,down:4,high:1,low:2,within:16}))if(comparable&&t.records&bit)out[k]++;
@@ -71,13 +83,13 @@ self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetc
   if(s.map){
     activeMapPaths=new Set(regions.map(region=>`data/rental/months/${s.day.slice(0,7)}-${region}-state.bin`));
     const shards=await Promise.all(regions.map(region=>{const path=`data/rental/months/${s.day.slice(0,7)}-${region}-state.bin`;return manifest.sources[path]?load(path):null;}));
-    if(revision!==serial){postMessage({id:data.id,stale:true});return;}
+    if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}
     postMessage({id:data.id,...mapView(shards,regions,s),version:manifest.version});return;
   }
   if(s.detail){const ids=catalog.map((c,i)=>c.publicId===s.detail||c.id===s.detail||c.mapId===s.detail?i:-1).filter(i=>i>=0);const buckets=[...new Set(ids.map(i=>i%64))];for(const b of buckets){const path=`data/rental/history/${s.year}/${String(b).padStart(2,'0')}.bin`;if(manifest.sources[path])raw.push(...(await load(path)).rows.filter(r=>ids.includes(r[0])));}}
 
   else{const span=M.range(s.day,s.period),paths=[];for(const month of M.months(span.from,span.to))for(const region of regions){const path=`data/rental/months/${month}-${region}.bin`;if(manifest.sources[path])paths.push(path);}for(const shard of await Promise.all(paths.map(path=>load(path))))raw.push(...shard.rows.filter(r=>M.iso(r[2])>=span.from&&M.iso(r[2])<=span.to));}
-  if(revision!==serial){postMessage({id:data.id,stale:true});return;}
+  if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}
   const rows=raw.map(r=>M.decode(r,catalog)).filter(t=>M.match(t,s));const totals=aggregate(rows,s),filtered=rows.filter(t=>M.category(t,s));
   const key=t=>s.sort==='deposit'?t.deposit:s.sort==='rent'?t.rent:s.sort==='rise'?(M.change(t,s)??-Infinity):s.sort==='drop'?-(M.change(t,s)??Infinity):s.sort==='date'?Date.parse(t.date):M.metric(t,s)??-Infinity;
   const sortKeys=new Map(filtered.map(t=>[t,key(t)]));
@@ -85,6 +97,7 @@ self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetc
   const count=filtered.length;const page=filtered.slice(0,s.limit||50).map(t=>({...t,change:M.change(t,s),annual:M.annual(t,s)}));
   const points=s.map?filtered.filter(t=>t.c.coord).map(t=>({ci:t.ci,area:t.area,contract:t.contract,date:t.date,coord:t.c.coord,name:t.c.n,publicId:t.c.publicId,deposit:t.deposit,rent:t.rent,value:M.metric(t,s),rate:t.rate,rateMonth:t.rateMonth,records:t.records})):[];
   for(const region of regions){const partitions=Object.entries(manifest.coverage).filter(([lawd])=>lawd.startsWith(region));const selectedMonths=s.detail?manifest.months.filter(m=>m.startsWith(s.year)):M.months(M.range(s.day,s.period).from,M.range(s.day,s.period).to);coverage.push({region,districts:partitions.length,available:partitions.filter(([,v])=>selectedMonths.some(m=>v[m])).length,first:partitions.length?Object.keys(partitions.flatMap(([,v])=>Object.keys(v)).reduce((a,v)=>(a[v]=1,a),{})).sort()[0]:null});}
+  if(s.panels?.trend!==false&&!summary)summary=await load('data/rental/summary.json');
   const trend=[];if(s.panels?.trend!==false)for(const [month,byRegion]of Object.entries(summary)){for(const region of regions)for(const [contract,a]of Object.entries(byRegion[region]?.[s.type]||{})){if(s.contract!=='all'&&String(s.contract)!==contract)continue;trend.push({month,region,contract,count:a[0],deposit:a[1]/a[0],rent:a[2]/a[0],value:a[4]?a[3]/a[4]:null});}}
   const values=s.panels?.histogram===false?[]:filtered.filter(t=>!t.cancelled).map(t=>M.metric(t,s)).filter(v=>v!=null);let histogram=[];
   if(values.length){let hi=0;for(const v of values)hi=Math.max(hi,v);const width=Math.max(1,Math.ceil(hi/10));histogram=Array.from({length:10},(_,i)=>({low:i*width,high:(i+1)*width,count:0}));for(const v of values)histogram[Math.min(9,Math.floor(v/width))].count++;}
