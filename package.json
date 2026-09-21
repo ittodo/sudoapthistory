@@ -5,8 +5,11 @@
   "scripts": {
     "test:search": "node --test tools/test-apartment-search*.mjs",
     "bench:search": "node --expose-gc tools/benchmark-apartment-search.mjs",
-    "test:daily": "python -m unittest discover -s tools -p test_daily_data.py && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs",
-    "build:daily": "python tools/daily_data.py",
+    "test:native": "cargo build --locked --manifest-path tools/native-projection/Cargo.toml && node tools/test-native-projection.mjs",
+    "test:daily": "npm run test:native && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs",
+    "test:daily:reference": "python -m unittest discover -s tools -p test_daily_data.py",
+    "build:daily": "cargo run --locked --manifest-path tools/native-projection/Cargo.toml -- daily-build",
+    "build:daily:reference": "python tools/daily_data.py",
     "build:apartments": "node tools/build-apartment-data.mjs",
     "test:site": "node --test tools/test-apartment-data.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs",
     "preview": "node tools/preview-site.mjs",

@@ -1,0 +1,337 @@
+{
+  "schema": 1,
+  "captured": "2026-09-22",
+  "referenceSources": {
+    "tests\\test_daily_rust.py": "ed12c5e3789ed3292d2d5b55944a3c22cdb9691912d5d654c914848026a536f8",
+    "tests\\test_rental_rust.py": "d664678fe3518d150d7b3b20e4979df27f3921dd064f2155e5d7dca4a47b8979",
+    "rental_data.py": "f4f93704d765655225d60ec8b2335e59aaa431f28730ef6d4f66c45dea9a5e1d",
+    "site/tools/daily_data.py": "6c1b7e261ca411cd44726130e815af1f14fc2808be695cb3e0809fcc99efe012"
+  },
+  "testsPassed": 13,
+  "cases": [
+    {
+      "id": "000",
+      "group": 0,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustDriftTests.test_monthly_scans_zero_and_cross_stage_reuses_gzip"
+    },
+    {
+      "id": "001",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "002",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "003",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "004",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "005",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "006",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "007",
+      "group": 1,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_full_prefix_cache_and_historical_correction"
+    },
+    {
+      "id": "008",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "009",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "010",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "011",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "012",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "013",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "014",
+      "group": 2,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_monthly_cache_restore_past_changes_and_damage"
+    },
+    {
+      "id": "015",
+      "group": 3,
+      "kind": "daily",
+      "test": "test_daily_rust.DailyRustTests.test_policy_projection_and_validator_reject_bad_inputs"
+    },
+    {
+      "id": "016",
+      "group": 4,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustNumericTests.test_many_price_envelopes_rates_and_empty_partitions"
+    },
+    {
+      "id": "017",
+      "group": 4,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustNumericTests.test_many_price_envelopes_rates_and_empty_partitions"
+    },
+    {
+      "id": "018",
+      "group": 5,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_cold_warm_restatement_and_corrupt_checkpoint"
+    },
+    {
+      "id": "019",
+      "group": 5,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_cold_warm_restatement_and_corrupt_checkpoint"
+    },
+    {
+      "id": "020",
+      "group": 5,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_cold_warm_restatement_and_corrupt_checkpoint"
+    },
+    {
+      "id": "021",
+      "group": 5,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_cold_warm_restatement_and_corrupt_checkpoint"
+    },
+    {
+      "id": "022",
+      "group": 5,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_cold_warm_restatement_and_corrupt_checkpoint"
+    },
+    {
+      "id": "023",
+      "group": 6,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_opening_keeps_prior_order_and_pending_latest_last_active_row"
+    },
+    {
+      "id": "024",
+      "group": 6,
+      "kind": "rental",
+      "test": "test_rental_rust.RentalRustTests.test_opening_keeps_prior_order_and_pending_latest_last_active_row"
+    },
+    {
+      "id": "025",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "026",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "027",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "028",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "029",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "030",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "031",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "032",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "033",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "034",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "035",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "036",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "037",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "038",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "039",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "040",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "041",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "042",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "043",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "044",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "045",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "046",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "047",
+      "group": 7,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "048",
+      "group": 8,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "049",
+      "group": 9,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "050",
+      "group": 9,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "051",
+      "group": 10,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "052",
+      "group": 9,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    },
+    {
+      "id": "053",
+      "group": 9,
+      "kind": "daily",
+      "test": "site.test_daily_data.fixed_export_cases"
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+{
+  "id": "019",
+  "group": 5,
+  "test": "test_rental_rust.RentalRustTests.test_cold_warm_restatement_and_corrupt_checkpoint",
+  "kind": "rental",
+  "monthly": false,
+  "inputs": {
+    "data/daily/catalog.bin": {
+      "complexes": [
+        {
+          "id": "A",
+          "publicId": "A",
+          "r": 1,
+          "n": "단지",
+          "g": "종로구",
+          "d": "동",
+          "coord": null
+        }
+      ]
+    },
+    "data/map/index.json": {
+      "meta": {
+        "sourceVersion": "test"
+      }
+    },
+    "rates.json": {
+      "schema": 1,
+      "fetchedAt": "volatile",
+      "checkedDate": "2026-09-20",
+      "responseHash": "x",
+      "rates": {
+        "11": {
+          "2024-12": 6.0,
+          "2025-01": 5.0
+        },
+        "41": {
+          "2025-02": 5.0
+        },
+        "28": {
+          "2024-12": 4.0
+        }
+      }
+    }
+  },
+  "inputBytes": {
+    "data/daily/catalog.bin": "H4sIAAtLsWoC/6tWSs7PLchJrUgtVrJSiK5WykwB0kqOSjoKSgWlSTmZyZ4IgSIgyxBI54FEXneveLO8ASScDuK+WdT6euGcV1vXgETAWl73zwSxk/Pzi0D8vNKcnNrYWgAH5IT1cQAAAA==",
+    "data/map/index.json": "eyJtZXRhIjogeyJzb3VyY2VWZXJzaW9uIjogInRlc3QifX0=",
+    "rates.json": "eyJzY2hlbWEiOiAxLCAiZmV0Y2hlZEF0IjogInZvbGF0aWxlIiwgImNoZWNrZWREYXRlIjogIjIwMjYtMDktMjAiLCAicmVzcG9uc2VIYXNoIjogIngiLCAicmF0ZXMiOiB7IjExIjogeyIyMDI0LTEyIjogNi4wLCAiMjAyNS0wMSI6IDUuMH0sICI0MSI6IHsiMjAyNS0wMiI6IDUuMH0sICIyOCI6IHsiMjAyNC0xMiI6IDQuMH19fQ=="
+  },
+  "expected": {
+    "data/rental/catalog.bin": "65d37d4b60d2f15e92d47a554bd3bf538fbc6245451393a36db55b388eae10d5",
+    "data/rental/index.json": "548e1bd2c8d16a1d51959b78c09a800d14e7a84fa924a99324a61acd6af75986",
+    "data/rental/rates.json": "598b48504fae2f9e0a39fdc1054f72275029b8773e7af95fde2b996b2b00b5e2",
+    "data/rental/summary.json": "f1e4a7504602b562fe3fff14d278d8da74d8bd4a426c39c232894fd500be6210",
+    "data/rental/months/2024-12-11-state.bin": "722be2eccc4e284bef78501bd4435d568e4bf7dba1b55f86adfde54cff1f6ea1",
+    "data/rental/months/2024-12-11.bin": "e76de3a64361e8b50828dada61dcaf0c274512635582b248a6d57b2b16fc2324",
+    "data/rental/months/2024-12-28-state.bin": "9b31923a00b797153653520c372502c2733273214efa86d4944e189559e17f37",
+    "data/rental/months/2024-12-28.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+    "data/rental/months/2024-12-41-state.bin": "9b31923a00b797153653520c372502c2733273214efa86d4944e189559e17f37",
+    "data/rental/months/2024-12-41.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+    "data/rental/months/2025-01-11-state.bin": "a166407707bab7e958b4b419dba22a740857d269d5b4cc6bddfd4e539904fd1d",
+    "data/rental/months/2025-01-11.bin": "d98886d70860176297127a75b495e9c27b4a330ec4bda94374afbfcf8ed5781f",
+    "data/rental/months/2025-01-28-state.bin": "d3be4b3e9ab1395a6b986e3a1d158e88736bce5fe29e112cf2c008c16698615b",
+    "data/rental/months/2025-01-28.bin": "d14d0d9414a1bb41379154dab28b2e539828c9ee0414559ff567da58a0f2bed9",
+    "data/rental/months/2025-01-41-state.bin": "07d5356771ad7ea5e4081c2b687c66c8aed8458252c201d14b22d308da3e6a8a",
+    "data/rental/months/2025-01-41.bin": "3b0bd37b7442253b601bf9c119fb9016e2f24f3e8e73a802c79cb66898c5a8c5",
+    "data/rental/months/2025-02-11-state.bin": "0a66ef56a612c55d0b42451aabf0562da124805b8d9016f398accddd0bb530d3",
+    "data/rental/months/2025-02-11.bin": "51f6211bec0af8778d9e3281a752db9617875a3405cfba4199ac59271d638ce9",
+    "data/rental/months/2025-02-28-state.bin": "210d52aa9f41df3cb0fcb753816717daeae6b9727dbcfe5b6f20487c6c3474ce",
+    "data/rental/months/2025-02-28.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+    "data/rental/months/2025-02-41-state.bin": "abaaf8cc9a7572a840c05619439b343c519ab9bb00179b06088a20b4e165b3f0",
+    "data/rental/months/2025-02-41.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+    "data/rental/history/2024/00.bin": "e76de3a64361e8b50828dada61dcaf0c274512635582b248a6d57b2b16fc2324",
+    "data/rental/history/2025/00.bin": "5c778158c92b7c14f9169a90873f192dfe5c5f35c41053b08b93b27adc1d7a4d",
+    "data/rental/history/2025/01.bin": "d14d0d9414a1bb41379154dab28b2e539828c9ee0414559ff567da58a0f2bed9",
+    "data/rental/history/2025/02.bin": "3b0bd37b7442253b601bf9c119fb9016e2f24f3e8e73a802c79cb66898c5a8c5"
+  },
+  "payloads": {
+    "data/rental/catalog.bin": "b66ed790837ac253dc0a9b6e25de1bd976b6433e8d8db321313465b4596bcd18",
+    "data/rental/months/2024-12-11-state.bin": "40d8bab617975a87937c340730e00ea6daa1770376ec114b7cca1702d6f1b00c",
+    "data/rental/months/2024-12-11.bin": "5c7c77247c6b2e1fec158ae364a614a0d2e4cd4a348cdd1155cffe15fd0080d6",
+    "data/rental/months/2024-12-28-state.bin": "0924989940412dbca68f56cae23ac1490b1f6619a14c710ab89a8ce1ac426f12",
+    "data/rental/months/2024-12-28.bin": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+    "data/rental/months/2024-12-41-state.bin": "0924989940412dbca68f56cae23ac1490b1f6619a14c710ab89a8ce1ac426f12",
+    "data/rental/months/2024-12-41.bin": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+    "data/rental/months/2025-01-11-state.bin": "43f25773b1442e139cd69a2f4da266babdb6827d54026a7dac2ac345ebd772af",
+    "data/rental/months/2025-01-11.bin": "6e9308d33597e72b1bbb8d20ecf02d6934d58eea7dfb9567782765a680422a62",
+    "data/rental/months/2025-01-28-state.bin": "6f1c8cf3f0130159ab1c3d820dab2eaf8d364a8cf0c8912f8e8c3d4378f8c31a",
+    "data/rental/months/2025-01-28.bin": "a6d1ba60319c30bc12f514cae181809ee786ea08b360ee1e45574f963f5f4265",
+    "data/rental/months/2025-01-41-state.bin": "8fc18b34c556e0c5b84043aa2dccfc2987f21b81ae63e785e3ce2c30e0524521",
+    "data/rental/months/2025-01-41.bin": "0b0dbff4d1c62621a95f38b319ad8589e5ac2888dde030ac05c656f4df29c5c9",
+    "data/rental/months/2025-02-11-state.bin": "2a527a66072bd40a584a7930496ddfc34e74a0048d106051d57bd598f9c5ffc1",
+    "data/rental/months/2025-02-11.bin": "0dfbfc84844099869affc874dd68ebdd633ce1dabce0ff3fb271c63972e0bacd",
+    "data/rental/months/2025-02-28-state.bin": "fa4fcd1264d8cb29ea5a22fd36ba021fbd9edb9df5c302f219285c6ff01c1c76",
+    "data/rental/months/2025-02-28.bin": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+    "data/rental/months/2025-02-41-state.bin": "658386af8bc4288ea25a9f9ff1244d0e31c26e211f2ab666e1eaade948d9ca4e",
+    "data/rental/months/2025-02-41.bin": "1633902c6cbba5e7770dbed172df754a25078bb76efe1f23474edc87f1a47655",
+    "data/rental/history/2024/00.bin": "5c7c77247c6b2e1fec158ae364a614a0d2e4cd4a348cdd1155cffe15fd0080d6",
+    "data/rental/history/2025/00.bin": "7bdfe6a684e9e37365a3b70d29ae90917a48c6e06b44a2b37aa3be63742e81db",
+    "data/rental/history/2025/01.bin": "a6d1ba60319c30bc12f514cae181809ee786ea08b360ee1e45574f963f5f4265",
+    "data/rental/history/2025/02.bin": "0b0dbff4d1c62621a95f38b319ad8589e5ac2888dde030ac05c656f4df29c5c9"
+  },
+  "result": {
+    "schema": 1,
+    "months": [
+      "2024-12",
+      "2025-01",
+      "2025-02"
+    ],
+    "coverage": {
+      "11110": {
+        "2024-12": {
+          "rows": 9,
+          "rejected": 0
+        },
+        "2025-01": {
+          "rows": 2,
+          "rejected": 0
+        },
+        "2025-02": {
+          "rows": 1,
+          "rejected": 0
+        }
+      },
+      "28110": {
+        "2025-01": {
+          "rows": 1,
+          "rejected": 0
+        }
+      },
+      "41111": {
+        "2025-01": {
+          "rows": 2,
+          "rejected": 0
+        }
+      }
+    },
+    "sources": {
+      "data/rental/months/2024-12-11.bin": "e76de3a64361e8b50828dada61dcaf0c274512635582b248a6d57b2b16fc2324",
+      "data/rental/months/2024-12-11-state.bin": "722be2eccc4e284bef78501bd4435d568e4bf7dba1b55f86adfde54cff1f6ea1",
+      "data/rental/months/2024-12-41.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+      "data/rental/months/2024-12-41-state.bin": "9b31923a00b797153653520c372502c2733273214efa86d4944e189559e17f37",
+      "data/rental/months/2024-12-28.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+      "data/rental/months/2024-12-28-state.bin": "9b31923a00b797153653520c372502c2733273214efa86d4944e189559e17f37",
+      "data/rental/months/2025-01-11.bin": "d98886d70860176297127a75b495e9c27b4a330ec4bda94374afbfcf8ed5781f",
+      "data/rental/months/2025-01-11-state.bin": "a166407707bab7e958b4b419dba22a740857d269d5b4cc6bddfd4e539904fd1d",
+      "data/rental/months/2025-01-41.bin": "3b0bd37b7442253b601bf9c119fb9016e2f24f3e8e73a802c79cb66898c5a8c5",
+      "data/rental/months/2025-01-41-state.bin": "07d5356771ad7ea5e4081c2b687c66c8aed8458252c201d14b22d308da3e6a8a",
+      "data/rental/months/2025-01-28.bin": "d14d0d9414a1bb41379154dab28b2e539828c9ee0414559ff567da58a0f2bed9",
+      "data/rental/months/2025-01-28-state.bin": "d3be4b3e9ab1395a6b986e3a1d158e88736bce5fe29e112cf2c008c16698615b",
+      "data/rental/months/2025-02-11.bin": "51f6211bec0af8778d9e3281a752db9617875a3405cfba4199ac59271d638ce9",
+      "data/rental/months/2025-02-11-state.bin": "0a66ef56a612c55d0b42451aabf0562da124805b8d9016f398accddd0bb530d3",
+      "data/rental/months/2025-02-41.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+      "data/rental/months/2025-02-41-state.bin": "abaaf8cc9a7572a840c05619439b343c519ab9bb00179b06088a20b4e165b3f0",
+      "data/rental/months/2025-02-28.bin": "ae945911a2b2f8fcc09ff9b136b3b809dc67b5208135f9bb512b3f6972530fd3",
+      "data/rental/months/2025-02-28-state.bin": "210d52aa9f41df3cb0fcb753816717daeae6b9727dbcfe5b6f20487c6c3474ce",
+      "data/rental/catalog.bin": "65d37d4b60d2f15e92d47a554bd3bf538fbc6245451393a36db55b388eae10d5",
+      "data/rental/rates.json": "598b48504fae2f9e0a39fdc1054f72275029b8773e7af95fde2b996b2b00b5e2",
+      "data/rental/summary.json": "f1e4a7504602b562fe3fff14d278d8da74d8bd4a426c39c232894fd500be6210",
+      "data/rental/history/2024/00.bin": "e76de3a64361e8b50828dada61dcaf0c274512635582b248a6d57b2b16fc2324",
+      "data/rental/history/2025/00.bin": "5c778158c92b7c14f9169a90873f192dfe5c5f35c41053b08b93b27adc1d7a4d",
+      "data/rental/history/2025/02.bin": "3b0bd37b7442253b601bf9c119fb9016e2f24f3e8e73a802c79cb66898c5a8c5",
+      "data/rental/history/2025/01.bin": "d14d0d9414a1bb41379154dab28b2e539828c9ee0414559ff567da58a0f2bed9"
+    },
+    "historyYears": [
+      "2024",
+      "2025"
+    ],
+    "fields": [
+      "complex",
+      "area",
+      "date",
+      "deposit",
+      "monthlyRent",
+      "contract",
+      "floor",
+      "cancelled",
+      "previousDate",
+      "previousLow",
+      "previousHigh",
+      "historyLow",
+      "historyHigh",
+      "value",
+      "records",
+      "rateMonth",
+      "rate",
+      "id"
+    ],
+    "mapVersion": "test",
+    "version": "93308812e5adb2af",
+    "historyBasis": "보유 이력 기준"
+  }
+}

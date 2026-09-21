@@ -22,6 +22,16 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Install tested Rust toolchain for native projection tests
+        run: rustup toolchain install 1.92.0 --profile minimal && rustup override set 1.92.0
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            tools/native-projection/target
+          key: native-projection-${{ runner.os }}-1.92.0-${{ hashFiles('tools/native-projection/Cargo.lock', 'tools/native-projection/Cargo.toml', 'tools/native-projection/build.rs', 'tools/native-projection/src/**', 'tools/native-projection/vendor/**') }}
+          restore-keys: native-projection-${{ runner.os }}-1.92.0-
       - run: npm run test:search
       - name: Verify explicitly approved production target and plan
         env:
