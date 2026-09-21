@@ -3,21 +3,35 @@ importScripts('/js/rental-model.js?v=20260920-map-convert1');
 const M=globalThis.NodoRental;
 let manifest,catalog,rates,summary,initializing,districtNames;const cache=new Map();let serial=0,prefetchSerial=0;
 let activeMapPaths=new Set();
+let mapCache,mapCacheLoading;
+const mapCachePrefix='data/rental/map-cache/';
+function mapPath(month,region,type){const compact=`${mapCachePrefix}${month}-${region}-${type}.bin`;return mapCache?.sources[compact]?compact:`data/rental/months/${month}-${region}-state.bin`;}
+async function ensureMapCache(){
+  if(!mapCacheLoading)mapCacheLoading=fetch('/'+mapCachePrefix+'index.json',{cache:'no-cache'}).then(async r=>{
+    if(!r.ok)return;const m=await r.json();
+    if(m.schema!==1||m.sourceVersion!==manifest.version||!m.inputs||!m.sources)return;
+    if(Object.entries(m.inputs).some(([p,h])=>manifest.sources[p]!==h))return;
+    if(Object.entries(m.sources).some(([p,h])=>!/^data\/rental\/map-cache\/\d{4}-\d{2}-(11|41|28)-(jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return;
+    mapCache=m;
+  }).catch(()=>{});
+  await mapCacheLoading;
+}
+const isMapFile=p=>p.endsWith('-state.bin')||p.startsWith(mapCachePrefix);
 let viewPathsKey='';
 function beginView(s){
   if(s.detail)return;
   const regions=s.region?[s.region]:M.REGIONS,span=s.map?null:M.range(s.day,s.period);
   const months=s.map?[s.day.slice(0,7)]:M.months(span.from,span.to);
-  const wanted=new Set(months.flatMap(month=>regions.map(region=>`data/rental/months/${month}-${region}${s.map?'-state':''}.bin`)));
+  const wanted=new Set(months.flatMap(month=>regions.map(region=>s.map?mapPath(month,region,s.type):`data/rental/months/${month}-${region}.bin`)));
   const key=[...wanted].sort().join('|');
   if(key===viewPathsKey)return;
   viewPathsKey=key;prefetchSerial++;
   const next=new Date(s.day+'T00:00:00Z');next.setUTCDate(1);next.setUTCMonth(next.getUTCMonth()+1);
-  const warm=s.map?new Set(regions.map(region=>`data/rental/months/${next.toISOString().slice(0,7)}-${region}-state.bin`)):new Set();
+  const warm=s.map?new Set(regions.map(region=>mapPath(next.toISOString().slice(0,7),region,s.type))):new Set();
   // Promote a warmed file before cancelling other obsolete downloads.
   for(const [path,entry]of cache){
     if(wanted.has(path))entry.background=false;
-    else if(path.startsWith('data/rental/months/')&&!entry.settled&&!(entry.background&&warm.has(path))){entry.controller.abort();cache.delete(path);}
+    else if((path.startsWith('data/rental/months/')||path.startsWith(mapCachePrefix))&&!entry.settled&&!(entry.background&&warm.has(path))){entry.controller.abort();cache.delete(path);}
   }
   activeMapPaths=s.map?wanted:new Set();
 }
@@ -25,9 +39,10 @@ const mapStates=new Map();
 function mapRows(region,month,day,shard){
   let state=mapStates.get(region);
   const key=row=>row[0]+':'+row[1]+':'+(row[4]>0)+':'+row[5];
-  if(!state||state.month!==month){
-    state={month,index:0,latest:new Map(),undo:[]};
-    for(const row of shard.opening)state.latest.set(key(row),M.decode(row,catalog));
+  const decode=row=>shard.schema===2?{ci:row[0],area:Number(row[1]),date:M.iso(row[2]),deposit:row[3],rent:row[4],contract:row[5],value:row[6],records:row[7],rateMonth:row[8],rate:row[9],id:row[10],cancelled:false,c:catalog[row[0]]}:M.decode(row,catalog);
+  if(!state||state.month!==month||state.shard!==shard){
+    state={month,shard,index:0,latest:new Map(),undo:[]};
+    for(const row of shard.opening)state.latest.set(key(row),decode(row));
     mapStates.set(region,state);
   }
   while(state.index>0&&M.iso(shard.updates[state.index-1][2])>day){
@@ -35,7 +50,7 @@ function mapRows(region,month,day,shard){
     if(previous)state.latest.set(id,previous);else state.latest.delete(id);
   }
   while(state.index<shard.updates.length&&M.iso(shard.updates[state.index][2])<=day){
-    const row=shard.updates[state.index++],id=key(row);state.undo.push([id,state.latest.get(id)]);state.latest.set(id,M.decode(row,catalog));
+    const row=shard.updates[state.index++],id=key(row);state.undo.push([id,state.latest.get(id)]);state.latest.set(id,decode(row));
   }
   return state.latest.values();
 }
@@ -73,16 +88,36 @@ async function prefetch(s,revision){
   const date=new Date(s.day+'T00:00:00Z');date.setUTCDate(1);date.setUTCMonth(date.getUTCMonth()+1);
   const month=date.toISOString().slice(0,7);
   if(!s.endMonth||month>s.endMonth)return {prefetched:0};
-  const regions=s.region?[s.region]:M.REGIONS,paths=regions.map(region=>`data/rental/months/${month}-${region}-state.bin`).filter(path=>manifest.sources[path]);
+  const regions=s.region?[s.region]:M.REGIONS,paths=regions.map(region=>mapPath(month,region,s.type)).filter(path=>manifest.sources[path]||mapCache?.sources[path]);
   const results=await Promise.allSettled(paths.map(path=>load(path,true)));
   return {prefetched:results.filter(r=>r.status==='fulfilled').length,failed:results.filter(r=>r.status==='rejected').length,cancelled:revision!==prefetchSerial};
 }
+let diskCache;
+async function storedMapFile(){
+  if(typeof caches==='undefined')return null;
+  if(!diskCache)diskCache=caches.open('nodo-rental-map-v1').catch(()=>null);
+  return diskCache;
+}
+async function download(path,expected,entry,background){
+  const url='/'+path+'?v='+expected,store=path.startsWith(mapCachePrefix)?await storedMapFile():null;
+  const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
+  if(store){
+    const saved=await store.match(url).catch(()=>null);
+    if(saved){const bytes=await saved.arrayBuffer();entry.controller.signal.throwIfAborted();if(await digest(bytes)===expected)return bytes;await store.delete(url).catch(()=>{});}
+  }
+  const response=await fetch(url,{signal:entry.controller.signal,priority:background?'low':'high'});
+  if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');
+  const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();
+  if(await digest(bytes)!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');
+  if(store)try{await store.put(url,new Response(bytes));const keys=await store.keys();for(const key of keys.slice(0,Math.max(0,keys.length-18)))await store.delete(key);}catch{}
+  return bytes;
+}
 async function load(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
-  const expected=manifest.sources[path];if(!expected)throw Error('수집된 자료가 없는 구간입니다.');
+  const expected=mapCache?.sources[path]||manifest.sources[path];if(!expected)throw Error('수집된 자료가 없는 구간입니다.');
   const entry={background,controller:new AbortController(),settled:false};
-  entry.promise=(async()=>{const response=await fetch('/'+path+'?v='+expected,{signal:entry.controller.signal,priority:background?'low':'high'});if(!response.ok)throw Error('전월세 자료를 불러오지 못했습니다.');const bytes=await response.arrayBuffer();entry.controller.signal.throwIfAborted();const digest=[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');if(digest!==expected)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
-  cache.set(path,entry);const large=path.endsWith('-state.bin'),peers=[...cache.keys()].filter(k=>k.endsWith('-state.bin')===large);
+  entry.promise=(async()=>{const bytes=await download(path,expected,entry,background);entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
+  cache.set(path,entry);const large=isMapFile(path),peers=[...cache.keys()].filter(k=>isMapFile(k)===large);
   if(peers.length>(large?6:9)){const oldest=peers.find(k=>!activeMapPaths.has(k));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
   try{return await entry.promise;}catch(e){if(cache.get(path)===entry)cache.delete(path);throw e;}finally{entry.settled=true;}
 }
@@ -96,11 +131,11 @@ function aggregate(rows,s){
   }
   return {stats:out,daily,districts,rank:[...rank.values()].sort((a,b)=>(b.n?b.sum/b.n:-Infinity)-(a.n?a.sum/a.n:-Infinity)).slice(0,100)};
 }
-self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetch();postMessage({id:data.id,cancelled:true});return;}const revision=data.action==='view'?++serial:serial;if(data.action==='prefetch')cancelPrefetch();const backgroundRevision=prefetchSerial;try{if(data.action==='view')beginView(data.settings);await init();if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}if(data.action==='prefetch'){postMessage({id:data.id,...await prefetch(data.settings,backgroundRevision)});return;}if(data.action==='init'){let lastDate=manifest.months.at(-1)+'-01';const latest=await Promise.all(M.REGIONS.map(region=>load(`data/rental/months/${manifest.months.at(-1)}-${region}.bin`)));for(const shard of latest)for(const row of shard.rows)if(M.iso(row[2])>lastDate)lastDate=M.iso(row[2]);postMessage({id:data.id,meta:{detail:data.settings?.detail?catalog.find(c=>[c.id,c.publicId,c.mapId].includes(data.settings.detail)):null,lastDate,months:manifest.months,coverage:manifest.coverage,historyYears:manifest.historyYears,rates,regions:M.REGIONS,districtsByRegion:Object.fromEntries(M.REGIONS.map(region=>[region,[...new Set(catalog.filter(c=>M.REGIONS[c.r]===region).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))},districtNames,districts:[...new Set(catalog.map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))});return;}
+self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetch();postMessage({id:data.id,cancelled:true});return;}const revision=data.action==='view'?++serial:serial;if(data.action==='prefetch')cancelPrefetch();const backgroundRevision=prefetchSerial;try{if(data.action==='view')beginView(data.settings);await init();if(data.settings?.map){await ensureMapCache();if(data.action==='view'&&revision===serial)beginView(data.settings);}if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}if(data.action==='prefetch'){postMessage({id:data.id,...await prefetch(data.settings,backgroundRevision)});return;}if(data.action==='init'){let lastDate=manifest.months.at(-1)+'-01';const latest=await Promise.all(M.REGIONS.map(region=>load(`data/rental/months/${manifest.months.at(-1)}-${region}.bin`)));for(const shard of latest)for(const row of shard.rows)if(M.iso(row[2])>lastDate)lastDate=M.iso(row[2]);postMessage({id:data.id,meta:{detail:data.settings?.detail?catalog.find(c=>[c.id,c.publicId,c.mapId].includes(data.settings.detail)):null,lastDate,months:manifest.months,coverage:manifest.coverage,historyYears:manifest.historyYears,rates,regions:M.REGIONS,districtsByRegion:Object.fromEntries(M.REGIONS.map(region=>[region,[...new Set(catalog.filter(c=>M.REGIONS[c.r]===region).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))},districtNames,districts:[...new Set(catalog.map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))});return;}
   const s=M.cleanFilters(data.settings),regions=s.region?[s.region]:M.REGIONS;let raw=[];let coverage=[];
   if(s.map){
-    activeMapPaths=new Set(regions.map(region=>`data/rental/months/${s.day.slice(0,7)}-${region}-state.bin`));
-    const shards=await Promise.all(regions.map(region=>{const path=`data/rental/months/${s.day.slice(0,7)}-${region}-state.bin`;return manifest.sources[path]?load(path):null;}));
+    activeMapPaths=new Set(regions.map(region=>mapPath(s.day.slice(0,7),region,s.type)));
+    const shards=await Promise.all(regions.map(region=>{const path=mapPath(s.day.slice(0,7),region,s.type);return (manifest.sources[path]||mapCache?.sources[path])?load(path):null;}));
     if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}
     postMessage({id:data.id,...mapView(shards,regions,s),version:manifest.version});return;
   }

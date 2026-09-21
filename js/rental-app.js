@@ -129,7 +129,7 @@
   form.elements.day.onchange=e=>{if(!e.target.value)return;settings.day=e.target.value.length===7?e.target.value+'-01':e.target.value;settings.limit=50;refresh();};
   $('rental-reset').onclick=()=>{aptSearch.clear({notify:false});for(const k of ['q','district','region','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])settings[k]='';settings.contract='all';settings.kind='all';settings.sort='date';settings.limit=50;refresh();};
  }
- function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-latest-request3');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
+ function request(action,extras={}){if(!worker){worker=new Worker('/js/rental-worker.js?v=20260921-map-cache5');worker.onmessage=({data})=>{const p=pending.get(data.id);if(!p)return;pending.delete(data.id);data.error?p.reject(Error(data.error)):p.resolve(data);};worker.onerror=()=>{for(const p of pending.values())p.reject(Error('전월세 계산을 시작하지 못했습니다. 새로고침해 주세요.'));pending.clear();};}const id=++seq;return new Promise((resolve,reject)=>{pending.set(id,{resolve,reject});worker.postMessage({id,action,...extras});});}
  async function ensure(){if(meta)return;if(ensuring)return ensuring;ensuring=initialize();try{await ensuring;}finally{ensuring=null;}}
  async function initialize(){
   if(settings.detail&&params.has('row')&&!params.has('id')){const response=await fetch('/data/apartments/index.json');if(!response.ok)throw Error('단지 정보를 불러오지 못했습니다.');const index=await response.json();settings.detail=index.legacy?.[params.get('row')]?.[0]||'__unresolved__';}
@@ -138,10 +138,10 @@
  function stop(){playbackGeneration++;if(prefetchKey&&worker)request('cancel-prefetch').catch(()=>{});prefetchKey=null;if($('rental-buffer'))$('rental-buffer').hidden=true;clearTimeout(sliderTimer);playing=false;clearTimeout(timer);$('rental-play').textContent='▶ 재생';$('rental-play').setAttribute('aria-pressed','false');}
  function warmNextMonth(){
   if(!playing||!settings.map||!meta)return;
-  const endMonth=[$('rental-end').value,meta.lastDate.slice(0,7)].sort()[0],key=settings.region+':'+settings.day.slice(0,7)+':'+endMonth;
+  const endMonth=[$('rental-end').value,meta.lastDate.slice(0,7)].sort()[0],key=settings.type+':'+settings.region+':'+settings.day.slice(0,7)+':'+endMonth;
   if(prefetchKey===key)return;prefetchKey=key;
   const buffer=$('rental-buffer');buffer.hidden=settings.day.slice(0,7)>=endMonth;buffer.textContent='다음 달 자료를 미리 준비하는 중…';
-  request('prefetch',{settings:{map:true,day:settings.day,region:settings.region,endMonth}}).then(result=>{
+  request('prefetch',{settings:{map:true,type:settings.type,day:settings.day,region:settings.region,endMonth}}).then(result=>{
    if(!playing||prefetchKey!==key||result.cancelled)return;
    buffer.hidden=!result.prefetched&&!result.failed;buffer.textContent=result.failed?'다음 달 자료는 이동할 때 다시 불러옵니다.':'다음 달 자료 준비 완료';
   }).catch(()=>{if(playing&&prefetchKey===key)buffer.textContent='다음 달 자료는 이동할 때 다시 불러옵니다.';});

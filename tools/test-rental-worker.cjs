@@ -104,9 +104,9 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  // representative while keeping all observations in totals and region counts global.
  const grouped=vm.runInContext(`(()=>{mapStates.clear();catalog[0].admin=['dong'];catalog[1]={id:'rental-only',r:1,g:'종로구',n:'임대단지',coord:[37.51,127],admin:['dong']};
  const row=(ci,area,date,deposit)=>[ci,area,date,deposit,20,1,3,0,null,null,null,null,null,30,0,'2026-07',6,String(date)];
- return mapView([{opening:[row(0,'59',20260829,1000),row(0,'84',20260831,2000),row(1,'59',20260830,3000)],updates:[]}],['11'],{type:'monthly',convert:false,day:'2026-09-01',contract:'all',kind:'all',compactMap:true,bounds:{south:37.499,north:37.501,west:126,east:128}});})()`,context);
+ self.groupedFixture=[{opening:[row(0,'59',20260829,1000),row(0,'84',20260831,2000),row(1,'59',20260830,3000)],updates:[]}];return mapView(self.groupedFixture,['11'],{type:'monthly',convert:false,day:'2026-09-01',contract:'all',kind:'all',compactMap:true,bounds:{south:37.499,north:37.501,west:126,east:128}});})()`,context);
  assert.equal(grouped.count,3);assert.equal(grouped.complexCount,2);assert.equal(grouped.points.length,1);assert.equal(grouped.points[0].deposit,2000);assert.equal(grouped.regionSummaries[0][1].count,2);
- const rentalOnly=await request('view',{...settings,map:true,compactMap:true,day:'2026-09-01',bounds:{south:37.505,north:37.515,west:126,east:128}});
+ const rentalOnly=vm.runInContext("mapView(self.groupedFixture,['11'],{type:'monthly',contract:'all',kind:'all',compactMap:true,day:'2026-09-01',bounds:{south:37.505,north:37.515,west:126,east:128}})",context);
  assert.equal(rentalOnly.points[0].id,'rental-only');assert.equal(rentalOnly.points[0].publicId,undefined,'source ID survives when sale catalog has no public ID');
  vm.runInContext('cache.clear();catalog=null;initializing=null',context);
  const catalogGate=hold('data/rental/catalog.bin'),beforeInit=fetched.filter(p=>p.includes('2026-08')).length;
