@@ -26,7 +26,7 @@ No apartment/area/day Cartesian product is materialized. Files are generated
 only for source months, and dates without changes carry the last state forward.
 
 The shared regional reader verifies SHA-256, persists up to 18 files and retains
-at most nine decoded monthly files. A date change cancels obsolete pending
+at most nine decoded files (monthly or quarterly). A date change cancels obsolete pending
 requests; only the latest request may render. Missing, incompatible or damaged
 bundles fall back to the existing detailed calculation. Custom search, area,
 price, contract and category filters also use that calculation. Province
@@ -47,3 +47,30 @@ Checks: `node --test tools/test-cloudflare-region-cache.mjs`, the rental-worker,
 daily-client and map-model regressions, and `npm run test:site`. The region tests
 cover merged complexes, representative ties, forward/reverse dates, missing
 conversion rates, unmapped points, supported filters and obsolete downloads.
+
+## Quarterly transport (2026-09-22)
+
+The same monthly frames are additionally packaged as
+`YYYY-QN-PROVINCE-TYPE.bin`, with `{schema:1, months:{"YYYY-MM":frame}}`.
+Each month retains its own opening state and daily replacements; no new price
+calculation or averaging is introduced. Partial quarters contain only available
+months. Packing holds one quarter in memory at a time.
+
+The schema-1 index keeps monthly `sources` for old clients and adds
+`quarterSources` with independent SHA-256 digests. New clients prefer quarters,
+reuse them for forward/reverse month changes, and warm the next available
+quarter after the visible frame completes. Pending warm downloads are shared
+with foreground requests; obsolete work is cancelled on context changes.
+Prefetch failures do not delay the visible frame. Old manifests remain supported.
+All generated assets remain covered by the deployment manifest and CI checks.
+
+Zoomed rental apartment data stays monthly. The existing next-month preload also
+runs quietly after manual browsing; repeated requests share pending downloads.
+It remains bounded by the selected end month and available source months.
+
+Measured April-June 2026 monthly-rent regional transport across all three
+provinces: 977,745 bytes per quarter versus 1,003,036 bytes in three monthly
+sets. Once loaded, April/May/June changes require no further regional downloads
+(3 requests per quarter instead of 9). April alone was 335,678 bytes: first-load
+transfer is larger, while subsequent month transitions avoid network waits.
+These are transport measurements, not a claim about phone rendering latency.

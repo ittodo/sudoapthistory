@@ -51,6 +51,7 @@ function request(action,settings){const id=++sequence;return new Promise(resolve
  assert.equal(map.daily,undefined,'map frames do not compute offscreen charts');
  const gate=hold('data/rental/months/2026-10-11-state.bin');
  const warming=request('prefetch',{...settings,map:true,endMonth:'2026-10'});await gate.started;
+ const warmingAgain=request('prefetch',{...settings,map:true,endMonth:'2026-10'});
  const during=await request('view',{...settings,map:true});assert.equal(during.stale,undefined);assert.deepEqual(during.points,map.points,'prefetch preserves the displayed month');
  const downloaded=fetchCount;
  const entering=request('view',{...settings,map:true,day:'2026-10-01'});

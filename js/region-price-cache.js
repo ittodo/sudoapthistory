@@ -16,27 +16,35 @@
     async function index(){
       if(!manifestPromise)manifestPromise=fetch('/'+prefix+'index.json',{cache:'no-cache'}).then(async r=>{if(!r.ok)return null;const m=await r.json();if(m.schema!==1||!m.versions||!m.sources)return null;
         if(Object.entries(m.sources).some(([p,h])=>!/^data\/map\/price-cache\/\d{4}-\d{2}-(41|11|28)-(sale|jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return null;
+        if(m.quarterSources&&Object.entries(m.quarterSources).some(([p,h])=>!/^data\/map\/price-cache\/\d{4}-Q[1-4]-(41|11|28)-(sale|jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return null;
         return manifest=m;}).catch(()=>null);
       return manifestPromise;
+    }
+    function quarter(month){return month.slice(0,4)+'-Q'+Math.ceil(Number(month.slice(5))/3);}
+    function load(path,m,background=false){
+      if(files.has(path))return files.get(path).promise;
+      const entry={controller:new AbortController(),done:false};
+      entry.promise=disk.download(path,m.sources[path]||m.quarterSources?.[path],{signal:entry.controller.signal,background}).then(async bytes=>JSON.parse(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text())).then(value=>{entry.done=true;return value;}).catch(e=>{if(files.get(path)===entry)files.delete(path);throw e;});
+      files.set(path,entry);return entry.promise;
     }
     function cancel(){revision++;for(const [path,e]of files)if(!e.done){e.controller.abort();files.delete(path);}}
     async function get(type,day,regions,versions,converted=false){
       const serial=++revision,m=await index();if(serial!==revision)return null;
       if(!m||Object.entries(versions).some(([k,v])=>m.versions[k]!==v))return null;
-      const paths=regions.map(r=>prefix+day.slice(0,7)+'-'+r+'-'+type+'.bin');
-      if(paths.some(p=>!m.sources[p]))return null;
-      for(const [p,e]of files)if(!paths.includes(p)&&!e.done){e.controller.abort();files.delete(p);}
+      const month=day.slice(0,7),monthly=regions.map(r=>prefix+month+'-'+r+'-'+type+'.bin');
+      if(monthly.some(p=>!m.sources[p]))return null;
+      const paths=regions.map((r,i)=>{const p=prefix+quarter(month)+'-'+r+'-'+type+'.bin';return m.quarterSources?.[p]?p:monthly[i];});
+      const next=new Date(month+'-01T00:00:00Z');next.setUTCMonth(Math.ceil(Number(month.slice(5))/3)*3);
+      const warm=regions.map(r=>prefix+quarter(next.toISOString().slice(0,7))+'-'+r+'-'+type+'.bin').filter(p=>m.quarterSources?.[p]);
+      for(const [p,e]of files)if(!paths.includes(p)&&!warm.includes(p)&&!e.done){e.controller.abort();files.delete(p);}
       try{
-        const loaded=await Promise.all(paths.map(path=>{
-          if(files.has(path))return files.get(path).promise;
-          const entry={controller:new AbortController(),done:false};
-          entry.promise=disk.download(path,m.sources[path],{signal:entry.controller.signal}).then(async bytes=>JSON.parse(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text())).then(value=>{entry.done=true;return value;}).catch(e=>{if(files.get(path)===entry)files.delete(path);throw e;});
-          files.set(path,entry);return entry.promise;
-        }));
+        const loaded=await Promise.all(paths.map(path=>load(path,m)));
         if(serial!==revision)return null;
-        for(const path of [...files.keys()])if(files.size>9&&!paths.includes(path)&&files.get(path).done)files.delete(path);
+        for(const path of [...files.keys()])if(files.size>6&&!paths.includes(path)&&!warm.includes(path)&&files.get(path).done)files.delete(path);
         const result={regionSummaries:[],points:[],count:0,complexCount:0,stats:{count:0,cancelled:0,unlocated:0},regional:true};
-        for(const file of loaded){const f=frame(file,day,converted);result.regionSummaries.push(...f.regionSummaries);result.points.push(...(f.points||[]));result.count+=f.count||0;result.complexCount+=f.complexCount||0;for(const k of Object.keys(result.stats))result.stats[k]+=f.stats?.[k]||0;}
+        for(const file of loaded){const f=frame(file.months?file.months[month]:file,day,converted);result.regionSummaries.push(...f.regionSummaries);result.points.push(...(f.points||[]));result.count+=f.count||0;result.complexCount+=f.complexCount||0;for(const k of Object.keys(result.stats))result.stats[k]+=f.stats?.[k]||0;}
+        // Warm only the next quarter after the visible frame is ready. Failures never delay it.
+        for(const path of warm)load(path,m,true).catch(()=>{});
         return result;
       }catch(e){if(e.name==='AbortError')return null;return null;}
     }

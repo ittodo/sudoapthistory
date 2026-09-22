@@ -4,7 +4,7 @@ import {readFileSync,writeFileSync,mkdtempSync,mkdirSync,rmSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
 import vm from 'node:vm';
-import {gzipSync} from 'node:zlib';
+import {gzipSync,gunzipSync} from 'node:zlib';
 import {createHash,webcrypto} from 'node:crypto';
 import {regionModels,rentalFrames,saleFrames,regionPriceAssets} from './build-region-price-cache.mjs';
 const root=new URL('../',import.meta.url).pathname.replace(/^\/(\w:)/,'$1'),ctx=regionModels(root);
@@ -81,6 +81,44 @@ test('rental worker loads regional bundles without downloading apartment state, 
   assert.equal(seen.some(p=>p.endsWith('-state.bin')),false);assert.equal(seen.some(p=>p==='data/rental/months/2026-09-41.bin'),false);
   const filtered=await request('view',{...settings,areaMin:80});assert.equal(filtered.error,undefined);assert.equal(filtered.regional,undefined);assert.equal(filtered.points.length,1);assert.equal(seen.some(p=>p.endsWith('-state.bin')),true);
 });
+test('quarter reader reuses months backwards and forwards, promotes prefetch and cancels obsolete work',async()=>{
+  const prefix='data/map/price-cache/',sources={},quarterSources={},files={},seen=[];
+  const packed=n=>({schema:1,opening:{regions:[['gu',[1,1,n]]],meta:{complexCount:1}},updates:[]});
+  for(const type of ['sale','jeonse','monthly'])for(const q of [2,3,4]){
+    const months={};for(let n=q*3-2;n<=q*3;n++){const month='2026-'+String(n).padStart(2,'0');months[month]=packed(n);sources[prefix+month+'-41-'+type+'.bin']='a'.repeat(64);}
+    const path=prefix+'2026-Q'+q+'-41-'+type+'.bin';files[path]=gzipSync(JSON.stringify({schema:1,months}));quarterSources[path]=createHash('sha256').update(files[path]).digest('hex');
+  }
+  let release,started,aborted=false;const ready=new Promise(r=>started=r),gate=new Promise(r=>release=r);
+  const c=vm.createContext({Date,Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async(url,{signal}={})=>{
+    if(url.endsWith('index.json'))return Response.json({schema:1,versions:{sale:'v1',rental:'v1'},sources,quarterSources});
+    const path=url.slice(1).split('?')[0];seen.push(path);
+    if(path.includes('Q3-41-sale')){started();await gate;}
+    if(path.includes('Q4-41-sale'))await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{aborted=true;reject(new DOMException('Aborted','AbortError'));},{once:true}));
+    return new Response(files[path]);
+  }});
+  for(const name of ['verified-data-cache','region-price-cache'])vm.runInContext(readFileSync(new URL('../js/'+name+'.js',import.meta.url),'utf8'),c);
+  const client=c.NodoRegionPrices.create();
+  for(const month of ['04','06','05','04']){const value=await client.get('sale','2026-'+month+'-01',['41'],{sale:'v1'});assert.equal(value.regionSummaries[0][1].average,Number(month));}
+  await ready;assert.equal(seen.filter(p=>p.includes('Q2')).length,1);assert.equal(seen.filter(p=>p.includes('Q3')).length,1);
+  const promoted=client.get('sale','2026-07-01',['41'],{sale:'v1'});release();assert.equal((await promoted).regionSummaries[0][1].average,7);
+  assert.equal(seen.filter(p=>p.includes('Q3')).length,1,'foreground shares pending quarter download');
+  const rental=await client.get('monthly','2026-04-01',['41'],{rental:'v1'});assert.equal(rental.regionSummaries[0][1].average,4);assert.equal(aborted,true);
+  client.cancel();assert.equal(await client.get('monthly','2026-04-01',['41'],{rental:'old'}),null);
+});
+
+test('failed quarter prefetch leaves the current frame valid; corrupt foreground bytes are rejected',async()=>{
+  const prefix='data/map/price-cache/',path=prefix+'2026-Q2-41-monthly.bin',next=prefix+'2026-Q3-41-monthly.bin';
+  const bytes=gzipSync(JSON.stringify({schema:1,months:{'2026-04':{opening:{regions:[],meta:{complexCount:4}},updates:[]}}}));
+  let damaged=false;
+  const c=vm.createContext({Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async url=>{
+    if(url.endsWith('index.json'))return Response.json({schema:1,versions:{rental:'v1'},sources:{[prefix+'2026-04-41-monthly.bin']:'a'.repeat(64)},quarterSources:{[path]:createHash('sha256').update(bytes).digest('hex'),[next]:'b'.repeat(64)}});
+    if(url.includes('Q3'))throw Error('offline');return new Response(damaged?'corrupt':bytes);
+  }});
+  for(const name of ['verified-data-cache','region-price-cache'])vm.runInContext(readFileSync(new URL('../js/'+name+'.js',import.meta.url),'utf8'),c);
+  assert.equal((await c.NodoRegionPrices.create().get('monthly','2026-04-01',['41'],{rental:'v1'})).complexCount,4);
+  damaged=true;assert.equal(await c.NodoRegionPrices.create().get('monthly','2026-04-01',['41'],{rental:'v1'}),null);
+});
+
 test('packaging reuses unchanged bundles, repairs damaged outputs and rejects changed inputs',()=>{
   const fixture=mkdtempSync(join(tmpdir(),'region-price-fixture-'));
   try{
@@ -97,7 +135,8 @@ test('packaging reuses unchanged bundles, repairs damaged outputs and rejects ch
     write('data/map/index.json',JSON.stringify({meta:{sourceVersion:'map1'},d:[{id:'a',r:0,admin:['31','gu','dong']}]}));
     write('data/daily/index.json',JSON.stringify({version:'sale1',months:['2026-09'],sources:saleSources}));
     write('data/rental/index.json',JSON.stringify({version:'rent1',months:['2026-09'],sources:rentalSources}));
-    const first=regionPriceAssets(fixture);assert.equal(first.length,10);assert.deepEqual(regionPriceAssets(fixture),first);
+    const first=regionPriceAssets(fixture);assert.equal(first.length,19);assert.deepEqual(regionPriceAssets(fixture),first);
+    for(const asset of first.filter(a=>a.path.includes('-Q3-'))){const bundle=JSON.parse(gunzipSync(readFileSync(asset.source)));assert.deepEqual(Object.keys(bundle.months),['2026-09']);const monthly=first.find(a=>a.path===asset.path.replace('2026-Q3','2026-09'));assert.deepEqual(bundle.months['2026-09'],JSON.parse(gunzipSync(readFileSync(monthly.source))));}
     writeFileSync(first[0].source,'damaged output');assert.deepEqual(regionPriceAssets(fixture),first);
     write('data/daily/0/2026-09-state.bin','changed input');assert.throws(()=>regionPriceAssets(fixture),/input mismatch/);
   }finally{assert.ok(fixture.startsWith(join(tmpdir(),'region-price-fixture-')));rmSync(fixture,{recursive:true,force:true});}

@@ -62,5 +62,16 @@ export function regionPriceAssets(root,{months}={}){
       if(bytes.length>25*1024*1024)throw Error('Region cache asset exceeds limit');sources[path]=hash(bytes);assets.push({path,source:target,sha256:sources[path],size:bytes.length});
     }
   }
-  assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources}))});return assets;
+  // Keep monthly assets for older clients; bundle their verified frames without changing state semantics.
+  const groups=new Map(),quarterSources={};
+  for(const asset of assets){const name=asset.path.slice(prefix.length),month=name.slice(0,7),quarter=month.slice(0,4)+'-Q'+Math.ceil(Number(month.slice(5))/3),path=prefix+quarter+name.slice(7);
+    if(!groups.has(path))groups.set(path,[]);groups.get(path).push([month,asset]);
+  }
+  for(const [path,members]of groups){const frames={};
+    for(const [month,asset]of members){const bytes=readFileSync(asset.source);if(hash(bytes)!==asset.sha256)throw Error('Region month changed during packing: '+asset.path);frames[month]=JSON.parse(gunzipSync(bytes));}
+    const bytes=gzipSync(JSON.stringify({schema:1,months:frames}),{level:6});
+    if(bytes.length>25*1024*1024)throw Error('Region quarter exceeds limit');
+    const target=join(directory,path.slice(prefix.length));writeFileSync(target,bytes);quarterSources[path]=hash(bytes);assets.push({path,source:target,sha256:quarterSources[path],size:bytes.length});
+  }
+  assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources,quarterSources}))});return assets;
 }
