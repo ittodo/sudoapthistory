@@ -53,7 +53,9 @@
     const lo=filters.aL, hi=filters.aH;
     $('areaHint').textContent=lo!=null || hi!=null ? `${lo!=null?(lo/3.3058).toFixed(1):'전체'} ~ ${hi!=null?(hi/3.3058).toFixed(1):'전체'}평` : '㎡ · 평 환산';
   }
+  let regionalSummary=null;
   function refilter(changed=null) {
+    regionalSummary=null;
     if(changed){for(const c of changed){const match=model.match(c,filters);if(match)matches.set(c.id,match);else matches.delete(c.id);}filtered=[...matches.values()];}
     else{filtered=(temporal||payload.d).map(c=>model.match(c,filters)).filter(Boolean);matches=new Map(filtered.map(m=>[m.complex.id,m]));}
     regionView?.setMatches(filtered,filters.r);
@@ -81,7 +83,7 @@
     }
     for(const [id,entry]of apartmentMarkers)if(!wanted.has(id)){markers.removeLayer(entry.marker);apartmentMarkers.delete(id);}
     const unmapped=filtered.filter(m=>(m.complex.admin||[]).length<3).length;
-    $('mapStatus').textContent=`현재 영역 ${visible.toLocaleString()}개 · 조건 일치 ${filtered.length.toLocaleString()}개${located<filtered.length?' · 위치 확인 중 '+(filtered.length-located).toLocaleString()+'개':''}${unmapped?' · 행정동 확인 중 '+unmapped.toLocaleString()+'개':''}`;
+    $('mapStatus').textContent=regionalSummary?'조건 일치 '+regionalSummary.complexCount.toLocaleString()+'개 단지 · 확대하면 단지별 가격 표시':`현재 영역 ${visible.toLocaleString()}개 · 조건 일치 ${filtered.length.toLocaleString()}개${located<filtered.length?' · 위치 확인 중 '+(filtered.length-located).toLocaleString()+'개':''}${unmapped?' · 행정동 확인 중 '+unmapped.toLocaleString()+'개':''}`;
   }
   function cancelNavigation() {
     const before=restoring;restoring=true;
@@ -308,6 +310,7 @@
       $('retryParcels').onclick=()=>parcelView.render(filtered,selected);
       $('retryRegions').onclick=()=>regionView.render();
       if(!timeline)timeline=NodoMapTimeline.create({map,payload,getFilters:()=>{aptSearch?.checkScope();return {...filters,q:aptSearch?.selected?'':$('search').value.trim(),searchIds:aptSearch?.ids};},
+        applyRegional(result){regionalSummary=result;temporal=[];filtered=[];matches.clear();selected=null;selectedArea=null;regionView.setSummaries(result.regionSummaries,filters.r);render();$('mapStatus').textContent='조건 일치 '+result.complexCount.toLocaleString()+'개 단지 · 확대하면 단지별 가격 표시';},
         apply(complexes,changed=null){temporal=complexes;selected=null;selectedArea=null;refilter(changed);if($('search').value)search();},save});
       restore();
       aptSearch=NodoApartmentSearch.bind($('search'),{queryFromURL:()=>new URLSearchParams(location.hash.slice(1)).get('q')||'',scope:()=>({r:filters.r,g:timeline?.active()?document.getElementById('timeDistrict')?.value||'':''}),enabled:()=>!document.body.classList.contains('rental-active'),noticeTarget:$('mapStatus').parentElement,onSelect:async c=>{const id=c.mapIds.find(id=>byId.has(id))||c.keys.find(id=>byId.has(id));if(timeline?.active()){await timeline.refresh();if(aptSearch.selected?.id!==c.id)return;if(id)timeline.select(id);}else if(id&&matches.has(byId.get(id).id)){select(id,null,true,true);}if(c.coord)focusOn(c);aptSearch.reportCount(filtered.filter(m=>aptSearch.matches(m.complex)).length);save();},onClear:()=>{close(false);if(timeline?.active())timeline.refresh();else save();}});

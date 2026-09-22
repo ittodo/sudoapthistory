@@ -12,6 +12,7 @@
     return names;
   }
   function decode(r,catalog){return {ci:r[0],area:Number(r[1]),date:iso(r[2]),deposit:r[3],rent:r[4],contract:r[5],floor:r[6],cancelled:!!r[7],previousDate:r[8]?iso(r[8]):null,previousLow:r[9],previousHigh:r[10],historyLow:r[11],historyHigh:r[12],value:r[13],records:r[14],rateMonth:r[15],rate:r[16],id:r[17],c:catalog[r[0]]};}
+  function depositEquivalent(t){return Number.isFinite(t.rate)&&t.rate>0&&Number.isFinite(t.value)?t.deposit+t.rent*1200/t.rate:null;}
   function metric(t,s){return s.type==='jeonse'?t.deposit:s.convert?t.value:t.rent;}
   function change(t,s){if(t.cancelled||s.type==='monthly'&&!s.convert)return null;const base=t.records&8?t.previousHigh:t.records&4?t.previousLow:null;return base>0?(t.value/base-1)*100:null;}
   function annual(t,s){const rate=change(t,s),base=t.records&8?t.previousHigh:t.previousLow;if(rate==null||!(base>0&&t.value>0))return null;const days=(Date.parse(t.date)-Date.parse(t.previousDate))/86400000;if(days<=0)return null;const n=Math.expm1(Math.log(t.value/base)*365.2425/days)*100;return Number.isFinite(n)?n:null;}
@@ -41,6 +42,6 @@
     s.district=[...new Set(String(s.district||'').split(',').map(n=>n.trim()).filter(n=>n&&(!allowed||allowed.includes(n))))].join(',');
     return s;
   }
-  const api={TYPES,REGIONS,iso,normalizeDistricts,cleanFilters,decode,metric,change,annual,match,category,rateFor,range,months,normalize};root.NodoRental=api;
+  const api={TYPES,REGIONS,iso,normalizeDistricts,cleanFilters,decode,depositEquivalent,metric,change,annual,match,category,rateFor,range,months,normalize};root.NodoRental=api;
   if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

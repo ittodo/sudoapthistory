@@ -9,9 +9,11 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
  let points=[],summaries=[],regionView,regionFailed=false,selected=null,moveFrame,contextKey;const markers=new Map(),complexes=new Map(),tap=NodoMapModel.bindMapTap(map);
  const price=p=>settings.type==='jeonse'?'전세 '+money(p.deposit):settings.convert?'월 환산 '+money(p.value):money(p.deposit)+' / 월 '+money(p.rent);
  const short=v=>Number(v).toLocaleString('ko-KR',{maximumFractionDigits:1});
- const average=v=>v==null?'가격 없음':settings.type==='jeonse'?'평균 '+(v>=10000?short(v/10000)+'억':short(v)+'만'):(settings.convert?'환산 평균 ':'월세 평균 ')+short(v)+'만';
+ const depositMoney=v=>v==null?'미확인':v>=10000?short(v/10000)+'억':short(v)+'만';
+ const average=(v,s)=>v==null?'가격 없음':settings.type==='jeonse'?'평균 '+(v>=10000?short(v/10000)+'억':short(v)+'만'):settings.convert?'월 환산 '+short(v)+'만\n보증금 환산 '+depositMoney(s.depositEquivalentAverage):'보증금 '+depositMoney(s.depositAverage)+'\n월세 '+short(v)+'만';
  function open(p){stop();selected=p;NodoApartmentLinks.open(detailURL(p));draw();}
  function draw(){
+  host.classList.toggle('rental-rent-pair',settings.type==='monthly');
   regionView?.render();const keep=new Set(),bounds=map.getBounds();
   for(const p of points){
    if(!bounds.contains(p.coord)||(map.getZoom()<16&&regionView&&p.admin.length===3))continue;
@@ -33,7 +35,7 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
   for(const c of payload.d){complexes.set(c.id,c);if(c.publicationId&&!complexes.has(c.publicationId))complexes.set(c.publicationId,c);}
   regionView=NodoMapRegions.create({map,payload,client:createVerifiedDataClient('/',payload.meta.sources),tap,formatAverage:average,summaryBasis:'최신 대표 계약값 산술평균',navigate:r=>map.fitBounds(r.bounds,{padding:[40,40],maxZoom:16}),report:s=>{regionFailed=s==='error';status.title=regionFailed?'행정 경계 일부를 불러오지 못했습니다.':'';}});
   regionView.setSummaries(summaries,settings.region?NodoRental.REGIONS.indexOf(settings.region):null);draw();
- }).catch(()=>{regionFailed=true;status.title='행정 경계 없이 단지 가격을 표시합니다.';draw();});
+ }).catch(()=>{regionFailed=true;settings.regionCacheDisabled=true;status.title='행정 경계 없이 단지 가격을 표시합니다.';draw();refresh();});
  new ResizeObserver(()=>map.invalidateSize()).observe(host);
- return {map,redraw:draw,setData(next,totals=[]){const key=[settings.type,settings.convert,settings.day,settings.contract].join(':');if(key!==contextKey){selected=null;contextKey=key;}points=next;summaries=totals;regionView?.setSummaries(totals,settings.region?NodoRental.REGIONS.indexOf(settings.region):null);status.textContent=`현재 영역 ${points.length.toLocaleString()}개 단지 · ${settings.day} · 단지를 누르면 상세`;draw();}};
+ return {map,redraw:draw,setData(next,totals=[]){const key=[settings.type,settings.convert,settings.day,settings.contract].join(':');if(key!==contextKey){selected=null;contextKey=key;}points=next;summaries=totals;regionView?.setSummaries(totals,settings.region?NodoRental.REGIONS.indexOf(settings.region):null);status.textContent=map.getZoom()<16&&totals.length?`지역별 평균 · ${settings.day} · 확대하면 단지별 가격 표시`:`현재 영역 ${points.length.toLocaleString()}개 단지 · ${settings.day} · 단지를 누르면 상세`;draw();}};
 };

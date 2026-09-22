@@ -23,6 +23,12 @@ jobs:
       - run: npm run typecheck && npm run test:api
       - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
+      - name: Reuse verified regional price bundles
+        uses: actions/cache@v4
+        with:
+          path: cloudflare/dist/region-price-cache-v1
+          key: region-prices-${{ runner.os }}-${{ github.sha }}
+          restore-keys: region-prices-${{ runner.os }}-
       - run: npm run build
   deploy:
     needs: checks

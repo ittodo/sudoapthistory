@@ -33,10 +33,12 @@
     }
     return sums.map((sum,i)=>counts[i]?sum/counts[i]/10000:0);
   }
-  function clusterSummary(matches) {
+  function clusterTotals(matches) {
     const prices=matches.filter(m=>!m.area?.excludeAggregate).map(m=>m.area?.latest?.[1]).filter(p=>Number.isFinite(p)&&p>0);
-    return {count:matches.length, pricedCount:prices.length,
-      average:prices.length?prices.reduce((sum,p)=>sum+p,0)/prices.length:null};
+    return {count:matches.length,pricedCount:prices.length,sum:prices.reduce((sum,p)=>sum+p,0)};
+  }
+  function clusterSummary(matches) {
+    const s=clusterTotals(matches);return {count:s.count,pricedCount:s.pricedCount,average:s.pricedCount?s.sum/s.pricedCount:null};
   }
   function regionLevel(zoom) { return zoom < 10 ? 'sido' : zoom < 13 ? 'sigungu' : zoom < 16 ? 'dong' : 'apartment'; }
   function regionClickable(zoom) { return zoom < 17; }
@@ -116,7 +118,35 @@
     }
     return map.containerPointToLatLng([center.x,y]);
   }
-  const api = {labelPosition,latestArea, range, match, trades, combinedTrades, monthlyTrades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
+  function createPriceGroups(catalog,original,M){
+    const client={catalog};let priceSignature='',priceGroups=new Map(),priceAreaOwners=new Map(),complexes=[];
+    function updatePriceGroups(frame,filters){
+      const signature=JSON.stringify(filters),reset=frame.reset||priceSignature!==signature;
+      if(reset){priceGroups=new Map();priceAreaOwners=new Map();priceSignature=signature;}
+      const dirty=new Set(),updated=[];
+      function accept(state){
+        const [ai,date,min,max,mean,count]=state;
+        let key=priceAreaOwners.get(ai);
+        if(key===false)return;
+        if(key==null){
+          const [ci,size]=client.catalog.areas[ai],source=client.catalog.complexes[ci];
+          if(!M.match({a:Number(size),p:mean,c:source},{...filters,pL:null,pH:null})){priceAreaOwners.set(ai,false);return;}
+          const base=original.get(source.id);key=base?.id||source.id;priceAreaOwners.set(ai,key);
+          if(!priceGroups.has(key)){const c={...(base||source),id:key,pnus:base?.pnus||[],areas:[],dailyRows:[],areaMap:new Map()};priceGroups.set(key,c);if(!reset)complexes.push(c);}
+          const c=priceGroups.get(key),area={i:ai,a:Number(size),sourceName:source.n};c.areaMap.set(ai,area);c.areas.push(area);
+        }
+        const c=priceGroups.get(key),a=c.areaMap.get(ai);
+        a.latest=[date,mean,0,0,count];a.min=min;a.max=max;dirty.add(key);
+      }
+      if(reset)for(const values of frame.values)for(const state of values.values())accept(state);
+      else for(const event of frame.changes)accept(event.state);
+      for(const id of dirty){const c=priceGroups.get(id);c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||a.i-b.i);updated.push(c);}
+      if(reset)complexes=[...priceGroups.values()];return {complexes,changed:reset?null:updated};
+    }
+
+    return {update:updatePriceGroups,owner:ai=>priceAreaOwners.get(ai)};
+  }
+  const api = {clusterTotals,createPriceGroups,labelPosition,latestArea, range, match, trades, combinedTrades, monthlyTrades, clusterSummary, regionLevel, regionClickable, regionGroups, createTapGuard, bindMapTap, geometryContains};
   root.NodoMapModel = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(globalThis);

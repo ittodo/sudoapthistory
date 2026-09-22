@@ -10,6 +10,7 @@ import {verifyApartmentSale} from './verify-apartment-sale.mjs';
 import {verifyDailyData} from './verify-daily-data.mjs';
 import {verifyRentalData} from './verify-rental-data.mjs';
 import {searchAssets} from './build-search-data.mjs';
+import {regionPriceAssets} from './build-region-price-cache.mjs';
 import {rentalMapAssets} from './build-rental-map-cache.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -57,7 +58,7 @@ export function build(root, output, sha) {
   if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).sources)){
     if(assets.find(f=>f.path===path)?.sha256!==hash)throw Error('Search source changed during packaging: '+path);
   }
-  assets.push(...generatedSearch,...rentalMapAssets(root));
+  assets.push(...generatedSearch,...rentalMapAssets(root),...regionPriceAssets(root));
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));

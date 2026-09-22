@@ -32,7 +32,7 @@
     }
     function describe(region) {
       const summary = summaries.get(region.id) || {average:null,count:0,pricedCount:0};
-      const average = formatAverage ? formatAverage(summary.average) : summary.average == null ? '가격 없음' : `평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
+      const average = formatAverage ? formatAverage(summary.average,summary) : summary.average == null ? '가격 없음' : `평균 ${(summary.average/10000).toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1})}억`;
       return {summary,average,title:`${region.fullName} · ${average} · ${summary.count.toLocaleString()}개 단지 · 가격이 있는 ${summary.pricedCount.toLocaleString()}개 단지의 ${summaryBasis} · 필터 반영 · 경계 ${meta.year}년 기준 · 짧게 눌러 전체 범위 보기`};
     }
     function fetchShard(path) {

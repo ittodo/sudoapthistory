@@ -1,6 +1,7 @@
 'use strict';
-importScripts('/js/rental-model.js?v=20260920-map-convert1','/js/verified-data-cache.js?v=20260921-shared1');
+importScripts('/js/rental-model.js?v=20260922-regions1','/js/verified-data-cache.js?v=20260921-shared1','/js/rental-map-model.js?v=20260922-regions1','/js/region-price-cache.js?v=20260922-regions1');
 const M=globalThis.NodoRental;
+const regionPrices=globalThis.NodoRegionPrices.create();
 let manifest,catalog,rates,summary,initializing,districtNames;const cache=new Map();let serial=0,prefetchSerial=0;
 let activeMapPaths=new Set();
 let mapCache,mapCacheLoading;
@@ -35,55 +36,14 @@ function beginView(s){
   }
   activeMapPaths=s.map?wanted:new Set();
 }
-const mapStates=new Map();
-function mapRows(region,month,day,shard){
-  let state=mapStates.get(region);
-  const key=row=>row[0]+':'+row[1]+':'+(row[4]>0)+':'+row[5];
-  const decode=row=>shard.schema===2?{ci:row[0],area:Number(row[1]),date:M.iso(row[2]),deposit:row[3],rent:row[4],contract:row[5],value:row[6],records:row[7],rateMonth:row[8],rate:row[9],id:row[10],cancelled:false,c:catalog[row[0]]}:M.decode(row,catalog);
-  if(!state||state.month!==month||state.shard!==shard){
-    state={month,shard,index:0,latest:new Map(),undo:[]};
-    for(const row of shard.opening)state.latest.set(key(row),decode(row));
-    mapStates.set(region,state);
-  }
-  while(state.index>0&&M.iso(shard.updates[state.index-1][2])>day){
-    const [id,previous]=state.undo.pop();state.index--;
-    if(previous)state.latest.set(id,previous);else state.latest.delete(id);
-  }
-  while(state.index<shard.updates.length&&M.iso(shard.updates[state.index][2])<=day){
-    const row=shard.updates[state.index++],id=key(row);state.undo.push([id,state.latest.get(id)]);state.latest.set(id,decode(row));
-  }
-  return state.latest.values();
-}
-function mapView(shards,regions,s){
-  const points=[],complexes=new Map(),stats={count:0,cancelled:0,unlocated:0};let count=0;
-  for(let i=0;i<regions.length;i++){
-    if(!shards[i])continue;
-    for(const t of mapRows(regions[i],s.day.slice(0,7),s.day,shards[i])){
-      if(!M.match(t,s)||t.cancelled)continue;
-      stats.count++;if(!t.c.coord)stats.unlocated++;
-      if(!M.category(t,s))continue;count++;
-      if(t.c.coord){
-        if(s.compactMap){const previous=complexes.get(t.ci);if(!previous||t.date>previous.date||(t.date===previous.date&&t.id>previous.id))complexes.set(t.ci,t);}
-        else points.push(point(t,s));
-      }
-    }
-  }
-  if(!s.compactMap)return {stats,count,points};
-  const summaries=new Map();
-  for(const t of complexes.values()){
-    const value=M.metric(t,s);
-    for(const id of t.c.admin||[]){const a=summaries.get(id)||{count:0,pricedCount:0,sum:0};a.count++;if(Number.isFinite(value)&&value>0){a.pricedCount++;a.sum+=value;}summaries.set(id,a);}
-    const [lat,lng]=t.c.coord,b=s.bounds;
-    if(!b||(lat>=b.south&&lat<=b.north&&lng>=b.west&&lng<=b.east))points.push(point(t,s));
-  }
-  return {stats,count,points,complexCount:complexes.size,regionSummaries:[...summaries].map(([id,a])=>[id,{count:a.count,pricedCount:a.pricedCount,average:a.pricedCount?a.sum/a.pricedCount:null}])};
-}
-function point(t,s){return {ci:t.ci,id:t.c.id,admin:t.c.admin||[],area:t.area,contract:t.contract,date:t.date,coord:t.c.coord,name:t.c.n,publicId:t.c.publicId,deposit:t.deposit,rent:t.rent,value:M.metric(t,s),rate:t.rate,rateMonth:t.rateMonth,records:t.records};}
+let rentalMapModel;
+function mapView(...args){return (rentalMapModel??=globalThis.NodoRentalMapModel.create(catalog)).mapView(...args);}
 function cancelPrefetch(){
   prefetchSerial++;
   for(const [path,entry]of cache)if(entry.background&&!entry.settled){entry.controller.abort();cache.delete(path);}
 }
 async function prefetch(s,revision){
+  if(s?.zoom<16)return {prefetched:0};
   if(revision!==prefetchSerial||!s?.map||!/^\d{4}-\d{2}-\d{2}$/.test(s.day||''))return {prefetched:0};
   const date=new Date(s.day+'T00:00:00Z');date.setUTCDate(1);date.setUTCMonth(date.getUTCMonth()+1);
   const month=date.toISOString().slice(0,7);
@@ -115,9 +75,15 @@ function aggregate(rows,s){
   }
   return {stats:out,daily,districts,rank:[...rank.values()].sort((a,b)=>(b.n?b.sum/b.n:-Infinity)-(a.n?a.sum/a.n:-Infinity)).slice(0,100)};
 }
-self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetch();postMessage({id:data.id,cancelled:true});return;}const revision=data.action==='view'?++serial:serial;if(data.action==='prefetch')cancelPrefetch();const backgroundRevision=prefetchSerial;try{if(data.action==='view')beginView(data.settings);await init();if(data.settings?.map){await ensureMapCache();if(data.action==='view'&&revision===serial)beginView(data.settings);}if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}if(data.action==='prefetch'){postMessage({id:data.id,...await prefetch(data.settings,backgroundRevision)});return;}if(data.action==='init'){let lastDate=manifest.months.at(-1)+'-01';const latest=await Promise.all(M.REGIONS.map(region=>load(`data/rental/months/${manifest.months.at(-1)}-${region}.bin`)));for(const shard of latest)for(const row of shard.rows)if(M.iso(row[2])>lastDate)lastDate=M.iso(row[2]);postMessage({id:data.id,meta:{detail:data.settings?.detail?catalog.find(c=>[c.id,c.publicId,c.mapId].includes(data.settings.detail)):null,lastDate,months:manifest.months,coverage:manifest.coverage,historyYears:manifest.historyYears,rates,regions:M.REGIONS,districtsByRegion:Object.fromEntries(M.REGIONS.map(region=>[region,[...new Set(catalog.filter(c=>M.REGIONS[c.r]===region).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))},districtNames,districts:[...new Set(catalog.map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))});return;}
+self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetch();postMessage({id:data.id,cancelled:true});return;}const revision=data.action==='view'?++serial:serial;if(data.action==='prefetch')cancelPrefetch();const backgroundRevision=prefetchSerial;try{if(data.action==='view'){const s=data.settings;if(!s.map||s.zoom>=16||!globalThis.NodoRegionPrices.eligible(s,s.type))regionPrices.cancel();beginView(s);}await init();if(data.settings?.map){await ensureMapCache();if(data.action==='view'&&revision===serial)beginView(data.settings);}if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}if(data.action==='prefetch'){postMessage({id:data.id,...await prefetch(data.settings,backgroundRevision)});return;}if(data.action==='init'){let lastDate=manifest.months.at(-1)+'-01';const regionIndex=data.settings?.map?await regionPrices.index():null;if(regionIndex?.versions.rental===manifest.version&&regionIndex.rentalMaxDate)lastDate=regionIndex.rentalMaxDate;else {const latest=await Promise.all(M.REGIONS.map(region=>load(`data/rental/months/${manifest.months.at(-1)}-${region}.bin`)));for(const shard of latest)for(const row of shard.rows)if(M.iso(row[2])>lastDate)lastDate=M.iso(row[2]);}postMessage({id:data.id,meta:{detail:data.settings?.detail?catalog.find(c=>[c.id,c.publicId,c.mapId].includes(data.settings.detail)):null,lastDate,months:manifest.months,coverage:manifest.coverage,historyYears:manifest.historyYears,rates,regions:M.REGIONS,districtsByRegion:Object.fromEntries(M.REGIONS.map(region=>[region,[...new Set(catalog.filter(c=>M.REGIONS[c.r]===region).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))},districtNames,districts:[...new Set(catalog.map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))});return;}
   const s=M.cleanFilters(data.settings),regions=s.region?[s.region]:M.REGIONS;let raw=[];let coverage=[];
   if(s.map){
+    if(s.zoom<16&&!s.regionCacheDisabled&&globalThis.NodoRegionPrices.eligible(s,s.type)){
+      cancelPrefetch();for(const [p,e]of cache)if(isMapFile(p)&&!e.settled){e.controller.abort();cache.delete(p);}
+      const result=await regionPrices.get(s.type,s.day,regions,{rental:manifest.version},s.convert);
+      if(revision!==serial){postMessage({id:data.id,stale:true});return;}
+      if(result){const b=s.bounds;result.points=result.points.filter(p=>!b||(p.coord[0]>=b.south&&p.coord[0]<=b.north&&p.coord[1]>=b.west&&p.coord[1]<=b.east));postMessage({id:data.id,...result,version:manifest.version});return;}
+    }
     activeMapPaths=new Set(regions.map(region=>mapPath(s.day.slice(0,7),region,s.type)));
     const shards=await Promise.all(regions.map(region=>{const path=mapPath(s.day.slice(0,7),region,s.type);return (manifest.sources[path]||mapCache?.sources[path])?load(path):null;}));
     if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}

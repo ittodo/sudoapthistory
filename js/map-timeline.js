@@ -5,7 +5,7 @@
   const money=n=>(n/10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
   const spread=(lo,hi)=>lo===hi?money(lo):money(lo)+'~'+money(hi);
   const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date());
-  function create({map,payload,getFilters,apply,save}){
+  function create({map,payload,getFilters,apply,applyRegional,save}){
     const el=document.createElement('section');el.className='timeline';el.setAttribute('aria-label','지도 날짜 선택과 재생');
     const monthPicker=(id,label)=>`<span class="timeline-month-picker" id="${id}Picker"><span>${label}</span><select id="${id}Year" aria-label="${label} 연도" disabled></select><select id="${id}Month" aria-label="${label} 월" disabled></select><input type="hidden" id="${id}"></span>`;
     el.innerHTML=`<div class="timeline-top"><div class="timeline-controls"><strong class="timeline-title">시간으로 보는 거래</strong><select id="timeMode" aria-label="지도 보기"><option value="current">현재 지도</option><option value="price">날짜별 가격</option></select>${monthPicker('timeDate','조회 월')}<span id="timeViewingMonth" class="timeline-viewing-month" hidden></span><button id="timeToday">현재 날짜</button><span id="timeExactDate" class="timeline-effects-note"></span><select id="timeKind" aria-label="거래 분류"><option value="all">전체 거래</option><option value="high">신고가</option><option value="up">직전 대비 상승</option><option value="down">직전 대비 하락</option><option value="low">신저가</option></select><select id="timeDistrict" aria-label="시군구"><option value="">전체 시·군·구</option></select></div><a class="daily-link" id="timeList" href="/trades/daily/">일별 거래 목록 ↗</a></div><div id="timeControls" class="timeline-controls" hidden>${monthPicker('timeStart','시작')}${monthPicker('timeEnd','종료')}<button id="timePrev" aria-label="이전 시점">←</button><button id="timePlay" aria-label="시간 재생" aria-pressed="false">▶ 재생</button><button id="timeNext" aria-label="다음 시점">→</button><select id="timeStep" aria-label="재생 간격"><option value="day">하루씩</option><option value="week">일주일씩</option><option value="month">한 달씩</option></select><select id="timeSpeed" aria-label="재생 속도"><option value="1">1배</option><option value="2">2배</option><option value="4">4배</option></select><label><input id="timeEffects" type="checkbox" checked>거래 효과</label><input id="timeSlider" type="range" aria-label="선택 계약일" min="0" max="29" value="29"></div><p class="timeline-effects-note" id="timeEffectLegend" hidden>거래 발생 지점 · 빨강 상승 / 파랑 하락 / 초록 첫 거래·보합·혼합 · 직전 계약일 평균 대비</p><p class="timeline-status" id="timeStatus">날짜를 선택해 과거 거래를 확인하세요.</p><button id="timeRetry" hidden>다시 시도</button>`;
@@ -21,8 +21,10 @@
     }
     function applyPreference(p){day=p.get('date')||'';start=p.get('start')||'';end=p.get('end')||'';district=M.filters(p).g||'';step=['week','month'].includes(p.get('step'))?p.get('step'):'day';speed=[1,2,4].includes(Number(p.get('speed')))?Number(p.get('speed')):1;$('timeEffects').checked=p.get('fx')!=='0';}
     const original=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])]));
-    const effects=NodoMapEffects.create(map);
-    let renderedMode='current',renderedDay='',priceSignature='',priceGroups=new Map(),priceAreaOwners=new Map(),districtRegion;
+    const effects=NodoMapEffects.create(map),regionPrices=globalThis.NodoRegionPrices.create();
+    let regionalFrame=false;
+    map.on('zoomend',()=>{if(mode==='price'&&regionalFrame!==(map.getZoom()<16))refresh();});
+    let renderedMode='current',renderedDay='',priceAreaOwners=new Map(),districtRegion;
     function stop(){playing=false;clearTimeout(timer);timer=null;$('timePlay').textContent='▶ 재생';$('timePlay').setAttribute('aria-pressed','false');}
     async function ensure(){if(!clientPromise)clientPromise=NodoDailyClient.create().catch(e=>{clientPromise=null;throw e;});client=await clientPromise;if(client.index.mapVersion!==payload.meta.sourceVersion)throw Error('지도와 일별 데이터가 업데이트 중입니다. 새로고침해 주세요.');return client;}
     function settings(){return {...getFilters(),...(district?{g:district}:{})};}
@@ -52,28 +54,10 @@
       document.querySelector('.legend').innerHTML=mode==='current'?'<span></span>최근 실거래 <small>지역별 단지 평균 · 매매</small>':`<span></span>${esc(day)} ${mode==='day'?'당일 거래':'날짜별 가격'} <small>지역: 대표면적 평균 · 직거래 제외</small>`;
       document.querySelector('.legend').title=mode==='current'?'필터에 맞는 단지별 최신 실거래의 산술평균':'선택 시점의 단지 대표면적별 평균가격을 지역 단위로 집계합니다. 직거래는 제외합니다.';
     }
+    let priceGrouping;
     function updatePriceGroups(frame,filters){
-      const signature=JSON.stringify(filters),reset=frame.reset||priceSignature!==signature||renderedMode!=='price';
-      if(reset){priceGroups=new Map();priceAreaOwners=new Map();priceSignature=signature;}
-      const dirty=new Set(),updated=[];
-      function accept(state){
-        const [ai,date,min,max,mean,count]=state;
-        let key=priceAreaOwners.get(ai);
-        if(key===false)return;
-        if(key==null){
-          const [ci,size]=client.catalog.areas[ai],source=client.catalog.complexes[ci];
-          if(!M.match({a:Number(size),p:mean,c:source},{...filters,pL:null,pH:null})){priceAreaOwners.set(ai,false);return;}
-          const base=original.get(source.id);key=base?.id||source.id;priceAreaOwners.set(ai,key);
-          if(!priceGroups.has(key)){const c={...(base||source),id:key,pnus:base?.pnus||[],areas:[],dailyRows:[],areaMap:new Map()};priceGroups.set(key,c);if(!reset)complexes.push(c);}
-          const c=priceGroups.get(key),area={i:ai,a:Number(size),sourceName:source.n};c.areaMap.set(ai,area);c.areas.push(area);
-        }
-        const c=priceGroups.get(key),a=c.areaMap.get(ai);
-        a.latest=[date,mean,0,0,count];a.min=min;a.max=max;dirty.add(key);
-      }
-      if(reset)for(const values of frame.values)for(const state of values.values())accept(state);
-      else for(const event of frame.changes)accept(event.state);
-      for(const id of dirty){const c=priceGroups.get(id);c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||a.i-b.i);updated.push(c);}
-      return {complexes:reset?[...priceGroups.values()]:complexes,changed:reset?null:updated};
+      if(!priceGrouping||renderedMode!=='price')priceGrouping=NodoMapModel.createPriceGroups(client.catalog,original,M);
+      const result=priceGrouping.update(frame,filters);priceAreaOwners={get:ai=>priceGrouping.owner(ai)};return result;
     }
     function buildComplexes(entries){
       const groups=new Map();
@@ -99,8 +83,9 @@
     async function refresh({keepPlaying=false}={}){
       if(!keepPlaying)stop();const serial=++request;loading=true;el.setAttribute('aria-busy','true');selectedId=null;map.closePopup();effects.clear();$('timeRetry').hidden=true;
       if(mode==='current'){
+        regionPrices.cancel();regionalFrame=false;
         client?.cancelPrices();
-        loading=false;el.setAttribute('aria-busy','false');complexes=[];renderedMode='current';priceGroups.clear();priceAreaOwners.clear();document.body.classList.remove('timeline-loading');apply(null);sync();save();
+        loading=false;el.setAttribute('aria-busy','false');complexes=[];renderedMode='current';priceAreaOwners=new Map();priceGrouping=null;document.body.classList.remove('timeline-loading');apply(null);sync();save();
         $('timeStatus').textContent='현재 지도 · 조회 월을 고르면 해당 월말 가격으로 이동합니다.';
         try{await ensure();if(serial!==request)return false;sync();$('timeStatus').textContent='오늘 '+today()+' 기준 현재 지도 · 거래 자료는 '+client.index.maxDate+'까지 · 조회 월 선택 시 해당 월말 가격으로 이동합니다.';}
         catch(e){if(serial!==request)return false;$('timeStatus').textContent=e.message;$('timeRetry').hidden=false;}
@@ -119,6 +104,30 @@
         if(start>end){start=day;end=day;}if(day<start)start=day;if(day>end)end=day;
         sync();currentFilters=settings();
         let entries,status,priceFrame,fromDate=keepPlaying&&renderedMode==='price'&&renderedDay<day?renderedDay:null;
+        if(mode==='price'&&!pendingFocus&&map.getZoom()<16&&NodoRegionPrices.eligible(currentFilters,'sale')){
+          const regions=currentFilters.r==null?['41','11','28']:[['41','11','28'][currentFilters.r]];
+          const cached=await regionPrices.get('sale',day,regions,{sale:client.index.version,map:payload.meta.sourceVersion});
+          if(serial!==request)return false;
+          if(cached){
+            regionalFrame=true;priceGrouping=null;applyRegional(cached);
+            loading=false;el.setAttribute('aria-busy','false');document.body.classList.remove('timeline-loading');
+            renderedMode=mode;renderedDay=day;sync();save();
+            $('timeStatus').textContent=day+'까지의 마지막 거래 · 지역별 대표가격 · '+cached.complexCount.toLocaleString()+'개 단지 · 현재 유효 이력으로 재구성';
+            // Effects use the existing state loader, independently of the regional frame.
+            if(!$('timeEffects').checked)client.cancelPrices();
+            if($('timeEffects').checked)client.priceFrame(day,currentFilters,fromDate).then(frame=>{
+              if(serial!==request||!$('timeEffects').checked)return;
+              const pulses=[];for(const event of frame.events){const [ai,date,,,mean,count]=event.state;if(!fromDate&&date!==M.number(day))continue;
+                const source=client.catalog.complexes[client.catalog.areas[ai][0]],c=original.get(source.id)||source;
+                if(c.coord)pulses.push({coord:c.coord,count,direction:event.previous?Math.sign(mean-event.previous[4]):0});
+              }effects.burst(pulses);
+            }).catch(()=>{});
+            return true;
+          }
+        }
+        regionPrices.cancel();
+        if(regionalFrame){priceGrouping=null;regionalFrame=false;}
+
         if(mode==='day'){
           const all=await client.trades(day.slice(0,7),currentFilters);if(serial!==request)return false;
           const rows=all.filter(t=>t.d===M.number(day)&&M.match(t,currentFilters)&&M.category(t,kind));
