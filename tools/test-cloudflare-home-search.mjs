@@ -5,6 +5,10 @@ import {gzipSync,gunzipSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 const ctx=vm.createContext({});vm.runInContext(readFileSync(new URL('../js/home-search-model.js',import.meta.url),'utf8'),ctx);const M=ctx.NodoHomeSearchModel;
 const entity=(id,rows=[],rentalIds=[])=>({id,name:id,r:0,g:'수지구',d:'풍덕천동',rows,rentalIds,saleIds:[],addresses:[]});
+test('legacy investment sort in a rental URL cannot sort rental results by sale metrics',()=>{
+ for(const type of ['jeonse','monthly'])for(const key of ['c','m','s','ret','v'])assert.equal(M.sortKey(type,key),'ld');
+ assert.equal(M.sortKey('sale','c'),'c');assert.equal(M.sortKey('monthly','lp'),'lp');assert.equal(M.sortKey('jeonse','ls'),'ls');
+});
 test('shared roster keeps IDs and sale metrics, adds rental-only areas and leaves missing prices null',()=>{
  const sale=[{i:7,as:'s',n:'a',a:59,r:0,g:'수지구',lp:4,c:5,si:[7]}],catalog=[entity('public',[7],['r']),entity('rental:r2',[],['r2']),entity('meta')];
  const prices=[{id:'public',area:59,type:'jeonse',deposit:30000,date:'2026-09-01',transactionId:'1'},{id:'public',area:84,type:'monthly',rent:50,date:'2026-08-01',transactionId:'2'},{id:'rental:r2',area:49,type:'monthly',rent:20,date:'2026-09-02',transactionId:'3'}];

@@ -1961,6 +1961,7 @@ function af(){
 }
 
 function ds(){
+  sc=window.NodoHomeSearchView?.sortKey(sc)??sc;
   F.sort((a,b)=>{
     const home=window.NodoHomeSearchView;
     const aMissing=home?.rental()?home.date(a)==='—':a.lp==null,bMissing=home?.rental()?home.date(b)==='—':b.lp==null;

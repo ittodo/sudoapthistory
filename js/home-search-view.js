@@ -7,7 +7,7 @@
   function readType(){let saved;try{saved=JSON.parse(localStorage.getItem('nodo:rental:preferences:v1')||'{}').tenure;}catch{}return valid(new URLSearchParams(location.search).get('tenure')??saved);}
   function readStates(){try{const raw=new URLSearchParams(location.search).get('homePrices')||localStorage.getItem('nodo:home-prices:v1')||'{}',v=JSON.parse(raw);states={};for(const t of ['sale','jeonse','monthly'])if(v[t])states[t]={pL:String(v[t].pL||''),pH:String(v[t].pH||''),sc:['n','g','d','a','lp','ld','v','u','ls','c','m','s','ret'].includes(v[t].sc)?v[t].sc:'ld',sa:v[t].sa===true};}catch{states={};}}
   function remember(){if(!ready||restoring)return;states[type]={pL:gv('pL'),pH:gv('pH'),sc,sa};try{localStorage.setItem('nodo:home-prices:v1',JSON.stringify(states));}catch{}const u=new URL(location.href);u.searchParams.set('tenure',type);u.searchParams.set('homePrices',JSON.stringify(states));history.replaceState(history.state,'',u);}
-  function useState(){const s=states[type]||{pL:'',pH:'',sc:'ld',sa:false};document.getElementById('pL').value=s.pL;document.getElementById('pH').value=s.pH;sc=rental()&&!['n','g','d','a','lp','ld','u'].includes(s.sc)?'ld':s.sc;sa=s.sa;}
+  function useState(){const s=states[type]||{pL:'',pH:'',sc:'ld',sa:false};document.getElementById('pL').value=s.pL;document.getElementById('pH').value=s.pH;sc=NodoHomeSearchModel.sortKey(type,s.sc);sa=s.sa;}
   function sync(){
     document.body.dataset.homeTenure=type;
     document.querySelectorAll('#nodo-tenure button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tenure===type)));
@@ -34,5 +34,5 @@
   function sortValue(x,key){if(!rental())return x[key];const t=record(x);return key==='lp'?price(x):key==='ld'?(t?Number(t.date.replaceAll('-','')):null):x[key];}
   function selection(x){const t=rental()?record(x):null;return {id:x._detailId||x._homeId||x.as,row:x._synthetic?null:x.i,area:x._merged?null:x.a,tab:rental()?'rent':'overview',tenure:type,rentType:rental()?type:undefined,rentArea:rental()&&!x._merged&&x.a!=null?'group:'+Math.round(x.a):undefined,rentPeriod:t?.date.slice(0,4)};}
   function decorate(){if(!ready)return;sync();if(rental()){const cards=document.querySelectorAll('#mobileCards .m-card');cards.forEach((c,i)=>{const t=record(F[(cp-1)*ps+i]);c.querySelector('.m-card-metrics').textContent=t?'최근 계약 '+t.date:'거래 없음';});}}
-  window.NodoHomeSearchView={loadIndex,install,rental,price,priceText,sortValue,selection,decorate,remember,initialState:useState,date:x=>rental()?(record(x)?.date||'—'):null};
+  window.NodoHomeSearchView={loadIndex,install,rental,price,priceText,sortValue,sortKey:key=>NodoHomeSearchModel.sortKey(type,key),selection,decorate,remember,initialState:useState,date:x=>rental()?(record(x)?.date||'—'):null};
 })();
