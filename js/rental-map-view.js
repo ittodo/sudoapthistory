@@ -12,6 +12,14 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
  const depositMoney=v=>v==null?'미확인':v>=10000?short(v/10000)+'억':short(v)+'만';
  const average=(v,s)=>v==null?'가격 없음':settings.type==='jeonse'?'평균 '+(v>=10000?short(v/10000)+'억':short(v)+'만'):settings.convert?'월 환산 '+short(v)+'만\n보증금 환산 '+depositMoney(s.depositEquivalentAverage):'보증금 '+depositMoney(s.depositAverage)+'\n월세 '+short(v)+'만';
  function open(p){stop();selected=p;NodoApartmentLinks.open(detailURL(p));draw();}
+ function beginView(){
+  const key=JSON.stringify(Object.fromEntries(Object.entries(settings).filter(([name])=>!['bounds','zoom','limit','regionCacheDisabled'].includes(name))));
+  if(key===contextKey)return false;
+  contextKey=key;selected=null;points=[];summaries=[];map.closePopup();
+  regionView?.setSummaries([],settings.region?NodoRental.REGIONS.indexOf(settings.region):null);
+  status.textContent=settings.type==='sale'?'':`${settings.type==='monthly'?'월세':'전세'} · ${settings.day} · 자료를 불러오는 중…`;
+  draw();return true;
+ }
  function draw(){
   host.classList.toggle('rental-rent-pair',settings.type==='monthly');
   regionView?.render();const keep=new Set(),bounds=map.getBounds();
@@ -37,5 +45,5 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
   regionView.setSummaries(summaries,settings.region?NodoRental.REGIONS.indexOf(settings.region):null);draw();
  }).catch(()=>{regionFailed=true;settings.regionCacheDisabled=true;status.title='행정 경계 없이 단지 가격을 표시합니다.';draw();refresh();});
  new ResizeObserver(()=>map.invalidateSize()).observe(host);
- return {map,redraw:draw,setData(next,totals=[]){const key=[settings.type,settings.convert,settings.day,settings.contract].join(':');if(key!==contextKey){selected=null;contextKey=key;}points=next;summaries=totals;regionView?.setSummaries(totals,settings.region?NodoRental.REGIONS.indexOf(settings.region):null);status.textContent=map.getZoom()<16&&totals.length?`지역별 평균 · ${settings.day} · 확대하면 단지별 가격 표시`:`현재 영역 ${points.length.toLocaleString()}개 단지 · ${settings.day} · 단지를 누르면 상세`;draw();}};
+ return {map,beginView,redraw:draw,setData(next,totals=[]){beginView();points=next;summaries=totals;regionView?.setSummaries(totals,settings.region?NodoRental.REGIONS.indexOf(settings.region):null);status.textContent=map.getZoom()<16&&totals.length?`지역별 평균 · ${settings.day} · 확대하면 단지별 가격 표시`:`현재 영역 ${points.length.toLocaleString()}개 단지 · ${settings.day} · 단지를 누르면 상세`;draw();}};
 };

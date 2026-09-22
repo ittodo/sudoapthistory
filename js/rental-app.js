@@ -149,14 +149,15 @@
  }
  async function refresh(){const id=++frame;try{
   aptSearch.checkScope();settings.searchIds=aptSearch.ids;
+  if(settings.map&&mapView?.beginView())renderedMapLabel=null;
   sync();if(settings.type==='sale'){stop();return;}
   root.setAttribute('aria-busy','true');$('rental-status').textContent='전월세 자료를 불러오는 중…'+(settings.map&&renderedMapLabel?' · 지도는 '+renderedMapLabel+' 기준':'');$('rental-retry').hidden=true;
-  await Promise.all([ensure(),settings.map&&!map?renderMap([]):Promise.resolve()]);if(id!==frame)return;
+  await Promise.all([ensure(),settings.map&&!map?renderMap([],[],id):Promise.resolve()]);if(id!==frame)return;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(settings.day))settings.day=meta.lastDate;
   settings.day=[meta.months[0]+'-01',settings.day,meta.lastDate].sort()[1];sync();rateText();
   if(settings.map&&map){const b=map.getBounds().pad(.12);settings.zoom=map.getZoom();settings.bounds={south:b.getSouth(),north:b.getNorth(),west:b.getWest(),east:b.getEast()};}
   const result=await request('view',{settings});if(id!==frame||result.stale)return;
-  if(settings.map){await renderMap(result.points,result.regionSummaries);renderedMapLabel=typeName()+' '+settings.day;syncSlider();}else render(result);
+  if(settings.map){await renderMap(result.points,result.regionSummaries,id);if(id!==frame)return;renderedMapLabel=typeName()+' '+settings.day;syncSlider();}else render(result);
   if(id!==frame)return;
   $('rental-status').textContent='자료 확인 완료 · '+(settings.map?settings.day+'까지의 마지막 거래 · '+result.count.toLocaleString()+'건 · 위치 미확인 '+result.stats.unlocated.toLocaleString()+'건':settings.detail?settings.year+'년':M.range(settings.day,settings.period).from+' ~ '+M.range(settings.day,settings.period).to);
   aptSearch.reportCount(result.count);persist();warmNextMonth();
@@ -202,8 +203,9 @@
  }
  function table(headers,rows){return '<div class="rental-table"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
  async function script(src){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('지도를 불러오지 못했습니다.'));document.head.append(s);});}
- async function renderMap(next,summaries=[]){
-  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260922-regions1');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
+ async function renderMap(next,summaries=[],id=frame){
+  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260922-reset1');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
+  if(id!==frame)return;
   mapView.setData(next,summaries);
  }
  function drawMap(){mapView?.redraw();}
