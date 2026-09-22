@@ -13,7 +13,9 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
  const average=(v,s)=>v==null?'가격 없음':settings.type==='jeonse'?'평균 '+(v>=10000?short(v/10000)+'억':short(v)+'만'):settings.convert?'월 환산 '+short(v)+'만\n보증금 환산 '+depositMoney(s.depositEquivalentAverage):'보증금 '+depositMoney(s.depositAverage)+'\n월세 '+short(v)+'만';
  function open(p){stop();selected=p;NodoApartmentLinks.open(detailURL(p));draw();}
  function beginView(){
-  const key=JSON.stringify(Object.fromEntries(Object.entries(settings).filter(([name])=>!['bounds','zoom','limit','regionCacheDisabled'].includes(name))));
+  // Like the sale timeline, retain the last completed frame while the next date loads.
+  // Tenure, conversion and filter changes still clear incompatible prices immediately.
+  const key=JSON.stringify(Object.fromEntries(Object.entries(settings).filter(([name])=>!['day','bounds','zoom','limit','regionCacheDisabled'].includes(name))));
   if(key===contextKey)return false;
   contextKey=key;selected=null;points=[];summaries=[];map.closePopup();
   regionView?.setSummaries([],settings.region?NodoRental.REGIONS.indexOf(settings.region):null);
@@ -29,7 +31,8 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
    const key=p.id;keep.add(key);let entry=markers.get(key);
    const html=`<div class="apt-label ${selected?.id===p.id?'selected':''}"><b>${esc(price(p))}</b><small>${esc(p.name)} · ${p.area}㎡</small></div>`;
    if(!entry){const marker=L.marker(anchor,{icon:L.divIcon({className:'apt-marker rental-price-marker',html,iconSize:[140,48],iconAnchor:[70,24]}),title:p.name+' · '+price(p)}).addTo(map);entry={marker,html,point:p};markers.set(key,entry);marker.on('click',()=>open(entry.point));}
-   else if(entry.html!==html){entry.marker.setIcon(L.divIcon({className:'apt-marker rental-price-marker',html,iconSize:[140,48],iconAnchor:[70,24]}));entry.html=html;}
+   else if(entry.html!==html){entry.marker.getElement().innerHTML=html;entry.html=html;}
+   entry.marker.getElement().title=p.name+' · '+price(p);
    entry.marker.setLatLng(anchor);entry.point=p;
   }
   for(const [key,entry]of markers)if(!keep.has(key)){map.removeLayer(entry.marker);markers.delete(key);}

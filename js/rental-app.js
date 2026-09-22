@@ -204,7 +204,7 @@
  function table(headers,rows){return '<div class="rental-table"><table><thead><tr>'+headers.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(v=>'<td>'+esc(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';}
  async function script(src){await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(Error('지도를 불러오지 못했습니다.'));document.head.append(s);});}
  async function renderMap(next,summaries=[],id=frame){
-  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260922-reset1');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
+  if(!mapView){if(!mapCreating)mapCreating=(async()=>{if(!window.L)await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/rental-map-view.js?v=20260922-frame2');mapView=NodoRentalMapView({settings,refresh,stop,request,detailURL,esc,money});map=mapView.map;})().finally(()=>{mapCreating=null;});await mapCreating;}
   if(id!==frame)return;
   mapView.setData(next,summaries);
  }
