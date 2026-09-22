@@ -62,7 +62,7 @@ function entryPyeongPrice(x){
   }
   return priceEokToPyeongMan(x.lp,x.a);
 }
-function displayPriceValue(x){ return priceMetricMode==='pyeong'?entryPyeongPrice(x):(x?x.lp:null); }
+function displayPriceValue(x){ if(window.NodoHomeSearchView?.rental())return NodoHomeSearchView.price(x);return priceMetricMode==='pyeong'?entryPyeongPrice(x):(x?x.lp:null); }
 function fmtDisplayPrice(v){
   return priceMetricMode==='pyeong'?fmtPyeongPrice(v):fmtPrice(v);
 }
@@ -1617,6 +1617,7 @@ async function loadAptIndex(){
   const assetVersion=(typeof window!=='undefined'&&window.APT_ASSET_VERSION)||'20260822-redevelopment-v1';
   const importSuffix='?v='+encodeURIComponent(assetVersion);
   const lifecyclePromise=loadLifecycleData(base,assetVersion);
+  if(window.NodoHomeSearchView){const loaded=await NodoHomeSearchView.loadIndex();loaded.lifecycle=await lifecyclePromise;return loaded;}
   if(!window.DISABLE_POLYGEN_INDEX){
     const jsBase=new URL(base+'js/', window.location.href).href;
     try{
@@ -1672,6 +1673,7 @@ async function init(){
 
   const j=await loadAptIndex();
   applyIndexPayload(j);
+  if(window.NodoHomeSearchView)await NodoHomeSearchView.install();
 
   updateLifecycleCounts();
   document.getElementById('yearRange').textContent=Y[0]+'-'+Y[Y.length-1];
@@ -1680,6 +1682,7 @@ async function init(){
   buildMerged();
   syncPriceMetricButtons();
 
+  if(window.NodoHomeSearchView)NodoHomeSearchView.initialState();
   if(!loadHash()) af();
   await bindHomeSearch();
 
@@ -1786,6 +1789,7 @@ function buildMerged(){
     const mpp=wavg('pp');
     DM.push({
       _merged:true,
+      _homeId:rep._homeId,_detailId:rep._detailId,_rents:rep._rents,
       i:rep.i, // 대표 인덱스
       n:rep.n, r:rep.r, g:rep.g, d:rep.d, b:rep.b,
       a:aMin===aMax?aMin:(aMin+'~'+aMax),
@@ -1929,6 +1933,7 @@ function af(){
   const aL=gn('aL'),aH=gn('aH'),cL=gn('cL'),cH=gn('cH'),mL=gn('mL'),mH=gn('mH'),pL=gn('pL'),pH2=gn('pH'),sL=gn('sL'),sH=gn('sH'),uL=gn('uL'),uH=gn('uH'),bL=gn('bL'),bH=gn('bH');
 
   const src=lifecycleSource(merged?DM:D);
+  const rentalSearch=window.NodoHomeSearchView?.rental();
   F=src.filter(x=>{
     if(selGus.length>0){if(!selGus.includes(x.g))return false;}
     else if(fR!==''&&x.r!==parseInt(fR))return false;
@@ -1936,15 +1941,15 @@ function af(){
     if(homeAptSearch?.selected&&!homeAptSearch.matches(x))return false;
     if(!homeAptSearch?.selected&&fS&&!x.n.toLowerCase().includes(fS)&&!x.g.toLowerCase().includes(fS)&&!(x.d||'').toLowerCase().includes(fS)&&!(x.j||'').toLowerCase().includes(fS)&&!(x.rd||'').toLowerCase().includes(fS)&&!fmtArea(x.a).includes(fS))return false;
     if(aL!==null||aH!==null){const ap=typeof x.a==='number'?x.a/3.3058:(()=>{const m=String(x.a).match(/^([\d.]+)~([\d.]+)$/);return m?[parseFloat(m[1])/3.3058,parseFloat(m[2])/3.3058]:null})();if(ap===null)return false;if(typeof ap==='number'){if(aL!==null&&ap<aL)return false;if(aH!==null&&ap>aH)return false;}else{if(aL!==null&&ap[1]<aL)return false;if(aH!==null&&ap[0]>aH)return false;}}
-    if(cL!==null&&(x.c===null||x.c<cL))return false;
-    if(cH!==null&&(x.c===null||x.c>cH))return false;
-    if(mL!==null&&x.m<mL)return false;
-    if(mH!==null&&x.m>mH)return false;
+    if(!rentalSearch&&cL!==null&&(x.c===null||x.c<cL))return false;
+    if(!rentalSearch&&cH!==null&&(x.c===null||x.c>cH))return false;
+    if(!rentalSearch&&mL!==null&&x.m<mL)return false;
+    if(!rentalSearch&&mH!==null&&x.m>mH)return false;
     const priceForFilter=displayPriceValue(x);
     if(pL!==null&&(priceForFilter===null||priceForFilter===0||priceForFilter<pL))return false;
     if(pH2!==null&&(priceForFilter===null||priceForFilter===0||priceForFilter>pH2))return false;
-    if(sL!==null&&(x.s===null||x.s<sL))return false;
-    if(sH!==null&&(x.s===null||x.s>sH))return false;
+    if(!rentalSearch&&sL!==null&&(x.s===null||x.s<sL))return false;
+    if(!rentalSearch&&sH!==null&&(x.s===null||x.s>sH))return false;
     if(uL!==null&&(!x.tu||x.tu<uL))return false;
     if(uH!==null&&(!x.tu||x.tu>uH))return false;
     if(bL!==null&&(!x.b||x.b<bL))return false;
@@ -1957,11 +1962,14 @@ function af(){
 
 function ds(){
   F.sort((a,b)=>{
-    let va=a[sc], vb=b[sc];
+    const home=window.NodoHomeSearchView;
+    const aMissing=home?.rental()?home.date(a)==='—':a.lp==null,bMissing=home?.rental()?home.date(b)==='—':b.lp==null;
+    if(home&&aMissing!==bMissing)return aMissing?1:-1;
+    let va=home?home.sortValue(a,sc):a[sc], vb=home?home.sortValue(b,sc):b[sc];
     // 통합 모드: 면적·대지지분은 최대값 기준 정렬
     if(sc==='a'&&merged){ va=a._aNum||a.a; vb=b._aNum||b.a; }
     if(sc==='ls'){ va=merged?(a._lsNum||calcLandShare(a)):calcLandShare(a); vb=merged?(b._lsNum||calcLandShare(b)):calcLandShare(b); }
-    if(sc==='lp'&&priceMetricMode==='pyeong'){ va=entryPyeongPrice(a); vb=entryPyeongPrice(b); }
+    if(sc==='lp'&&priceMetricMode==='pyeong'&&!window.NodoHomeSearchView?.rental()){ va=entryPyeongPrice(a); vb=entryPyeongPrice(b); }
     // 수익률 정렬: 동적 계산
     if(sc==='ret'){ va=calcReturn(a); vb=calcReturn(b); }
     if(va===null||va===undefined)va=sa?Infinity:-Infinity;
@@ -2015,7 +2023,7 @@ function rt(){
     const x=F[i];
     const bg=['b-g','b-s','b-i'][x.r];
     const rl=(['경기','서울','인천'][x.r]||'지역 미확인');
-    const lpv=fmtDisplayPrice(displayPriceValue(x));
+    const lpv=window.NodoHomeSearchView?.priceText(x)??fmtDisplayPrice(displayPriceValue(x));
     const retObj=calcReturnObj(x);
     const retv=retObj?(retObj.val>0?'+':'')+retObj.val.toFixed(1)+'%':'-';
     const retc=retObj?(retObj.val>0?'up':retObj.val<0?'dn':''):'';
@@ -2026,16 +2034,16 @@ function rt(){
 
     frags.push(`<tr onclick="sd(${i})" class="${si===i?'sel':''}">
       <td style="color:var(--border);text-align:center">${i+1}</td>
-      <td class="text-left"><span class="badge ${bg}">${rl}</span><a href="${NodoApartmentLinks.url({id:x.as,row:x.i,area:x._merged?null:x.a})}" onclick="event.stopPropagation()">${escHtml(x.n)}</a>${statusBadgeHtml(x)}</td>
+      <td class="text-left"><span class="badge ${bg}">${rl}</span><a href="${NodoApartmentLinks.url(window.NodoHomeSearchView?NodoHomeSearchView.selection(x):{id:x.as,row:x.i,area:x._merged?null:x.a})}" onclick="event.stopPropagation()">${escHtml(x.n)}</a>${statusBadgeHtml(x)}</td>
       <td class="text-left" style="color:var(--muted)">${x.g}</td>
       <td class="text-left" style="color:var(--muted)">${x.d||'-'}</td>
-      <td style="text-align:center;color:var(--muted)">${fmtArea(x.a)}</td>
+      <td style="text-align:center;color:var(--muted)">${x.a==null?'면적 미확인':fmtArea(x.a)}</td>
       <td style="text-align:center;font-weight:600">${lpv}</td>
       <td style="text-align:center;font-weight:600" class="${retc}">${retv}${retYrs}</td>
       <td style="text-align:center;font-weight:700" class="${cc}">${cv}</td>
       <td style="text-align:center" class="${mc}">${fmtPct(x.m)}</td>
       <td style="text-align:center;color:var(--muted)">${fmtSharp(x.s)}</td>
-      <td style="text-align:center;color:var(--muted);font-size:11px">${fmtDate(x.ld)}</td>
+      <td style="text-align:center;color:var(--muted);font-size:11px">${window.NodoHomeSearchView?.date(x)??fmtDate(x.ld)}</td>
       <td style="text-align:center;color:var(--muted)">${x.v}</td>
       <td style="text-align:center;color:var(--muted)">${x.u?x.u.toLocaleString():'-'}</td>
       <td style="text-align:center;color:var(--muted)" title="${x.lr?'등기 대지권':'건축물대장 기반 추정'}">${fmtLs(calcLandShare(x))}${x.lr?'<span style="display:block;font-size:9px;color:#0f766e">등기</span>':''}</td>
@@ -2051,7 +2059,7 @@ function rt(){
       const x=F[i];
       const bg=['b-g','b-s','b-i'][x.r];
       const rl=(['경기','서울','인천'][x.r]||'지역 미확인');
-      const lpv=fmtDisplayPrice(displayPriceValue(x));
+      const lpv=window.NodoHomeSearchView?.priceText(x)??fmtDisplayPrice(displayPriceValue(x));
       const cv=fmtSignedPct(x.c);
       const cc=x.c>0?'up':x.c<0?'dn':'';
       const mv=fmtPct(x.m);
@@ -2060,7 +2068,7 @@ function rt(){
       const retc=retObj2?(retObj2.val>0?'up':retObj2.val<0?'dn':''):'';
       cfrags.push(`<div class="m-card ${si===i?'sel':''}" onclick="sd(${i})">
         <div class="m-card-header">
-          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}${statusBadgeHtml(x)}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${fmtArea(x.a)}${x.u?' | '+x.u+'세대':''}</div></div>
+          <div><div class="m-card-name"><span class="badge ${bg}">${rl}</span>${x.n}${statusBadgeHtml(x)}</div><div class="m-card-loc">${x.g} ${x.d||''} | ${x.a==null?'면적 미확인':fmtArea(x.a)}${x.u?' | '+x.u+'세대':''}</div></div>
           <div class="m-card-price">${lpv}</div>
         </div>
         <div class="m-card-metrics">
@@ -2073,6 +2081,7 @@ function rt(){
     }
     mc.innerHTML=cfrags.join('');
   }
+  window.NodoHomeSearchView?.decorate();
 }
 
 // --- 상세 패널 ---
@@ -2094,7 +2103,7 @@ function updateDetailMapLink(x){
 }
 
 function showDetail(x){
-  NodoApartmentLinks.go({id:x.as,row:x.i,area:x._merged?null:x.a});
+  NodoApartmentLinks.go(window.NodoHomeSearchView?NodoHomeSearchView.selection(x):{id:x.as,row:x.i,area:x._merged?null:x.a});
   return;
   curDetailIdx=x.i;
   const dp=document.getElementById('dp');
@@ -3112,6 +3121,7 @@ function resetF(){
 let hashLock=false;
 function saveHash(){
   if(hashLock) return;
+  window.NodoHomeSearchView?.remember();
   const p={};
   const fR=gv('fR');if(fR)p.r=fR;
   if(selGus.length)p.g=selGus.join('|');
@@ -3264,7 +3274,7 @@ function applyMobileFilterVisibility(){
     child.classList.remove('filter-hidden');child.hidden=advanced&&!filtersExpanded&&!active;
   }
   const button=document.getElementById('filterToggle');
-  if(button){button.setAttribute('aria-expanded',String(filtersExpanded));button.textContent=filtersExpanded?'고급 필터 접기 ▲':'고급 필터 · 투자지표·준공연도·기간 ▼';}
+  if(button){button.setAttribute('aria-expanded',String(filtersExpanded));button.textContent=filtersExpanded?'고급 필터 접기 ▲':window.NodoHomeSearchView?.rental()?'고급 필터 · 준공연도 ▼':'고급 필터 · 투자지표·준공연도·기간 ▼';}
 }
 function initMobileFilters(){applyMobileFilterVisibility();}
 window.addEventListener('resize',applyMobileFilterVisibility);
@@ -3272,6 +3282,6 @@ window.addEventListener('resize',applyMobileFilterVisibility);
 // 페이지가 비교 전용 모드가 아닐 때만 메인 init 자동 실행
 // (window.APT_PAGE === 'compare' 인 페이지는 자체 init 사용)
 if (typeof window.APT_PAGE === 'undefined' || window.APT_PAGE !== 'compare') {
-  init();
+  init().catch(e=>{document.getElementById('loadMsg').textContent=e.message+' 새로고침해 다시 시도해 주세요.';});
   initMobileFilters();
 }

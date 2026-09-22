@@ -246,3 +246,12 @@
     .filter-toggle-btn { display: none !important; }
     .m-detail-back { display: none !important; }
   }
+
+/* Home search shares the existing table and cards across tenures. */
+body[data-home-tenure]:not([data-home-tenure="sale"]) .home-sale-filter,
+body[data-home-tenure]:not([data-home-tenure="sale"]) [data-price-mode],
+body[data-home-tenure]:not([data-home-tenure="sale"]) #tableWrap tr > :is(:nth-child(7),:nth-child(8),:nth-child(9),:nth-child(10),:nth-child(12)) {display:none!important;}
+body[data-home-tenure]:not([data-home-tenure="sale"]) #tableWrap td:nth-child(6){white-space:normal;min-width:210px;}
+#home-search-status{margin:0 0 12px;color:var(--muted);font-size:13px;}
+body[data-home-tenure]:not([data-home-tenure="sale"]) .m-card-price{font-size:14px;white-space:normal;text-align:right;}
+body[data-home-tenure]:not([data-home-tenure="sale"]) .m-card-metrics{display:block;color:var(--muted);font-size:12px;}

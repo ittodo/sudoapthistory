@@ -1,3 +1,4 @@
+import {homeSearchAssets} from './build-home-search-data.mjs';
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -83,5 +84,5 @@ export function searchAssets(root) {
   const bundle = buildSync({entryPoints:[join(root,'js/apartment-search-worker.js')],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'inline'}).outputFiles[0].contents;
   // Include the pinned library's license in the self-hosted bundle.
   const license = readFileSync(join(root,'node_modules/es-hangul/LICENSE'),'utf8').replaceAll('*/','* /');
-  return [{path:'data/search/apartments.json',bytes},{path:'js/apartment-search-worker.bundle.js',bytes:Buffer.concat([Buffer.from('/*! es-hangul 2.4.0\n'+license+'\n*/\n'),Buffer.from(bundle)])}];
+  return [...homeSearchAssets(root,JSON.parse(bytes)),{path:'data/search/apartments.json',bytes},{path:'js/apartment-search-worker.bundle.js',bytes:Buffer.concat([Buffer.from('/*! es-hangul 2.4.0\n'+license+'\n*/\n'),Buffer.from(bundle)])}];
 }

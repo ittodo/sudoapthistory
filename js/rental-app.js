@@ -3,7 +3,7 @@
  'use strict';
  const M=window.NodoRental,esc=window.NodoUI.escape,path=location.pathname.replace(/index\.html$/,'');
  const titles={'/':'단지 검색','/map/':'지도','/trades/':'실거래','/trades/daily/':'기간별 실거래','/apartment/':'단지 상세','/compare/':'지역·단지 비교','/ranking/':'순위','/stats/':'가격대 통계','/market/':'시장 동향'};
- if(!titles[path])return;
+ if(!titles[path]||path==='/')return;
  const isDaily=path==='/trades/daily/';
  const key='nodo:rental:preferences:v1';let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch{}
  const params=new URLSearchParams(location.search),initial=M.normalize(params,saved);
