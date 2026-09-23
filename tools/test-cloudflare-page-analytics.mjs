@@ -32,3 +32,38 @@ test('all public non-redirect HTML pages load the tracker exactly once',async()=
   assert.equal((html.match(/src="\/js\/page-analytics.js"/g)||[]).length,1,path);
  }
 });
+
+function googleBrowser({url='https://nodostream.com/map/',embedded=false,blocked=false,referrer='https://www.google.com/search?q=apartment'}={}){
+ const scripts=[],calls=[],listeners={};
+ const window={addEventListener:(name,fn)=>listeners[name]=fn};window.top=embedded?{}:window;
+ const document={referrer,createElement:()=>({}),head:{appendChild:script=>{if(blocked)throw Error('blocked');scripts.push(script);}}};
+ const context=vm.createContext({window,document,location:new URL(url),URL,URLSearchParams,crypto:{randomUUID:()=> 'page-event'},Date,JSON,fetch:(...args)=>{calls.push(args);return Promise.resolve({status:200});},setTimeout:fn=>fn()});
+ vm.runInContext(source,context);
+ return {window,scripts,calls,listeners,context,commands:()=>Array.from(window.dataLayer||[],args=>Array.from(args))};
+}
+
+test('GA4 initializes once on production with one automatic page view and no sensitive URL inputs',()=>{
+ const b=googleBrowser({url:'https://nodostream.com/calc/?income=secret&email=private&utm_source=cafe&utm_medium=referral#salary'});
+ assert.equal(b.scripts.length,1);assert.equal(b.scripts[0].async,true);
+ assert.equal(b.scripts[0].src,'https://www.googletagmanager.com/gtag/js?id=G-4SPGCJTJJP');
+ const commands=b.commands();assert.deepEqual(commands.map(c=>c[0]),['js','config']);
+ assert.equal(commands[1][1],'G-4SPGCJTJJP');
+ assert.equal(commands[1][2].page_location,'https://nodostream.com/calc/?utm_source=cafe&utm_medium=referral');
+ assert.equal(commands[1][2].page_referrer,'https://www.google.com/search');
+ assert.equal(commands[1][2].allow_google_signals,false);assert.equal(commands[1][2].allow_ad_personalization_signals,false);
+ assert.equal(commands[1][2].user_id,undefined);
+ vm.runInContext(source,b.context);assert.equal(b.scripts.length,1);assert.equal(b.commands().length,2);
+ assert.equal(b.calls.length,1,'first-party collection remains active');
+ b.listeners.pageshow({persisted:true});assert.equal(b.commands().length,2,'no extra manual GA page view on restore');
+ assert.equal(b.calls.length,2);
+ assert.equal(googleBrowser({url:'https://www.nodostream.com/'}).scripts.length,1);
+});
+
+test('GA4 excludes previews, embedded panels and private routes; Google failure leaves local counts working',()=>{
+ for(const url of ['http://localhost:8765/','https://nodostream-staging.workers.dev/','https://nodostream.com.evil.example/','http://nodostream.com/','https://nodostream.com/admin/','https://nodostream.com/auth/google','https://nodostream.com/api/session']){
+  const b=googleBrowser({url});assert.equal(b.scripts.length,0,url);assert.equal(b.commands().length,0,url);
+ }
+ const embedded=googleBrowser({embedded:true});assert.equal(embedded.scripts.length,0);assert.equal(embedded.calls.length,1);
+ assert.equal(googleBrowser({blocked:true}).calls.length,1);
+ assert.equal(googleBrowser({referrer:'invalid'}).commands()[1][2].page_referrer,'');
+});
