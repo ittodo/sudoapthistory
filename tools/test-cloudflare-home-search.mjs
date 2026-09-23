@@ -5,6 +5,13 @@ import {gzipSync,gunzipSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 const ctx=vm.createContext({});vm.runInContext(readFileSync(new URL('../js/home-search-model.js',import.meta.url),'utf8'),ctx);const M=ctx.NodoHomeSearchModel;
 const entity=(id,rows=[],rentalIds=[])=>({id,name:id,r:0,g:'수지구',d:'풍덕천동',rows,rentalIds,saleIds:[],addresses:[]});
+test('jeonse displays 억 while retaining legacy 만원 filters across save and restore',()=>{
+ assert.equal(M.filterPrice('jeonse',30000),3);
+ assert.equal(M.filterPrice('jeonse','3',true),30000);
+ for(const type of ['sale','monthly'])assert.equal(M.filterPrice(type,150),150);
+ for(const value of ['',null])assert.equal(M.filterPrice('jeonse',value),value);
+ for(const value of [1,30000,31500,100000])assert.ok(Math.abs(M.filterPrice('jeonse',M.filterPrice('jeonse',value),true)-value)<1e-8);
+});
 test('legacy investment sort in a rental URL cannot sort rental results by sale metrics',()=>{
  for(const type of ['jeonse','monthly'])for(const key of ['c','m','s','ret','v'])assert.equal(M.sortKey(type,key),'ld');
  assert.equal(M.sortKey('sale','c'),'c');assert.equal(M.sortKey('monthly','lp'),'lp');assert.equal(M.sortKey('jeonse','ls'),'ls');

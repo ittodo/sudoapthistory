@@ -3134,8 +3134,8 @@ function saveHash(){
   const cHv=gv('cH');if(cHv)p.cH=cHv;
   const mLv=gv('mL');if(mLv)p.mL=mLv;
   const mHv=gv('mH');if(mHv)p.mH=mHv;
-  const pLv=gv('pL');if(pLv)p.pL=pLv;
-  const pHv=gv('pH');if(pHv)p.pH=pHv;
+  const pLv=gv('pL');if(pLv)p.pL=window.NodoHomeSearchView?.storedPrice(pLv)??pLv;
+  const pHv=gv('pH');if(pHv)p.pH=window.NodoHomeSearchView?.storedPrice(pHv)??pHv;
   const sLv=gv('sL');if(sLv)p.sL=sLv;
   const sHv=gv('sH');if(sHv)p.sH=sHv;
   const uLv=gv('uL');if(uLv)p.uL=uLv;
@@ -3200,8 +3200,8 @@ function loadHash(){
   if(p.cH)document.getElementById('cH').value=p.cH;
   if(p.mL)document.getElementById('mL').value=p.mL;
   if(p.mH)document.getElementById('mH').value=p.mH;
-  if(p.pL)document.getElementById('pL').value=p.pL;
-  if(p.pH)document.getElementById('pH').value=p.pH;
+  if(p.pL)document.getElementById('pL').value=window.NodoHomeSearchView?.inputPrice(p.pL)??p.pL;
+  if(p.pH)document.getElementById('pH').value=window.NodoHomeSearchView?.inputPrice(p.pH)??p.pH;
   if(p.sL)document.getElementById('sL').value=p.sL;
   if(p.sH)document.getElementById('sH').value=p.sH;
   if(p.uL)document.getElementById('uL').value=p.uL;

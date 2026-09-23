@@ -18,5 +18,10 @@
   function record(row,type,rows){if(!row._merged)return row._rents?.[type]||null;return row.si.reduce((value,id)=>newer(value,rows[id]?._rents?.[type]),null);}
   function fallback(entity){return {id:entity.rentalIds[0]||entity.id,name:entity.name,address:entity.addresses[0]||'',road:'',region:['경기','서울','인천'][entity.r],units:entity.units??null,years:entity.built?[entity.built]:[],parking:null,far:null,coord:entity.coord||null,pnus:[],status:'unknown',rental:entity.rental===true,conflict:true,updated:'',areas:[],registry:[],sources:entity.rentalIds};}
   function sortKey(type,key){return type==='sale'||['n','g','d','a','lp','ld','u','ls'].includes(key)?key:'ld';}
-  root.NodoHomeSearchModel={join,record,newer,fallback,sortKey};
+  // Stored rental prices and bookmarked filters remain in 만원 for compatibility.
+  function filterPrice(type,value,toStored=false){
+    if(value==null||value==='')return value;
+    return type==='jeonse'?(toStored?Number(value)*10000:Number(value)/10000):value;
+  }
+  root.NodoHomeSearchModel={join,record,newer,fallback,sortKey,filterPrice};
 })(globalThis);
