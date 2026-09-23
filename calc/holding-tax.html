@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>보유세 테이블 — 2026·2027 재산세·종부세 비교 | 노도스트림</title>
+  <meta name="description" content="가격별 올해·내년 보유세 비교표. 시세, 공시가격 현실화율, 명의와 주택 수에 따른 재산세·종부세 및 증감액을 계산합니다.">
+  <link rel="canonical" href="https://nodostream.com/calc/holding-tax.html">
+  <script src="/js/site-theme.js"></script>
+  <link rel="stylesheet" href="/css/site.css">
+  <link rel="stylesheet" href="/css/responsive.css">
+  <link rel="stylesheet" href="/css/holding-tax.css">
+  <script defer src="/js/site-shell.js"></script>
+  <script type="module" src="/js/holding-tax-app.js"></script>
+  <script defer src="/js/page-analytics.js"></script>
+</head>
+<body>
+<main id="nodo-content" class="holding-page">
+  <header class="holding-heading">
+    <div><p class="holding-eyebrow">부동산 계산기 / 연간 보유 비용</p><h1>보유세, 올해와 내년을 한눈에</h1><p class="holding-muted">가격별 재산세와 종부세를 나란히 비교하세요. 조건을 바꾸면 표 전체가 계산됩니다.</p></div>
+    <span class="holding-badge">2026 → 2027 예상</span>
+  </header>
+  <form id="tax-controls" class="holding-panel">
+    <div class="holding-fields">
+      <label>2027 계산 기준<select name="policy"><option value="reform">개편안 적용 · 9월 1일 수정 정부안</option><option value="current">현행 유지 가정</option></select></label>
+      <label>거주 주택 (두 해 동일)<select name="residenceHouse"><option value="0">주택 1에 거주</option><option value="1">주택 2에 거주</option><option value="2">주택 3에 거주</option><option value="-1">보유 주택에 거주하지 않음</option></select></label>
+      <label>가격 기준<select name="basis"><option value="market">시세로 공시가격 추정</option><option value="assessed">공시가격 직접 입력</option></select></label>
+      <label>명의·주택 수<select name="mode"><option value="single">1주택 · 단독명의</option><option value="joint">1주택 · 부부 공동명의 일반</option><option value="special">1주택 · 부부 공동명의 특례</option><option value="two">2주택 · 본인 단독명의</option><option value="three">3주택 · 본인 단독명의</option></select></label>
+      <label data-ratio>2026 현실화율 (%)<input name="ratio" type="number" min="0.01" max="100" step="0.01" value="69" required></label>
+      <label data-ratio>2027 현실화율 가정 (%)<input name="nextRatio" type="number" min="0.01" max="100" step="0.01" value="69" required></label>
+      <label><span id="growth-label">내년 시세 변동률 (%)</span><input name="growth" type="number" min="-100" max="1000" step="0.1" value="0" required></label>
+    </div>
+    <div class="holding-range">
+      <label>시작 가격 (억원)<input name="start" type="number" min="0" max="10000" step="0.1" value="3" required></label>
+      <span aria-hidden="true">—</span>
+      <label>끝 가격 (억원)<input name="end" type="number" min="0" max="10000" step="0.1" value="50" required></label>
+      <label>간격 (억원)<input name="step" type="number" min="0.1" max="1000" step="0.1" value="1" required></label>
+      <button type="button" class="holding-button" id="reset-tax">기본값</button>
+      <button type="button" class="holding-button" id="download-tax">표 내려받기 (CSV)</button>
+    </div>
+    <div class="holding-checks"><label><input name="applyNextCaps" type="checkbox" checked> 2027 상한 적용 · 올해 계산액 기준</label></div>
+    <p class="holding-muted">올해는 상한 전 추정액, 내년은 올해 주택을 계속 보유한다는 가정입니다. 내년 재산세 과표 상한과 종부세 세부담 상한을 반영합니다. 보유세 총액을 일괄 1.5배로 제한하는 것은 아닙니다. 올해 실제 상한·재산세 경과규정은 가격을 눌러 전년도 자료를 입력하세요.</p>
+    <details class="holding-options"><summary>공제·지분·세대 조건</summary>
+      <div class="holding-fields">
+        <label>본인 만 나이 (6월 1일)<input name="age" type="number" min="0" max="129" step="1" value="40" required></label>
+        <label>본인 보유기간 (만 년)<input name="years" type="number" min="0" max="129" step="1" value="0" required></label>
+        <label>본인 거주기간 (2026년 만 년)<input name="residenceYears" type="number" min="0" max="129" step="1" value="0" required></label>
+        <label data-joint>배우자 거주기간 (2026년 만 년)<input name="spouseResidenceYears" type="number" min="0" max="129" step="1" value="0" required></label>
+        <label data-joint>배우자 만 나이<input name="spouseAge" type="number" min="0" max="129" step="1" value="40" required></label>
+        <label data-joint>배우자 보유기간 (만 년)<input name="spouseYears" type="number" min="0" max="129" step="1" value="0" required></label>
+        <label data-joint>본인 지분 (%) · 나머지는 배우자<input name="share" type="number" min="0.01" max="99.99" step="0.01" value="50" required></label>
+        <label data-special>특례 납세의무자<select name="specialOwner"><option value="0">본인</option><option value="1">배우자</option></select></label>
+      </div>
+      <div class="holding-checks">
+        <label data-single><input name="singleHousehold" type="checkbox" checked> 세대 전체가 이 주택 1채만 보유 (특수 사례 없음)</label>
+        <label><input name="urban" type="checkbox" checked> 도시지역분 적용 (표준 0.14%)</label>
+      </div>
+      <p class="holding-muted">나이·보유기간은 내년에 각각 1년 증가합니다. 거주 중이면 거주기간도 1년 증가하며, 상세에서 내년 거주기간을 직접 수정할 수 있습니다. 부부는 같은 주택에 거주한다고 가정합니다. 2026년 공동명의 일반은 인별 9억원 공제, 특례는 합산 12억원 공제와 선택한 납세의무자의 연령·보유기간 공제를 적용합니다. 2026년부터 특례 납세의무자는 지분과 관계없이 부부 합의로 선택할 수 있습니다. 특례는 신청 요건을 충족한 경우의 비교입니다.</p>
+    </details>
+  </form>
+  <div class="holding-scenario"><strong>2027 시나리오</strong><span id="scenario-description"></span></div>
+  <div class="holding-table-heading"><div><h2>가격별 연간 보유세</h2><p id="table-assumptions" class="holding-muted"></p></div><span class="holding-muted">세액 단위: 만원 · 가격을 누르면 상세 계산</span></div>
+  <p id="tax-error" role="alert" hidden></p>
+  <div id="tax-table-wrap" class="holding-scroll" tabindex="0" role="region" aria-label="가격별 보유세 비교표, 가로로 스크롤할 수 있습니다">
+    <table id="tax-table" class="holding-table"><caption class="holding-sr">가격 구간별 2026년과 2027년 예상 보유세 비교</caption><thead></thead><tbody></tbody></table>
+  </div>
+  <p id="tax-status" class="holding-muted" aria-live="polite"></p>
+  <section id="tax-detail" class="holding-panel" hidden aria-labelledby="detail-title">
+    <div class="holding-detail-heading"><div><p class="holding-eyebrow">선택한 가격 / 나의 조건으로 수정</p><h2 id="detail-title">상세 계산</h2></div><button type="button" id="close-detail" class="holding-button">상세 닫기</button></div>
+    <p class="holding-muted">상세 입력은 위 비교표와 별도로 계산합니다. 주택·명의 구성이 두 해 동안 같다는 가정입니다. 주택별 가격은 지분 차감 전 전체 공시가격입니다.</p>
+    <form id="detail-form"></form>
+    <p id="detail-error" role="alert" hidden></p>
+    <div id="detail-output" aria-live="polite"></div>
+  </section>
+  <section id="transaction-tax" class="holding-panel" aria-label="취득세와 보유기간별 양도소득세"></section>
+  <script type="module" src="../js/transaction-tax-app.js"></script>
+  <details class="holding-panel holding-method"><summary>계산 기준·세율·출처 보기</summary>
+    <p>시세 × 현실화율 → 추정 공시가격 → 세목별 공정시장가액비율 → 재산세·종부세 → 연간 합계. 실제 공시가격 입력 시 현실화율은 적용하지 않습니다. 69%는 공동주택 추정 기본값이며 개별 주택의 실제 시세 대비 비율을 보장하지 않습니다.</p>
+    <div class="holding-method-grid">
+      <div><h3>재산세</h3><p>1세대 1주택 공정시장가액비율은 공시가격 3억 이하 43%, 6억 이하 44%, 초과 45%. 일반 주택은 60%. 본세는 0.1~0.4% 누진세율, 공시가격 9억 이하 1주택 특례는 각 구간에서 0.05%p 인하. 도시지역분 0.14%, 지방교육세는 본세의 20%입니다.</p></div>
+      <div><h3>2026 종합부동산세</h3><p>인별 공시가격 합계에서 9억(1세대 1주택·공동명의 특례 12억)을 공제한 뒤 60%로 과표를 산정합니다. 2주택 이하 0.5~2.7%, 3주택 이상 0.5~5% 누진세율, 재산세 중복분 공제 후 연령·보유기간 공제(합계 최대 80%)를 적용합니다. 농어촌특별세는 종부세의 20%입니다.</p></div>
+    </div>
+    <div class="holding-detail-table"><table><caption>2027 개편안 · 2026년 9월 1일 수정 정부안 (미확정)</caption><thead><tr><th>항목</th><th>2026 현행</th><th>2027 개편안 가정</th></tr></thead><tbody>
+      <tr><th>1세대 1주택 과세 진입</th><td>공시가 12억 초과</td><td>공시가 14억 초과 (거주·비거주 공통)</td></tr>
+      <tr><th>1주택 기본공제</th><td>12억</td><td>거주 14억 / 비거주 12억</td></tr>
+      <tr><th>부부 공동명의 일반</th><td>인별 9억</td><td>거주 인별 9억 / 비거주 인별 6억 · 인별 공시가 9억 초과 시 과세</td></tr>
+      <tr><th>그 외 기본공제</th><td>인별 9억</td><td>4억 + 5억 × 거주 주택의 공시가 비중 · 인별 공시가 9억 초과 시 과세</td></tr>
+      <tr><th>종부세 공정시장가액비율</th><td>60%</td><td>70% · 공시가격 현실화율과 별개</td></tr>
+      <tr><th>과표 구간 (억원)</th><td colspan="2">3 이하 / 3~6 / 6~12 / 12~25 / 25~50 / 50~94 / 94 초과</td></tr>
+      <tr><th>2주택 이하 세율 (%)</th><td>0.5 / 0.7 / 1 / 1.3 / 1.5 / 2 / 2.7</td><td>0.5 / 0.7 / 1.3 / 1.5 / 2 / 2.7 / 3.5</td></tr>
+      <tr><th>3주택 이상 세율 (%)</th><td>0.5 / 0.7 / 1 / 2 / 3 / 4 / 5</td><td>0.5 / 0.7 / 1.3 / 2 / 3 / 4 / 5</td></tr>
+      <tr><th>1주택 기간 공제</th><td>보유 5·10·15년: 20·40·50%</td><td>보유 10·20·25%와 거주 20·40·50% 중 큰 값</td></tr>
+      <tr><th>연령 + 기간 공제 한도</th><td>80%</td><td>80% 및 800만원</td></tr>
+      <tr><th>종부세 세부담 상한</th><td>150%</td><td>150% 유지 · 전년도 상당액 입력 시</td></tr>
+    </tbody></table></div>
+    <p>2027년에는 주택 수별 세율 구분이 남아 있습니다. 2028년 이후의 세율 일원화·일부 80% 비율·600만원 공제 한도는 이 표에 적용하지 않습니다. 재산세는 공시가 9억 이하 1주택 특례 연장 가정과 2026년 공정시장가액비율을 사용합니다. 거주 인정 특례는 자동 판정하지 않으므로 인정 요건을 충족하는 거주 여부·기간을 입력하세요.</p>
+    <p>상세 계산에서 전년도 공시가격을 넣으면 과표 상한을 적용합니다. 전년도 공시가격 × 올해 공정시장가액비율 + 올해 상한 전 과표 × 5%와 올해 과표 중 작은 값을 사용합니다. 2022년까지 과세된 주택의 세부담 상한 경과규정은 해당 여부와 전년도 세액상당액을 입력할 때 적용합니다. 종부세 상한은 전년도 총세액상당액의 150%이며 도시지역분·부가세목은 제외합니다.</p>
+    <p>주택별·소유자별 세목은 10원 미만을 버려 연간 추정액을 표시합니다. 분납 고지별 절사·소액징수면제·지자체 조례·특수 감면은 미반영입니다. 지역자원시설세는 상세 입력한 금액만 합산합니다. 법인·토지·임대주택 합산배제·상속 등 특수 사례는 지원하지 않습니다.</p>
+    <ul id="tax-sources"></ul><p class="holding-muted">기준 확인: 2026-09-23 · 월 환산액은 연간 합계 ÷ 12이며 실제 납부 일정이 아닙니다.</p>
+  </details>
+  <noscript><p>이 계산기는 JavaScript를 켠 브라우저에서 사용할 수 있습니다.</p></noscript>
+</main>
+</body>
+</html>

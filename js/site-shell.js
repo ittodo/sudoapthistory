@@ -7,7 +7,7 @@
   if(!document.querySelector('link[href^="/css/responsive.css"]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/css/responsive.css?v=20260922-regions1';document.head.append(style);}
   document.body.dataset.siteSection=section;
   document.body.dataset.sitePage=path==='/'?'search':path.split('/').filter(Boolean)[0].replace('.html','');
-  const groups = {admin:[],library:[['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']],housing:[['단지 검색','/'],['지도','/map/'],['지역·단지 비교','/compare/'],['시장 동향','/market/'],['가격대 통계','/stats/'],['실거래가','/trades/'],['기간별 실거래','/trades/daily/'],['정책','/policy.html']],company:[['배당·소각','/div/'],['기업 목록','/div/stocks/']],calc:[['부동산 계산기','/calc/'],['예적금 계산기','/calc/savings.html']],board:[]};
+  const groups = {admin:[],library:[['관심 아파트','/library/'],['저장한 계산','/library/?tab=calculations']],housing:[['단지 검색','/'],['지도','/map/'],['지역·단지 비교','/compare/'],['시장 동향','/market/'],['가격대 통계','/stats/'],['실거래가','/trades/'],['기간별 실거래','/trades/daily/'],['정책','/policy.html']],company:[['배당·소각','/div/'],['기업 목록','/div/stocks/']],calc:[['부동산 계산기','/calc/'],['보유세 테이블','/calc/holding-tax.html'],['연봉·월급 계산기','/calc/salary.html'],['예적금 계산기','/calc/savings.html']],board:[]};
   const same = href => path.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'') === href.replace(/index\.html$|\.html$/g,'').replace(/\/$/,'');
   const anchor = (label,href,current) => `<a href="${href}"${current?' aria-current="page"':''}>${label}</a>`;
   const header = document.createElement('header');header.className='nodo-header';

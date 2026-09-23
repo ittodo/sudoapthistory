@@ -21,6 +21,8 @@ jobs:
       - run: npm ci
       - run: npm run test:search
       - run: npm run typecheck && npm run test:api
+      - name: Verify calculator models and isolated local packaging
+        run: node --test tools/test-salary.mjs tools/test-transaction-tax.mjs tools/test-holding-tax-build.mjs
       - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
       - name: Reuse verified regional price bundles

@@ -8,6 +8,14 @@ const baseUrl = process.env.NODO_BASE_URL || DEFAULT_BASE_URL;
 
 const routeDeps = [
   {
+    routes: ["/calc/salary.html"],
+    patterns: ["calc/salary.html", "js/salary.js", "js/salary-app.js", "js/salary-tax-table.js", "css/holding-tax.css"],
+  },
+  {
+    routes: ["/calc/holding-tax.html"],
+    patterns: ["calc/holding-tax.html", "js/holding-tax.js", "js/holding-tax-app.js", "js/transaction-tax.js", "js/transaction-tax-app.js", "css/holding-tax.css"],
+  },
+  {
     routes: ["/map/", "/map/index.html"],
     patterns: ["map/index.html", "css/map.css", "js/map-app.js", "js/map-model.js",
       "js/map-services.js", "js/data-loader.js", "js/calc-utils.js", "data/map/",

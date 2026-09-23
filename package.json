@@ -14,8 +14,14 @@
     "test:site": "node --test tools/test-apartment-data.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs",
     "preview": "node tools/preview-site.mjs",
     "build": "node tools/build-cloudflare-assets.mjs",
+    "build:holding-tax": "node tools/build-holding-tax.mjs",
+    "test:holding-tax": "node --test tools/test-cloudflare-holding-tax.mjs tools/test-holding-tax-build.mjs tools/test-transaction-tax.mjs",
+    "verify:holding-tax": "npm run test:holding-tax && npm run build:holding-tax",
     "typecheck": "tsc --noEmit",
-    "test:api": "tsx --test cloudflare/test/*.test.ts"
+    "test:api": "tsx --test cloudflare/test/*.test.ts",
+    "build:salary": "node tools/build-salary.mjs",
+    "test:salary": "node --test tools/test-salary.mjs",
+    "verify:salary": "npm run test:salary && npm run build:salary"
   },
   "dependencies": {
     "es-hangul": "2.4.0",

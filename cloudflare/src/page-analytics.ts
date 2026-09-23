@@ -4,7 +4,7 @@ export const pages:Record<string,string>={
  '/':'단지 검색','/map/':'지도','/compare/':'지역·단지 비교','/market/':'시장 동향',
  '/stats/':'가격대 통계','/trades/':'실거래가','/trades/daily/':'일별 실거래','/trades/contracts.html':'계약 현황',
  '/apartment/':'단지 상세','/ranking/':'관심 단지 순위','/library/':'내 보관함',
- '/calc/':'부동산 계산기','/calc/savings.html':'예적금 계산기','/div/':'배당·소각',
+ '/calc/':'부동산 계산기','/calc/holding-tax.html':'보유세 테이블','/calc/salary.html':'연봉·월급 계산기','/calc/savings.html':'예적금 계산기','/div/':'배당·소각',
  '/div/stocks/':'기업 목록','/div/stocks/detail.html':'기업 상세','/board/':'게시판',
  '/account/':'내 계정','/policy.html':'정책','/privacy.html':'개인정보처리방침',
  '/kapt-v2.html':'공동주택 정보','/site-tree.html':'사이트 안내','/dart.html':'DART',
