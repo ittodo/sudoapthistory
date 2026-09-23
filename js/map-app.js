@@ -154,7 +154,7 @@
     $('detailName').textContent=selected.n;
     $('detailAddress').textContent=address(selected)+(selected.rd?' · '+selected.rd:'')+' · '+(regionView?.regionName(selected)?.split(' ').pop()||'행정동 확인 중');
     $('facts').innerHTML=[selected.tu?`${selected.tu.toLocaleString()}세대`:'세대수 미확인',selected.b?`${selected.buildYears?.length>1?selected.buildYears[0]+'~'+selected.buildYears.at(-1):selected.b}년 준공`:'준공연도 미확인',`${selected.areas.length}개 평형`].map(t=>`<span>${esc(t)}</span>`).join('');
-    $('locationInfo').textContent=[selected.coord?'':'위치 확인 중 · 상세 정보는 확인할 수 있습니다.',selected.memberSources?'K-APT 연결 확인 · '+selected.memberSources.map(m=>m.n).join(' + '):''].filter(Boolean).join(' · ');
+    $('locationInfo').textContent=[selected.coord?'':'위치 확인 중 · 상세 정보는 확인할 수 있습니다.',selected.memberSources?(selected.kaptCodes?.length?'K-APT 연결 확인':'동일 단지 연결 확인')+' · '+selected.memberSources.map(m=>m.n).join(' + '):''].filter(Boolean).join(' · ');
     renderAreas();renderPrice();loadDetail();loadBoundary();
     if(focus){const before=restoring;restoring=true;focusOn(selected);restoring=before;}
     render();save(push);

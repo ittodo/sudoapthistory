@@ -1,4 +1,4 @@
-"""Map presentation groups from the published, approved K-APT linkage snapshot."""
+"""Map presentation groups from the published, approved linkage snapshot."""
 from collections import defaultdict
 
 
@@ -8,7 +8,7 @@ def merge_complexes(complexes, publication, centers, geometries, bounds):
     by_id = {c['id']: c for c in complexes}
     claimed, replacements = set(), {}
     for group in publication['complexes']:
-        if group.get('housingFamily') != 'apartment' or group.get('publicationMode') != 'trade' or not group.get('kaptCodes'):
+        if group.get('housingFamily') != 'apartment' or group.get('publicationMode') != 'trade':
             continue
         ids = sorted(set(group.get('transactionKeys', [])) & by_id.keys())
         if len(ids) < 2:

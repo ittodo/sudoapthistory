@@ -33,8 +33,13 @@ class GroupTests(unittest.TestCase):
 
     def test_shared_address_or_parcel_is_not_evidence(self):
         self.assertEqual(self.merge([]), [self.a,self.b])
-        self.assertEqual(self.merge([dict(self.group,kaptCodes=[])]), [self.a,self.b])
         self.assertEqual(self.merge([dict(self.group,publicationMode='metadata_only')]), [self.a,self.b])
+
+    def test_approved_trade_group_does_not_require_kapt(self):
+        result = self.merge([dict(self.group, kaptCodes=[])])
+        self.assertEqual(len(result), 1)
+        self.assertEqual([m['id'] for m in result[0]['memberSources']], ['A', 'B'])
+        self.assertEqual([r['i'] for a in result[0]['areas'] for r in a['rows']], [1, 3, 2, 4])
 
     def test_ambiguous_group_or_unapproved_snapshot_fails(self):
         with self.assertRaisesRegex(ValueError, 'Overlapping'):

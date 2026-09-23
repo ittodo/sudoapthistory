@@ -215,7 +215,7 @@ def validate(site):
     if grouped:
         publication = read(site / 'data/housing-v3/index.json')
         approved = {g['id']: g for g in publication['complexes'] if g.get('housingFamily') == 'apartment'
-                    and g.get('publicationMode') == 'trade' and g.get('kaptCodes')}
+                    and g.get('publicationMode') == 'trade'}
         if publication['meta'].get('approvedOnly') is not True:
             raise ValueError('Unapproved map group source')
         for c in grouped:
