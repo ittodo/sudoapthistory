@@ -50,13 +50,13 @@ test('generated compact assets exclude cancelled contracts and invalidate on cha
     writeFileSync(join(dir,input),Buffer.from('corrupt'));assert.throws(()=>rentalMarketAssets(dir),/hash mismatch/);
   }finally{rmSync(dir,{recursive:true,force:true});}
 });
-function workerHarness(){
+function workerHarness({storage,months=['2025-09','2026-08','2026-09']}={}){
   const files={},sources={},pending=new Map(),fetched=[];let sequence=0;const gates=new Map();
   const add=(p,v)=>{const b=p.endsWith('.bin')?gzipSync(JSON.stringify(v)):Buffer.from(JSON.stringify(v));files[p]=b;sources[p]=hash(b);};
   add('data/rental/catalog.bin',{complexes:cat});
-  for(const month of ['2025-09','2026-08','2026-09'])for(const region of ['11','41','28'])add(`data/rental/months/${month}-${region}.bin`,{rows:region==='11'?[sourceRow(row(10000,50)),sourceRow(row(10000,50),1),sourceRow(row(10000,80,null))]:[]});
-  files['data/rental/index.json']=Buffer.from(JSON.stringify({schema:1,version:'v1',months:['2025-09','2026-08','2026-09'],sources}));
-  const context=vm.createContext({console,Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async url=>{const p=String(url).split('?')[0].replace(/^\//,'');fetched.push(p);if(gates.has(p)){const g=gates.get(p);gates.delete(p);await g;}return new Response(files[p]||'',{status:files[p]?200:404});},postMessage:data=>{if(!data.progress){pending.get(data.id)?.(data);pending.delete(data.id);}}});context.self=context;context.importScripts=(...paths)=>paths.forEach(p=>vm.runInContext(readFileSync(join(root,p.split('?')[0]),'utf8'),context));vm.runInContext(readFileSync(join(root,'js/market-rental-worker.js'),'utf8'),context);
+  for(const month of months)for(const region of ['11','41','28'])add(`data/rental/months/${month}-${region}.bin`,{rows:region==='11'?[sourceRow(row(10000,50)),sourceRow(row(10000,50),1),sourceRow(row(10000,80,null))]:[]});
+  files['data/rental/index.json']=Buffer.from(JSON.stringify({schema:1,version:'v1',months,sources}));
+  const context=vm.createContext({console,Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,caches:storage,fetch:async url=>{const p=String(url).split('?')[0].replace(/^\//,'');fetched.push(p);if(gates.has(p)){const g=gates.get(p);gates.delete(p);await g;}return new Response(files[p]||'',{status:files[p]?200:404});},postMessage:data=>{if(!data.progress){pending.get(data.id)?.(data);pending.delete(data.id);}}});context.self=context;context.importScripts=(...paths)=>paths.forEach(p=>vm.runInContext(readFileSync(join(root,p.split('?')[0]),'utf8'),context));vm.runInContext(readFileSync(join(root,'js/market-rental-worker.js'),'utf8'),context);
   return {files,sources,fetched,add,gates,request:(action,settings)=>new Promise(resolve=>{const id=++sequence;pending.set(id,resolve);context.onmessage({data:{id,action,settings}});})};
 }
 test('worker preserves counts, reuses both metric aggregates, filters rows and reports unavailable months',async()=>{
@@ -75,4 +75,44 @@ test('worker reads verified compact assets and rejects corrupt bytes',async()=>{
     w.files['data/rental/market-cache/index.json']=Buffer.from(JSON.stringify({schema:1,sourceVersion:'v1',inputs:JSON.parse(w.files['data/rental/index.json']).sources,sources:derived,saleStartYear:2006}));return w;};
   const w=setup();await w.request('init');const r=await w.request('view',s);assert.equal(r.error,undefined);assert.equal(r.rowCount,2);assert.ok(w.fetched.some(p=>p.includes('market-cache/')&&p.endsWith('.bin')));assert.equal(w.fetched.some(p=>p.includes('/months/')),false);
   const broken=setup();broken.files['data/rental/market-cache/2026-09-11.bin']=Buffer.from('changed');await broken.request('init');assert.ok((await broken.request('view',s)).error);
+});
+
+function browserStorage(){
+  const entries=new Map(),store={match:async k=>entries.has(k)?new Response(entries.get(k)):undefined,put:async(k,v)=>{const bytes=Buffer.from(await v.arrayBuffer());entries.delete(k);entries.set(k,bytes);},keys:async()=>[...entries.keys()],delete:async k=>entries.delete(k)};
+  return {open:async()=>store,entries};
+}
+function addCompact(w){
+  const derived={};for(const [p,b]of Object.entries(w.files)){if(!p.includes('/months/'))continue;const target=p.replace('/months/','/market-cache/');w.add(target,compactMarketShard(JSON.parse(gunzipSync(b))));derived[target]=w.sources[target];}
+  const source=JSON.parse(w.files['data/rental/index.json']);w.files['data/rental/market-cache/index.json']=Buffer.from(JSON.stringify({schema:1,sourceVersion:source.version,inputs:source.sources,sources:derived,saleStartYear:2006}));return w;
+}
+test('all 567 month files survive filtering, revisiting months and worker recreation',async()=>{
+  const storage=browserStorage(),months=Array.from(M.months('2011-01','2026-09')),settings={...s,from:2011};
+  const w=addCompact(workerHarness({storage,months}));await w.request('init');assert.equal((await w.request('view',settings)).rowCount,2);
+  assert.equal(w.fetched.filter(p=>p.includes('/market-cache/')&&p.endsWith('.bin')).length,567);
+  const count=w.fetched.length;
+  for(const changes of [{rentMin:'70'},{region:'11'},{ref:'2011-01'},{metric:'deposit'},{}])assert.equal((await w.request('view',{...settings,...changes})).error,undefined);
+  assert.equal(w.fetched.length,count,'filter and reference changes reuse disk files after raw-row eviction');
+  const fresh=addCompact(workerHarness({storage,months}));await fresh.request('init');assert.equal((await fresh.request('view',{...settings,type:'jeonse'})).error,undefined);
+  assert.equal(fresh.fetched.filter(p=>p.endsWith('.bin')).length,0,'reload/type navigation reuse catalog and full history');
+  const damaged='data/rental/market-cache/2011-01-11.bin';storage.entries.set('/'+damaged+'?v='+fresh.sources[damaged],Buffer.from('broken'));
+  const repair=addCompact(workerHarness({storage,months}));await repair.request('init');assert.equal((await repair.request('view',settings)).error,undefined);
+  assert.deepEqual(repair.fetched.filter(p=>p.endsWith('.bin')),[damaged],'only corrupt file is downloaded again');
+  const updated=workerHarness({storage,months}),input='data/rental/months/2011-01-11.bin';updated.add(input,{rows:[sourceRow(row(30000,100))]});
+  const source=JSON.parse(updated.files['data/rental/index.json']);source.version='v2';source.sources[input]=updated.sources[input];updated.files['data/rental/index.json']=Buffer.from(JSON.stringify(source));addCompact(updated);
+  await updated.request('init');const changed=await updated.request('view',{...settings,ref:'2011-01'});assert.equal(changed.rowCount,1);assert.equal(changed.rows[0].deposit,30000);
+  assert.deepEqual(updated.fetched.filter(p=>p.endsWith('.bin')),[damaged],'a new source version downloads only the changed shard');
+});
+test('original fallback files are also retained across workers',async()=>{
+  const storage=browserStorage(),months=Array.from(M.months('2025-01','2026-09'));
+  const w=workerHarness({storage,months});await w.request('init');await w.request('view',{...s,from:2025});
+  const fresh=workerHarness({storage,months});await fresh.request('init');await fresh.request('view',{...s,from:2025,rentMin:'70'});
+  assert.equal(fresh.fetched.filter(p=>p.endsWith('.bin')).length,0);
+});
+test('a metric change during download shares the pending file instead of cancelling it',async()=>{
+  const w=workerHarness();await w.request('init');const path='data/rental/months/2026-09-11.bin';let release;
+  w.gates.set(path,new Promise(r=>release=r));const old=w.request('view',s);
+  await new Promise(resolve=>{const check=()=>w.fetched.includes(path)?resolve():setImmediate(check);check();});
+  const next=w.request('view',{...s,metric:'deposit'});release();
+  assert.equal((await old).stale,true);assert.equal((await next).rowCount,2);
+  assert.equal(w.fetched.filter(p=>p===path).length,1,'the interrupted UI request does not restart its shared download');
 });

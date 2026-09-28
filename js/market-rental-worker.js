@@ -1,22 +1,30 @@
 'use strict';
 importScripts('/js/rental-model.js?v=20260928-market1','/js/market-rental-model.js?v=20260928-market1','/js/verified-data-cache.js?v=20260921-shared1');
-const M=globalThis.NodoMarketRental,R=globalThis.NodoRental,verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',256);
-let manifest,index,catalog,initializing,serial=0;const files=new Map(),summaries=new Map();
-async function read(path,expected,signal){const bytes=await verified.download(path,expected,{signal,persist:path.includes('/market-cache/')});return JSON.parse(path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes));}
+const M=globalThis.NodoMarketRental,R=globalThis.NodoRental;
+let verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',1024);
+let manifest,index,catalog,initializing,serial=0,activeReads=0;const files=new Map(),summaries=new Map(),waiting=[];
+async function read(path,expected,signal){
+  if(activeReads>=3)await new Promise(resolve=>waiting.push(resolve));else activeReads++;
+  try{signal?.throwIfAborted();const bytes=await verified.download(path,expected,{signal});return JSON.parse(path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes));}
+  finally{const next=waiting.shift();if(next)next();else activeReads--;}
+}
 async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{
   const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');manifest=await r.json();if(manifest.schema!==1)throw Error('자료 형식을 확인해 주세요.');
   const r2=await fetch('/data/rental/market-cache/index.json',{cache:'no-cache'});if(r2.ok){const candidate=await r2.json();if(candidate.schema===1&&candidate.sourceVersion===manifest.version&&candidate.inputs&&candidate.sources&&Object.entries(candidate.inputs).every(([p,h])=>manifest.sources[p]===h)&&Object.entries(candidate.sources).every(([p,h])=>/^data\/rental\/market-cache\/\d{4}-(0[1-9]|1[0-2])-(11|41|28)\.bin$/.test(p)&&/^[a-f0-9]{64}$/.test(h)))index=candidate;}
+  // Keep the complete history, including one previous version during updates.
+  verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',Math.max(1024,manifest.months.length*6+2));
   catalog=(await read('data/rental/catalog.bin',manifest.sources['data/rental/catalog.bin'])).complexes;R.normalizeDistricts(catalog);
 })();try{await initializing;}finally{initializing=null;}}
 async function load(month,region){const compact=`data/rental/market-cache/${month}-${region}.bin`,original=`data/rental/months/${month}-${region}.bin`,path=index?.sources[compact]?compact:original,hash=index?.sources[compact]||manifest.sources[original];if(!hash)return null;
   if(files.has(path)){const entry=files.get(path);files.delete(path);files.set(path,entry);return entry.promise;}
-  const entry={controller:new AbortController(),settled:false};entry.promise=read(path,hash,entry.controller.signal).then(shard=>path===compact?shard.rows:shard.rows.filter(r=>!r[7]).map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[16],r[15],r[17]]));files.set(path,entry);while(files.size>12)files.delete(files.keys().next().value);
-  try{return await entry.promise;}catch(e){if(files.get(path)===entry)files.delete(path);throw e;}finally{entry.settled=true;}
+  const entry={controller:new AbortController(),settled:false};entry.promise=read(path,hash,entry.controller.signal).then(shard=>path===compact?shard.rows:shard.rows.filter(r=>!r[7]).map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[16],r[15],r[17]]));files.set(path,entry);
+  try{return await entry.promise;}catch(e){if(files.get(path)===entry)files.delete(path);throw e;}finally{entry.settled=true;for(const [old,e]of files){if(files.size<=12)break;if(e.settled)files.delete(old);}}
 }
-function cancelPending(){for(const [path,entry]of files)if(!entry.settled){entry.controller.abort();files.delete(path);}}
+function cancelPending(keep=new Set()){for(const [path,entry]of files)if(!entry.settled&&!keep.has(path)){entry.controller.abort();files.delete(path);}}
+function required(s){const first=manifest.months[0],last=manifest.months.at(-1),start=[first,s.from+'-01'].sort().at(-1),end=[last,s.to+'-12'].sort()[0],display=M.months(start,end),needed=[...new Set([...display,s.ref,M.shift(s.ref,-1),M.shift(s.ref,-2),M.shift(s.ref,-12)])].filter(m=>m>=first&&m<=last).sort(),regions=s.region?[s.region]:['11','41','28'];return {display,needed,regions};}
 const filterKey=s=>JSON.stringify([s.type,s.region,[...(s.gus||[])].sort(),s.contract,s.q,s.searchIds,...['areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'].map(k=>s[k])]);
 async function view(s,id,revision){
-  const first=manifest.months[0],last=manifest.months.at(-1),start=[first,s.from+'-01'].sort().at(-1),end=[last,s.to+'-12'].sort()[0],display=M.months(start,end),needed=[...new Set([...display,s.ref,M.shift(s.ref,-1),M.shift(s.ref,-2),M.shift(s.ref,-12)])].filter(m=>m>=first&&m<=last).sort(),regions=s.region?[s.region]:['11','41','28'];
+  const {display,needed,regions}=required(s);
   const key=filterKey(s),results={};let completed=0,next=0;
   // At most three downloads at a time; a superseded view stops scheduling work.
   async function consume(){while(next<needed.length&&revision===serial){const month=needed[next++],cacheKey=key+':'+month;let value=summaries.get(cacheKey);if(!value){const rows=[];let available=0;for(const region of regions){if(revision!==serial)return;const shard=await load(month,region);if(shard){available++;for(const row of shard)rows.push(row);}}
@@ -29,12 +37,13 @@ async function view(s,id,revision){
   return {months:display,data:results,rows:page,rowCount:rows.length,version:manifest.version};
 }
 self.onmessage=async({data})=>{
-  const revision=++serial;cancelPending();
+  const revision=++serial;
   try{
     await init();if(revision!==serial){postMessage({id:data.id,stale:true});return;}
     if(data.action==='init'){
       postMessage({id:data.id,meta:{months:manifest.months,saleStartYear:index?.saleStartYear||2006,version:manifest.version,districts:Object.fromEntries(['11','41','28'].map(r=>[r,[...new Set(catalog.filter(c=>M.codes[c.r]===r).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]))}});return;
     }
+    const {needed,regions}=required(data.settings),keep=new Set();for(const month of needed)for(const region of regions)for(const kind of ['months','market-cache'])keep.add(`data/rental/${kind}/${month}-${region}.bin`);cancelPending(keep);
     postMessage({id:data.id,...await view(data.settings,data.id,revision)});
   }catch(e){
     if(revision!==serial){postMessage({id:data.id,stale:true});return;}
