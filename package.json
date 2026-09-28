@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:market": "node --test tools/test-market-rental.mjs",
     "test:search": "node --test tools/test-apartment-search*.mjs",
     "bench:search": "node --expose-gc tools/benchmark-apartment-search.mjs",
     "test:native": "cargo build --locked --manifest-path tools/native-projection/Cargo.toml && node tools/test-native-projection.mjs",

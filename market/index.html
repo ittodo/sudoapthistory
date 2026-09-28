@@ -8,6 +8,8 @@
 <link rel="canonical" href="https://nodostream.com/market/">
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="/js/market-charts.js?v=20260928-market1"></script>
+<script src="/js/market-rental-model.js?v=20260928-market1"></script>
 <style>
 :root {       --dn: #3b82f6; --accent: #3b82f6; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -951,7 +953,7 @@ function updateCharts() {
 
   // Price chart
   if (priceChart) priceChart.destroy();
-  priceChart = new Chart(document.getElementById('priceChart'), {
+  priceChart = NodoMarketCharts.create(document.getElementById('priceChart'), {
     type: 'line',
     data: { labels, datasets: priceSets },
     options: {
@@ -990,11 +992,11 @@ function updateCharts() {
         })(),
       },
     },
-  });
+  }, refSlot - from);
 
   // Volume chart
   if (volumeChart) volumeChart.destroy();
-  volumeChart = new Chart(document.getElementById('volumeChart'), {
+  volumeChart = NodoMarketCharts.create(document.getElementById('volumeChart'), {
     type: 'bar',
     data: { labels, datasets: volSets },
     options: {
@@ -1023,7 +1025,7 @@ function updateCharts() {
         },
       },
     },
-  });
+  }, refSlot - from);
 
   // Amount chart (월간 거래금액)
   const amountSets = [];
@@ -1103,7 +1105,7 @@ function updateCharts() {
   const isStacked = region === 'all' || selectedGus.length > 1;
   document.getElementById('amountChartTitle').textContent = `월간 거래금액 (${amountUnit}원)`;
   if (amountChart) amountChart.destroy();
-  amountChart = new Chart(document.getElementById('amountChart'), {
+  amountChart = NodoMarketCharts.create(document.getElementById('amountChart'), {
     type: 'bar',
     data: { labels, datasets: amountSets },
     options: {
@@ -1131,7 +1133,7 @@ function updateCharts() {
         },
       },
     },
-  });
+  }, refSlot - from);
 
   saveHash();
 }

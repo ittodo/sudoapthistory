@@ -1,0 +1,24 @@
+#nodo-rental.market-rental{max-width:none;padding:18px 24px 60px;font-size:13px}
+#nodo-rental.market-rental [hidden]{display:none!important}
+#nodo-rental.market-rental h1{font-size:18px;margin:0 0 5px}
+.market-controls,.market-reference,.market-options,.market-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.market-controls .market-years{margin-left:auto;display:flex;align-items:center;gap:6px}
+#nodo-rental.market-rental label{display:inline-flex;gap:6px;align-items:center;flex-direction:row}
+#nodo-rental.market-rental button,#nodo-rental.market-rental select,#nodo-rental.market-rental input{font-size:12px;padding:6px 10px}
+#nodo-rental.market-rental button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.market-district{position:relative}.market-district>summary{cursor:pointer;border:1px solid var(--border);border-radius:6px;padding:6px 10px}
+.market-district-list{position:absolute;top:100%;left:0;width:280px;max-height:320px;overflow:auto;z-index:30;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;box-shadow:0 8px 24px #0002}
+#nodo-rental .market-district-list label{display:flex;padding:4px}
+.market-advanced{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 0}.market-advanced>summary{cursor:pointer;color:var(--muted)}
+.market-filter-grid{display:flex;gap:12px;flex-wrap:wrap;align-items:end;padding-top:12px}
+#nodo-rental .market-filter-grid label{align-items:start;flex-direction:column}.market-filter-grid input[type=search]{width:240px;max-width:100%}.market-filter-grid span{display:flex;align-items:center;gap:4px}
+.market-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;flex:1}
+.market-summary article{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center;min-width:0}
+.market-summary span,.market-summary small{display:block;color:var(--muted);font-size:11px}.market-summary strong{display:block;font-size:22px;margin:5px 0;overflow-wrap:anywhere}
+.market-chart{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;margin:12px 0}
+#nodo-rental .market-chart h2,#nodo-rental .market-table-section h2{font-size:13px;margin:0 0 10px;color:var(--muted)}
+.market-canvas{position:relative;height:260px}.market-chart:first-of-type .market-canvas{height:340px}
+.market-table-section{margin:18px 0}.market-table-section .rental-table{border:1px solid var(--border);border-radius:8px}.market-table-section td small{display:block;color:var(--muted)}
+.market-status{min-height:22px}.market-error{color:var(--up)}.market-empty{padding:20px;text-align:center;color:var(--muted)}
+.market-rental[aria-busy=true] .market-results{opacity:.55;pointer-events:none}
+@media(max-width:700px){#nodo-rental.market-rental{padding:16px 12px 40px}.market-controls .market-years{margin-left:0;width:100%}.market-reference{align-items:stretch}.market-summary{flex-basis:100%;grid-template-columns:repeat(2,minmax(0,1fr))}.market-summary strong{font-size:18px}.market-chart{padding:12px}.market-canvas{height:230px}.market-district-list{width:250px;max-width:calc(100vw - 40px)}.market-filter-grid{display:grid;grid-template-columns:minmax(0,1fr)}.market-filter-grid input[type=search]{width:100%}}

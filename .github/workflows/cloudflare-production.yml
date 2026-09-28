@@ -45,6 +45,8 @@ jobs:
           CLOUDFLARE_PRODUCTION_WRITES_APPROVED: ${{ vars.CLOUDFLARE_PRODUCTION_WRITES_APPROVED }}
         run: node tools/verify-cloudflare-production.mjs
       - run: npm run test:daily && node tools/test-map-model.cjs && node tools/test-map-parcels.cjs
+      - name: Verify rental market and existing rental screens
+        run: npm run test:market && node tools/test-rental-model.cjs && node tools/test-rental-worker.cjs
       - run: npm run typecheck && npm run test:api
       - name: Verify calculator models and isolated local packaging
         run: node --test tools/test-salary.mjs tools/test-transaction-tax.mjs tools/test-holding-tax-build.mjs
