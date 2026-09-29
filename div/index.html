@@ -302,6 +302,17 @@ async function init(){
   setTimeout(()=>{var s=document.createElement('script');s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4171612672605986';s.async=true;s.crossOrigin='anonymous';document.head.appendChild(s);},1000);
 }
 
+function buybackBucket(e){
+  if(e.type==='소각')return 'cancel';
+  if(e.type==='매입'||!e.type)return 'buy';
+  return null; // 계약금액과 처분은 매입·주주환원 합계에 포함하지 않는다.
+}
+function buybackBadge(e){
+  const labels={'소각':['b-bb','소각'],'매입':['b-buy','매입'],'처분':['b-dispose','처분'],'신탁계약':['b-buy','신탁계약 · 집계 제외']};
+  const [cls,label]=labels[e.type]||['',e.type||'매입'];
+  const note=[e.method,e.note,e.type==='신탁계약'?'계약금액이며 실제 매입 실적이 아닙니다. 주식수는 미확정입니다.':''].filter(Boolean).join(' · ');
+  return `<span class="badge ${cls}">${esc(label)}</span>${note?`<div style="font-size:11px;color:var(--muted);max-width:320px;white-space:normal;line-height:1.5;margin-top:4px;">${esc(note)}</div>`:''}`;
+}
 function buildMeta(){
   tickerMeta={};yearAgg={};
   YEARS.forEach(y=>yearAgg[y]={divTotal:0,buyTotal:0,cancelTotal:0,divCount:0,buyCount:0,cancelCount:0,divTickers:new Set(),buyTickers:new Set(),cancelTickers:new Set()});
@@ -321,13 +332,14 @@ function buildMeta(){
     if(!tickerMeta[t])tickerMeta[t]={name:e.name,market:e.market,yearDiv:{},yearBuy:{},yearCancel:{},yearDPS:{},yearYield:{},events:[]};
     const m=tickerMeta[t];
     const amt=e.totalAmount||0;
-    const isBuy=e.type==='매입'||(!e.type&&e.type!=='소각');
-    const isCancel=e.type==='소각';
+    const bucket=buybackBucket(e);
+    const isBuy=bucket==='buy';
+    const isCancel=bucket==='cancel';
     if(y&&YEARS.includes(y)){
       if(isCancel){
         m.yearCancel[y]=(m.yearCancel[y]||0)+amt;
         if(yearAgg[y]){yearAgg[y].cancelTotal+=amt;yearAgg[y].cancelCount++;yearAgg[y].cancelTickers.add(t);}
-      }else{
+      }else if(isBuy){
         m.yearBuy[y]=(m.yearBuy[y]||0)+amt;
         if(yearAgg[y]){yearAgg[y].buyTotal+=amt;yearAgg[y].buyCount++;yearAgg[y].buyTickers.add(t);}
       }
@@ -465,9 +477,9 @@ function renderCal(){
       ehtml+='</tbody></table>';
     }
     if(ev.bbs.length){
-      ehtml+='<table style="margin-top:8px;"><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">주식수</th><th style="text-align:right">총액</th><th>공시</th></tr></thead><tbody>';
+      ehtml+='<table style="margin-top:8px;"><thead><tr><th>종목</th><th>시장</th><th>구분</th><th style="text-align:right">주식수</th><th style="text-align:right">공시 금액</th><th>공시</th></tr></thead><tbody>';
       for(const e of ev.bbs){
-        const tb=e.type==='소각'?'<span class="badge b-bb">소각</span>':e.type==='매입'?'<span class="badge b-buy">매입</span>':e.type==='처분'?'<span class="badge b-dispose">처분</span>':'';
+        const tb=buybackBadge(e);
         ehtml+=`<tr><td><span class="clickable-name" onclick="showDetail('${esc(e.ticker)}','${esc(e.name)}')">${esc(e.name)}</span></td><td>${mktB(e.market)}</td><td>${tb}</td><td style="text-align:right;">${e.shareCount?e.shareCount.toLocaleString():'-'}</td><td style="text-align:right;font-weight:600;">${fmtAmt(e.totalAmount)}</td><td>${dartL(e.rceptNo)}</td></tr>`;
       }
       ehtml+='</tbody></table>';
@@ -502,8 +514,9 @@ function renderAnnual(){
     const ym=bd.substring(0,7);
     if(!monthly[ym])monthly[ym]={divT:0,buyT:0,cancelT:0};
     const amt=e.totalAmount||0;
-    if(e.type==='소각')monthly[ym].cancelT+=amt;
-    else monthly[ym].buyT+=amt;
+    const bucket=buybackBucket(e);
+    if(bucket==='cancel')monthly[ym].cancelT+=amt;
+    else if(bucket==='buy')monthly[ym].buyT+=amt;
   }
 
   // Build yearly aggregation from monthly
@@ -1090,10 +1103,10 @@ function showDetail(ticker,name){
     html+='</table></div>';
   }
   if(tBBs.length){
-    html+=`<div class="detail-section"><h3>자사주 이력 (${tBBs.length}건)</h3><table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>일자</td><td>구분</td><td style="text-align:right">주식수</td><td style="text-align:right">총액</td><td></td></tr>`;
+    html+=`<div class="detail-section"><h3>자사주 이력 (${tBBs.length}건)</h3><table class="detail-table"><tr style="color:var(--muted);font-size:11px;"><td>일자</td><td>구분</td><td style="text-align:right">주식수</td><td style="text-align:right">공시 금액</td><td></td></tr>`;
     for(const e of tBBs){
-      const tb=e.type==='소각'?'<span class="badge b-bb">소각</span>':e.type==='매입'?'<span class="badge b-buy">매입</span>':e.type==='처분'?'<span class="badge b-dispose">처분</span>':'';
-      html+=`<tr><td>${esc(e.buybackDate)}</td><td>${tb}</td><td style="text-align:right;">${e.shareCount?e.shareCount.toLocaleString():'-'}</td><td style="text-align:right;font-weight:600;">${fmtAmt(e.totalAmount)}</td><td>${dartL(e.rceptNo)}</td></tr>`;
+      const tb=buybackBadge(e);
+      html+=`<tr><td>${esc(e.buybackDate)||'-'}${e.type==='신탁계약'?'<div style="font-size:11px;color:var(--muted);">계약 시작</div>':''}</td><td>${tb}</td><td style="text-align:right;">${e.shareCount?e.shareCount.toLocaleString():'-'}</td><td style="text-align:right;font-weight:600;">${fmtAmt(e.totalAmount)}</td><td>${dartL(e.rceptNo)}</td></tr>`;
     }
     html+='</table></div>';
   }
