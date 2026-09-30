@@ -4,7 +4,7 @@
     const response=await fetch('/data/daily/index.json',{cache:'no-cache'});
     if(!response.ok)throw Error('일별 데이터를 불러오지 못했습니다. 다시 시도해 주세요.');
     const index=await response.json();
-    if(![1,2].includes(index.schema))throw Error('일별 데이터 형식이 변경되었습니다. 새로고침해 주세요.');
+    if(![1,2,3].includes(index.schema))throw Error('일별 데이터 형식이 변경되었습니다. 새로고침해 주세요.');
     const cache=new Map(),fileCache=globalThis.NodoVerifiedDataCache.create('nodo-sale-map-v1');
     let activePricePaths=new Set();
     async function load(path,background=false) {
@@ -13,12 +13,7 @@
       const entry={controller:new AbortController(),background,settled:false};
       const promise=fileCache.download(path,index.sources[path],{signal:entry.controller.signal,background,persist:stateFile(path)}).then(async bytes=>{
         entry.controller.signal.throwIfAborted();
-        if(path.endsWith('.bin')){
-          if(typeof DecompressionStream==='undefined')throw Error('압축 데이터를 지원하는 최신 브라우저가 필요합니다.');
-          const text=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-          entry.controller.signal.throwIfAborted();return JSON.parse(text);
-        }
-        return JSON.parse(new TextDecoder().decode(bytes));
+        const value=await globalThis.NodoVerifiedDataCache.decode(bytes,path);entry.controller.signal.throwIfAborted();return value;
       }).catch(e=>{if(cache.get(path)===entry)cache.delete(path);throw e;}).finally(()=>{entry.settled=true;});
       entry.promise=promise;cache.set(path,entry);
       if(cache.size>9){const oldest=[...cache.keys()].find(p=>!activePricePaths.has(p));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
@@ -27,7 +22,7 @@
     load.promote=p=>{if(cache.has(p))cache.get(p).background=false;};
     const stateFile=p=>p.includes('-state.')||/^data\/daily\/regions\/\d{5}\/(base|months)\//.test(p);
     const extension=index.encoding==='gzip-json'?'bin':'json';
-    const regional=index.schema===2?await globalThis.NodoRegional.create(index,'daily',load):null;
+    const regional=index.schema>=2?await globalThis.NodoRegional.create(index,'daily',load):null;
     const catalog=regional||await load('data/daily/catalog.'+extension);
     const statePath=(ym,r)=>`data/daily/${r}/${ym}-state.${extension}`;
     const month=(ym,r,state=false,background=false)=>index.months.includes(ym)?(regional?regional.shard(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,ym,r,background):load(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,background)):Promise.resolve(state?{opening:[],updates:[]}:{rows:[]});

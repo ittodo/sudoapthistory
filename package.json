@@ -7,7 +7,7 @@
     "test:search": "node --test tools/test-apartment-search*.mjs",
     "bench:search": "node --expose-gc tools/benchmark-apartment-search.mjs",
     "test:native": "cargo build --locked --manifest-path tools/native-projection/Cargo.toml && node tools/test-native-projection.mjs",
-    "test:regional": "node --test tools/test-regional-data.mjs tools/test-regional-packaging.mjs && node tools/test-regional-worker.cjs",
+    "test:regional": "node --test tools/test-regional-data.mjs tools/test-regional-packaging.mjs && node tools/test-regional-worker.cjs && npm run test:housing",
     "test:daily": "npm run test:regional && npm run test:native && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs",
     "test:daily:reference": "python -m unittest discover -s tools -p test_daily_data.py",
     "build:daily": "cargo run --locked --manifest-path tools/native-projection/Cargo.toml -- daily-build",
@@ -23,7 +23,8 @@
     "test:api": "tsx --test cloudflare/test/*.test.ts",
     "build:salary": "node tools/build-salary.mjs",
     "test:salary": "node --test tools/test-salary.mjs",
-    "verify:salary": "npm run test:salary && npm run build:salary"
+    "verify:salary": "npm run test:salary && npm run build:salary",
+    "test:housing": "node --test tools/test-housing-facts.mjs tools/test-housing-state-timeline.mjs tools/test-housing-regional.mjs tools/test-housing-contracts.mjs tools/test-housing-sales.mjs tools/test-housing-partition.mjs tools/test-housing-packing-cache.mjs && node --experimental-vm-modules tools/test-housing-worker.cjs"
   },
   "dependencies": {
     "es-hangul": "2.4.0",

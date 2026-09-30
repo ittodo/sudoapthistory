@@ -183,7 +183,8 @@
     if(chart){chart.destroy();chart=null;}
     $('priceChart').hidden=true;$('chartStatus').textContent='가격 추이를 불러오는 중…';
     $('tradeList').replaceChildren();$('tradeStatus').textContent='거래내역을 불러오는 중…';$('moreTrades').hidden=true;
-    const combinedTask=area.rows?Promise.all([...new Set(area.rows.map(r=>r.g))].map(async g=>[g,await client(`data/tx/${g}.json`)])).then(entries=>model.combinedTrades(area,Object.fromEntries(entries))):null;
+    const sharedTask=payload.meta.sources['data/sale-details/index.json']?(async()=>{const reader=await(await import('./housing-sales.mjs')).browserSaleReader(payload.meta.sources['data/sale-details/index.json']);return(await Promise.all((area.rows||[{id:c.id,n:c.n,i:area.i}]).map(async r=>(await reader.rows(r.id,area.a)).map(t=>({...t,sourceId:r.id,sourceName:r.n,row:r.i}))))).flat().sort((a,b)=>b.date-a.date||a.row-b.row||a.order-b.order);})():null;
+    const combinedTask=sharedTask||(area.rows?Promise.all([...new Set(area.rows.map(r=>r.g))].map(async g=>[g,await client(`data/tx/${g}.json`)])).then(entries=>model.combinedTrades(area,Object.fromEntries(entries))):null);
     const stamp=payload.meta.updated.split('-').map(Number), monthCount=(stamp[0]-2006)*12+stamp[1];
     const chartInput=combinedTask?combinedTask.then(rows=>model.monthlyTrades(rows,monthCount)):client(`data/monthly/${c.g}.json`).then(data=>data[String(area.i)]?.p);
     const chartTask=chartInput.then(values=>{

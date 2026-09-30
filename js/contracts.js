@@ -8,11 +8,12 @@
   const params = new URLSearchParams(location.search);
   let manifest, data = [], entity = params.get('entity') || '', page = 0, generation = 0, loaded = new Set(), requestedMonths = [];
   const cache = new Map();
-  let apartmentLookup = {},aptSearch;
+  let apartmentLookup = {},aptSearch,sharedContracts;
   const stateFields=['property','category','district','period','search','area'];
   window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('nodo:contracts',JSON.stringify({values:Object.fromEntries(stateFields.map(id=>[id,$(id).value])),entity,page}));}catch{}});
   function service() { return $('property').value + '-' + ($('category').value === 'sale' ? 'sale' : 'rent'); }
   async function read(path) {
+    if(manifest?.schema===2){const p=manifest.partitions.find(p=>p.path===path);if(p?.format==='regional-reference'){if(!sharedContracts){await Promise.all([import('/js/verified-data-cache.js'),import('/js/regional-data.js')]);sharedContracts=(await import('/js/housing-contracts.mjs')).browserContractReader();}return (await sharedContracts).read(p);}}
     const response = await fetch('/data/contracts/' + path);
     if (!response.ok) throw new Error('자료를 불러오지 못했습니다.');
     return response.json();

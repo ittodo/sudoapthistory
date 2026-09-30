@@ -3,10 +3,12 @@ import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import '../js/regional-data.js';
+import {packedReader} from './housing-regional-reader.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function regionalReader(root,kind){
  root=realpathSync(root);const manifest=JSON.parse(readFileSync(resolve(root,`data/${kind}/index.json`))),inputs={},cache=new Map();
- function physical(path,decode=true){if(decode&&cache.has(path))return cache.get(path);const p=resolve(root,path);if(!p.startsWith(root+sep)||path.includes('..')||!/^data\/(daily|rental|map)\/[\w/.-]+\.(bin|json)$/.test(path))throw Error('Unsafe regional path: '+path);if(!realpathSync(p).startsWith(root+sep))throw Error("Regional source link escapes root");const bytes=readFileSync(p),digest=hash(bytes);if(manifest.sources[path]!==digest)throw Error('Regional source mismatch: '+path);inputs[path]=digest;if(!decode)return {bytes:bytes.length,sha256:digest};const v=JSON.parse(path.endsWith('.bin')?gunzipSync(bytes):bytes);if(path.endsWith('.json')&&path.includes('/regions/')||path.endsWith('/catalog.bin'))cache.set(path,v);return v;}
+ function physical(path,decode=true){if(decode&&cache.has(path))return cache.get(path);const p=resolve(root,path);if(!p.startsWith(root+sep)||path.includes('..')||!/^data\/(daily|rental|map)\/[\w/.-]+\.(bin|json)$/.test(path))throw Error('Unsafe regional path: '+path);if(!realpathSync(p).startsWith(root+sep))throw Error("Regional source link escapes root");const bytes=readFileSync(p),digest=hash(bytes);if(manifest.sources[path]!==digest)throw Error('Regional source mismatch: '+path);inputs[path]=digest;if(!decode)return {bytes:bytes.length,sha256:digest};const raw=path.endsWith('.bin')?gunzipSync(bytes):bytes;const v=['PGHOUSE1','PGSTATE1','PGCOL001'].includes(raw.subarray(0,8).toString())?new Uint8Array(raw):JSON.parse(raw);if(path.endsWith('.json')&&path.includes('/regions/')||path.endsWith('/catalog.bin'))cache.set(path,v);return v;}
+ if(manifest.schema===3){const reader=packedReader(kind,manifest,physical);return {manifest,inputs,physical,...reader,fingerprint(path,metadata=false){const proof=reader.dependencies(path,metadata).map(p=>{if(!manifest.sources[p])throw Error('Missing dependency hash');inputs[p]=manifest.sources[p];return [p,manifest.sources[p]];});return hash(JSON.stringify(proof));}};}
  if(manifest.schema==null||manifest.schema===1){manifest.schema=1;return {manifest,inputs,physical,get catalog(){return physical(`data/${kind}/catalog.bin`);},read:physical};}
  if(manifest.schema!==2||manifest.regional?.kind!==kind||manifest.regional.format!=='fixed-region')throw Error('Unsupported dataset schema');
  const descriptor=physical(manifest.regional.authority);if(descriptor.baselineCommit!==manifest.regional.baselineCommit)throw Error('Regional baseline mismatch');
@@ -28,7 +30,7 @@ export function regionalReader(root,kind){
  return {manifest,inputs,physical,catalog:table,read,table,regionMonth,fingerprint};
 }
 export function verifyRegionalData(root,kind){
- const reader=regionalReader(root,kind),m=reader.manifest;if(m.schema!==2)throw Error('Schema2 required for regional verification');
+ const reader=regionalReader(root,kind),m=reader.manifest;if(m.schema===3)return verifyPackedPair(root)[kind];if(m.schema!==2)throw Error('Schema2 required for regional verification');
  for(const path of Object.keys(m.sources))reader.physical(path,false);
  const baseline=reader.physical(m.regional.baselineManifest);if(baseline.schema!==2||baseline.baselineCommit!==m.regional.baselineCommit)throw Error('Invalid regional baseline descriptor');
  for(const [p,h]of Object.entries(baseline.sources))if(m.sources[p]!==h)throw Error('Immutable regional baseline replaced: '+p);
@@ -45,4 +47,14 @@ export function verifyRegionalData(root,kind){
   }
  }
  return {schema:2,files:Object.keys(m.sources).length,regions:reader.table.regions.size,version:m.version,immutableRegionalFiles:Object.keys(baseline.sources).length,legacyCompatibility:false};
+}
+// Reuse decoded validation only after independently rechecking every current file hash.
+// Both views share quarter bytes, so validate them together in one bounded-cache pass.
+const verifiedPairs=new Map();
+function verifyPackedPair(root){
+ const d=regionalReader(root,'daily'),r=regionalReader(root,'rental');if(d.manifest.schema!==3||r.manifest.schema!==3||JSON.stringify(d.manifest.regional.quarters)!==JSON.stringify(r.manifest.regional.quarters))throw Error('Shared quarter binding mismatch');
+ const checked=new Map();for(const reader of [d,r])for(const[p,h]of Object.entries(reader.manifest.sources)){if(checked.has(p)){if(checked.get(p)!==h)throw Error('Shared digest mismatch');}else{reader.physical(p,false);checked.set(p,h);}}
+ const key=hash(JSON.stringify([d.manifest,r.manifest]));if(verifiedPairs.has(key))return verifiedPairs.get(key);
+ let months=0;for(const[code,entries]of Object.entries(d.manifest.regional.quarters))for(const month of Object.keys(entries).sort()){d.regionMonth(code,month);r.regionMonth(code,month);months++;}
+ const result=Object.fromEntries([['daily',d],['rental',r]].map(([k,v])=>[k,{schema:3,regions:v.table.regions.size,files:Object.keys(v.manifest.sources).length,regionMonths:months,legacyCompatibility:false}]));verifiedPairs.clear();verifiedPairs.set(key,result);return result;
 }

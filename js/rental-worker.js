@@ -4,10 +4,11 @@ const M=globalThis.NodoRental;
 const regionPrices=globalThis.NodoRegionPrices.create();
 let manifest,catalog,rates,summary,initializing,districtNames,regional;const cache=new Map();let serial=0,prefetchSerial=0;
 let activeMapPaths=new Set();
-let mapCache,mapCacheLoading;
+let mapCache,mapCacheLoading,contractReader;
 const mapCachePrefix='data/rental/map-cache/';
 function mapPath(month,region,type){const compact=`${mapCachePrefix}${month}-${region}-${type}.bin`;return mapCache?.sources[compact]?compact:`data/rental/months/${month}-${region}-state.bin`;}
 async function ensureMapCache(){
+  if(manifest?.schema===3)return;
   if(!mapCacheLoading)mapCacheLoading=fetch('/'+mapCachePrefix+'index.json',{cache:'no-cache'}).then(async r=>{
     if(!r.ok)return;const m=await r.json();
     if(m.schema!==1||m.sourceVersion!==manifest.version||!m.inputs||!m.sources)return;
@@ -63,7 +64,7 @@ async function physicalLoad(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
   const expected=mapCache?.sources[path]||manifest.sources[path];if(!expected)throw Error('수집된 자료가 없는 구간입니다.');
   const entry={background,controller:new AbortController(),settled:false};
-  entry.promise=(async()=>{const bytes=await download(path,expected,entry,background);entry.controller.signal.throwIfAborted();const text=path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);entry.controller.signal.throwIfAborted();return JSON.parse(text);})();
+  entry.promise=(async()=>{const bytes=await download(path,expected,entry,background);entry.controller.signal.throwIfAborted();const value=await globalThis.NodoVerifiedDataCache.decode(bytes,path);entry.controller.signal.throwIfAborted();return value;})();
   cache.set(path,entry);const large=isMapFile(path),peers=[...cache.keys()].filter(k=>isMapFile(k)===large);
   if(peers.length>(large?6:9)){const oldest=peers.find(k=>!activeMapPaths.has(k));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
   try{return await entry.promise;}catch(e){if(cache.get(path)===entry)cache.delete(path);throw e;}finally{entry.settled=true;}
@@ -76,7 +77,7 @@ async function load(path,background=false){
  const value=await physicalLoad(path,background);
  return value;
 }
-async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 준비 중입니다.');manifest=await r.json();if(![1,2].includes(manifest.schema))throw Error('자료 형식이 바뀌었습니다. 새로고침해 주세요.');regional=manifest.schema===2?await globalThis.NodoRegional.create(manifest,'rental',physicalLoad):null;const loaded=await Promise.all([regional?Promise.resolve(regional):load('data/rental/catalog.bin'),load('data/rental/rates.json')]);[catalog,rates]=[loaded[0].complexes,loaded[1]];districtNames=M.normalizeDistricts(catalog);})();try{await initializing;}finally{initializing=null;}}
+async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 준비 중입니다.');manifest=await r.json();if(![1,2,3].includes(manifest.schema))throw Error('자료 형식이 바뀌었습니다. 새로고침해 주세요.');regional=manifest.schema>=2?await globalThis.NodoRegional.create(manifest,'rental',physicalLoad):null;const loaded=await Promise.all([regional?Promise.resolve(regional):load('data/rental/catalog.bin'),load('data/rental/rates.json')]);[catalog,rates]=[loaded[0].complexes,loaded[1]];districtNames=M.normalizeDistricts(catalog);})();try{await initializing;}finally{initializing=null;}}
 function aggregate(rows,s){
   const out={count:0,cancelled:0,up:0,down:0,high:0,low:0,within:0,unlocated:0},daily={},districts={},rank=new Map();
   for(const t of rows){if(t.cancelled){out.cancelled++;continue;}out.count++;if(!t.c.coord)out.unlocated++;const comparable=s.type==='jeonse'||s.convert;for(const [k,bit]of Object.entries({up:8,down:4,high:1,low:2,within:16}))if(comparable&&t.records&bit)out[k]++;
@@ -101,13 +102,14 @@ self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetc
     postMessage({id:data.id,...mapView(shards,regions,s),version:manifest.version});return;
   }
   if(s.detail){const wanted=new Set([s.detail,...(data.action==='history'?data.settings.detailIds||[]:[])]);const ids=catalog.map((c,i)=>[c.publicId,c.id,c.mapId].some(id=>wanted.has(id))?(regional?c.key:i):-1).filter(i=>i!==-1);
-   if(regional){const codes=new Set(ids.map(id=>id.split(':')[0]));for(const month of manifest.months.filter(m=>m.startsWith(String(s.year))))for(const code of codes){const base=manifest.regional.bases?.[code]?.[month],over=manifest.regional.overlays?.[code]?.[month];let shard={rows:[]};if(base){const value=globalThis.NodoRegional.baseMonth(await physicalLoad(base),code,month,manifest.regional.baselineCommit);shard={rows:value.rental?.rows||[]};}if(over){const value=await physicalLoad(over);shard=regional.merge(shard,[{...value,rental:value.rental?.rows?{rows:value.rental.rows}:{}}]);}for(const row of shard.rows)if(ids.includes(row[0]))raw.push(row);}}
+   if(regional&&manifest.schema===3){const codes=new Set(ids.map(id=>id.split(':')[0]));for(const month of manifest.months.filter(m=>m.startsWith(String(s.year))))for(const code of codes){const shard=await regional.regionMonth(code,month,false,false);for(const row of shard.rows)if(ids.includes(row[0]))raw.push(row);}}
+   else if(regional){const codes=new Set(ids.map(id=>id.split(':')[0]));for(const month of manifest.months.filter(m=>m.startsWith(String(s.year))))for(const code of codes){const base=manifest.regional.bases?.[code]?.[month],over=manifest.regional.overlays?.[code]?.[month];let shard={rows:[]};if(base){const value=globalThis.NodoRegional.baseMonth(await physicalLoad(base),code,month,manifest.regional.baselineCommit);shard={rows:value.rental?.rows||[]};}if(over){const value=await physicalLoad(over);shard=regional.merge(shard,[{...value,rental:value.rental?.rows?{rows:value.rental.rows}:{}}]);}for(const row of shard.rows)if(ids.includes(row[0]))raw.push(row);}}
    else{const buckets=[...new Set(ids.map(i=>i%64))];for(const b of buckets){const path=`data/rental/history/${s.year}/${String(b).padStart(2,'0')}.bin`;if(manifest.sources[path])raw.push(...(await load(path)).rows.filter(r=>ids.includes(r[0])));}}
   }
 
   else{const span=M.range(s.day,s.period),paths=[];for(const month of M.months(span.from,span.to))for(const region of regions){const path=`data/rental/months/${month}-${region}.bin`;if(regional||manifest.sources[path])paths.push(path);}for(const shard of await Promise.all(paths.map(path=>load(path))))raw.push(...shard.rows.filter(r=>M.iso(r[2])>=span.from&&M.iso(r[2])<=span.to));}
   if(data.action==='view'&&revision!==serial){postMessage({id:data.id,stale:true});return;}
-  if(data.action==='history'){postMessage({id:data.id,rows:raw.map(r=>M.decode(r,catalog))});return;}
+  if(data.action==='history'){let rows=raw.map(r=>M.decode(r,catalog));if(manifest.schema===3){contractReader??=(await import('./housing-contracts.mjs')).browserContractReader(regional,manifest).catch(e=>{contractReader=null;throw e;});const details=await(await contractReader).history([s.detail,...(data.settings.detailIds||[])],s.year),extras=new Map();for(const d of details)if(d.recordIdentity){if(!extras.has(d.recordIdentity))extras.set(d.recordIdentity,[]);extras.get(d.recordIdentity).push(d);}rows=rows.map(t=>{const d=extras.get(t.id)?.shift();return d?{...t,contractTerm:d.contractTerm,contractType:d.contractType,cancelDate:d.cancelDate,previousDeposit:d.previousDeposit,previousMonthlyRent:d.previousMonthlyRent,renewalRight:d.renewalRight}:t;});}postMessage({id:data.id,rows});return;}
   const rows=raw.map(r=>M.decode(r,catalog)).filter(t=>M.match(t,s));const totals=aggregate(rows,s),filtered=rows.filter(t=>M.category(t,s));
   const key=t=>s.sort==='deposit'?t.deposit:s.sort==='rent'?t.rent:s.sort==='rise'?(M.change(t,s)??-Infinity):s.sort==='drop'?-(M.change(t,s)??Infinity):s.sort==='date'?Date.parse(t.date):M.metric(t,s)??-Infinity;
   const sortKeys=new Map(filtered.map(t=>[t,key(t)]));

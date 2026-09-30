@@ -1,0 +1,26 @@
+namespace nodostream.housing {
+ table ComplexIdentity { id: u32 primary_key; source_namespace: string; source_id: string; property_type: u8; lifecycle: u8; }
+ table AreaIdentity { id: u32 primary_key; complex_id: u32; exact_area: string; }
+ table TradeGroup { month: u8; complex_id: u32; area_id: u32; kind: u8; start: u32; count: u32; }
+ table SaleFact { day: u8; floor: i16?; price: i64; price_scale: u8; status: u8; identity: string; multiplicity: u32; }
+ table RentalFact { day: u8; floor: i16?; deposit: i64; rent: i64; money_scale: u8; contract_kind: u8; status: u8; identity: string; multiplicity: u32; }
+ table ConversionRate { region: u32; month: u32; value: i64; scale: u8; source: string; }
+ table Metadata { complex_id: u32; name: string; address: string?; latitude: f64?; longitude: f64?; built_year: u16?; total_units: u32?; unit_source: string?; }
+ table AreaMetadata { area_id: u32; units: u32?; unit_source: string?; }
+ table ApprovedLink { source_id: u32; target_region: u32; target_id: u32; approved_parcel: string; evidence: string; }
+ table ContractExtra { identity: string; contract_term: string?; cancel_date: u32?; previous_deposit: i64?; previous_rent: i64?; money_scale: u8; renewal_right: string?; }
+ table StateChange { area_id: u32; date: u32; kind: u8; contract_kind: u8; identity: string; }
+ table Coverage { region: u32; month: u32; service: string; status: u8; rows: u32; }
+ table SaleMapState { area_id: u32; date: u32; low: f64; high: f64; mean: f64; count: u32; }
+ table RentalMapState { complex_id: u32; exact_area: string; date: u32; deposit: f64; rent: f64; contract_kind: u8; floor: i16?; status: u8; previous_date: u32?; previous_low: f64?; previous_high: f64?; history_low: f64?; history_high: f64?; value: f64?; records: u32; rate_month: u32?; rate: f64?; identity: string; }
+ table StateInterval { first_month: u32; last_month: u32; position: u32; state_id: u32; }
+ table SaleComparison { previous_date: u32?; previous_low: f64?; history_high: f64?; history_low: f64?; records: u32; previous_high: f64?; }
+ table RentalComparison { previous_date: u32?; previous_low: f64?; previous_high: f64?; history_low: f64?; history_high: f64?; value: f64?; records: u32; rate_month: string?; rate: f64?; }
+ table TradeOrder { month: u8; kind: u8; row_id: u32; }
+ table StateUpdateOrder { month: u8; kind: u8; row_id: u32; }
+ table ContractDetail { identity: string; occurrence: u32; contract_term: string; contract_type: string; cancel_date: string; previous_deposit: i64?; previous_rent: i64?; money_scale: u8; renewal_right: string; }
+ table ContractUnmatched { payload: string; reason: string; }
+ table SaleDetailReference { complex_id: u32; rounded_area: u16; identity: string; occurrence: u32; position: u32; cancel_date: string; }
+ table ExcludedSaleFact { area_id: u32; date: u32; price: i64; price_scale: u8; floor: i16?; status: u8; identity: string; reason: string; }
+ table PartitionOrder { month: u8; collection: u8; part: u16; }
+}

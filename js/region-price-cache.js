@@ -14,7 +14,7 @@
   function create(){
     const disk=root.NodoVerifiedDataCache.create('nodo-region-prices-v1',18),files=new Map();let manifestPromise,manifest,revision=0;
     async function index(){
-      if(!manifestPromise)manifestPromise=fetch('/'+prefix+'index.json',{cache:'no-cache'}).then(async r=>{if(!r.ok)return null;const m=await r.json();if(m.schema!==1||!m.versions||!m.sources)return null;
+      if(!manifestPromise)manifestPromise=fetch('/'+prefix+'index.json',{cache:'no-cache'}).then(async r=>{if(!r.ok)return null;const m=await r.json();if(![1,2].includes(m.schema)||!m.versions||!m.sources)return null;
         if(Object.entries(m.sources).some(([p,h])=>!/^data\/map\/price-cache\/\d{4}-\d{2}-(41|11|28)-(sale|jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return null;
         if(m.quarterSources&&Object.entries(m.quarterSources).some(([p,h])=>!/^data\/map\/price-cache\/\d{4}-Q[1-4]-(41|11|28)-(sale|jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return null;
         return manifest=m;}).catch(()=>null);
@@ -32,8 +32,8 @@
       const serial=++revision,m=await index();if(serial!==revision)return null;
       if(!m||Object.entries(versions).some(([k,v])=>m.versions[k]!==v))return null;
       const month=day.slice(0,7),monthly=regions.map(r=>prefix+month+'-'+r+'-'+type+'.bin');
-      if(monthly.some(p=>!m.sources[p]))return null;
       const paths=regions.map((r,i)=>{const p=prefix+quarter(month)+'-'+r+'-'+type+'.bin';return m.quarterSources?.[p]?p:monthly[i];});
+      if(paths.some(p=>!m.sources[p]&&!m.quarterSources?.[p]))return null;
       const next=new Date(month+'-01T00:00:00Z');next.setUTCMonth(Math.ceil(Number(month.slice(5))/3)*3);
       const warm=regions.map(r=>prefix+quarter(next.toISOString().slice(0,7))+'-'+r+'-'+type+'.bin').filter(p=>m.quarterSources?.[p]);
       for(const [p,e]of files)if(!paths.includes(p)&&!warm.includes(p)&&!e.done){e.controller.abort();files.delete(p);}

@@ -16,6 +16,7 @@ export function compactMapShard(shard,type){
 export function rentalMapAssets(root){
  const manifestPath=join(root,'data/rental/index.json');if(!existsSync(manifestPath))return [];
  const reader=regionalReader(root,'rental'),manifest=reader.manifest,assets=[],sources={},inputs={};
+ if(manifest.schema===3)return []; // Common packed quarters serve both consumers.
  const codeHash=hash(Buffer.concat([readFileSync(join(root,'tools/build-rental-map-cache.mjs')),readFileSync(join(root,'tools/regional-data.mjs')),readFileSync(join(root,'js/regional-data.js'))]));
  // Derived files are packaging outputs, like the existing search catalog. No DB writes.
  const directory=join(root,'cloudflare/dist/rental-map-cache-v1');

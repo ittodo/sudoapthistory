@@ -5,15 +5,15 @@ let verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',102
 let manifest,index,catalog,initializing,regional,serial=0,activeReads=0;const files=new Map(),summaries=new Map(),waiting=[];
 async function read(path,expected,signal){
   if(activeReads>=3)await new Promise(resolve=>waiting.push(resolve));else activeReads++;
-  try{signal?.throwIfAborted();const bytes=await verified.download(path,expected,{signal});return JSON.parse(path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes));}
+  try{signal?.throwIfAborted();const bytes=await verified.download(path,expected,{signal});return globalThis.NodoVerifiedDataCache.decode(bytes,path);}
   finally{const next=waiting.shift();if(next)next();else activeReads--;}
 }
 async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{
-  const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');manifest=await r.json();if(![1,2].includes(manifest.schema))throw Error('자료 형식을 확인해 주세요.');
+  const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');manifest=await r.json();if(![1,2,3].includes(manifest.schema))throw Error('자료 형식을 확인해 주세요.');
   const r2=await fetch('/data/rental/market-cache/index.json',{cache:'no-cache'});if(r2.ok){const candidate=await r2.json();if(candidate.schema===1&&candidate.sourceVersion===manifest.version&&candidate.inputs&&candidate.sources&&Object.entries(candidate.inputs).every(([p,h])=>manifest.sources[p]===h)&&Object.entries(candidate.sources).every(([p,h])=>/^data\/rental\/market-cache\/\d{4}-(0[1-9]|1[0-2])-(11|41|28)\.bin$/.test(p)&&/^[a-f0-9]{64}$/.test(h)))index=candidate;}
   // Keep the complete history, including one previous version during updates.
   verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',Math.max(1024,manifest.months.length*6+2));
-  regional=manifest.schema===2?await globalThis.NodoRegional.create(manifest,'rental',(p)=>read(p,manifest.sources[p])):null;catalog=regional?regional.complexes:(await read('data/rental/catalog.bin',manifest.sources['data/rental/catalog.bin'])).complexes;R.normalizeDistricts(catalog);
+  regional=manifest.schema>=2?await globalThis.NodoRegional.create(manifest,'rental',(p)=>read(p,manifest.sources[p])):null;catalog=regional?regional.complexes:(await read('data/rental/catalog.bin',manifest.sources['data/rental/catalog.bin'])).complexes;R.normalizeDistricts(catalog);
 })();try{await initializing;}finally{initializing=null;}}
 async function load(month,region){const compact=`data/rental/market-cache/${month}-${region}.bin`,original=`data/rental/months/${month}-${region}.bin`,path=index?.sources[compact]?compact:original,hash=(index?.sources[compact])||manifest.sources[original];if(!hash&&!regional)return null;
   if(files.has(path)){const entry=files.get(path);files.delete(path);files.set(path,entry);return entry.promise;}

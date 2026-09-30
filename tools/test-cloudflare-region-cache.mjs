@@ -141,3 +141,10 @@ test('packaging reuses unchanged bundles, repairs damaged outputs and rejects ch
     write('data/daily/0/2026-09-state.bin','changed input');assert.throws(()=>regionPriceAssets(fixture),/input mismatch/);
   }finally{assert.ok(fixture.startsWith(join(tmpdir(),'region-price-fixture-')));rmSync(fixture,{recursive:true,force:true});}
 });
+
+test('schema 2 regional summaries use quarter files without monthly compatibility copies',async()=>{
+ const path='data/map/price-cache/2026-Q3-41-sale.bin',frame={opening:{regions:[['41',[2,2,600]]],meta:{complexCount:2}},updates:[]},bytes=gzipSync(JSON.stringify({schema:1,months:{'2026-09':frame}})),digest=createHash('sha256').update(bytes).digest('hex'),seen=[];
+ const c=vm.createContext({Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async url=>{seen.push(url);return url.endsWith('index.json')?Response.json({schema:2,versions:{sale:'v1'},sources:{},quarterSources:{[path]:digest}}):new Response(bytes);}});
+ for(const name of ['verified-data-cache','region-price-cache'])vm.runInContext(readFileSync(new URL('../js/'+name+'.js',import.meta.url),'utf8'),c);
+ const value=await c.NodoRegionPrices.create().get('sale','2026-09-01',['41'],{sale:'v1'});assert.equal(value.complexCount,2);assert.equal(new Map(value.regionSummaries).get('41').average,300);assert.equal(seen.filter(p=>p.includes('2026-09')).length,0);
+});

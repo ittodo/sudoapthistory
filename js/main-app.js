@@ -2447,9 +2447,7 @@ async function openTxModal(dataIdx, year){
   document.getElementById('txMonthTabs').innerHTML='';
   document.getElementById('txTableWrap').innerHTML='';
 
-  const txData=await loadTx(x.g);
-  const entryTx=txData[String(dataIdx)];
-  const yearTx=entryTx?entryTx[String(year)]:null;
+  const yearTx=await loadSharedTx(x,year);
 
   txModalData=yearTx||[];
   txModalYear=year;

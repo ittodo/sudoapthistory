@@ -1,3 +1,4 @@
+import {verifyHousingDetails} from './verify-housing-details.mjs';
 // Deployment verifies the Rust-built input/output hashes without rebuilding rows.
 // Semantic recomputation belongs to site_release.py / Rust verify mode.
 import {openSync,readSync,closeSync,readFileSync,lstatSync} from 'node:fs';
@@ -18,6 +19,7 @@ export function fileHash(path) {
 }
 export function verifyApartmentRent(root) {
   const index=JSON.parse(readFileSync(safe(root,'data/apartment-rent/index.json'),'utf8'));
+  if(index.schema===2)return verifyHousingDetails(root);
   const check=(path,expected)=>{if(!/^[a-f0-9]{64}$/.test(expected) || fileHash(safe(root,path))!==expected) throw Error('Rent output out of date: '+path);};
   if(index.schema!==1 || !index.sources || !index.shards) throw Error('Invalid rent index');
   check('data/contracts/index.json',index.contractsHash);

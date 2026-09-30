@@ -76,6 +76,9 @@
     return PARCEL_PROMISE;
   };
 
+  window.loadSharedTx = async function(row,year){
+    const reader=await(await import('./housing-sales.mjs')).browserSaleReader(),rows=await reader.rows(row.as,row.a,{year});return rows.map(t=>{const r=[Math.floor(t.date/100)%100,t.date%100,t.price,t.floor];if(t.flags||t.cancelled)r.push(t.flags);if(t.cancelled)r.push(t.cancelled);return r;});
+  };
   window.loadTx = async function(gu){
     if(TX_CACHE[gu]) return TX_CACHE[gu];
     try{

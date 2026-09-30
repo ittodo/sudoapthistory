@@ -9,6 +9,7 @@ export function compactMarketShard(shard){return {schema:1,rows:shard.rows.filte
 export function rentalMarketAssets(root){
   const source=join(root,'data/rental/index.json');if(!existsSync(source))return [];
   const reader=regionalReader(root,'rental'),manifest=reader.manifest,assets=[],sources={},inputs={},directory=join(root,'cloudflare/dist/rental-market-cache-v1');
+ if(manifest.schema===3)return []; // Common packed quarters serve both consumers.
  const codeHash=hash(Buffer.concat([readFileSync(join(root,'tools/build-rental-market-cache.mjs')),readFileSync(join(root,'tools/regional-data.mjs')),readFileSync(join(root,'js/regional-data.js'))]));
   for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink market cache output');
   mkdirSync(directory,{recursive:true});

@@ -1,0 +1,13 @@
+import{gzipSync}from'node:zlib';import{packQuarter,encodeQuarter}from'../js/housing-quarter.mjs';import{packStateTimeline,encodeStateFile}from'../js/housing-state-timeline.mjs';import{areaBits,validateRanges}from'../js/housing-partition.mjs';
+export function partitionHousing({code,scope,kind,months,identity,codec,path,emit,previous=null,limit=20*1024*1024,full=null}){
+ const state=kind!=='quarter',encode=value=>gzipSync(state?encodeStateFile(packStateTimeline(code,kind,value,codec)):encodeQuarter(packQuarter(code,scope,value,identity,codec)),{level:6}),all=full||encode(months);
+ if(!previous&&all.length<=limit){emit(path,all);return {path,files:1,bytes:all.length};}
+ const filter=prefix=>Object.fromEntries(Object.entries(months).map(([m,v])=>[m,state?v.filter(r=>areaBits(r,kind,identity).startsWith(prefix)):Object.fromEntries(['daily','rental'].map(k=>[k,{rows:v[k].rows.filter(r=>areaBits(r,k,identity).startsWith(prefix)),updates:v[k].updates.filter(r=>areaBits(r,k,identity).startsWith(prefix))}]))]));
+ const prefixes=previous?.leaves.map(x=>x.prefix)||[''];validateRanges(prefixes);const leaves=[];
+ function split(prefix){const wire=encode(filter(prefix));if(wire.length<=limit&&prefix){leaves.push({prefix,wire});return;}if(prefix.length===32)throw Error('One exact-area hash range exceeds public file limit');split(prefix+'0');split(prefix+'1');}
+ for(const p of prefixes)split(p);validateRanges(leaves.map(x=>x.prefix));const order=[];
+ function locate(r,k){const bits=areaBits(r,k,identity),n=leaves.findIndex(x=>bits.startsWith(x.prefix));if(n<0)throw Error('Partition assignment missing');return n;}
+ for(const[m,v]of Object.entries(months).sort())if(state){for(const row of v)order.push([Number(m.slice(5)),4,locate(row,kind)]);}else for(const[kind,k]of [['daily',0],['rental',1]])for(const[field,offset]of [['rows',0],['updates',2]])for(const row of v[kind][field])order.push([Number(m.slice(5)),k+offset,locate(row,kind)]);
+ const stem=path.slice(0,-4),op=stem+'-order.bin',ob=gzipSync(codec.encodeColumns(codec.schemas.PartitionOrder,order),{level:6});if(ob.length>limit)throw Error('Partition order exceeds public limit');let bytes=ob.length;emit(op,ob);const descriptors=[];for(const leaf of leaves){const p=stem+'-p'+leaf.prefix+'.bin';emit(p,leaf.wire);bytes+=leaf.wire.length;descriptors.push({prefix:leaf.prefix,path:p});}
+ const descriptor={schema:1,format:'housing-partition',lawd:code,scope,kind,months:Object.keys(months).sort(),leaves:descriptors,order:op},dp=stem+'.parts.json',db=Buffer.from(JSON.stringify(descriptor));if(db.length>limit)throw Error('Partition descriptor exceeds public limit');emit(dp,db);return {path:dp,files:leaves.length+2,bytes:bytes+db.length,descriptor};
+}

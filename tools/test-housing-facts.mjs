@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {pathToFileURL} from 'node:url';
+import {packFacts,unpackFacts,factVectors} from './housing-facts.mjs';
+const codec=await import(process.env.HOUSING_CODEC?pathToFileURL(process.env.HOUSING_CODEC):new URL('../js/generated/housing-columns.mjs',import.meta.url));
+const ids={complexes:['source-a'],areas:[[0,'59.12345']]};
+const sale=['11110:0',20260831,12345.25,-2,0,null,null,null,null,0,'01'.repeat(16),null];
+const rent=['11110:0','59.12345',20260801,0,12.25,1,null,0,null,null,null,null,null,null,null,null,null,'02'.repeat(16)];
+const months=()=>({'2026-08':{daily:{rows:[sale.slice(),sale.slice()]},rental:{rows:[rent.slice()]}}});
+const canonical=v=>Object.fromEntries(Object.entries(v).map(([k,v])=>[k,v.map(JSON.stringify).sort()]));
+test('exact area, floor/null, zero money, decimals and duplicates survive',()=>{const m=months(),p=packFacts('11110',m,ids,codec);assert.deepEqual(canonical(unpackFacts('11110',2026,p,codec)),canonical(factVectors(m)));assert.deepEqual(p.areas,ids.areas);});
+test('new areas append and metadata changes do not affect facts',()=>{const m=months();m['2026-08'].rental.rows[0][1]='59.12346';const p=packFacts('11110',m,ids,codec);assert.deepEqual(p.areas,[[0,'59.12345'],[0,'59.12346']]);assert.equal(p.addedAreas,1);const q=packFacts('11110',m,{...ids,name:'changed',units:999},codec);for(const k of ['sale','rental','groups'])assert.deepEqual(p[k],q[k]);assert.deepEqual(ids.areas,[[0,'59.12345']]);});
+test('same day source order does not change packed bytes',()=>{const m=months();const other=sale.slice();other[2]=4321;other[10]='03'.repeat(16);m['2026-08'].daily.rows.push(other);const p=packFacts('11110',m,ids,codec);m['2026-08'].daily.rows.reverse();const q=packFacts('11110',m,ids,codec);assert.deepEqual(p.sale,q.sale);assert.deepEqual(p.groups,q.groups);});
+test('invalid dates, cross region/year/quarter and noncanonical areas rejected',()=>{for(const date of [20260832,20260901,20260801.5]){const m=months();m['2026-08'].daily.rows[0][1]=date;assert.throws(()=>packFacts('11110',m,ids,codec));}const m=months();m['2027-08']=m['2026-08'];assert.throws(()=>packFacts('11110',m,ids,codec));assert.throws(()=>packFacts('11111',months(),ids,codec));for(const a of ['059','59.0','0','-1']){const m=months();m['2026-08'].rental.rows[0][1]=a;assert.throws(()=>packFacts('11110',m,ids,codec));}});
+test('missing, overlapping and duplicate groups fail closed',()=>{const p=packFacts('11110',months(),ids,codec),g=codec.openColumns(codec.schemas.TradeGroup,p.groups),rows=Array.from({length:g.rowCount},(_,i)=>g.row(i));assert.throws(()=>unpackFacts('11110',2025,p,codec));for(const bad of [[],rows.concat([rows[0]]),rows.map(r=>r[3]===0?[...r.slice(0,5),1]:r)])assert.throws(()=>unpackFacts('11110',2026,{...p,groups:codec.encodeColumns(codec.schemas.TradeGroup,bad)},codec));});

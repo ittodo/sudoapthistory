@@ -31,5 +31,11 @@
     }
     return {download};
   }
-  root.NodoVerifiedDataCache={create};
+  async function decode(bytes,path){
+    const raw=path.endsWith('.bin')?new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()):new Uint8Array(bytes);
+    const magic=new TextDecoder().decode(raw.subarray(0,8));
+    if(magic==='PGHOUSE1'||magic==='PGSTATE1'||magic==='PGCOL001')return raw;
+    return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(raw));
+  }
+  root.NodoVerifiedDataCache={create,decode};
 })(globalThis);

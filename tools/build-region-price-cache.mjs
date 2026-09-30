@@ -44,17 +44,17 @@ export function regionPriceAssets(root,{months}={}){
   const verified=(path,manifest)=>{const b=read(path);if(hash(b)!==manifest.sources[path])throw Error('Region cache input changed: '+path);inputs[path]=hash(b);return JSON.parse(path.endsWith('.bin')?gunzipSync(b):b);};
   const saleReader=regionalReader(root,'daily'),rentReader=regionalReader(root,'rental'),saleCatalog=saleReader.catalog,rentalCatalog=rentReader.catalog.complexes;
   sale.schema??=1;rental.schema??=1;ctx.NodoRental.normalizeDistricts(rentalCatalog);
-  const codeHash=hash(Buffer.concat([read('tools/build-region-price-cache.mjs'),read('tools/regional-data.mjs'),read('js/regional-data.js'),...models.map(n=>read('js/'+n+'.js'))]));
+  const codeHash=hash(Buffer.concat([read('tools/build-region-price-cache.mjs'),read('tools/regional-data.mjs'),read('js/regional-data.js'),...(sale.schema===3?['tools/housing-regional-reader.mjs','js/housing-quarter.mjs','js/housing-facts.mjs','js/housing-state-timeline.mjs','js/housing-validation.mjs','js/housing-partition.mjs','js/generated/housing-columns.mjs'].map(read):[]),...models.map(n=>read('js/'+n+'.js'))]));
   const mapHash=hash(read('data/map/index.json')),membershipHash=hash(JSON.stringify(payload.d.map(c=>[c.id,c.r,c.admin,c.memberSources?.map(s=>s.id)])));inputs['data/map/index.json']=mapHash;
   let rentalMaxDate=rental.months.at(-1)+'-01';
-  for(const region of ['41','11','28']){const path='data/rental/months/'+rental.months.at(-1)+'-'+region+'.bin';if(rental.schema===2||rental.sources[path])for(const row of rentReader.read(path).rows){const day=ctx.NodoRental.iso(row[2]);if(day>rentalMaxDate)rentalMaxDate=day;}}
+  for(const region of ['41','11','28']){const path='data/rental/months/'+rental.months.at(-1)+'-'+region+'.bin';if(rental.schema>=2||rental.sources[path])for(const row of rentReader.read(path).rows){const day=ctx.NodoRental.iso(row[2]);if(day>rentalMaxDate)rentalMaxDate=day;}}
 
   for(const type of ['sale','jeonse','monthly']){
     const manifest=type==='sale'?sale:rental;
     for(const month of manifest.months.filter(m=>!months||months.includes(m)))for(const [r,region]of ['41','11','28'].entries()){
       const input=type==='sale'?`data/daily/${r}/${month}-state.bin`:`data/rental/months/${month}-${region}-state.bin`;
       if(manifest.schema===1&&!manifest.sources[input])continue;const reader=type==='sale'?saleReader:rentReader;
-      const raw=manifest.schema===1?read(input):null,inputHash=manifest.schema===2?reader.fingerprint(input,true):hash(raw);if(raw&&inputHash!==manifest.sources[input])throw Error('Region cache input mismatch: '+input);if(raw)inputs[input]=inputHash;
+      const raw=manifest.schema===1?read(input):null,inputHash=manifest.schema>=2?reader.fingerprint(input,true):hash(raw);if(raw&&inputHash!==manifest.sources[input])throw Error('Region cache input mismatch: '+input);if(raw)inputs[input]=inputHash;
       const fingerprint=hash(JSON.stringify([codeHash,type==='sale'?membershipHash:null,manifest.sources[type==='sale'?'data/daily/catalog.bin':'data/rental/catalog.bin'],inputHash,type]));
       const name=`${month}-${region}-${type}.bin`,path=prefix+name,target=join(directory,name),stamp=target+'.json';let proof,bytes;
       try{proof=JSON.parse(readFileSync(stamp));if(proof.fingerprint===fingerprint&&hash(readFileSync(target))===proof.sha256)bytes=readFileSync(target);}catch{}
@@ -74,5 +74,6 @@ export function regionPriceAssets(root,{months}={}){
     if(bytes.length>25*1024*1024)throw Error('Region quarter exceeds limit');
     const target=join(directory,path.slice(prefix.length));writeFileSync(target,bytes);quarterSources[path]=hash(bytes);assets.push({path,source:target,sha256:quarterSources[path],size:bytes.length});
   }
-  Object.assign(inputs,saleReader.inputs,rentReader.inputs);assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources,quarterSources}))});return assets;
+  const packedOnly=sale.schema===3&&rental.schema===3;if(packedOnly){for(let i=assets.length-1;i>=0;i--)if(sources[assets[i].path])assets.splice(i,1);for(const p of Object.keys(sources))delete sources[p];}
+  Object.assign(inputs,saleReader.inputs,rentReader.inputs);assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:packedOnly?2:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources,quarterSources}))});return assets;
 }

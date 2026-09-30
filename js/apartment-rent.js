@@ -5,11 +5,11 @@
  const pending=new Map();
  async function historyManifest(){if(!historyIndex)historyIndex=fetch('/data/rental/index.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('전월세 이력 자료를 불러오지 못했습니다.');return r.json();}).catch(e=>{historyIndex=null;throw e;});return historyIndex;}
  function historyRows(apartment,year){
-  if(!historyWorker){historyWorker=new Worker('/js/rental-worker.js?v=20260930-regional1');historyWorker.onmessage=({data})=>{const job=pending.get(data.id);if(!job)return;pending.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data.rows.map(r=>({...r,category:r.rent>0?'monthly':'jeonse',monthlyRent:r.rent,contractType:['구분 미상','신규','갱신'][r.contract]})));};historyWorker.onerror=()=>{for(const job of pending.values())job.reject(Error('전월세 이력을 불러오지 못했습니다. 다시 시도해 주세요.'));pending.clear();historyWorker.terminate();historyWorker=null;};}
+  if(!historyWorker){historyWorker=new Worker('/js/rental-worker.js?v=20260930-regional1');historyWorker.onmessage=({data})=>{const job=pending.get(data.id);if(!job)return;pending.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data.rows.map(r=>({...r,category:r.rent>0?'monthly':'jeonse',monthlyRent:r.rent,contractType:r.contractType??['구분 미상','신규','갱신'][r.contract]})));};historyWorker.onerror=()=>{for(const job of pending.values())job.reject(Error('전월세 이력을 불러오지 못했습니다. 다시 시도해 주세요.'));pending.clear();historyWorker.terminate();historyWorker=null;};}
   return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});historyWorker.postMessage({id,action:'history',settings:{detail:apartment.id,detailIds:apartment.sources,year}});});
  }
  function clear(){for(const c of charts)c.destroy();charts=[];}
- async function index(){if(!loading)loading=fetch('/data/apartment-rent/index.json').then(r=>{if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');return r.json();}).then(m=>{reader=createVerifiedDataClient('/',m.shards);return m;}).catch(e=>{loading=null;throw e;});return loading;}
+ async function index(){if(!loading)loading=fetch('/data/apartment-rent/index.json').then(r=>{if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');return r.json();}).then(m=>{if(m.schema===1)reader=createVerifiedDataClient('/',m.shards);return m;}).catch(e=>{loading=null;throw e;});return loading;}
  function months(period,now=new Date()) {const y=now.getFullYear(),m=now.getMonth();return Array.from({length:12},(_,i)=>{const d=period==='recent'?new Date(y,m-i,1):new Date(Number(period),11-i,1);return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;}).filter(x=>x<=`${y}${String(m+1).padStart(2,'0')}`).sort();}
  async function render({apartment,area,panel,current,script}){
   clear();const [m,archive]=await Promise.all([index(),historyManifest()]);if(!current())return;
@@ -24,7 +24,7 @@
   else if(rounded!=null){const matching=ref.areas.filter(a=>Math.round(a)===rounded);if(matching.length){size.add(new Option(rounded+'㎡ 평형 전체','group:'+rounded));size.value='group:'+rounded;}else rounded=null;}
   let limit=50,revision=0;
   const update=async()=>{const rev=++revision,periodKey=period.value;clear();const requested=months(periodKey);
-   const oldYear=!ref.shard||period.value!=='recent'&&!ref.districts.some(d=>Object.keys(m.coverage[d]||{}).some(month=>month.startsWith(period.value)));
+   const oldYear=m.schema===2||!ref.shard||period.value!=='recent'&&!ref.districts.some(d=>Object.keys(m.coverage[d]||{}).some(month=>month.startsWith(period.value)));
    let source=rows;
    if(oldYear){
     $('rent-status').textContent='선택 연도 계약 내역을 불러오는 중…';

@@ -21,7 +21,7 @@ export function publicAsset(path) {
   if (forbiddenReason(path)) return false;
   if (/^data\//.test(path)) return /\.(json|bin)$/i.test(path) && !/(secret|credential|token|backup)/i.test(path);
   if(path.includes('/') && !/^(account|admin|apartment|board|library|ranking|calc|compare|css|div|js|map|market|stats|trades|assets|images|fonts)\//.test(path)) return false;
-  return /\.(html|css|js|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i.test(path) || ['ads.txt','robots.txt','sitemap.xml'].includes(path);
+  return /\.(html|css|m?js|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i.test(path) || ['ads.txt','robots.txt','sitemap.xml'].includes(path);
 }
 export function runtime(sha) {
   return `window.__NODESTREAM_RELEASE__=${JSON.stringify(sha)};(()=>{const original=window.fetch;window.fetch=function(input,init){const url=new URL(input instanceof Request?input.url:input,location.href);if(url.origin===location.origin&&url.pathname.startsWith('/data/')&&url.pathname.endsWith('.json')&&((init&&init.method)||(input instanceof Request?input.method:'GET')).toUpperCase()==='GET'){url.searchParams.set('v',window.__NODESTREAM_RELEASE__);input=input instanceof Request?new Request(url,input):url.href;}return original.call(this,input,init);};})();\n`;
