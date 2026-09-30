@@ -4,14 +4,14 @@
     const response=await fetch('/data/daily/index.json',{cache:'no-cache'});
     if(!response.ok)throw Error('일별 데이터를 불러오지 못했습니다. 다시 시도해 주세요.');
     const index=await response.json();
-    if(index.schema!==1)throw Error('일별 데이터 형식이 변경되었습니다. 새로고침해 주세요.');
+    if(![1,2].includes(index.schema))throw Error('일별 데이터 형식이 변경되었습니다. 새로고침해 주세요.');
     const cache=new Map(),fileCache=globalThis.NodoVerifiedDataCache.create('nodo-sale-map-v1');
     let activePricePaths=new Set();
     async function load(path,background=false) {
       if(!index.sources[path])throw Error('조회할 수 없는 데이터입니다. 새로고침해 주세요.');
       if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
       const entry={controller:new AbortController(),background,settled:false};
-      const promise=fileCache.download(path,index.sources[path],{signal:entry.controller.signal,background,persist:path.includes('-state.')}).then(async bytes=>{
+      const promise=fileCache.download(path,index.sources[path],{signal:entry.controller.signal,background,persist:stateFile(path)}).then(async bytes=>{
         entry.controller.signal.throwIfAborted();
         if(path.endsWith('.bin')){
           if(typeof DecompressionStream==='undefined')throw Error('압축 데이터를 지원하는 최신 브라우저가 필요합니다.');
@@ -24,21 +24,24 @@
       if(cache.size>9){const oldest=[...cache.keys()].find(p=>!activePricePaths.has(p));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
       return promise;
     }
+    load.promote=p=>{if(cache.has(p))cache.get(p).background=false;};
+    const stateFile=p=>p.includes('-state.')||/^data\/daily\/regions\/\d{5}\/(base|months)\//.test(p);
     const extension=index.encoding==='gzip-json'?'bin':'json';
-    const catalog=await load('data/daily/catalog.'+extension);
+    const regional=index.schema===2?await globalThis.NodoRegional.create(index,'daily',load):null;
+    const catalog=regional||await load('data/daily/catalog.'+extension);
     const statePath=(ym,r)=>`data/daily/${r}/${ym}-state.${extension}`;
-    const month=(ym,r,state=false,background=false)=>index.months.includes(ym)?load(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,background):Promise.resolve(state?{opening:[],updates:[]}:{rows:[]});
+    const month=(ym,r,state=false,background=false)=>index.months.includes(ym)?(regional?regional.shard(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,ym,r,background):load(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,background)):Promise.resolve(state?{opening:[],updates:[]}:{rows:[]});
     const regions=f=>f.r==null?[0,1,2]:[f.r];
     async function trades(ym,f={}) {const groups=await Promise.all(regions(f).map(r=>month(ym,r)));return groups.flatMap(g=>g.rows.map(row=>NodoDailyModel.decode(row,catalog)));}
     async function prices(date,f={}) {const groups=await Promise.all(regions(f).map(r=>month(date.slice(0,7),r,true)));return groups.flatMap(g=>[...NodoDailyModel.snapshot(g,NodoDailyModel.number(date)).values()]);}
     const cursors=new Map();let frameSerial=0;
-    function cancelPrices(){frameSerial++;activePricePaths=new Set();for(const [path,entry]of cache)if(path.includes('-state.')&&!entry.settled){entry.controller.abort();cache.delete(path);}}
+    function cancelPrices(){frameSerial++;activePricePaths=new Set();for(const [path,entry]of cache)if(stateFile(path)&&!entry.settled){entry.controller.abort();cache.delete(path);}}
     async function priceFrame(date,f={},fromDate=null){
       const serial=++frameSerial,selected=regions(f),ym=date.slice(0,7),day=NodoDailyModel.number(date);
-      const wanted=new Set(selected.map(r=>statePath(ym,r)));
-      if(fromDate)for(let m=fromDate.slice(0,7);m<ym;m=NodoDailyModel.shift(m+'-01',1,'month').slice(0,7))for(const r of selected)wanted.add(statePath(m,r));
+      const wanted=new Set(selected.flatMap(r=>regional?regional.paths(ym,r):[statePath(ym,r)]));
+      if(fromDate)for(let m=fromDate.slice(0,7);m<ym;m=NodoDailyModel.shift(m+'-01',1,'month').slice(0,7))for(const r of selected)for(const p of regional?regional.paths(m,r):[statePath(m,r)])wanted.add(p);
       activePricePaths=wanted;
-      for(const [path,entry]of cache){if(wanted.has(path))entry.background=false;else if(path.includes('-state.')&&!entry.settled){entry.controller.abort();cache.delete(path);}}
+      for(const [path,entry]of cache){if(wanted.has(path))entry.background=false;else if(stateFile(path)&&!entry.settled){entry.controller.abort();cache.delete(path);}}
       try{
       const shards=await Promise.all(selected.map(async r=>({r,data:await month(ym,r,true)})));
       const values=[],events=[],changes=[];let reset=false;

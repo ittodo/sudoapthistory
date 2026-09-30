@@ -193,6 +193,66 @@ fn parse_rates(data: &Value) -> Result<Value> {
     }
     Ok(result)
 }
+fn response_prefix(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(&bytes[..bytes.len().min(160)])
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+fn parse_response_json(
+    stage: &str,
+    status: u16,
+    content_type: &str,
+    bytes: &[u8],
+) -> Result<Value> {
+    let body = bytes.strip_prefix(&[0xef, 0xbb, 0xbf]).unwrap_or(bytes);
+    if !(200..300).contains(&status) {
+        return Err(format!(
+            "Official rental-rate {stage} returned HTTP {status} ({content_type}): {}",
+            response_prefix(body)
+        )
+        .into());
+    }
+    serde_json::from_slice(body).map_err(|error| {
+        format!(
+            "Official rental-rate {stage} returned invalid JSON ({content_type}, {} bytes): {error}; prefix={}",
+            bytes.len(),
+            response_prefix(body)
+        )
+        .into()
+    })
+}
+fn response_json(stage: &str, response: reqwest::blocking::Response) -> Result<(Value, Vec<u8>)> {
+    let status = response.status().as_u16();
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("")
+        .to_owned();
+    let bytes = response.bytes()?.to_vec();
+    let value = parse_response_json(stage, status, &content_type, &bytes)?;
+    Ok((value, bytes))
+}
+fn json_request_with_retry(
+    stage: &str,
+    mut request: impl FnMut() -> Result<reqwest::blocking::Response>,
+) -> Result<(Value, Vec<u8>)> {
+    let mut last_error = None;
+    for attempt in 0..2 {
+        match request().and_then(|response| response_json(stage, response)) {
+            Ok(value) => return Ok(value),
+            Err(error) => last_error = Some(error),
+        }
+        if attempt == 0 {
+            std::thread::sleep(Duration::from_millis(500));
+        }
+    }
+    Err(last_error.ok_or("Official rental-rate request did not run")?)
+}
 /// Refresh atomically after validating complete regional history. `response` is an offline replay.
 pub fn rates(spec: Value) -> Result<Value> {
     let destination = path(&spec, "destination")?;
@@ -205,26 +265,30 @@ pub fn rates(spec: Value) -> Result<Value> {
     if !spec["force"].as_bool().unwrap_or(false) && old["checkedDate"] == day {
         return Ok(old);
     }
-    let bytes = if let Some(response) = spec.get("response") {
-        packed(response)?
+    let (data, bytes) = if let Some(response) = spec.get("response") {
+        let bytes = packed(response)?;
+        (response.clone(), bytes)
     } else {
         let client = reqwest::blocking::Client::builder()
             .cookie_store(true)
+            .user_agent("nodostream-pipeline/1.0")
             .build()?;
-        client
-            .get(SOURCE)
-            .timeout(Duration::from_secs(30))
-            .send()?
-            .error_for_status()?;
-        let response = client
-            .get("https://www.reb.or.kr/r-one/portal/stat/statEasyItmJson.do")
-            .query(&[("statblId", TABLE)])
-            .timeout(Duration::from_secs(30))
-            .send()?
-            .error_for_status()?
-            .bytes()?;
-        let data: Value = serde_json::from_slice(&response)?;
-        let codes = arr(&data["data"])?
+        let (items, _) = json_request_with_retry("region list", || {
+            client
+                .get(SOURCE)
+                .timeout(Duration::from_secs(30))
+                .send()?
+                .error_for_status()?;
+            Ok(client
+                .get("https://www.reb.or.kr/r-one/portal/stat/statEasyItmJson.do")
+                .query(&[("statblId", TABLE)])
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Referer", SOURCE)
+                .timeout(Duration::from_secs(30))
+                .send()?)
+        })?;
+        let codes = arr(&items["data"])?
             .iter()
             .filter(|r| matches!(r["viewItmNm"].as_str(), Some("서울" | "경기" | "인천")))
             .map(|r| {
@@ -254,16 +318,24 @@ pub fn rates(spec: Value) -> Result<Value> {
             ("chkItms", "100001".into()),
             ("chkClss", codes.join(",")),
         ];
-        client
-            .post("https://www.reb.or.kr/r-one/portal/stat/sttsDataPreviewList.do")
-            .form(&form)
-            .timeout(Duration::from_secs(60))
-            .send()?
-            .error_for_status()?
-            .bytes()?
-            .to_vec()
+        let (data, bytes) = json_request_with_retry("data preview", || {
+            client
+                .get(SOURCE)
+                .timeout(Duration::from_secs(30))
+                .send()?
+                .error_for_status()?;
+            Ok(client
+                .post("https://www.reb.or.kr/r-one/portal/stat/sttsDataPreviewList.do")
+                .header("Accept", "application/json, text/javascript, */*; q=0.01")
+                .header("X-Requested-With", "XMLHttpRequest")
+                .header("Referer", SOURCE)
+                .form(&form)
+                .timeout(Duration::from_secs(60))
+                .send()?)
+        })?;
+        (data, bytes)
     };
-    let rates = parse_rates(&serde_json::from_slice(&bytes)?)?;
+    let rates = parse_rates(&data)?;
     if let Some(regions) = old["rates"].as_object() {
         for (region, months) in regions {
             for month in obj(months)?.keys() {
@@ -280,6 +352,33 @@ pub fn rates(spec: Value) -> Result<Value> {
     let payload = json!({"schema":1,"table":TABLE,"source":SOURCE,"publisher":"한국부동산원","unit":"연 %","checkedDate":day,"fetchedAt":fetched,"rates":rates,"responseHash":hash(&bytes)});
     write(&destination, &payload, false)?;
     Ok(payload)
+}
+
+#[cfg(test)]
+mod response_tests {
+    use super::*;
+
+    #[test]
+    fn response_json_accepts_bom_and_mislabelled_json() {
+        let value = parse_response_json(
+            "test",
+            200,
+            "text/html; charset=UTF-8",
+            b"\xef\xbb\xbf{\"ok\":true}",
+        )
+        .unwrap();
+        assert_eq!(value["ok"], true);
+    }
+
+    #[test]
+    fn response_json_reports_bounded_invalid_body_context() {
+        let error = parse_response_json("test", 200, "text/html", b"<html>maintenance</html>")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("invalid JSON"));
+        assert!(error.contains("maintenance"));
+        assert!(error.len() < 400);
+    }
 }
 fn ledger(conn: &Connection) -> Result<Vec<Value>> {
     let mut stmt=conn.prepare("SELECT lawd,month,digest,row_count,rejected_count FROM contract_partition WHERE service='apartment-rent' ORDER BY month,lawd")?;
@@ -385,11 +484,13 @@ pub fn build(spec: Value) -> Result<Value> {
     fs::create_dir_all(&cache)?;
     let rates = read(&path(&spec, "rates_path")?)?;
     let mut catalog = arr(&unzip(&site.join("data/daily/catalog.bin"))?["complexes"])?.clone();
-    let proof = hash(&packed(&json!([
+    let fixed=spec["regional"]["lawd"].as_str().map(str::to_owned);
+    if fixed.is_some(){catalog=arr(&spec["regional"]["complexes"])?.clone();}
+    let proof = if fixed.is_some(){hash(&packed(&json!([hash(include_bytes!("rental.rs")),hash(include_bytes!("regional.rs")),hash(include_bytes!("calc_suffix.rs")),fixed]))?)}else{hash(&packed(&json!([
         hash(include_bytes!("rental.rs")),
         hash(&packed(&json!(catalog))?),
         rates["rates"]
-    ]))?);
+    ]))?)};
     let mut lookup: BTreeMap<String, usize> = catalog
         .iter()
         .enumerate()
@@ -403,7 +504,8 @@ pub fn build(spec: Value) -> Result<Value> {
     };
     let conn = Connection::open_with_flags(database, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     conn.execute_batch("BEGIN")?;
-    let entries = ledger(&conn)?;
+    let source_entries=ledger(&conn)?;
+    let entries=if fixed.is_some(){arr(&spec["regional"]["entries"])?.clone()}else{source_entries.clone()};
     let mut coverage = object();
     let mut monthly: BTreeMap<String, Vec<Value>> = BTreeMap::new();
     for entry in &entries {
@@ -425,7 +527,8 @@ pub fn build(spec: Value) -> Result<Value> {
     let months: Vec<String> = monthly.keys().cloned().collect();
     let mut signatures = object();
     for (m, p) in &monthly {
-        signatures[m] = json!(hash(&packed(&json!(p))?))
+        signatures[m] = if fixed.is_some(){spec["regional"]["signatures"][m].clone()}else{json!(hash(&packed(&json!(p))?))};
+        if !signatures[m].as_str().is_some_and(|h|h.len()==64){return Err("Regional semantic month signature missing".into());}
     }
     let mut union: BTreeSet<String> = months.iter().cloned().collect();
     if let Some(old_months) = old["months"].as_object() {
@@ -435,7 +538,9 @@ pub fn build(spec: Value) -> Result<Value> {
         .into_iter()
         .find(|m| signatures[m] != old["months"][m]);
     let mut checkpoint: Option<String> = None;
-    if old["proof"] == proof {
+    let fixed_sources=catalog.iter().map(|c|c["id"].clone()).collect::<Vec<_>>();
+    let prefix_valid=fixed.is_none()||old["identitySources"].as_array().is_some_and(|old|fixed_sources.starts_with(old));
+    if old["proof"] == proof && prefix_valid {
         for m in months.iter().rev() {
             if changed.as_ref().is_some_and(|c| m >= c) {
                 continue;
@@ -473,10 +578,11 @@ pub fn build(spec: Value) -> Result<Value> {
         summaries = saved
             .shift_remove("summaries")
             .ok_or("Missing rental summaries")?;
-        catalog = match saved.shift_remove("catalog") {
-            Some(Value::Array(values)) => values,
-            _ => return Err("Missing rental catalog".into()),
-        };
+        let saved_catalog=match saved.shift_remove("catalog") {Some(Value::Array(v))=>v,_=>return Err("Missing rental catalog".into())};
+        if fixed.is_some(){
+            let old_ids=saved_catalog.iter().map(|c|c["id"].clone()).collect::<Vec<_>>();
+            if !fixed_sources.starts_with(&old_ids){return Err("Regional rental cache renumbers sources".into());}
+        }else{catalog=saved_catalog;}
         lookup = catalog
             .iter()
             .enumerate()
@@ -495,20 +601,26 @@ pub fn build(spec: Value) -> Result<Value> {
         }
     }
     let mut scanned = 0;
+    let mut suffix_reused=0usize;
     for month in &months {
         if checkpoint.as_ref().is_some_and(|m| month <= m) {
             continue;
         }
         // Keep month-opening values in place; only changed keys need another row.
         let mut pending_latest = Map::new();
+        let prior_state=if fixed.is_some()&&old["proof"]==proof&&valid_hash(&cache.join(format!("state-{month}.bin")),&old["states"][month]){Some(unzip(&cache.join(format!("state-{month}.bin")))?)}else{None};
         let mut all_rows: Vec<Value> = Vec::new();
+        let pool=spec["regional"]["record_pool"].as_str().map(PathBuf::from);
+        let mut record_ids=crate::regional::pool(pool.as_deref(),month,"rental")?;
         let mut month_rates = object();
         for r in REGIONS {
             month_rates[r] = effective(&rates, r, month)
         }
         for partition in &monthly[month] {
             let lawd = string(&partition[0])?;
-            let mut stmt=conn.prepare("SELECT ordinal,payload FROM contract_record WHERE service='apartment-rent' AND lawd=? AND month=? ORDER BY ordinal")?;
+            let selection=if fixed.is_some(){format!(" AND entity_id IN ({})",crate::regional::sql_sources(&catalog)?)}else{String::new()};
+            let identity_field=if fixed.is_some(){",entity_id"}else{""};
+            let mut stmt=conn.prepare(&format!("SELECT ordinal,payload{identity_field} FROM contract_record WHERE service='apartment-rent' AND lawd=? AND month=?{selection} ORDER BY ordinal"))?;
             let mut rows = stmt.query(params![lawd, month.replace('-', "")])?;
             while let Some(row) = rows.next()? {
                 let ordinal: i64 = row.get(0)?;
@@ -527,7 +639,7 @@ pub fn build(spec: Value) -> Result<Value> {
                 {
                     continue;
                 }
-                let source = raw["aptSeq"]
+                let source = if fixed.is_some(){row.get::<_,String>(2)?}else{raw["aptSeq"]
                     .as_str()
                     .filter(|s| !s.is_empty())
                     .or_else(|| raw["entityId"].as_str().filter(|s| !s.is_empty()))
@@ -539,7 +651,8 @@ pub fn build(spec: Value) -> Result<Value> {
                                 &packed(&json!([raw["name"], raw["dong"], raw["jibun"]])).unwrap()
                             )[..20]
                         )
-                    });
+                    })};
+                if fixed.is_some()&&!lookup.contains_key(&source){return Err(format!("Unallocated rental source: {source}").into());}
                 if !lookup.contains_key(&source) {
                     lookup.insert(source.clone(), catalog.len());
                     catalog.push(json!({"id":source,"publicId":null,"mapId":null,"n":raw["name"].as_str().filter(|s|!s.is_empty()).unwrap_or("단지 미상"),"g":lawd,"d":raw.get("dong").cloned().unwrap_or(json!("")),"r":match &lawd[..2]{"41"=>0,"11"=>1,_=>2},"coord":null}));
@@ -570,6 +683,7 @@ pub fn build(spec: Value) -> Result<Value> {
                     Value::Array(a) => !a.is_empty(),
                     Value::Object(m) => !m.is_empty(),
                 };
+                let identity=if let Some(code)=&fixed {record_ids.allocate(&json!([crate::regional::key(code,lookup[&source]),area,date.replace('-', "").parse::<i64>()?,d,m,kind,raw["floor"],i32::from(cancelled)]))?}else{identity};
                 all_rows.push(json!([
                     lookup[&source],
                     area,
@@ -810,9 +924,20 @@ pub fn build(spec: Value) -> Result<Value> {
             Value::Array(values) => values,
             _ => unreachable!("checkpoint catalog was constructed as an array"),
         };
+        if let Some(prior)=prior_state{if prior["history"]==history&&prior["latest"]==latest&&crate::calc_suffix::same_inputs_after(&old["months"],&signatures,month){
+            let future=months.iter().filter(|m|*m>month).cloned().collect::<Vec<_>>();
+            let usable=future.iter().all(|m|valid_hash(&cache.join(format!("state-{m}.bin")),&old["states"][m]))&&obj(&old["files"])?.iter().filter(|(p,_)|p.contains("/months/")&&!prefix_file(p,month)).all(|(p,h)|valid_hash(&cache.join(p),h));
+            if !future.is_empty()&&usable{
+                for(p,h)in obj(&old["files"])?{if p.contains("/months/")&&!prefix_file(p,month){copy(&cache.join(p),&site.join(p))?;files[p]=h.clone();}}
+                let corrected=summaries.clone();
+                for m in &future{let mut saved=unzip(&cache.join(format!("state-{m}.bin")))?;saved["summaries"]=crate::calc_suffix::summaries(&saved["summaries"],&corrected,month)?;saved["catalog"]=json!(catalog);states[m]=json!(write(&cache.join(format!("state-{m}.bin")),&saved,true)?);history=saved["history"].take();latest=saved["latest"].take();summaries=saved["summaries"].take();}
+                suffix_reused=future.len();break;
+            }
+        }}
+
     }
     conn.execute_batch("COMMIT")?;
-    if ledger(&conn)? != entries {
+    if ledger(&conn)? != source_entries {
         return Err("Rental source changed during generation".into());
     }
     let mut public_catalog = Map::new();
@@ -850,7 +975,7 @@ pub fn build(spec: Value) -> Result<Value> {
         .filter(|m| checkpoint.as_ref().is_none_or(|c| *m > c))
         .map(|m| &m[..4])
         .collect();
-    for year in &years {
+    for year in years.iter().filter(|_|fixed.is_none()) {
         if checkpoint.is_some() && !affected.contains(year.as_str()) {
             for (p, h) in obj(&old["files"])? {
                 if p.starts_with(&format!("data/rental/history/{year}/")) {
@@ -894,11 +1019,12 @@ pub fn build(spec: Value) -> Result<Value> {
             copy(&site.join(&p), &cache.join(&p))?
         }
     }
-    let result = json!({"schema":1,"months":months,"coverage":coverage,"sources":files,"historyYears":years,"fields":["complex","area","date","deposit","monthlyRent","contract","floor","cancelled","previousDate","previousLow","previousHigh","historyLow","historyHigh","value","records","rateMonth","rate","id"],"mapVersion":read(&site.join("data/map/index.json"))?["meta"]["sourceVersion"],"version":&hash(&packed(&files)?)[..16],"historyBasis":"보유 이력 기준"});
+    let mut result = json!({"schema":1,"months":months,"coverage":coverage,"sources":files,"historyYears":years,"fields":["complex","area","date","deposit","monthlyRent","contract","floor","cancelled","previousDate","previousLow","previousHigh","historyLow","historyHigh","value","records","rateMonth","rate","id"],"mapVersion":read(&site.join("data/map/index.json"))?["meta"]["sourceVersion"],"version":&hash(&packed(&files)?)[..16],"historyBasis":"보유 이력 기준"});
+    if fixed.is_some(){result["calculationReuse"]=json!({"suffixMonths":suffix_reused});}
     write(&site.join("data/rental/index.json"), &result, false)?;
     write(
         &index_path,
-        &json!({"proof":proof,"months":signatures,"files":files,"states":states}),
+        &json!({"proof":proof,"months":signatures,"files":files,"states":states,"identitySources":fixed_sources}),
         false,
     )?;
     eprintln!("rental rowsRead={scanned} restoredMonth={checkpoint:?}");

@@ -5,7 +5,7 @@
  const pending=new Map();
  async function historyManifest(){if(!historyIndex)historyIndex=fetch('/data/rental/index.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('전월세 이력 자료를 불러오지 못했습니다.');return r.json();}).catch(e=>{historyIndex=null;throw e;});return historyIndex;}
  function historyRows(apartment,year){
-  if(!historyWorker){historyWorker=new Worker('/js/rental-worker.js?v=20260921-shared-detail2');historyWorker.onmessage=({data})=>{const job=pending.get(data.id);if(!job)return;pending.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data.rows.map(r=>({...r,category:r.rent>0?'monthly':'jeonse',monthlyRent:r.rent,contractType:['구분 미상','신규','갱신'][r.contract]})));};historyWorker.onerror=()=>{for(const job of pending.values())job.reject(Error('전월세 이력을 불러오지 못했습니다. 다시 시도해 주세요.'));pending.clear();historyWorker.terminate();historyWorker=null;};}
+  if(!historyWorker){historyWorker=new Worker('/js/rental-worker.js?v=20260930-regional1');historyWorker.onmessage=({data})=>{const job=pending.get(data.id);if(!job)return;pending.delete(data.id);data.error?job.reject(Error(data.error)):job.resolve(data.rows.map(r=>({...r,category:r.rent>0?'monthly':'jeonse',monthlyRent:r.rent,contractType:['구분 미상','신규','갱신'][r.contract]})));};historyWorker.onerror=()=>{for(const job of pending.values())job.reject(Error('전월세 이력을 불러오지 못했습니다. 다시 시도해 주세요.'));pending.clear();historyWorker.terminate();historyWorker=null;};}
   return new Promise((resolve,reject)=>{const id=++sequence;pending.set(id,{resolve,reject});historyWorker.postMessage({id,action:'history',settings:{detail:apartment.id,detailIds:apartment.sources,year}});});
  }
  function clear(){for(const c of charts)c.destroy();charts=[];}

@@ -1,23 +1,23 @@
 'use strict';
-importScripts('/js/rental-model.js?v=20260928-market1','/js/market-rental-model.js?v=20260928-market1','/js/verified-data-cache.js?v=20260921-shared1');
+importScripts('/js/rental-model.js?v=20260928-market1','/js/market-rental-model.js?v=20260928-market1','/js/verified-data-cache.js?v=20260921-shared1','/js/regional-data.js?v=20260930-regional1');
 const M=globalThis.NodoMarketRental,R=globalThis.NodoRental;
 let verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',1024);
-let manifest,index,catalog,initializing,serial=0,activeReads=0;const files=new Map(),summaries=new Map(),waiting=[];
+let manifest,index,catalog,initializing,regional,serial=0,activeReads=0;const files=new Map(),summaries=new Map(),waiting=[];
 async function read(path,expected,signal){
   if(activeReads>=3)await new Promise(resolve=>waiting.push(resolve));else activeReads++;
   try{signal?.throwIfAborted();const bytes=await verified.download(path,expected,{signal});return JSON.parse(path.endsWith('.bin')?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes));}
   finally{const next=waiting.shift();if(next)next();else activeReads--;}
 }
 async function init(){if(catalog)return;if(initializing)return initializing;initializing=(async()=>{
-  const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');manifest=await r.json();if(manifest.schema!==1)throw Error('자료 형식을 확인해 주세요.');
+  const r=await fetch('/data/rental/index.json',{cache:'no-cache'});if(!r.ok)throw Error('전월세 자료를 불러오지 못했습니다.');manifest=await r.json();if(![1,2].includes(manifest.schema))throw Error('자료 형식을 확인해 주세요.');
   const r2=await fetch('/data/rental/market-cache/index.json',{cache:'no-cache'});if(r2.ok){const candidate=await r2.json();if(candidate.schema===1&&candidate.sourceVersion===manifest.version&&candidate.inputs&&candidate.sources&&Object.entries(candidate.inputs).every(([p,h])=>manifest.sources[p]===h)&&Object.entries(candidate.sources).every(([p,h])=>/^data\/rental\/market-cache\/\d{4}-(0[1-9]|1[0-2])-(11|41|28)\.bin$/.test(p)&&/^[a-f0-9]{64}$/.test(h)))index=candidate;}
   // Keep the complete history, including one previous version during updates.
   verified=globalThis.NodoVerifiedDataCache.create('nodo-rental-market-v1',Math.max(1024,manifest.months.length*6+2));
-  catalog=(await read('data/rental/catalog.bin',manifest.sources['data/rental/catalog.bin'])).complexes;R.normalizeDistricts(catalog);
+  regional=manifest.schema===2?await globalThis.NodoRegional.create(manifest,'rental',(p)=>read(p,manifest.sources[p])):null;catalog=regional?regional.complexes:(await read('data/rental/catalog.bin',manifest.sources['data/rental/catalog.bin'])).complexes;R.normalizeDistricts(catalog);
 })();try{await initializing;}finally{initializing=null;}}
-async function load(month,region){const compact=`data/rental/market-cache/${month}-${region}.bin`,original=`data/rental/months/${month}-${region}.bin`,path=index?.sources[compact]?compact:original,hash=index?.sources[compact]||manifest.sources[original];if(!hash)return null;
+async function load(month,region){const compact=`data/rental/market-cache/${month}-${region}.bin`,original=`data/rental/months/${month}-${region}.bin`,path=index?.sources[compact]?compact:original,hash=(index?.sources[compact])||manifest.sources[original];if(!hash&&!regional)return null;
   if(files.has(path)){const entry=files.get(path);files.delete(path);files.set(path,entry);return entry.promise;}
-  const entry={controller:new AbortController(),settled:false};entry.promise=read(path,hash,entry.controller.signal).then(shard=>path===compact?shard.rows:shard.rows.filter(r=>!r[7]).map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[16],r[15],r[17]]));files.set(path,entry);
+  const entry={controller:new AbortController(),settled:false};entry.promise=(regional&&path!==compact?regional.shard(original,month,{'41':0,'11':1,'28':2}[region]):read(path,hash,entry.controller.signal)).then(shard=>path===compact?shard.rows:shard.rows.filter(r=>!r[7]).map(r=>[r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[16],r[15],r[17]]));files.set(path,entry);
   try{return await entry.promise;}catch(e){if(files.get(path)===entry)files.delete(path);throw e;}finally{entry.settled=true;for(const [old,e]of files){if(files.size<=12)break;if(e.settled)files.delete(old);}}
 }
 function cancelPending(keep=new Set()){for(const [path,entry]of files)if(!entry.settled&&!keep.has(path)){entry.controller.abort();files.delete(path);}}

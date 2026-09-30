@@ -11,6 +11,8 @@ const base=resolve(dirname(fileURLToPath(import.meta.url)),'native-projection');
 const binary=resolve(process.env.NODO_RUST_BINARY||join(base,'target/debug/nodostream-projection-tests'+(process.platform==='win32'?'.exe':'')));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const provenance=JSON.parse(readFileSync(join(base,'provenance.json')));
+assert.equal(hash(readFileSync(join(base,'Cargo.lock'))),provenance.exportLockSha256,'CI dependency lock changed');
+if(process.env.NODO_NATIVE_SOURCE)assert.equal(hash(readFileSync(join(process.env.NODO_NATIVE_SOURCE,'Cargo.lock'))),provenance.canonicalLockSha256,'Operating dependency lock changed');
 for(const [name,proof] of Object.entries(provenance.files)){
  assert.equal(hash(readFileSync(join(base,'vendor',name))),proof.exportSha256,'Vendor changed: run explicit source sync');
  if(process.env.NODO_NATIVE_SOURCE){

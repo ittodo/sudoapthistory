@@ -4,6 +4,8 @@
 #[path = "../vendor/rental.rs"] mod rental;
 #[path = "../vendor/month_ledger.rs"] mod month_ledger;
 #[path = "../vendor/pipeline_guard.rs"] mod pipeline_guard;
+#[path = "../vendor/regional.rs"] mod regional;
+#[path = "../vendor/calc_suffix.rs"] mod calc_suffix;
 use std::io::{self,Read};
 use serde_json::{json,Value};
 type Result<T> = std::result::Result<T,Box<dyn std::error::Error+Send+Sync>>;

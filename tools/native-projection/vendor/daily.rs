@@ -281,6 +281,23 @@ impl MonthCache {
         self.entries[month] = json!(self.blob(&gzip(state, 1)?)?);
         Ok(())
     }
+    fn converge(&mut self,b:&mut Builder,month:&str)->Result<()> {
+        if self.old.is_null()||!crate::calc_suffix::same_inputs_after(&self.old["ledger"],&self.ledger,month){return Ok(());}
+        let Some(key)=self.old["states"].get(month)else{return Ok(())};let prior:Value=serde_json::from_slice(&ungzip(&self.get(key)?)?)?;let current=b.snapshot();
+        if prior["history"]!=current["history"]||prior["states"]!=current["states"]||!arr(&current["areas"])?.starts_with(arr(&prior["areas"])?)||!arr(&current["identitySources"])?.starts_with(arr(&prior["identitySources"])?) {return Ok(());}
+        let future=map(&self.old["states"])?.iter().filter(|(m,_)|m.as_str()>month).map(|(m,h)|(m.clone(),h.clone())).collect::<Vec<_>>();if future.is_empty(){return Ok(());}
+        // Validate every suffix object before modifying builder state or counters.
+        let mut saved=Vec::new();let mut future_files=BTreeMap::new();let mut dates:BTreeMap<String,(String,String)>=BTreeMap::new();
+        for(m,h)in &future{let v:Value=serde_json::from_slice(&ungzip(&self.get(h)?)?)?;for(p,h)in map(&v["files"])?{let fm=p.rsplit('/').next().and_then(|n|n.get(..7)).ok_or("Invalid suffix month file")?;if fm>month&&!future_files.contains_key(p){daily_name(p)?;let raw=self.get(h)?;if !p.contains("-state."){let value:Value=serde_json::from_slice(&ungzip(&raw)?)?;for row in arr(&value["rows"])?{if row[4]==0{let day=row[1].as_i64().ok_or("Invalid suffix date")?.to_string();let day=format!("{}-{}-{}",&day[..4],&day[4..6],&day[6..]);let e=dates.entry(fm.into()).or_insert((day.clone(),day.clone()));e.0=e.0.clone().min(day.clone());e.1=e.1.clone().max(day);}}}future_files.insert(p.clone(),(h.clone(),raw));}}saved.push((m.clone(),v));}
+        for(p,(_,raw))in &future_files{let target=safe(&b.site,p)?;if fs::read(&target).ok().as_deref()!=Some(raw){atomic(&target,raw)?;b.written+=1;}else{b.unchanged+=1;}b.reused+=1;}
+        let mut final_state=None;
+        for(m,mut v)in saved{v["counts"]=crate::calc_suffix::counts(&v["counts"],&prior["counts"],&current["counts"])?;v["summaries"]=crate::calc_suffix::summaries(&v["summaries"],&current["summaries"],month)?;let mut files=current["files"].clone();for(p,(h,_))in &future_files{if p.rsplit('/').next().unwrap().get(..7).is_some_and(|fm|fm<=m.as_str()){files[p]=h.clone();}}v["files"]=files;
+            let mut months=arr(&v["months"])?.iter().chain(arr(&current["months"])?.iter()).map(|v|Ok(strv(v)?.to_owned())).collect::<Result<BTreeSet<_>>>()?;months.retain(|n|n<=&m);v["months"]=json!(months);v["areas"]=current["areas"].clone();v["identitySources"]=current["identitySources"].clone();
+            let mut min=current["minDate"].as_str().map(str::to_owned);let mut max=current["maxDate"].as_str().map(str::to_owned);for(fm,(low,high))in &dates{if fm<=&m{min=Some(min.map(|v|v.min(low.clone())).unwrap_or(low.clone()));max=Some(max.map(|v|v.max(high.clone())).unwrap_or(high.clone()));}}v["minDate"]=json!(min);v["maxDate"]=json!(max);
+            self.capture(&m,&packed(&v)?,&v["files"],&b.site)?;final_state=Some(v);
+        }
+        b.restore(final_state.ok_or("Suffix state missing")?)?;b.suffix_reused=future.len();self.reason="converged-suffix".into();Ok(())
+    }
     fn commit(&self, counts: &Value) -> Result<()> {
         atomic(
             &self.root.join("index.json"),
@@ -306,6 +323,9 @@ struct Builder {
     months: Vec<String>,
     counts: Value,
     current: Option<String>,
+    fixed_region: Option<String>,
+    record_pool: Option<PathBuf>,
+    record_ids: crate::regional::RecordIds,
     rows: Vec<Vec<Value>>,
     updates: Vec<Vec<Value>>,
     opening: Vec<Vec<Value>>,
@@ -316,10 +336,11 @@ struct Builder {
     compressed: usize,
     written: usize,
     unchanged: usize,
+    suffix_reused: usize,
 }
 impl Builder {
     fn snapshot(&self) -> Value {
-        json!({"areas":self.areas,"history":self.history,"states":self.states,"counts":self.counts,"summaries":self.summaries,"months":self.months,"files":self.files,"minDate":self.min,"maxDate":self.max,"currentMonth":self.current})
+        json!({"areas":self.areas,"history":self.history,"states":self.states,"counts":self.counts,"summaries":self.summaries,"months":self.months,"files":self.files,"minDate":self.min,"maxDate":self.max,"currentMonth":self.current,"identitySources":self.fixed_region.as_ref().map(|_|self.complexes.iter().map(|c|c["id"].clone()).collect::<Vec<_>>())})
     }
     // Serialize borrowed state without cloning every area's price history each month.
     fn snapshot_bytes(&self) -> Result<Vec<u8>> {
@@ -356,11 +377,18 @@ impl Builder {
             out.extend(format!(",\"{key}\":").as_bytes());
             out.extend(packed(&json!(value))?);
         }
+        if self.fixed_region.is_some(){out.extend(b",\"identitySources\":");out.extend(packed(&json!(self.complexes.iter().map(|c|c["id"].clone()).collect::<Vec<_>>()))?);}
         out.push(b'}');
         Ok(out)
     }
     fn restore(&mut self, state: Value) -> Result<()> {
+        let seeded=self.areas.clone();
+        if self.fixed_region.is_some(){
+            let current=self.complexes.iter().map(|c|c["id"].clone()).collect::<Vec<_>>();
+            if !current.starts_with(arr(&state["identitySources"])?)||!seeded.starts_with(arr(&state["areas"])?) {return Err("Regional cache renumbers permanent identities".into());}
+        }
         self.areas = arr(&state["areas"])?.clone();
+        if self.fixed_region.is_some(){self.areas.extend(seeded[self.areas.len()..].iter().cloned());}
         self.area_ids = self
             .areas
             .iter()
@@ -428,6 +456,7 @@ impl Builder {
         Ok(())
     }
     fn flush(&mut self) -> Result<()> {
+        if self.suffix_reused>0{return Ok(());}
         let Some(month) = self.current.clone() else {
             return Ok(());
         };
@@ -461,14 +490,15 @@ impl Builder {
         }
         if self.monthly.is_some() {
             let snapshot = self.snapshot_bytes()?;
-            self.monthly
-                .as_mut()
-                .unwrap()
-                .capture(&month, &snapshot, &self.files, &self.site)?;
+            let mut cache=self.monthly.take().unwrap();
+            cache.capture(&month,&snapshot,&self.files,&self.site)?;
+            if self.fixed_region.is_some(){if let Err(error)=cache.converge(self,&month){eprintln!("daily suffix cache not reused: {error}");}}
+            self.monthly=Some(cache);
         }
         Ok(())
     }
     fn begin_month(&mut self, month: String) -> Result<()> {
+        self.record_ids=crate::regional::pool(self.record_pool.as_deref(),&month,"daily")?;
         self.current = Some(month);
         self.rows = vec![Vec::new(); 3];
         self.updates = vec![Vec::new(); 3];
@@ -484,6 +514,7 @@ impl Builder {
         self.counts[key] = json!(current + by as u64)
     }
     fn day(&mut self, parts: &[Value], records: &[Value], today: &str) -> Result<usize> {
+        if self.suffix_reused>0{return Ok(0);}
         let parsed = (|| {
             let y = i32::try_from(parts[0].as_i64()?).ok()?;
             let m = u32::try_from(parts[1].as_i64()?).ok()?;
@@ -505,6 +536,7 @@ impl Builder {
         let month = &iso[..7];
         if self.current.as_deref() != Some(month) {
             self.flush()?;
+            if self.suffix_reused>0{return Ok(0);}
             if let Some(current) = self.current.clone() {
                 let mut y: i32 = current[..4].parse()?;
                 let mut m: u32 = current[5..].parse()?;
@@ -570,7 +602,7 @@ impl Builder {
                 .map(|i| pystr_or_empty(&r[i]))
                 .collect::<Result<Vec<_>>>()?
                 .join("|");
-            let rid = hash(identity.as_bytes())[..24].to_owned();
+            let rid=if let Some(code)=&self.fixed_region {self.record_ids.allocate(&json!([crate::regional::key(code,ai),day,r[5],r[6],flags]))?}else{hash(identity.as_bytes())[..24].to_owned()};
             let p = prev.filter(|_| flags == 0);
             self.rows[region].push(json!([
                 ai,
@@ -785,6 +817,7 @@ fn process_day(
     b.day(parts, records, today)
 }
 
+pub fn sale_source(metadata:&Value)->bool {metadata["hasSale"]!=false}
 pub fn build(spec: Value) -> Result<Value> {
     let site = path(&spec, "site")?.canonicalize()?;
     let database = path(&spec, "database")?;
@@ -859,6 +892,12 @@ pub fn build(spec: Value) -> Result<Value> {
             complexes.push(json!({"id":id,"mapId":c["id"],"publicId":public,"n":row.get::<_,Option<String>>(2)?,"r":region,"g":row.get::<_,Option<String>>(3)?,"d":row.get::<_,Option<String>>(4)?,"coord":c["coord"],"b":c["b"],"tu":c["tu"],"admin":c.get("admin").cloned().unwrap_or_else(||json!([]))}));
         }
     }
+    let fixed_region=spec["regional"]["lawd"].as_str().map(str::to_owned);
+    if let Some(code)=&fixed_region {
+        crate::regional::lawd(code)?;
+        complexes=arr(&spec["regional"]["complexes"])?.clone();
+        by_source=complexes.iter().enumerate().map(|(i,c)|Ok((strv(&c["id"])?.to_owned(),i))).collect::<Result<_>>()?;
+    }
     let mut queries = vec![
         format!("SELECT {FIELDS},0 AS inactive FROM transactions WHERE price>0 AND area>0"),
         format!(
@@ -872,16 +911,22 @@ pub fn build(spec: Value) -> Result<Value> {
         conn.execute("ATTACH DATABASE ? AS gone", [uri.as_str()])?;
         queries.push(format!("SELECT {FIELDS},4 AS inactive FROM gone.disappeared_transactions WHERE source_state='missing' AND price>0 AND area>0"));
     }
+    if fixed_region.is_some(){
+        let eligible=complexes.iter().filter(|c|sale_source(c)).cloned().collect::<Vec<_>>();
+        let sources=crate::regional::sql_sources(&eligible)?;
+        queries=queries.into_iter().map(|q|format!("{q} AND apt_seq IN ({sources})")).collect();
+    }
+    let raw_ledgers=ledgers(&conn,missing.is_some())?;
     let mut monthly = None;
-    let mut ledger_values = Value::Null;
+
     if let (Some(cache_dir), Some(ledger_root)) = (&cache_dir, &ledger_root) {
         if !ledger_root
             .join("_ops/month-ledger-audit-block.json")
             .exists()
         {
-            ledger_values = ledgers(&conn, missing.is_some())?;
+            let ledger_values = if fixed_region.is_some(){spec["regional"]["ledger"].clone()}else{raw_ledgers.clone()};
             if !ledger_values.is_null() {
-                let context = hash(&packed(&json!([3, env!("NODO_SOURCE_SHA"), complexes]))?);
+                let context = if fixed_region.is_some(){hash(&packed(&json!([4,hash(include_bytes!("daily.rs")),hash(include_bytes!("regional.rs")),hash(include_bytes!("calc_suffix.rs")),fixed_region]))?)}else{hash(&packed(&json!([3, env!("NODO_GENERATION_SHA"), complexes]))?)};
                 let root = cache_dir.join(format!(
                     "months-{}",
                     hash(absolute_name(&database)?.as_bytes())
@@ -901,8 +946,8 @@ pub fn build(spec: Value) -> Result<Value> {
         previous_index,
         complexes,
         by_source,
-        areas: Vec::new(),
-        area_ids: BTreeMap::new(),
+        areas: if fixed_region.is_some(){arr(&spec["regional"]["areas"])?.clone()}else{Vec::new()},
+        area_ids: if fixed_region.is_some(){arr(&spec["regional"]["areas"])?.iter().enumerate().map(|(i,v)|Ok(((v[0].as_u64().ok_or("Invalid fixed area complex")? as usize,strv(&v[1])?.to_owned()),i))).collect::<Result<_>>()?}else{BTreeMap::new()},
         history: obj(),
         states: vec![obj(); 3],
         files: obj(),
@@ -910,6 +955,9 @@ pub fn build(spec: Value) -> Result<Value> {
         months: Vec::new(),
         counts: obj(),
         current: None,
+        fixed_region,
+        record_pool: optional_path(&spec["regional"],"record_pool"),
+        record_ids: crate::regional::RecordIds::default(),
         rows: vec![Vec::new(); 3],
         updates: vec![Vec::new(); 3],
         opening: vec![Vec::new(); 3],
@@ -920,6 +968,7 @@ pub fn build(spec: Value) -> Result<Value> {
         compressed: 0,
         written: 0,
         unchanged: 0,
+        suffix_reused: 0,
     };
     let (mut cache_path, mut context, mut cutoff, mut checkpoint) = (None, None, None, None);
     let mut prefix_hash = Sha256::new();
@@ -953,7 +1002,7 @@ pub fn build(spec: Value) -> Result<Value> {
         ));
         let ctx = hash(&packed(&json!([
             2,
-            env!("NODO_SOURCE_SHA"),
+            env!("NODO_GENERATION_SHA"),
             cut,
             b.complexes
         ]))?);
@@ -1027,6 +1076,7 @@ pub fn build(spec: Value) -> Result<Value> {
                     &mut checkpoint,
                 )?;
                 group.clear();
+                if b.suffix_reused>0{parts=None;break;}
             }
             parts = Some(current);
             group.push(row);
@@ -1038,7 +1088,7 @@ pub fn build(spec: Value) -> Result<Value> {
     b.flush()?;
     conn.execute_batch("COMMIT")?;
     let final_meta = metas(&conn)?;
-    if b.monthly.is_some() && ledgers(&conn, missing.is_some())? != ledger_values {
+    if b.monthly.is_some() && ledgers(&conn, missing.is_some())? != raw_ledgers {
         return Err("Monthly ledger changed during daily export".into());
     }
     if revision != final_meta["trade_source_revision"]
@@ -1049,7 +1099,7 @@ pub fn build(spec: Value) -> Result<Value> {
     if Some(digest(&map_path)?.as_str()) != sources["data/map/index.json"].as_str() {
         return Err("Map changed during daily export; rebuild required".into());
     }
-    if b.max.is_none() {
+    if b.max.is_none() && b.fixed_region.is_none() {
         return Err("No active daily transactions".into());
     }
     let mut catalog = Map::new();
@@ -1093,6 +1143,7 @@ pub fn build(spec: Value) -> Result<Value> {
     {
         result["updated"] = b.previous_index["updated"].clone()
     }
+    if b.fixed_region.is_some(){result["calculationReuse"]=json!({"suffixMonths":b.suffix_reused});}
     b.write("data/daily/index.json", &result)?;
     if let (Some(path), Some(context), Some(checkpoint)) = (cache_path, context, checkpoint) {
         let payload = packed(

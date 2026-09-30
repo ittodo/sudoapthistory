@@ -1,15 +1,17 @@
 {
   "schema": 1,
-  "sourceCommit": "b683495d1e3987c774633e5a504bc3d63b343c70",
+  "canonicalLockSha256": "32127bd65c660c0c7f5bd60b1c8c563d7dfa2ee9ba957417e1b0d14f267f235e",
+  "exportLockSha256": "de7b33b6adea5601e3ac0d6883626b44e9df4e33018835c57d10c765e88dab04",
+  "sourceCommit": "f4b16515193f14e77e15acd942a35f2c6e5ad1dc",
   "files": {
     "daily.rs": {
-      "sourceSha256": "e6c738b8eed6a70c396f4ca19d8fc3cfad1bc837db2a306d0b503d8a0dc9c5da",
-      "exportSha256": "e6c738b8eed6a70c396f4ca19d8fc3cfad1bc837db2a306d0b503d8a0dc9c5da",
+      "sourceSha256": "86e4f68f222fde755f6337fe4fb65811ffe6e2b3935dffcf6f68763dda3b867b",
+      "exportSha256": "86e4f68f222fde755f6337fe4fb65811ffe6e2b3935dffcf6f68763dda3b867b",
       "selection": "whole"
     },
     "rental.rs": {
-      "sourceSha256": "a29e44e8d773d8723b7ec187f71113669a20c817ede6ab0e8c1bc84785bb9708",
-      "exportSha256": "a29e44e8d773d8723b7ec187f71113669a20c817ede6ab0e8c1bc84785bb9708",
+      "sourceSha256": "32c1c871e609ecb07a538dfa036a5bd587be317e45cff48859e0d53315ba2a83",
+      "exportSha256": "32c1c871e609ecb07a538dfa036a5bd587be317e45cff48859e0d53315ba2a83",
       "selection": "whole"
     },
     "apartment_rent.rs": {
@@ -26,6 +28,16 @@
       "sourceSha256": "c0ea64d270a71afa2d537804090d5753b552f94b0b31825c7a4dd38619c4685b",
       "exportSha256": "532e2cc27a306b85d4564fd5179da15b3b66a24654b2658c7abdeb323b0dbd73",
       "selection": "before collect_contracts"
+    },
+    "regional.rs": {
+      "sourceSha256": "161e3c638a9d2c068037b5d7ca2fe4b486fffbce7ad8dd4e45cebc2efdf0bf5f",
+      "exportSha256": "161e3c638a9d2c068037b5d7ca2fe4b486fffbce7ad8dd4e45cebc2efdf0bf5f",
+      "selection": "whole"
+    },
+    "calc_suffix.rs": {
+      "sourceSha256": "b58db7ec567c4639be5a868468c7777f538bb4ec1bc2cdaaf65fdfc3ebf305f3",
+      "exportSha256": "b58db7ec567c4639be5a868468c7777f538bb4ec1bc2cdaaf65fdfc3ebf305f3",
+      "selection": "whole"
     }
   }
 }

@@ -1,3 +1,4 @@
+import {regionalReader} from './regional-data.mjs';
 import {readFileSync,existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -22,7 +23,7 @@ export function homeSearchAssets(root,search){
   if(!existsSync(join(root,'data/rental/index.json')))return [];
   const read=p=>readFileSync(join(root,p)),manifest=JSON.parse(read('data/rental/index.json')),inputs={...search.sources},sources={},assets=[];
   const verified=p=>{const bytes=read(p);if(hash(bytes)!==manifest.sources[p])throw Error('Home search input changed: '+p);inputs[p]=hash(bytes);return JSON.parse(p.endsWith('.bin')?gunzipSync(bytes):bytes);};
-  const catalog=verified('data/rental/catalog.bin').complexes,identities=new Map(search.apartments.flatMap(e=>e.rentalIds.map(id=>[id,e]))),month=manifest.months.at(-1);
+  const regional=regionalReader(root,'rental'),catalog=regional.catalog.complexes,identities=new Map(search.apartments.flatMap(e=>e.rentalIds.map(id=>[id,e]))),month=manifest.months.at(-1);
   const metadata=new Map(JSON.parse(read('data/housing-v3/index.json')).complexes.map(c=>[c.publicationId,c]));
   const rentalById=new Map(catalog.map(c=>[c.id,c]));
   const common=search.apartments.map(e=>{
@@ -32,13 +33,13 @@ export function homeSearchAssets(root,search){
   });
   let asOf=month+'-01';
   for(const region of ['41','11','28']){
-    const shard=verified(`data/rental/months/${month}-${region}-state.bin`),prices=latestRent(shard,catalog,identities);
+    const shard=regional.read(`data/rental/months/${month}-${region}-state.bin`),prices=latestRent(shard,catalog,identities);
     for(const t of prices)if(t.date>asOf)asOf=t.date;
     const apartments=common.filter(e=>['41','11','28'][e.r]===region);
     const bytes=gzipSync(JSON.stringify({schema:1,apartments,prices}),{level:6}),path=`data/search/latest-${region}.bin`;
     if(bytes.length>25*1024*1024)throw Error('Home search asset exceeds limit');sources[path]=hash(bytes);assets.push({path,bytes});
   }
   // Pin catalogs and the original sale row index as well as the current rental snapshot.
-  for(const [p,h]of Object.entries(inputs))if(hash(read(p))!==h)throw Error('Home search input changed: '+p);
+  Object.assign(inputs,regional.inputs);for(const [p,h]of Object.entries(inputs))if(hash(read(p))!==h)throw Error('Home search input changed: '+p);
   assets.push({path:'data/search/latest-index.json',bytes:Buffer.from(JSON.stringify({schema:1,asOf,searchVersion:search.version,rentalVersion:manifest.version,inputs,sources}))});return assets;
 }

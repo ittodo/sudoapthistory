@@ -77,7 +77,7 @@
           c.areas.push({i:ai,a,latest:[date,mean,0,0,count],min,max,sourceName:source.n});
         }
       }
-      for(const c of groups.values())c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||a.i-b.i);
+      for(const c of groups.values())c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||String(a.i).localeCompare(String(b.i),undefined,{numeric:true}));
       return [...groups.values()];
     }
     async function refresh({keepPlaying=false}={}){

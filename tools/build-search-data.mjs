@@ -1,3 +1,4 @@
+import {regionalReader} from './regional-data.mjs';
 import {homeSearchAssets} from './build-home-search-data.mjs';
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
@@ -69,10 +70,10 @@ export function searchData(root) {
     return JSON.parse(path.endsWith('.bin') ? gunzipSync(bytes) : bytes);
   };
   const index = read('data/index.json'), identities = read('data/apartments/index.json');
-  const sale = read('data/daily/catalog.bin'), rental = read('data/rental/catalog.bin'), map = read('data/map/index.json');
+  const saleReader=regionalReader(root,'daily'),rentReader=regionalReader(root,'rental');const sale=saleReader.catalog,rental=rentReader.catalog,map=read('data/map/index.json');Object.assign(sources,saleReader.inputs,rentReader.inputs);
   const metadata=read('data/housing-v3/index.json');
   if(metadata.meta?.approvedOnly!==true)throw Error('Search metadata must use approved apartment identities');
-  const apartments = combineCatalogs({sale:sale.complexes,rental:rental.complexes,rows:index.d,map:map.d,metadata:metadata.complexes,lookup:identities.lookup,ambiguous:identities.ambiguous});
+  const apartments = combineCatalogs({sale:sale.complexes.filter(c=>saleReader.manifest.schema===1||c.hasSale!==false),rental:rental.complexes.filter(c=>rentReader.manifest.schema===1||c.hasRental!==false),rows:index.d,map:map.d,metadata:metadata.complexes,lookup:identities.lookup,ambiguous:identities.ambiguous});
   if (!apartments.length || apartments.some(c=>!c.name || !c.id || ![0,1,2].includes(c.r) || !c.g || /^\d{5}$/.test(c.g))) throw Error('Invalid apartment search catalog');
   const payload = {schema:1,version:hash(JSON.stringify({schema:1,sources,apartments})),sources,apartments};
   return Buffer.from(JSON.stringify(payload));

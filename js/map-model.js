@@ -1,7 +1,7 @@
 /* Pure map selection/filter rules, shared by browser and Node regression tests. */
 (function(root) {
   function latestArea(areas) {
-    return [...areas].filter(a => a.latest).sort((a,b) => b.latest[0]-a.latest[0] || a.a-b.a || a.i-b.i)[0] || null;
+    return [...areas].filter(a => a.latest).sort((a,b) => b.latest[0]-a.latest[0] || a.a-b.a || String(a.i).localeCompare(String(b.i),'en',{numeric:true}))[0] || null;
   }
   function range(value, low, high) {
     if (low == null && high == null) return true;
@@ -140,7 +140,7 @@
       }
       if(reset)for(const values of frame.values)for(const state of values.values())accept(state);
       else for(const event of frame.changes)accept(event.state);
-      for(const id of dirty){const c=priceGroups.get(id);c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||a.i-b.i);updated.push(c);}
+      for(const id of dirty){const c=priceGroups.get(id);c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||String(a.i).localeCompare(String(b.i),'en',{numeric:true}));updated.push(c);}
       if(reset)complexes=[...priceGroups.values()];return {complexes,changed:reset?null:updated};
     }
 
