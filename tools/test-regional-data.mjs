@@ -19,3 +19,7 @@ test('quarter bases select only their month and reject missing or crossed quarte
  test('approved representative chains cannot cycle or cross reviewed groups',()=>{
  const data=structuredClone(payloads);data.m.complexes[0]={...data.m.complexes[0],publicId:'group',representativeKey:'41110:0'};data.n.complexes[0]={...data.n.complexes[0],publicId:'group'};assert.equal(R.tables(descriptor,data,'daily').source.get('A'),'11110:0');data.n.complexes[0].representativeKey='11110:0';assert.throws(()=>R.tables(descriptor,data,'daily'),/cycle/);delete data.n.complexes[0].representativeKey;data.n.complexes[0].publicId='different';assert.throws(()=>R.tables(descriptor,data,'daily'),/approved/);
  });
+
+test('display ties follow numeric local slots without renumbering the authority',()=>{
+ const values=structuredClone(payloads);values.a.complexes=Array.from({length:12},(_,i)=>'A'+i);values.m.complexes=values.a.complexes.map(id=>({id,n:'same',r:1}));values.n.complexes[0].n='same';const table=R.tables(descriptor,values,'daily'),physical=JSON.stringify(table.regions.get('11110').identity);assert.deepEqual(R.orderedComplexes(table).map(c=>c.key),[...Array.from({length:12},(_,i)=>'11110:'+i),'41110:0']);assert.equal(JSON.stringify(table.regions.get('11110').identity),physical);
+});

@@ -5,7 +5,7 @@
  const lawd=s=>/^\d{5}$/.test(s),key=(code,id)=>{if(!lawd(code)||!Number.isSafeInteger(id)||id<0)throw Error('잘못된 지역 번호입니다.');return code+':'+id;};
  function exactArea(s){s=String(s);if(!/^\d+(\.\d+)?$/.test(s))throw Error('정확한 면적이 필요합니다.');let [i,f='']=s.split('.');i=i.replace(/^0+/,'')||'0';f=f.replace(/0+$/,'');if(i==='0'&&!f)throw Error('면적은 양수여야 합니다.');return i+(f?'.'+f:'');}
  const canonical=row=>JSON.stringify(row);
- const orderedComplexes=(table,compare=(a,b)=>(a.n||'').localeCompare(b.n||'','ko')||a.key.localeCompare(b.key))=>table.complexes.slice().sort(compare);
+ const orderedComplexes=(table,compare=(a,b)=>(a.n||'').localeCompare(b.n||'','ko')||a.key.localeCompare(b.key,undefined,{numeric:true}))=>table.complexes.slice().sort(compare);
  function apply(base,change){
   if(!Array.isArray(base)||!Array.isArray(change?.remove)||!Array.isArray(change?.add))throw Error('변경분 형식을 확인해 주세요.');
   const remove=new Map();for(const p of change.remove){if(!Array.isArray(p)||p.length!==2||!Number.isSafeInteger(p[1])||p[1]<1||remove.has(canonical(p[0])))throw Error('잘못된 제거 건수입니다.');remove.set(canonical(p[0]),p[1]);}
