@@ -15,7 +15,12 @@ export function compareMigration(oldRoot,newRoot,codeRoot,{months}={}){
  oldRoot=resolve(oldRoot);newRoot=resolve(newRoot);codeRoot=resolve(codeRoot);const start=performance.now();
  const sale=regionalReader(oldRoot,'daily'),rent=regionalReader(oldRoot,'rental'),nextSale=regionalReader(newRoot,'daily'),nextRent=regionalReader(newRoot,'rental');
  if(sale.manifest.schema!==1||rent.manifest.schema!==1||nextSale.manifest.schema!==2||nextRent.manifest.schema!==2)throw Error('Initial schema1 to fixed-region comparison required');
- const baseline=nextSale.manifest.regional.baselineCommit,git=execFileSync('git',['-c','safe.directory='+oldRoot.replaceAll('\\','/'),'rev-parse','HEAD'],{cwd:oldRoot,encoding:'utf8'}).trim();if(git!==baseline)throw Error('Baseline HEAD changed');
+ const baseline=nextSale.manifest.regional.baselineCommit,git=execFileSync('git',['-c','safe.directory='+oldRoot.replaceAll('\\','/'),'rev-parse','HEAD'],{cwd:oldRoot,encoding:'utf8'}).trim();if(git!==baseline){
+  const args=['-c','safe.directory='+oldRoot.replaceAll('\\','/')];
+  execFileSync('git',[...args,'merge-base','--is-ancestor',baseline,'HEAD'],{cwd:oldRoot});
+  const changed=execFileSync('git',[...args,'diff','--name-only',baseline,'HEAD','--','data'],{cwd:oldRoot,encoding:'utf8'}).trim();if(changed)throw Error('Reviewed baseline data changed after the frozen commit');
+ }
+ const dirty=execFileSync('git',['-c','safe.directory='+oldRoot.replaceAll('\\','/'),'status','--porcelain','--','data'],{cwd:oldRoot,encoding:'utf8'}).trim();if(dirty)throw Error('Baseline data worktree changed');
  const config=readFileSync(resolve(codeRoot,'../15_26-regional-index/data/regional_transactions.json'));
  const configValue=JSON.parse(config);for(const kind of ['daily','rental'])if(hash(readFileSync(join(oldRoot,`data/${kind}/index.json`)))!==configValue.manifests[kind])throw Error('Baseline manifest not approved');
  const current=nextSale.catalog,oldSales=sale.catalog,oldRental=rent.catalog;
