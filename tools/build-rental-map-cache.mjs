@@ -16,6 +16,7 @@ export function compactMapShard(shard,type){
 export function rentalMapAssets(root){
  const manifestPath=join(root,'data/rental/index.json');if(!existsSync(manifestPath))return [];
  const reader=regionalReader(root,'rental'),manifest=reader.manifest,assets=[],sources={},inputs={};
+ const codeHash=hash(Buffer.concat([readFileSync(join(root,'tools/build-rental-map-cache.mjs')),readFileSync(join(root,'tools/regional-data.mjs')),readFileSync(join(root,'js/regional-data.js'))]));
  // Derived files are packaging outputs, like the existing search catalog. No DB writes.
  const directory=join(root,'cloudflare/dist/rental-map-cache-v1');
  for(const path of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(path)&&lstatSync(path).isSymbolicLink())throw Error('Symlink rental cache output');
@@ -28,11 +29,11 @@ export function rentalMapAssets(root){
    const stamp=join(directory,`${month}-${region}.json`);let saved;
    try{saved=JSON.parse(readFileSync(stamp));}catch{}
    let shard;
-   const proof={inputHash:expected,files:{}};
+   const fingerprint=hash(JSON.stringify([codeHash,expected])),proof={inputHash:fingerprint,files:{}};
    for(const type of ['jeonse','monthly']){
     const name=`${month}-${region}-${type}.bin`,path=prefix+name,target=join(directory,name);
     let bytes;
-    if(saved?.inputHash===expected&&existsSync(target)){const cached=readFileSync(target);if(hash(cached)===saved.files?.[name])bytes=cached;}
+    if(saved?.inputHash===fingerprint&&existsSync(target)){const cached=readFileSync(target);if(hash(cached)===saved.files?.[name])bytes=cached;}
     if(!bytes){shard??=reader.read(input);bytes=gzipSync(JSON.stringify(compactMapShard(shard,type)),{level:6});writeFileSync(target,bytes);}
     if(bytes.length>25*1024*1024)throw Error('Rental cache exceeds asset size limit');
     const digest=hash(bytes);proof.files[name]=digest;sources[path]=digest;assets.push({path,source:target,sha256:digest,size:bytes.length});

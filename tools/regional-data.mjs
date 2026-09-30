@@ -21,7 +21,8 @@ export function regionalReader(root,kind){
   const match=kind==='daily'?path.match(/^data\/daily\/([012])\/(\d{4}-\d{2})(-state)?\.bin$/):path.match(/^data\/rental\/months\/(\d{4}-\d{2})-(41|11|28)(-state)?\.bin$/);
   if(!match)return physical(path);const month=kind==='daily'?match[2]:match[1],province=kind==='daily'?Number(match[1]):{'41':0,'11':1,'28':2}[match[2]],result={rows:[],opening:[],updates:[]};
   for(const [code,r]of table.regions)if(r.metadata.complexes.some(c=>c.r===province)){const value=regionMonth(code,month);for(const f of Object.keys(result))for(const row of value[f]||[])result[f].push(row);}
-  return result;
+  // A province cursor consumes districts together in date order.
+  return globalThis.NodoRegional.merge(result,[],kind,descriptor.baselineCommit);
  }
  function fingerprint(path,metadata=false){const match=kind==='daily'?path.match(/^data\/daily\/([012])\/(\d{4}-\d{2})(-state)?\.bin$/):path.match(/^data\/rental\/months\/(\d{4}-\d{2})-(41|11|28)(-state)?\.bin$/);if(!match)return manifest.sources[path];const month=kind==='daily'?match[2]:match[1],province=kind==='daily'?Number(match[1]):{'41':0,'11':1,'28':2}[match[2]],proof=[];for(const [code,r]of table.regions)if(r.metadata.complexes.some(c=>c.r===province)){for(const p of [manifest.regional.bases?.[code]?.[month],manifest.regional.overlays?.[code]?.[month],metadata?r.entry.metadata:null].filter(Boolean)){inputs[p]=manifest.sources[p];proof.push([p,manifest.sources[p]]);}}return hash(JSON.stringify(proof));}
  return {manifest,inputs,physical,catalog:table,read,table,regionMonth,fingerprint};

@@ -44,7 +44,7 @@ export function regionPriceAssets(root,{months}={}){
   const verified=(path,manifest)=>{const b=read(path);if(hash(b)!==manifest.sources[path])throw Error('Region cache input changed: '+path);inputs[path]=hash(b);return JSON.parse(path.endsWith('.bin')?gunzipSync(b):b);};
   const saleReader=regionalReader(root,'daily'),rentReader=regionalReader(root,'rental'),saleCatalog=saleReader.catalog,rentalCatalog=rentReader.catalog.complexes;
   sale.schema??=1;rental.schema??=1;ctx.NodoRental.normalizeDistricts(rentalCatalog);
-  const codeHash=hash(Buffer.concat([read('tools/build-region-price-cache.mjs'),...models.map(n=>read('js/'+n+'.js'))]));
+  const codeHash=hash(Buffer.concat([read('tools/build-region-price-cache.mjs'),read('tools/regional-data.mjs'),read('js/regional-data.js'),...models.map(n=>read('js/'+n+'.js'))]));
   const mapHash=hash(read('data/map/index.json')),membershipHash=hash(JSON.stringify(payload.d.map(c=>[c.id,c.r,c.admin,c.memberSources?.map(s=>s.id)])));inputs['data/map/index.json']=mapHash;
   let rentalMaxDate=rental.months.at(-1)+'-01';
   for(const region of ['41','11','28']){const path='data/rental/months/'+rental.months.at(-1)+'-'+region+'.bin';if(rental.schema===2||rental.sources[path])for(const row of rentReader.read(path).rows){const day=ctx.NodoRental.iso(row[2]);if(day>rentalMaxDate)rentalMaxDate=day;}}

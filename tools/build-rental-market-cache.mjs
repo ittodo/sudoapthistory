@@ -9,14 +9,16 @@ export function compactMarketShard(shard){return {schema:1,rows:shard.rows.filte
 export function rentalMarketAssets(root){
   const source=join(root,'data/rental/index.json');if(!existsSync(source))return [];
   const reader=regionalReader(root,'rental'),manifest=reader.manifest,assets=[],sources={},inputs={},directory=join(root,'cloudflare/dist/rental-market-cache-v1');
+ const codeHash=hash(Buffer.concat([readFileSync(join(root,'tools/build-rental-market-cache.mjs')),readFileSync(join(root,'tools/regional-data.mjs')),readFileSync(join(root,'js/regional-data.js'))]));
   for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink market cache output');
   mkdirSync(directory,{recursive:true});
   for(const month of manifest.months){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Invalid market month');for(const region of ['11','41','28']){
     const input=`data/rental/months/${month}-${region}.bin`,expected=manifest.schema===2?reader.fingerprint(input):manifest.sources[input];if(!expected)continue;
     const raw=manifest.schema===1?readFileSync(join(root,input)):null;if(raw&&hash(raw)!==expected)throw Error('Market input hash mismatch: '+input);if(raw)inputs[input]=expected;
     const name=`${month}-${region}.bin`,target=join(directory,name),stamp=target+'.json';let saved,bytes;try{saved=JSON.parse(readFileSync(stamp));}catch{}
-    if(saved?.inputHash===expected&&existsSync(target)){const b=readFileSync(target);if(hash(b)===saved.hash)bytes=b;}
-    if(!bytes){bytes=gzipSync(JSON.stringify(compactMarketShard(reader.read(input))),{level:6});writeFileSync(target,bytes);writeFileSync(stamp,JSON.stringify({inputHash:expected,hash:hash(bytes)}));}
+    const fingerprint=hash(JSON.stringify([codeHash,expected]));
+    if(saved?.inputHash===fingerprint&&existsSync(target)){const b=readFileSync(target);if(hash(b)===saved.hash)bytes=b;}
+    if(!bytes){bytes=gzipSync(JSON.stringify(compactMarketShard(reader.read(input))),{level:6});writeFileSync(target,bytes);writeFileSync(stamp,JSON.stringify({inputHash:fingerprint,hash:hash(bytes)}));}
     if(bytes.length>25*1024*1024)throw Error('Market asset exceeds 25 MiB');const path=prefix+name;sources[path]=hash(bytes);assets.push({path,source:target,sha256:sources[path],size:bytes.length});
   }}
   const sale=join(root,'data/market.json');const saleStartYear=existsSync(sale)?JSON.parse(readFileSync(sale)).meta.startYear:2006;
