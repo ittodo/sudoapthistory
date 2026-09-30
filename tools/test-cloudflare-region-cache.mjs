@@ -123,7 +123,7 @@ test('packaging reuses unchanged bundles, repairs damaged outputs and rejects ch
   const fixture=mkdtempSync(join(tmpdir(),'region-price-fixture-'));
   try{
     const write=(p,b)=>{mkdirSync(dirname(join(fixture,p)),{recursive:true});writeFileSync(join(fixture,p),b);};
-    for(const p of ['js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js','tools/build-region-price-cache.mjs'])write(p,readFileSync(join(root,p)));
+    for(const p of ['js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js','tools/build-region-price-cache.mjs','tools/regional-data.mjs','js/regional-data.js'])write(p,readFileSync(join(root,p)));
     const saleSources={},rentalSources={},add=(p,value,sources)=>{const raw=Buffer.from(JSON.stringify(value)),bytes=p.endsWith('.bin')?gzipSync(raw):raw;write(p,bytes);sources[p]=createHash('sha256').update(bytes).digest('hex');};
     add('data/daily/catalog.bin',{complexes:[{id:'a',r:0}],areas:[[0,'84']]},saleSources);
     add('data/rental/catalog.bin',{complexes:[{id:'a',r:0,coord:[37,127],admin:['31','gu','dong']}]},rentalSources);

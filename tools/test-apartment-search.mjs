@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
-import {gunzipSync} from 'node:zlib';
 import {resolve} from 'node:path';
+import {regionalReader} from './regional-data.mjs';
 import {combineCatalogs,searchData,searchAssets} from './build-search-data.mjs';
 import {createIndex,search,normalize,editDistance,highlights} from '../js/apartment-search-model.js';
 import '../js/daily-model.js';
@@ -74,10 +74,14 @@ test('real catalog covers all areas and rental-only sources, with verifiable sou
   assert.ok(data.apartments.length>0);
   assert.equal(new Set(data.apartments.map(c=>c.id)).size,data.apartments.length);
   // Nightly collection changes catalog sizes; verify coverage against this build's inputs.
-  for(const [path,field]of [['data/daily/catalog.bin','saleIds'],['data/rental/catalog.bin','rentalIds']]){
-    const sources=JSON.parse(gunzipSync(readFileSync(resolve(root,path)))).complexes;
+  for(const [kind,field,eligibility]of [['daily','saleIds','hasSale'],['rental','rentalIds','hasRental']]){
+    const reader=regionalReader(root,kind);
+    const sources=reader.catalog.complexes.filter(c=>reader.manifest.schema===1||c[eligibility]!==false);
+    assert.ok(sources.length>0,kind+' catalog must not be empty');
     const present=new Set(data.apartments.flatMap(c=>c[field]));
     for(const c of sources)assert.ok(present.has(c.id),'missing '+field+': '+c.id);
+    for(const [path,hash]of Object.entries(reader.inputs))assert.equal(data.sources[path],hash,'search input must bind '+path);
+    if(reader.manifest.schema===2)assert.equal(existsSync(resolve(root,'data/'+kind+'/catalog.bin')),false,'fixed-region search must not need a legacy catalog');
   }
   const rentalOnly=data.apartments.filter(c=>c.id.startsWith('rental:'));
   assert.ok(rentalOnly.every(c=>c.rentalIds.length>0&&c.saleIds.length===0));

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,dirname,resolve} from 'node:path';
 import {createHash,webcrypto} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import vm from 'node:vm';
@@ -29,6 +29,7 @@ test('compact cache preserves dates, ties, filters, reverse playback and type sw
 test('packaging cache is deterministic, repairs corruption and rejects changed inputs',()=>{
  const root=mkdtempSync(join(tmpdir(),'rental-map-cache-'));
  try{
+  for(const p of ['tools/build-rental-map-cache.mjs','tools/regional-data.mjs','js/regional-data.js']){mkdirSync(dirname(join(root,p)),{recursive:true});writeFileSync(join(root,p),readFileSync(resolve(import.meta.dirname,'..',p)));}
   mkdirSync(join(root,'data/rental/months'),{recursive:true});const sources={};
   for(const region of ['11','41','28']){const p=`data/rental/months/2017-02-${region}-state.bin`,b=gzipSync(JSON.stringify(shard));sources[p]=hash(b);writeFileSync(join(root,p),b);}
   writeFileSync(join(root,'data/rental/index.json'),JSON.stringify({version:'v1',months:['2017-02'],sources}));

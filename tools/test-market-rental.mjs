@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {join,resolve,dirname} from 'node:path';
 import vm from 'node:vm';
 import {createHash,webcrypto} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
@@ -43,6 +43,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 function sourceRow(r,cancelled=0){return [r[0],r[1],r[2],r[3],r[4],r[5],r[6],cancelled,null,null,null,null,null,null,0,r[8],r[7],r[9]];}
 test('generated compact assets exclude cancelled contracts and invalidate on changed source',()=>{
   const dir=mkdtempSync(join(tmpdir(),'nodo-market-'));try{
+    for(const p of ['tools/build-rental-market-cache.mjs','tools/regional-data.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
     mkdirSync(join(dir,'data/rental/months'),{recursive:true});const input='data/rental/months/2026-09-11.bin';
     const write=rows=>{const bytes=gzipSync(JSON.stringify({rows}));writeFileSync(join(dir,input),bytes);writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({version:'v1',months:['2026-09'],sources:{[input]:hash(bytes)}}));};
     write([sourceRow(row(10000,50)),sourceRow(row(20000,100),1)]);const first=rentalMarketAssets(dir),a=first.find(f=>f.source);assert.equal(JSON.parse(gunzipSync(readFileSync(a.source))).rows.length,1);const old=a.sha256;
