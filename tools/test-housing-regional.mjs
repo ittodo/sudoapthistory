@@ -21,3 +21,10 @@ test('browser and Node schema 3 readers share scoped facts, map states and sourc
   }
  }finally{const target=realpathSync(root),parent=realpathSync(tmpdir());if(!target.startsWith(parent+sep)||!target.slice(parent.length+1).startsWith('housing-regional-'))throw Error('Unsafe test cleanup');rmSync(target,{recursive:true,force:true});}
 });
+
+import{scopedNativeMonth}from'./housing-native-adapter.mjs';
+test('native local IDs acquire only their own region namespace without changing exact values',()=>{
+ const m={rows:[[0,'59.0001',20260901,100.25,null]],opening:[[9,20260830]],updates:[[0,20260901]]},copy=structuredClone(m);
+ assert.deepEqual(scopedNativeMonth('11110',m),{rows:[['11110:0','59.0001',20260901,100.25,null]],opening:[['11110:9',20260830]],updates:[['11110:0',20260901]]});assert.deepEqual(m,copy);assert.equal(scopedNativeMonth('28185',m).rows[0][0],'28185:0');
+ for(const bad of [-1,1.5,'11110:0',4294967296])assert.throws(()=>scopedNativeMonth('11110',{...m,rows:[[bad]]}),/native local identity/);assert.throws(()=>scopedNativeMonth('11',m),/native region/);
+});
