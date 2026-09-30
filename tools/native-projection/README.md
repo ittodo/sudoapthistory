@@ -10,16 +10,16 @@ the existing operating Rust release executable and its publication guards.
 
 `vendor/` is a generated source snapshot from `15_26/rust/src`, not a second
 implementation. `provenance.json` records the canonical commit and SHA-256 of each
-source and exported file. Four modules are copied byte for byte. The guard module
+source and exported file. Six modules are copied byte for byte. The guard module
 contains its unchanged prefix before the collector entry points; collectors are
 not part of this test executable. Production DBs, credentials, collection and
 publication are not used by the suite. Rust child processes have an empty PATH.
 
 To update after a canonical implementation change, run
 `node tools/sync-native-projection.mjs <15_26/rust>`, then
-`cargo build --offline --manifest-path tools/native-projection/Cargo.toml` to
-resolve the copied operating lockfile for this smaller crate, and
-`npm run test:daily` (which subsequently requires `--locked`).
+`npm run test:daily`, whose Rust build requires `--locked`. The independently
+named CI package keeps its pinned lockfile; the export checks that each registry
+dependency is an exact version/checksum subset of the operating lockfile.
 Review the source hashes and generated diff. The operating repository's
 `node tests/run_projection_native.mjs` also checks that the exported source and
 the operating executable match the canonical source. CI always checks exported
@@ -51,5 +51,5 @@ Regenerate expectations only after independently reviewing a behavior change;
 never replace failing expectations with the current Rust output automatically.
 
 This removes Python from daily/rental projection tests in the normal deployment
-path. Other migration tests, the review server and building-detail audit are
-separate remaining Python uses.
+path. The official scheduled building-detail audit also uses Rust. The review
+server and explicitly invoked legacy comparison tools still retain Python.
