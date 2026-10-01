@@ -48,3 +48,12 @@ test('producer completion record binds all current manifest bytes and is bypasse
  createDataValidationProof(root,checks);const file=join(root,proofPath),p=JSON.parse(readFileSync(file));p.checks.saleRows=999;writeFileSync(file,JSON.stringify(p));assert.equal(dataValidationProof(root).status,'INVALID');
  assert.throws(()=>createDataValidationProof(root,{...checks,status:'FAIL'}),/verified housing/);
 }));
+
+
+import {validationEngine,fullValidationEngine} from './validation-session.mjs';
+test('scoped engine follows transitive code but ignores unrelated UI and tests',()=>fixture(root=>{
+ mkdirSync(join(root,'tools'));mkdirSync(join(root,'js'));writeFileSync(join(root,'tools/check.mjs'),"import './model.mjs';");writeFileSync(join(root,'tools/model.mjs'),"export const value=1;");writeFileSync(join(root,'js/ui.js'),'before');
+ const options={roots:['tools/check.mjs']},first=validationEngine(root,options);writeFileSync(join(root,'js/ui.js'),'after');assert.equal(validationEngine(root,options),first);
+ writeFileSync(join(root,'tools/model.mjs'),'export const value=2;');assert.notEqual(validationEngine(root,options),first);
+ writeFileSync(join(root,'tools/model.mjs'),'import(variable);');assert.equal(validationEngine(root,options),fullValidationEngine(root));
+}));

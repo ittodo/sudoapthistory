@@ -28,5 +28,5 @@ export function verifyHousingSales(root){
  }
  if(Object.keys(manifest.excluded||{}).some(c=>!manifest.regions[c])||Object.keys(manifest.sources).length!==expected.size||Object.keys(manifest.sources).some(p=>!expected.has(p)))throw Error('Orphan sale source');
  if(Object.keys(manifest.facts).length!==factSources.size||Object.keys(manifest.facts).some(p=>!factSources.has(p)||manifest.facts[p]!==shared.manifest.sources[p]))throw Error('Sale/common binding mismatch');
- session.flush();return {status:'PASS',rows,excluded:excludedCount,files:expected.size,validation:session.stats};
+ session.flush();return {status:'PASS',rows,excluded:excludedCount,files:expected.size,validation:session.stats,validationMisses:session.misses,validationCacheStatus:session.cacheStatus};
 }

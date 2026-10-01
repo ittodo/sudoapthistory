@@ -2,7 +2,7 @@ import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,renameSync}f
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function packedMemo(cacheDir,key,make,validate,emit){
  const target=cacheDir?join(resolve(cacheDir),hash(JSON.stringify(key))):null;let result,files=new Map(),reused=false;
- if(target&&existsSync(join(target,'receipt.json'))){const receipt=JSON.parse(readFileSync(join(target,'receipt.json')));if(receipt.schema!==1)throw Error('Packing cache schema');result=receipt.result;
+ if(target&&process.env.NODO_FULL_VERIFY!=='1'&&existsSync(join(target,'receipt.json'))){const receipt=JSON.parse(readFileSync(join(target,'receipt.json')));if(receipt.schema!==1)throw Error('Packing cache schema');result=receipt.result;
   for(const[p,entry]of Object.entries(receipt.files)){if(!/^\d+\.bin$/.test(entry.file)||!/^data\/[\w/.-]+\.(bin|json)$/.test(p)||p.includes('..'))throw Error('Unsafe packing cache entry');const path=join(target,entry.file);if(realpathSync(path).toLowerCase()!==path.toLowerCase())throw Error('Packing cache symlink');const b=readFileSync(path);if(hash(b)!==entry.sha256||b.length!==entry.bytes)throw Error('Packing cache hash mismatch');files.set(p,b);}reused=true;
  }else result=make((p,b)=>files.set(p,b));
  validate(result,files); // Same exact decoded input comparison on cache hits and misses.

@@ -17,5 +17,5 @@ export function verifyHousingDetails(root){
   const checked=session.check('rental-detail/'+p.lawd+'/'+p.month,dependencies,()=>{const facts=p.regionCodes.flatMap(code=>rental.regionMonth(code,month,false).rows),rows=restoreDetails(d,u,display,facts,rental.table,codec);if(rows.length!==p.count||rows.some(r=>r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Contract detail count/month mismatch');return {status:'PASS',count:rows.length,unmatched:codec.openColumns(codec.schemas.ContractUnmatched,u).rowCount};});count+=checked.count;unmatched+=checked.unmatched;
  }
  for(const{meta,used}of displayUsage.values())if(used.size!==Object.keys(meta.refs).length)throw Error('Orphan regional display metadata');
- if(expected.size!==Object.keys(manifest.sources).length||Object.keys(manifest.sources).some(p=>!expected.has(p)))throw Error('Orphan contract source');session.flush();return {schema:2,status:'PASS',contracts:count,unmatched,files:expected.size,validation:session.stats};
+ if(expected.size!==Object.keys(manifest.sources).length||Object.keys(manifest.sources).some(p=>!expected.has(p)))throw Error('Orphan contract source');session.flush();return {schema:2,status:'PASS',contracts:count,unmatched,files:expected.size,validation:session.stats,validationMisses:session.misses,validationCacheStatus:session.cacheStatus};
 }

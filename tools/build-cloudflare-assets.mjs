@@ -102,7 +102,7 @@ export function build(root, output, sha) {
   emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
   emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
   timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
-  const result={gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,producerProof,validation:validation.stats};
+  const result={gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
   writeFileSync(join(root,'cloudflare/dist/build-timings.json'),JSON.stringify(result));
   return result;
 }
