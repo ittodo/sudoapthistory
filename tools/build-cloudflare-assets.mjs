@@ -1,3 +1,4 @@
+import {dataValidationProof} from './data-validation-proof.mjs';
 import {performance} from 'node:perf_hooks';
 import {ValidationSession,manifestDependencies} from './validation-session.mjs';
 import {operationsMetadata} from './operations-metadata.mjs';
@@ -36,11 +37,14 @@ export function build(root, output, sha) {
   const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
   const validation=new ValidationSession(root);
   const checked=(name,manifests,fn)=>phase(name,()=>validation.check(name,manifestDependencies(root,manifests),fn));
+  const producerProof=phase('producer-proof',()=>dataValidationProof(root));
+  if(producerProof.status!=='VERIFIED'){
   if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) checked('sale-details',['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json'],()=>verifyApartmentSale(root));
   if(existsSync(join(root,'js/apartment-rent.js'))) checked('rental-details',['data/contracts/index.json','data/apartment-rent/index.json','data/apartments/index.json','data/rental/index.json'],()=>verifyApartmentRent(root));
   if(existsSync(join(root,'trades/daily/index.html'))&&!existsSync(join(root,'data/daily/index.json')))throw Error('Daily page requires its data manifest');
   phase('common-trades',()=>{verifyDailyData(root);verifyRentalData(root);});
   validation.flush();
+  }
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
   const assets=[];
   for(const path of paths) {
@@ -96,7 +100,7 @@ export function build(root, output, sha) {
   emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
   emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
   timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
-  const result={gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,validation:validation.stats};
+  const result={gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,producerProof,validation:validation.stats};
   writeFileSync(join(root,'cloudflare/dist/build-timings.json'),JSON.stringify(result));
   return result;
 }

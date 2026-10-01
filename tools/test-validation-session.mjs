@@ -32,3 +32,19 @@ test('nested validation sessions preserve all successful scopes',()=>fixture(roo
  inner.check('region',{},()=>({status:'PASS'}));inner.flush();outer.check('details',{},()=>({status:'PASS'}));outer.flush();
  const next=new ValidationSession(root,{engine:'a'});next.check('region',{},()=>{throw Error('lost region');});next.check('details',{},()=>{throw Error('lost details');});assert.equal(next.stats.reused,2);
 }));
+
+test('apartment DTO shard bytes are verified independently of unchanged index bytes',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));writeFileSync(join(root,'data/shard.json'),'original');writeFileSync(join(root,'data/index.json'),JSON.stringify({sources:{},shards:{'data/shard.json':hash('original')}}));
+ manifestDependencies(root,['data/index.json']);writeFileSync(join(root,'data/shard.json'),'corrupt');assert.throws(()=>manifestDependencies(root,['data/index.json']),/source mismatch/);
+}));
+
+import {createDataValidationProof,dataValidationProof,proofManifests,proofPath} from './data-validation-proof.mjs';
+test('producer completion record binds all current manifest bytes and is bypassed by full mode',()=>fixture(root=>{
+ for(const path of proofManifests){mkdirSync(join(root,path,'..'),{recursive:true});writeFileSync(join(root,path),JSON.stringify({sources:{}}));}
+ assert.equal(dataValidationProof(root).status,'MISSING');
+ const checks={status:'PASS',schema:3,sales:{status:'PASS',rows:2,excluded:0},details:{status:'PASS',contracts:3,unmatched:0},apartment:{verified:true}};
+ createDataValidationProof(root,checks);assert.equal(dataValidationProof(root).status,'VERIFIED');assert.equal(dataValidationProof(root,{full:true}).status,'FULL_REQUIRED');
+ writeFileSync(join(root,proofManifests[0]),JSON.stringify({sources:{},changed:true}));assert.equal(dataValidationProof(root).status,'INPUT_CHANGED');
+ createDataValidationProof(root,checks);const file=join(root,proofPath),p=JSON.parse(readFileSync(file));p.checks.saleRows=999;writeFileSync(file,JSON.stringify(p));assert.equal(dataValidationProof(root).status,'INVALID');
+ assert.throws(()=>createDataValidationProof(root,{...checks,status:'FAIL'}),/verified housing/);
+}));

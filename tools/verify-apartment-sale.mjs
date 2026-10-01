@@ -3,7 +3,8 @@ import{verifyHousingSales}from'./verify-housing-sales.mjs';
 import {readFileSync,lstatSync} from 'node:fs';
 import {join} from 'node:path';
 import {fileHash} from './verify-apartment-rent.mjs';
-export function verifyApartmentSale(root) {
+export function verifyApartmentSale(root, {verifiedSales} = {}) {
+  if(verifiedSales!==undefined&&verifiedSales.status!=='PASS')throw Error('Verified sale result required');
   const safe=path=>{let current=root;for(const part of path.split('/')){if(!part||part==='.'||part==='..'||/[\\:]/.test(part))throw Error('Unsafe apartment path');current=join(current,part);if(lstatSync(current).isSymbolicLink())throw Error('Unsafe apartment link');}return current;};
   const index=JSON.parse(readFileSync(safe('data/apartments/index.json'),'utf8'));
   if(![1,2].includes(index.version) || !index.sources || !index.shards || Object.keys(index.shards).length!==512)throw Error('Invalid apartment index');
@@ -17,5 +18,5 @@ export function verifyApartmentSale(root) {
     const path=`data/apartments/${prefix}${i.toString(16).padStart(2,'0')}.json`;
     check(path,index.shards[path]);
   }
-  const shared=index.version===2?verifyHousingSales(root):null;if(index.version===2&&Object.keys(index.sources).some(p=>p.startsWith('data/tx/')))throw Error('Duplicate sale detail source');return {count:index.count,shards:256,verified:true,shared};
+  const shared=index.version===2?(verifiedSales??verifyHousingSales(root)):null;if(index.version===2&&Object.keys(index.sources).some(p=>p.startsWith('data/tx/')))throw Error('Duplicate sale detail source');return {count:index.count,shards:256,verified:true,shared};
 }

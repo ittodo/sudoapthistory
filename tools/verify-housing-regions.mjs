@@ -1,3 +1,5 @@
+import {createDataValidationProof} from './data-validation-proof.mjs';
+import {verifyApartmentSale} from './verify-apartment-sale.mjs';
 import {ValidationSession,manifestDependencies} from './validation-session.mjs';
 import {performance} from 'node:perf_hooks';
 import{verifyHousingSales}from'./verify-housing-sales.mjs';import{verifyHousingDetails}from'./verify-housing-details.mjs';
@@ -9,6 +11,6 @@ for(const[p,h]of Object.entries(d.manifest.sources))if(r.manifest.sources[p]&&r.
 const timings={},session=new ValidationSession(site);
 const phase=(name,fn)=>{const started=performance.now();const result=fn();timings[name]=(performance.now()-started)/1000;return result;};
 const daily=phase('daily',()=>verifyRegionalData(site,'daily')),rental=phase('rental',()=>verifyRegionalData(site,'rental'));
-const sales=phase('sales',()=>session.check('sale-details',manifestDependencies(site,['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json']),()=>verifyHousingSales(site)));
+const sales=phase('sales',()=>session.check('producer-sale-details',manifestDependencies(site,['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json']),()=>verifyHousingSales(site)));
 const details=phase('details',()=>session.check('rental-details',manifestDependencies(site,['data/contracts/index.json','data/apartment-rent/index.json','data/apartments/index.json','data/rental/index.json']),()=>verifyHousingDetails(site)));
-session.flush();console.log(JSON.stringify({status:'PASS',schema:3,legacyCompatibility:false,daily,rental,sales,details,timings,validation:session.stats}));
+const apartment=phase('apartment',()=>verifyApartmentSale(site,{verifiedSales:sales}));session.flush();const result={status:'PASS',schema:3,legacyCompatibility:false,daily,rental,sales,details,apartment,timings,validation:session.stats};createDataValidationProof(site,result);console.log(JSON.stringify(result));

@@ -37,7 +37,7 @@ export class ValidationSession {
 export function manifestDependencies(root,names){
  const inputs={};
  for(const name of names){const bytes=readFileSync(join(root,name));inputs[name]=digest(bytes);const manifest=JSON.parse(bytes);
-  for(const [path,expected] of Object.entries(manifest.sources??{})){
+  for(const [path,expected] of [...Object.entries(manifest.sources??{}),...Object.entries(manifest.shards??{})]){
    if(!/^data\//.test(path)||path.split('/').some(p=>!p||p==='..'||p==='.')||/[\\:]/.test(path))throw Error('Unsafe validation dependency');
    let target=root;for(const part of path.split('/')){target=join(target,part);if(lstatSync(target).isSymbolicLink())throw Error('Validation source symlink');}
    const actual=digest(readFileSync(target));if(actual!==expected)throw Error('Validation source mismatch: '+path);if(inputs[path]&&inputs[path]!==actual)throw Error('Shared validation digest mismatch');inputs[path]=actual;
