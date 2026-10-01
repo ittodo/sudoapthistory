@@ -22,6 +22,7 @@
 - [Regional historical prices](region-price-cache.md)
 - [전월세 지도 UI와 성능](rental-map.md)
 - [전월세 월간 시장 동향](rental-market.md)
+- [시장동향 COFIX 비교](market-cofix.md)
 
 ## 회원·통계·개인정보
 
