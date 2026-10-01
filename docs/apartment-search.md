@@ -31,7 +31,7 @@
 
 검색 후보 수와 입력 지문은 현재 `/data/search/apartments.json`의 apartments/sources로 확인합니다. [검색 생성기](../tools/build-search-data.mjs)가 원천 번호표·지역 자료와 승인된 lookup을 합치며 원본이 포장 도중 바뀌면 빌드가 실패합니다. 자료 구조는 [현재 저장 계약](../../15_26/docs/housing-packed-storage.md)을 따릅니다.
 
-자료 버전: `ed3ff04ed6e96b6da0f046970b3b31bf3a46b22e965e2daf09b5d5cb42ad9377`.
+2026-09-20 검증 당시 자료 버전: `ed3ff04ed6e96b6da0f046970b3b31bf3a46b22e965e2daf09b5d5cb42ad9377`.
 
 [es-hangul](https://github.com/toss/es-hangul) **2.4.0**을 정확한 버전으로 고정했다. 초성 추출과 자모 분해에 사용하며, 순위 계산은 `js/apartment-search-model.js`에 있다. MIT 라이선스와 라이브러리를 Worker 번들에 포함해 자체 제공한다.
 

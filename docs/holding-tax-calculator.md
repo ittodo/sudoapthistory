@@ -29,7 +29,7 @@ Entry: `/calc/holding-tax.html`. Client-only; no account, API, database, or publ
 ## Verification
 
 Run `npm run verify:holding-tax` for calculator-only changes. This runs focused tests
-and packages 11 calculator/shared UI files into `cloudflare/dist/holding-tax-local`.
+and packages the current 14 calculator/shared UI files into `cloudflare/dist/holding-tax-local`.
 It does not generate or validate sale/jeonse/monthly-rent regional caches, modify the
 full deployment output, or publish anything. `npm run build` remains the full release
 build and should not be run just to verify this calculator. The local preview reads
