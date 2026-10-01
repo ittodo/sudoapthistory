@@ -1,5 +1,9 @@
 # Member library and apartment analytics
 
+> 문서 역할: **기능·구현 설명** · [문서 목록](README.md)
+> 현재 운영·공개 자료 계약은 문서 목록의 기준 문서를 따릅니다. 날짜·건수·성능 수치는 해당 검증 조건의 기록입니다.
+
+
 Approved scope: favorites and selected areas, one public heart per active member/apartment, regional rankings, transaction-to-calculator handoff and purchase-price adjustment, recent/saved calculations and comparison, own activity, anonymous administrator analytics. Search presets, notes/folders, stock bookmarks and notifications remain future work.
 
 ## Storage and API

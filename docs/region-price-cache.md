@@ -1,5 +1,9 @@
 # Regional historical prices
 
+> 문서 역할: **기능·구현 설명** · [문서 목록](README.md)
+> 현재 운영·공개 자료 계약은 문서 목록의 기준 문서를 따릅니다. 날짜·건수·성능 수치는 해당 검증 조건의 기록입니다.
+
+
 The map reuses its existing representative-complex selection rules. These are
 as-of-date prices, not averages of contracts signed during the selected month.
 Sale source identities are merged into the same public complexes as the live map;

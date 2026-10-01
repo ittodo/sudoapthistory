@@ -1,5 +1,9 @@
 # Site layout and producer contract
 
+> 문서 역할: **현재 지침** · [문서 목록](README.md)
+> 지침을 먼저 읽고 구현·측정 근거는 뒤에서 확인합니다.
+
+
 Company data is owned by `companysearch`; apartment data is owned by `15_26`.
 This repository contains public artifacts and their consumers, not a second company generator.
 
@@ -20,9 +24,10 @@ Both publishers acquire the first-byte OS lock in the Git common directory's
 its existence does not mean the lock is held. Apartment maintenance gates and its
 existing release lock remain mandatory. Never stage another producer's changes.
 
-The GitHub layout workflow is an additional check, not a claim that branch-based
-Pages waits for its result. Local publication must validate before push. The final
-exact commit must pass Pages, cache invalidation and normal public URL verification.
+The GitHub layout workflow is an additional check; local publication must validate
+before push. The current provider is Cloudflare. The final exact SHA must pass
+Cloudflare Production push/main, Worker/manifest and normal public-byte checks.
+Pages/Purge are not current completion gates. See [deployment contract](cloudflare-auto-deployment.md).
 No DB backup is created by this workflow; committed static files are recoverable
 with a reviewed revert commit. Uncommitted user changes must be preserved.
 

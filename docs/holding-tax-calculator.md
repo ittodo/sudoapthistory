@@ -1,5 +1,9 @@
 # 보유세 비교표
 
+> 문서 역할: **기능·구현 설명** · [문서 목록](README.md)
+> 현재 운영·공개 자료 계약은 문서 목록의 기준 문서를 따릅니다. 날짜·건수·성능 수치는 해당 검증 조건의 기록입니다.
+
+
 Entry: `/calc/holding-tax.html`. Client-only; no account, API, database, or publication change.
 
 ## Rules and scope

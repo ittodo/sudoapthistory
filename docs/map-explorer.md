@@ -1,5 +1,9 @@
 # Apartment map
 
+> 문서 역할: **기능·구현 설명** · [문서 목록](README.md)
+> 현재 운영·공개 자료 계약은 문서 목록의 기준 문서를 따릅니다. 날짜·건수·성능 수치는 해당 검증 조건의 기록입니다.
+
+
 `/map/` first groups the existing area rows by `aptSeq`. Approved K-APT publications
 in `data/housing-v3/index.json` can then combine multiple active transaction sources
 into one map complex. Only apartment/trade publications with K-APT codes qualify;
@@ -111,8 +115,8 @@ The production release entry point remains `D:/Work/15_26/site_release.py`.
 index, transactions, monthly data and parcel membership. Full and parcel releases
 also regenerate the map so row IDs and source hashes remain synchronized.
 Review the manifest and every unpushed commit before using `publish`. Public
-verification checks map data and the committed UI files after Pages and cache
-invalidation complete. The publication and projection gates still apply.
+verification checks map data and the committed UI files after the exact SHA
+Cloudflare Production workflow succeeds; Worker, manifest and public bytes must agree. The publication and projection gates still apply.
 
 URL hash fields are `lat`, `lng`, `z`, `r`, `aL/aH`, `pL/pH`, `uL/uH`,
 `bL/bH`, `a` (aptSeq) and `ar` (area). Selection changes push browser history;

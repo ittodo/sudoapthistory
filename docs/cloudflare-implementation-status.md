@@ -1,5 +1,9 @@
 # Cloudflare 구현·검증 기록
 
+> 문서 역할: **과거 설계·검증 기록** · [문서 목록](README.md)
+> 당시 상태와 근거를 보존합니다. 미완료 문구·명령·수치를 현재 운영 상태로 해석하지 않습니다.
+
+
 기준일: 2026-09-13. 승인 범위는 [이전 계획](cloudflare-migration-plan.md),
 실행 절차는 [배포 실행서](cloudflare-release-runbook.md)를 따른다.
 
