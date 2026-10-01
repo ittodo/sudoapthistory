@@ -1,3 +1,5 @@
+import {ValidationSession} from './validation-session.mjs';
+import {partitionDependencies} from '../js/housing-partition.mjs';
 import {readFileSync,realpathSync} from 'node:fs';
 import {resolve,sep} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -55,6 +57,15 @@ function verifyPackedPair(root){
  const d=regionalReader(root,'daily'),r=regionalReader(root,'rental');if(d.manifest.schema!==3||r.manifest.schema!==3||JSON.stringify(d.manifest.regional.quarters)!==JSON.stringify(r.manifest.regional.quarters))throw Error('Shared quarter binding mismatch');
  const checked=new Map();for(const reader of [d,r])for(const[p,h]of Object.entries(reader.manifest.sources)){if(checked.has(p)){if(checked.get(p)!==h)throw Error('Shared digest mismatch');}else{reader.physical(p,false);checked.set(p,h);}}
  const key=hash(JSON.stringify([d.manifest,r.manifest]));if(verifiedPairs.has(key))return verifiedPairs.get(key);
- let months=0;for(const[code,entries]of Object.entries(d.manifest.regional.quarters))for(const month of Object.keys(entries).sort()){d.regionMonth(code,month);r.regionMonth(code,month);months++;}
- const result=Object.fromEntries([['daily',d],['rental',r]].map(([k,v])=>[k,{schema:3,regions:v.table.regions.size,files:Object.keys(v.manifest.sources).length,regionMonths:months,legacyCompatibility:false}]));verifiedPairs.clear();verifiedPairs.set(key,result);return result;
+ const session=new ValidationSession(root);let months=0;
+ for(const[code,entries]of Object.entries(d.manifest.regional.quarters))for(const month of Object.keys(entries).sort()){
+  const dependencies={};if(d.manifest.regional.states?.[code]?.[month]===undefined||r.manifest.regional.states?.[code]?.[month]===undefined)throw Error('Missing state');for(const reader of [d,r]){
+   const entry=reader.table.regions.get(code).entry;
+   for(const p of [entry.identities,entry.metadata,reader.manifest.regional.quarters[code][month],reader.manifest.regional.states?.[code]?.[month]].filter(Boolean)){
+    for(const dep of p.endsWith('.parts.json')?partitionDependencies(p,reader.manifest.sources):[p])dependencies[dep]=reader.manifest.sources[dep];
+   }
+  }
+  session.check('region/'+code+'/'+month,dependencies,()=>{d.regionMonth(code,month);r.regionMonth(code,month);return {status:'PASS'};});months++;
+ }session.flush();
+ const result=Object.fromEntries([['daily',d],['rental',r]].map(([k,v])=>[k,{schema:3,regions:v.table.regions.size,files:Object.keys(v.manifest.sources).length,regionMonths:months,validation:session.stats,legacyCompatibility:false}]));verifiedPairs.clear();verifiedPairs.set(key,result);return result;
 }

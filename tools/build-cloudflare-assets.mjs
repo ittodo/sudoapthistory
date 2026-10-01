@@ -1,3 +1,5 @@
+import {performance} from 'node:perf_hooks';
+import {ValidationSession,manifestDependencies} from './validation-session.mjs';
 import {operationsMetadata} from './operations-metadata.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
@@ -30,11 +32,15 @@ export function build(root, output, sha) {
   root=resolve(root); output=resolve(output);
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
-  if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) verifyApartmentSale(root);
-  if(existsSync(join(root,'js/apartment-rent.js'))) verifyApartmentRent(root);
+  const started=performance.now(),timings={};
+  const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
+  const validation=new ValidationSession(root);
+  const checked=(name,manifests,fn)=>phase(name,()=>validation.check(name,manifestDependencies(root,manifests),fn));
+  if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) checked('sale-details',['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json'],()=>verifyApartmentSale(root));
+  if(existsSync(join(root,'js/apartment-rent.js'))) checked('rental-details',['data/contracts/index.json','data/apartment-rent/index.json','data/apartments/index.json','data/rental/index.json'],()=>verifyApartmentRent(root));
   if(existsSync(join(root,'trades/daily/index.html'))&&!existsSync(join(root,'data/daily/index.json')))throw Error('Daily page requires its data manifest');
-  verifyDailyData(root);
-  verifyRentalData(root);
+  phase('common-trades',()=>{verifyDailyData(root);verifyRentalData(root);});
+  validation.flush();
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
   const assets=[];
   for(const path of paths) {
@@ -53,13 +59,14 @@ export function build(root, output, sha) {
     assets.push({path,source:current,sha256:sha256(bytes),size:bytes.length});
   }
   if(existsSync(join(root,'js/admin-center.js'))) assets.push({path:'data/operations-status.json',bytes:Buffer.from(JSON.stringify(operationsMetadata(root)))});
-  const generatedSearch=searchAssets(root);
+  const generatedSearch=phase('search',()=>searchAssets(root));
   for(const f of generatedSearch)if(f.bytes.length>25*1024*1024)throw Error('Search asset exceeds 25 MiB: '+f.path);
   const catalog=generatedSearch.find(f=>f.path==='data/search/apartments.json');
   if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).sources)){
     if(assets.find(f=>f.path===path)?.sha256!==hash)throw Error('Search source changed during packaging: '+path);
   }
-  assets.push(...generatedSearch,...rentalMapAssets(root),...rentalMarketAssets(root),...regionPriceAssets(root));
+  assets.push(...generatedSearch,...phase('rental-map',()=>rentalMapAssets(root)),...phase('rental-market',()=>rentalMarketAssets(root)),...phase('region-prices',()=>regionPriceAssets(root)));
+  const packagingStarted=performance.now();
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));
@@ -88,7 +95,10 @@ export function build(root, output, sha) {
   emit('deployment-manifest.json',manifest);
   emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
   emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
-  return {gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written};
+  timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
+  const result={gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,validation:validation.stats};
+  writeFileSync(join(root,'cloudflare/dist/build-timings.json'),JSON.stringify(result));
+  return result;
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)) {
   const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');

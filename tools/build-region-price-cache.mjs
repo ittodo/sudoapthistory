@@ -55,7 +55,7 @@ export function regionPriceAssets(root,{months}={}){
       const input=type==='sale'?`data/daily/${r}/${month}-state.bin`:`data/rental/months/${month}-${region}-state.bin`;
       if(manifest.schema===1&&!manifest.sources[input])continue;const reader=type==='sale'?saleReader:rentReader;
       const raw=manifest.schema===1?read(input):null,inputHash=manifest.schema>=2?reader.fingerprint(input,true):hash(raw);if(raw&&inputHash!==manifest.sources[input])throw Error('Region cache input mismatch: '+input);if(raw)inputs[input]=inputHash;
-      const fingerprint=hash(JSON.stringify([codeHash,type==='sale'?membershipHash:null,manifest.sources[type==='sale'?'data/daily/catalog.bin':'data/rental/catalog.bin'],inputHash,type]));
+      const fingerprint=hash(JSON.stringify([codeHash,type==='sale'?membershipHash:null,manifest.schema===3?null:manifest.sources[type==='sale'?'data/daily/catalog.bin':'data/rental/catalog.bin'],inputHash,type]));
       const name=`${month}-${region}-${type}.bin`,path=prefix+name,target=join(directory,name),stamp=target+'.json';let proof,bytes;
       try{proof=JSON.parse(readFileSync(stamp));if(proof.fingerprint===fingerprint&&hash(readFileSync(target))===proof.sha256)bytes=readFileSync(target);}catch{}
       if(!bytes){const shard=reader.read(input);const packed=type==='sale'?saleFrames(ctx,saleCatalog,payload,shard,month):rentalFrames(ctx,rentalCatalog,shard,month,region,type);bytes=gzipSync(JSON.stringify(packed),{level:6});writeFileSync(target,bytes);writeFileSync(stamp,JSON.stringify({fingerprint,sha256:hash(bytes)}));}

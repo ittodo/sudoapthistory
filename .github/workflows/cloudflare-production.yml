@@ -50,7 +50,7 @@ jobs:
       - run: npm run typecheck && npm run test:api
       - name: Verify calculator models and isolated local packaging
         run: node --test tools/test-salary.mjs tools/test-transaction-tax.mjs tools/test-holding-tax-build.mjs
-      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs
+      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs tools/test-validation-session.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
       - name: Reuse verified regional price bundles
         uses: actions/cache@v4
@@ -58,6 +58,19 @@ jobs:
           path: cloudflare/dist/region-price-cache-v1
           key: region-prices-${{ runner.os }}-${{ github.sha }}
           restore-keys: region-prices-${{ runner.os }}-
+      - name: Reuse verified data checks
+        uses: actions/cache@v4
+        with:
+          path: cloudflare/dist/validation-cache-v1
+          key: data-validation-${{ runner.os }}-${{ github.sha }}
+          restore-keys: data-validation-${{ runner.os }}-
+      - name: Select regular or full data verification
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$(TZ=Asia/Seoul date +%u)" = "7" ]; then
+            echo "NODO_FULL_VERIFY=1" >> "$GITHUB_ENV"
+          fi
       - run: npm run build
       - name: Ensure the explicitly approved board table only
         env:
@@ -103,3 +116,4 @@ jobs:
             cloudflare/dist/public/deployment.json
             cloudflare/dist/public/deployment-manifest.json
             cloudflare/dist/verified-release.json
+            cloudflare/dist/build-timings.json

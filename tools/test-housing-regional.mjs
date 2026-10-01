@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process';
 import{test}from'node:test';import assert from'node:assert/strict';import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,realpathSync}from'node:fs';import{tmpdir}from'node:os';import{join,sep}from'node:path';import{gzipSync,gunzipSync}from'node:zlib';import{createHash}from'node:crypto';
 import*as codec from'../js/generated/housing-columns.mjs';import{packQuarter,encodeQuarter}from'../js/housing-quarter.mjs';import{packStateTimeline,encodeStateFile}from'../js/housing-state-timeline.mjs';import{create}from'../js/housing-regional.mjs';import{regionalReader}from'./regional-data.mjs';
 test('browser and Node schema 3 readers share scoped facts, map states and source IDs',async()=>{
@@ -19,6 +20,12 @@ test('browser and Node schema 3 readers share scoped facts, map states and sourc
    for(const code of Object.keys(regions)){assert.deepEqual(node.regionMonth(code,'2026-09'),originals[code][kind]);assert.deepEqual(await browser.regionMonth(code,'2026-09'),originals[code][kind]);}
    const path=kind==='daily'?'data/daily/1/2026-09-state.bin':'data/rental/months/2026-09-11-state.bin';assert.deepEqual(await browser.shard(path,'2026-09',1),node.read(path));assert.equal(node.read(path).rows.length,1);
   }
+ const module=new URL('./regional-data.mjs',import.meta.url).href;
+  const check=()=>JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',`import {verifyRegionalData} from ${JSON.stringify(module)};console.log(JSON.stringify(verifyRegionalData(${JSON.stringify(root)},'daily')));`],{encoding:'utf8'}));
+  assert.deepEqual(check().validation,{checked:2,reused:0});assert.deepEqual(check().validation,{checked:0,reused:2});
+  const metadata='data/daily/regions/11110/metadata.json';const changed=Buffer.from(JSON.stringify({complexes:[{id:'11110source',n:'changed name',r:1}],areas:[]}));writeFileSync(join(root,metadata),changed);const digest=createHash('sha256').update(changed).digest('hex');
+  for(const kind of ['daily','rental']){const path=join(root,'data/'+kind+'/index.json'),manifest=JSON.parse(readFileSync(path));manifest.sources[metadata]=digest;writeFileSync(path,JSON.stringify(manifest));}
+  assert.deepEqual(check().validation,{checked:1,reused:1});
  }finally{const target=realpathSync(root),parent=realpathSync(tmpdir());if(!target.startsWith(parent+sep)||!target.slice(parent.length+1).startsWith('housing-regional-'))throw Error('Unsafe test cleanup');rmSync(target,{recursive:true,force:true});}
 });
 
