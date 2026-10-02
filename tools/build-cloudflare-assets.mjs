@@ -1,4 +1,4 @@
-import {validate as validateCofix} from './collect-cofix.mjs';
+import {validate as validateMortgage} from './collect-mortgage.mjs';
 import {dataValidationProof} from './data-validation-proof.mjs';
 import {performance} from 'node:perf_hooks';
 import {ValidationSession,manifestDependencies} from './validation-session.mjs';
@@ -36,7 +36,7 @@ export function build(root, output, sha) {
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
   const started=performance.now(),timings={};
   const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
-  if(existsSync(join(root,'js/market-cofix.js')))phase('cofix',()=>validateCofix(JSON.parse(readFileSync(join(root,'data/market-rates/cofix.json'),'utf8')),new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())));
+  if(existsSync(join(root,'js/market-mortgage.js')))phase('mortgage',()=>validateMortgage(JSON.parse(readFileSync(join(root,'data/market-rates/mortgage.json'),'utf8')),new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())));
   const validation=new ValidationSession(root);
   const checked=(name,manifests,fn)=>phase(name,()=>validation.check(name,manifestDependencies(root,manifests),fn));
   const producerProof=phase('producer-proof',()=>dataValidationProof(root));

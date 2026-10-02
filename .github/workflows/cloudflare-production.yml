@@ -71,9 +71,9 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$(TZ=Asia/Seoul date +%u)" = "7" ]; then
             echo "NODO_FULL_VERIFY=1" >> "$GITHUB_ENV"
           fi
-      - name: Refresh published COFIX (preserve last verified dataset on failure)
+      - name: Refresh published 주담대 평균금리 (preserve last verified dataset on failure)
         run: |
-          node tools/collect-cofix.mjs || echo "::warning::COFIX refresh failed; last verified published rates retained"
+          node tools/collect-mortgage.mjs || echo "::warning::주담대 평균금리 refresh failed; last verified published rates retained"
       - run: npm run build
       - name: Ensure the explicitly approved board table only
         env:
