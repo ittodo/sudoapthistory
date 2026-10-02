@@ -14,7 +14,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 test('fixed-region packaging has independent source numbers, no legacy files, and content-scoped reuse',()=>{
  const root=mkdtempSync(join(tmpdir(),'fixed-region-')),sources={},write=(p,b)=>{mkdirSync(dirname(join(root,p)),{recursive:true});writeFileSync(join(root,p),b);},add=(p,v)=>{let b=Buffer.from(JSON.stringify(v));if(p.endsWith('.bin'))b=gzipSync(b);write(p,b);sources[p]=hash(b);};
  try{
-  for(const p of ['js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js','tools/build-region-price-cache.mjs','tools/build-rental-map-cache.mjs','tools/build-rental-market-cache.mjs','tools/regional-data.mjs','js/regional-data.js'])write(p,readFileSync(join(repo,p)));
+  for(const p of ['js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js','tools/build-region-price-cache.mjs','tools/region-price-groups.mjs','tools/build-rental-map-cache.mjs','tools/build-rental-market-cache.mjs','tools/regional-data.mjs','js/regional-data.js'])write(p,readFileSync(join(repo,p)));
   const descriptor={schema:2,baselineCommit:sha,regions:{}},bases={},baseHashes={};
   for(const [code,r]of [['11110',1],['41610',0]]){
    const dir=`data/daily/regions/${code}`,identity=`${dir}/identities.json`,meta=`${dir}/metadata.json`,path=`${dir}/base/2026-Q3.bin`,ci=code+':0';
