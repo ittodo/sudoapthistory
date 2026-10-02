@@ -55,9 +55,9 @@ jobs:
       - name: Reuse verified regional price bundles
         uses: actions/cache@v4
         with:
-          path: cloudflare/dist/region-price-cache-v1
-          key: region-prices-${{ runner.os }}-${{ github.sha }}
-          restore-keys: region-prices-${{ runner.os }}-
+          path: cloudflare/dist/region-price-cache-v2
+          key: region-prices-v2-${{ runner.os }}-${{ github.sha }}
+          restore-keys: region-prices-v2-${{ runner.os }}-
       - name: Reuse verified data checks
         uses: actions/cache@v4
         with:
