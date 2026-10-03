@@ -1,3 +1,4 @@
+import {weeklyEngine} from './weekly-verification.mjs';
 import {validate as validateMortgage} from './collect-mortgage.mjs';
 import {dataValidationProof} from './data-validation-proof.mjs';
 import {performance} from 'node:perf_hooks';
@@ -34,7 +35,7 @@ export function build(root, output, sha) {
   root=resolve(root); output=resolve(output);
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
-  const started=performance.now(),timings={},regionPriceStats={};
+  const started=performance.now(),timings={},regionPriceStats={},verificationEngine=weeklyEngine(root),fullVerification=process.env.NODO_FULL_VERIFY==='1';
   const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
   if(existsSync(join(root,'js/market-mortgage.js')))phase('mortgage',()=>validateMortgage(JSON.parse(readFileSync(join(root,'data/market-rates/mortgage.json'),'utf8')),new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())));
   const validation=new ValidationSession(root);
@@ -102,7 +103,8 @@ export function build(root, output, sha) {
   emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
   emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
   timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
-  const result={gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
+  if(weeklyEngine(root)!==verificationEngine)throw Error('Verification engine changed during build');
+  const result={fullVerification,verificationEngine,gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
   writeFileSync(join(root,'cloudflare/dist/build-timings.json'),JSON.stringify(result));
   return result;
 }

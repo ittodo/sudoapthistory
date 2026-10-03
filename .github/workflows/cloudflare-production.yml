@@ -5,6 +5,7 @@ on:
     branches: [main]
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: cloudflare-production
   cancel-in-progress: false
@@ -50,7 +51,7 @@ jobs:
       - run: npm run typecheck && npm run test:api
       - name: Verify calculator models and isolated local packaging
         run: node --test tools/test-salary.mjs tools/test-transaction-tax.mjs tools/test-holding-tax-build.mjs
-      - run: node --test tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs tools/test-validation-session.mjs
+      - run: node --test tools/test-weekly-verification.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs tools/test-apartment-data.mjs tools/test-validation-session.mjs
       - run: node tools/verify-site-layout.mjs --ref "$GITHUB_SHA"
       - name: Reuse verified regional price bundles
         uses: actions/cache@v4
@@ -64,13 +65,17 @@ jobs:
           path: cloudflare/dist/validation-cache-v1
           key: data-validation-${{ runner.os }}-${{ github.sha }}
           restore-keys: data-validation-${{ runner.os }}-
-      - name: Select regular or full data verification
+      - name: Reuse completed weekly verification evidence
+        uses: actions/cache@v4
+        with:
+          path: cloudflare/dist/weekly-verification-v1
+          key: weekly-verification-v1-${{ runner.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          restore-keys: weekly-verification-v1-${{ runner.os }}-
+      - name: Select regular or once-weekly full data verification
         env:
           EVENT_NAME: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$(TZ=Asia/Seoul date +%u)" = "7" ]; then
-            echo "NODO_FULL_VERIFY=1" >> "$GITHUB_ENV"
-          fi
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node tools/weekly-verification.mjs select
       - name: Refresh published 주담대 평균금리 (preserve last verified dataset on failure)
         run: |
           node tools/collect-mortgage.mjs || echo "::warning::주담대 평균금리 refresh failed; last verified published rates retained"
@@ -112,6 +117,8 @@ jobs:
         run: node tools/verify-cloudflare-deployment.mjs https://nodostream.com "$GITHUB_SHA" cloudflare/dist/public/deployment-manifest.json > cloudflare/dist/verified-release.json
       - name: Verify production authentication remains available
         run: node tools/verify-cloudflare-auth-start.mjs --production
+      - name: Record successful full verification after public and authentication checks
+        run: node tools/weekly-verification.mjs record
       - uses: actions/upload-artifact@v4
         with:
           name: cloudflare-production-${{ github.sha }}
