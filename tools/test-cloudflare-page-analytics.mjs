@@ -42,19 +42,22 @@ function googleBrowser({url='https://nodostream.com/map/',embedded=false,blocked
  return {window,scripts,calls,listeners,context,commands:()=>Array.from(window.dataLayer||[],args=>Array.from(args))};
 }
 
-test('GA4 initializes once on production with one automatic page view and no sensitive URL inputs',()=>{
- const b=googleBrowser({url:'https://nodostream.com/calc/?income=secret&email=private&utm_source=cafe&utm_medium=referral#salary'});
+test('GA4 and Ads share one loader, preserve campaign attribution and exclude sensitive URL inputs',()=>{
+ const b=googleBrowser({url:'https://nodostream.com/calc/?income=secret&email=private&utm_source=cafe&utm_medium=referral&gclid=ad-click&gbraid=app-click&wbraid=web-click#salary'});
  assert.equal(b.scripts.length,1);assert.equal(b.scripts[0].async,true);
  assert.equal(b.scripts[0].src,'https://www.googletagmanager.com/gtag/js?id=G-4SPGCJTJJP');
- const commands=b.commands();assert.deepEqual(commands.map(c=>c[0]),['js','config']);
+ const commands=b.commands();assert.deepEqual(commands.map(c=>c[0]),['js','config','config']);
  assert.equal(commands[1][1],'G-4SPGCJTJJP');
- assert.equal(commands[1][2].page_location,'https://nodostream.com/calc/?utm_source=cafe&utm_medium=referral');
+ assert.equal(commands[1][2].page_location,'https://nodostream.com/calc/?utm_source=cafe&utm_medium=referral&gclid=ad-click&gbraid=app-click&wbraid=web-click');
  assert.equal(commands[1][2].page_referrer,'https://www.google.com/search');
  assert.equal(commands[1][2].allow_google_signals,false);assert.equal(commands[1][2].allow_ad_personalization_signals,false);
  assert.equal(commands[1][2].user_id,undefined);
- vm.runInContext(source,b.context);assert.equal(b.scripts.length,1);assert.equal(b.commands().length,2);
+ assert.equal(commands[2][1],'AW-18491239544');
+ assert.deepEqual(commands[2][2],commands[1][2],'Ads uses the same sanitized URL and privacy settings');
+ assert.equal(commands.filter(c=>c[0]==='event').length,0,'no duplicate manual conversion or page view');
+ vm.runInContext(source,b.context);assert.equal(b.scripts.length,1);assert.equal(b.commands().length,3);
  assert.equal(b.calls.length,1,'first-party collection remains active');
- b.listeners.pageshow({persisted:true});assert.equal(b.commands().length,2,'no extra manual GA page view on restore');
+ b.listeners.pageshow({persisted:true});assert.equal(b.commands().length,3,'no extra manual Google page view on restore');
  assert.equal(b.calls.length,2);
  assert.equal(googleBrowser({url:'https://www.nodostream.com/'}).scripts.length,1);
 });

@@ -1,4 +1,4 @@
-/* First-party anonymous page counts, plus GA4 on top-level production pages. */
+/* First-party anonymous page counts, plus Google measurement on top-level production pages. */
 (()=>{'use strict';
  if(window.__nodoPageAnalytics)return;window.__nodoPageAnalytics=true;
  const path=location.pathname.replace(/index\.html$/,'');
@@ -8,10 +8,11 @@
  if(location.protocol==='https:'&&['nodostream.com','www.nodostream.com'].includes(location.hostname)&&window.top===window){
   try{
    const measurementId='G-4SPGCJTJJP';
+   const adsId='AW-18491239544';
    const pageURL=new URL(location.href);pageURL.search='';pageURL.hash='';pageURL.pathname=path;
    const incoming=new URLSearchParams(location.search);
    // Preserve campaign attribution without forwarding calculator/search inputs.
-   for(const key of ['utm_source','utm_medium','utm_campaign','utm_id','utm_term','utm_content']){
+   for(const key of ['utm_source','utm_medium','utm_campaign','utm_id','utm_term','utm_content','gclid','gbraid','wbraid']){
     if(incoming.has(key))pageURL.searchParams.set(key,incoming.get(key));
    }
    let referrer='';
@@ -19,11 +20,14 @@
    window.dataLayer=window.dataLayer||[];
    window.gtag=window.gtag||function(){window.dataLayer.push(arguments);};
    window.gtag('js',new Date());
-   // config sends the initial page_view. Do not send a second manual event.
-   window.gtag('config',measurementId,{
+   const measurementOptions={
     page_location:pageURL.href,page_referrer:referrer,
     allow_google_signals:false,allow_ad_personalization_signals:false
-   });
+   };
+   // Keep the existing GA4 destination and load gtag.js only once.
+   // GA4 config sends the initial page_view. Do not send a second manual event.
+   window.gtag('config',measurementId,measurementOptions);
+   window.gtag('config',adsId,measurementOptions);
    const script=document.createElement('script');script.async=true;
    script.src='https://www.googletagmanager.com/gtag/js?id='+measurementId;
    document.head.appendChild(script);
