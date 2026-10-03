@@ -1,5 +1,14 @@
 # PolyGen 적용으로 nodostream 데이터 다운로드와 페이지 속도 개선 플랜
 
+## 현재 실행 지침: 변경 묶음 파일 소비 후보 (2026-10-04)
+
+- 부동산 증분 처리 기준은 D:/Work/15_26/docs/incremental-cache-implementation-plan.md 앞부분과 [파일 소비 후보](../../15_26/docs/generation-file-batch-candidate.md)를 따른다. 아래 과거 구현·배포 설명을 현재 일상 실행 정책으로 해석하지 않는다.
+- 변경분을 한 번 확정하고 같은 묶음을 운영 DB·계산·파일에 연결한다. 성공한 현재 후보·코드·입력·번호·출력 해시 근거를 재사용하며 같은 의미 대조를 매일 반복하지 않는다.
+- 새로운 generationChangeBatchFiles 경로는 운영 OFF 후보다. 구간 시험 통과를 운영 전체 생성 또는 공개 완료로 보고하지 않는다. 기존 성능 미달 reuse_quarter_cache도 OFF를 유지한다.
+- 후보는 지역/연도/분기 거래와 연간 월초 상태, 매매 지역·전월세 월별 상세를 각각 소비한다. 생성 실패는 소비 위치를 갱신하지 않는다. 후보 최종 검증 후의 소비 확정과 공개 승인은 별개다.
+- 지역 전체 inventory 읽기와 운영 DB 지역 합/개수 저장은 아직 남아 있다. 필요한 구간만 시험하고 비용이 증가하면 멈춰 해당 구간을 수정한다. 기존 잠금·승인·백업·감사·공개 증명은 유지한다.
+
+
 > 문서 역할: **과거 설계·검증 기록** · [문서 목록](README.md)
 > 당시 상태와 근거를 보존합니다. 미완료 문구·명령·수치를 현재 운영 상태로 해석하지 않습니다.
 
@@ -314,3 +323,46 @@ GitHub Actions:
 - GitHub Secrets에 `CF_ZONE_ID`, `CF_API_TOKEN`이 있어야 purge가 성공한다.
 - `Build PolyGen index`가 generated 파일 bot 커밋을 만들면 그 bot 커밋의 push도 `Purge Cloudflare`를 다시 실행한다.
 - `data/polygen/index.slim.bin`, `data/polygen/index.slim.json`, TypeScript 중간 산출물은 git에서 제외한다. 배포 필수 파일은 packed 바이너리와 브라우저 fallback 번들만 추적한다.
+
+
+## 2026-10-03 지역 저장 캐시 검증 재사용
+
+운영 지침과 단계별 실측은 D:/Work/15_26/docs/incremental-cache-implementation-plan.md를 따른다. 동일 입력/코드/영구 번호와 현재 출력 해시가 모두 일치한 schema 2 PASS 영수증만 반복 의미 대조를 재사용한다. 구형 영수증과 변경 입력은 실제 대조를 수행하며 NODO_FULL_VERIFY=1은 전체 경로를 유지한다. 손상은 차단한다.
+
+구현은 tools/housing-packing-cache.mjs와 build-housing-regions.mjs이며 재사용 횟수를 validationReused로 기록한다. 단일 공개 분기의 반복 대조 실측 중앙값 0.123239초에서 0.001774초로 감소했다. 전체 생성 속도나 분할 파일의 절감률은 아직 측정하지 않았다. tools/benchmark-housing-packing-validation.mjs는 30초 제한 읽기 전용 진단이며 보고서 출력은 공개 입력 외부로 지정한다.
+
+
+## 2026-10-03 미변경 과거 연도 입력 해석 재사용
+
+현재 지침은 D:/Work/15_26/docs/incremental-cache-implementation-plan.md의 과거 연도 포장 재사용 절을 따른다. 공개 연도 상태 파일을 함께 보존하므로 변경된 연도는 기존 분기 처리로 돌아가고 미변경 연도만 DTO 해석을 생략한다. tools/housing-year-cache.mjs는 입력/코드/경계·기존 영구 번호 및 실제 캐시 출력 해시를 확인한다. 새 번호는 뒤에 추가할 수 있고 기존 위치 충돌·손상은 안전한 생성 또는 차단으로 처리한다.
+
+실제 지역 41360·2021년 12개월 구간 중앙값 0.653초 → 0.235초, DTO 호출 24 → 0, 출력 해시 차이 0. 최초 구축 2.819초는 별도다. 전체 생성 속도를 이 절감률로 추정하지 않는다. 실제 측정은 tools/benchmark-housing-year-reuse.mjs, 공식 계측은 packingReuse.years / monthsDecoded이다. 전체 생성 반복 대신 30초 제한 구간 시험을 사용했다.
+
+
+## 2026-10-03 상세 생성 묶음 재사용
+
+운영 지침은 D:/Work/15_26/docs/incremental-cache-implementation-plan.md의 상세 생성 재사용 절을 따른다. 매매는 지역·연도, 전월세는 원본 지역·월의 원본/공통 거래/코드가 같고 현재 출력 해시가 맞는 성공 영수증을 재사용한다. 기존 영구 번호와 원천 상태를 확인하고, 삭제된 월/연도 출력은 가져오지 않는다. 표시 사전과 공개 manifest는 현재 자료로 구성한다. 강제 전체 검사는 유지한다.
+
+구현은 housing-detail-cache.mjs와 build-housing-sales.mjs / build-housing-details.mjs다. 공식 native 호출이 cacheDir을 공급하며 sales.reuse 및 details.reuse로 계측한다. 실제 공개 자료를 메모리로 복원한 동일 참조 생성 구간에서 매매 7,990건 168ms → 5.6ms, 전월세 2,533건 489ms → 10.3ms, 출력 바이트 차이 0. 전체 원문 읽기·index 재작성 및 전체 생성 시간은 이 비율에 포함되지 않는다. 근거는 benchmark-housing-detail-reuse.mjs와 외부 구간 보고서다.
+
+### 2026-10-03 전월세 입력 목록의 지연 해석
+
+운영 지침: tools/housing-contract-input.mjs의 목록은 PARSED 입력 정보이며 상세 PASS를 대체하지 않는다. 현재 원문 전체 해시, 현재 원천 연결, 실제 상세 성공 영수증·출력 해시 및 종료 입력 확인을 유지한다. 강제 전체 검사/캐시 미지정/상세 재생성 시 JSON을 해석한다. 로컬 목록은 Git/공개 자료에 넣지 않는다.
+
+구현/실측: 공식 전월세 상세 경로는 미변경 월의 원천 ID 목록을 재사용하고 상세가 변경될 때만 JSON을 지연 해석한다. 용량 집계의 추가 원문 읽기도 제거했다. 격리 복원한 공개 41360·202609 자료(2,533건, 1,168,946B)의 입력 선택 구간 5쌍 중앙값 8.610ms → 3.062ms(64.44%), 최초 구축 11.240ms, 목록/건수/해시 차이 0. 전국/전체 상세 생성 시간으로 일반화하지 않는다. D:/Work/_ops/performance-replay/incremental-stage-v2/contract-input-segment.json에 근거를 남겼다. 주택 회귀 시험 38개 및 Worker 연동 통과. 운영 DB와 공개 데이터는 변경하지 않았다.
+
+## 2026-10-03 계산·분기 포장 후보의 중단 기록
+
+현재 실행 지침과 후보 테이블·실측·미완료 범위는 ../../15_26/docs/calculation-cache-candidate.md를 따른다. 새 분기 캐시는 기존 공개 경로와 schema를 유지하며 다른 분기 바이트를 재사용한다. 종로구 2025년 3,209행 시험에서 결과 해시 차이는 0이지만 중앙값 0.222206초 → 0.255674초로 약 15.1% 느려졌다. PERFORMANCE_STOPPED로 기록하고 공식 입력에서 reuse_quarter_cache를 공급하지 않는다. 파싱 보관 역시 reuse_native_inputs=true인 별도 후보이며 기본 보관 용량은 0이다. 기존 연도·상세 캐시는 이 실패를 이유로 새 성공이나 전체 운영 개선으로 보고하지 않는다.
+
+
+2026-10-03 최종 검토에서는 비활성 분기 후보의 save 인자 구성에서 발생하던 불필요한 출력 읽기를 제거했다. 주택 native 재사용 회귀 4개 PASS. 같은 종로구 구간 최종 중앙값은 기존 0.229059초/후보 0.252751초로 약 10.3% 느려 PERFORMANCE_STOPPED를 유지했다. 첫 시험 15.1% 기록은 quarter-benchmark.before-inactive-guard.json에 보존한다. 운영 활성화나 전체 prepare·공개를 추가 수행하지 않았다.
+
+
+## 2026-10-04 변경 묶음 파일 소비/ack 후보
+
+공식 운영 트랜잭션의 generation_file_batch와 현재 producer 자료 해시·생성 코드·영구 번호를 결합해 파일 소비를 연결했다. Node는 비공개 pending만 저장하며 최종 후보 검증을 마친 공식 Rust prepare가 같은 run/seq/revision/engine의 소비 위치만 확정한다. 공개 data 또는 CI 자산에 소비 기록을 넣지 않는다. 후보 OFF에서는 새 소비 세션과 분기/상태 지문 계산을 하지 않는다.
+
+기존 분기 후보의 private opening.bin 재압축/해석 비용을 반복하지 않고 공개 분기와 연간 월초 상태 바이트의 소비를 나눴다. 고정 41360 지역 2020·2021 입력, 서로 다른 과거 정정 3회, 독립 캐시 비교에서 미변경 0.246502→0.143987초(41.6%), 과거 정정 1.052814→0.698673초(33.6%)였다. DTO 호출 24→6, native 입력 읽기 96→12, 모든 파일 및 daily/rental manifest의 실제 바이트 차이 0. 최초 구축과 코드 근거 준비는 별도로 기록했고 전체 시간으로 환산하지 않는다.
+
+주택 회귀 45개와 Worker/브라우저 통합 시험을 통과했다. 실제 구현·실패 측정 보존·운영 OFF·남은 전체 inventory 및 상세 읽기 범위는 D:/Work/15_26/docs/generation-file-batch-candidate.md, 최종 수치는 D:/Work/15_26/_ops/generation-file-batch/20261004/packing-segment-final.json을 따른다.

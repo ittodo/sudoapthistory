@@ -24,7 +24,7 @@
     "build:salary": "node tools/build-salary.mjs",
     "test:salary": "node --test tools/test-salary.mjs",
     "verify:salary": "npm run test:salary && npm run build:salary",
-    "test:housing": "node --test tools/test-housing-facts.mjs tools/test-housing-state-timeline.mjs tools/test-housing-regional.mjs tools/test-housing-contracts.mjs tools/test-housing-sales.mjs tools/test-housing-partition.mjs tools/test-housing-packing-cache.mjs tools/test-housing-record-pool.mjs tools/test-housing-native-reuse.mjs && node --experimental-vm-modules tools/test-housing-worker.cjs"
+    "test:housing": "node --test tools/test-housing-native-inputs.mjs tools/test-housing-facts.mjs tools/test-housing-state-timeline.mjs tools/test-housing-regional.mjs tools/test-housing-map-quarter.mjs tools/test-housing-contracts.mjs tools/test-housing-sales.mjs tools/test-housing-partition.mjs tools/test-housing-packing-cache.mjs tools/test-housing-record-pool.mjs tools/test-housing-native-reuse.mjs tools/test-housing-detail-reuse.mjs tools/test-housing-generation-batch.mjs && node --experimental-vm-modules tools/test-housing-worker.cjs"
   },
   "dependencies": {
     "es-hangul": "2.4.0",
