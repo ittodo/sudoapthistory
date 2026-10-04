@@ -34,3 +34,9 @@
 근거: D:/Work/_ops/reports/20261005_official_candidate 및 D:/Work/_ops/reports/20261005_record_pool_checks. 기존 공개3670a391172d87122628e64cc5f70c816ed1091e, generationChangeBatchFiles OFF, seq1complete=false/ack0 및 상세 감사REVIEW_REQUIRED를 유지한다.
 
 분리 실행은 검증된 Rust 실행기에 regional-record-pool-segment JSON {root,site}를 전달한다. 이 명령은 공식 nightly/transition/building-audit/사이트 공통 잠금을 유지하며 현재 사이트의 공통 거래 파일을 읽고 기존 비공개 번호 풀만 갱신한다. _ops/record-pool-segments/<run>/result.json에 실제 경과·소스 커밋·입력 불변·releaseApproval=false를 기록한다. 구간 성공은 소비ack나 전체 prepare 성공을 대신하지 않으며 이후 전체 후보에서 동일 입력을 다시 확인한다. 감독 실행은 inputs/outputChecks/finalBytes 및 지역별 계산을 각각30초 한도로 관리하고 중단 기록을 보존한다. 실행기·검사 지문이 바뀐 최초 구축과 미변경 재사용을 별도로 보고한다.
+
+## 2026-10-05 공식 분리 연결 시험
+
+검증된 release 바이너리의 source SHA-256은4cee861110d1eee5d452deb42954c4637036df1b1afeaad4b6297afafcf35978이며 개발 빌드192.882700초를 생성 시간에서 제외했다. 최초 갱신은실제256.801205초/PASS_SCOPED_RECORD_POOL,78지역 재구축이었고 지역 최대시간도30초 한도 안이었다. 동일 입력의 정상 재사용은58.352229초/78지역 재사용이다. 두 실행 모두 기존78지역/34,200개 월별 파일의 해시 변경0,5개 운영 입력DB(main/WAL/journal) 변경0,공개 배포0이다. 최종 출력34,200개는 같은 실행의 실제 바이트 검사 객체를 재사용했고 finalFiles=0이다.
+
+최초 inputs0.937464/outputChecks13.431336/build228.952343/finalBytes13.020049초, 정상 재사용 inputs0.924600/outputChecks13.288815/build28.170068/finalBytes15.504308초다. 최초 코드 변경 재구축과 미변경 반복의 차이를 검사기 개선율로 보고하지 않는다. 아직 기존 전체 생성 후보·소비ack·운영 플래그·공개 승인은 완료하지 않았다. 근거는 D:/Work/_ops/reports/20261005_record_pool_segment 및 20261005_record_pool_segment_warm의 실제 종료 보고서와 공식 구간 result.json이다.
