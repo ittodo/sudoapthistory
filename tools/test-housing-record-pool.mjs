@@ -1,13 +1,14 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
-import {rebuildRecordPools} from './housing-record-pool.mjs';
+import {rebuildRecordPools,rebuildRecordPoolsFast} from './housing-record-pool.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
-function fixture(fn){const output=mkdtempSync(join(tmpdir(),'record-pool-'));try{
+async function fixture(fn){const output=mkdtempSync(join(tmpdir(),'record-pool-'));try{
  const codes=['11110','28185'],bytes={},data={},calls=[];const readers={};
  for(const kind of ['daily','rental']){
   const table={regions:new Map()},quarters={},sources={},inputs={};
@@ -17,7 +18,7 @@ function fixture(fn){const output=mkdtempSync(join(tmpdir(),'record-pool-'));try
   readers[kind]={manifest:{schema:3,version:'global-version',regional:{quarters},sources},table,inputs,physical(p){const sha256=hash(bytes[p]);if(sources[p]!==sha256)throw Error('source mismatch');inputs[p]=sha256;return {sha256};},regionMonth(code,month){calls.push(kind+code+month);return {rows:data[kind+code+month]};}};
  }
  const update=p=>{bytes[p]+='changed';for(const r of Object.values(readers)){r.manifest.sources[p]=hash(bytes[p]);delete r.inputs[p];}};
- fn({output,readers,calls,bytes,data,update,run:options=>rebuildRecordPools('unused',output,{readers,...options})});
+ await fn({output,readers,calls,bytes,data,update,run:options=>rebuildRecordPools('unused',output,{readers,...options})});
 }finally{rmSync(output,{recursive:true,force:true});}}
 test('unrelated region, metadata and global version leave old regional pool hashes stable',()=>fixture(({output,readers,calls,run,update})=>{
  const first=run();assert.equal(first.rebuiltRegions,2);assert.equal(calls.length,8);const old=readFileSync(join(output,'11110/index.json'));
@@ -32,4 +33,30 @@ test('damaged cached bytes rebuild only damaged quarter; full mode never reuses'
 }));
 test('current source corruption is blocked even when cached outputs are valid',()=>fixture(({bytes,run})=>{
  run();bytes['data/daily/regions/11110/quarters/2026-Q3.bin']='corrupt';assert.throws(()=>run(),/source mismatch/);
+}));
+
+test('parallel byte checks retain duplicate identities and exact sequential pool bytes',()=>fixture(async({output,readers,run,calls})=>{
+ run();const before=readFileSync(join(output,'11110/index.json'));calls.length=0;
+ const value=await rebuildRecordPoolsFast('unused',output,{readers});
+ assert.equal(value.reusedRegions,2);assert.equal(calls.length,0);assert.deepEqual(readFileSync(join(output,'11110/index.json')),before);
+ assert.equal(value.parallelOutputChecks.files,8);assert.equal(value.parallelOutputChecks.threads,4);
+ writeFileSync(join(output,'11110/2026-09-daily.bin'),'damaged');calls.length=0;
+ const fixed=await rebuildRecordPoolsFast('unused',output,{readers});
+ assert.equal(fixed.rebuiltRegions,1);assert.equal(calls.length,2);
+ const full=await rebuildRecordPoolsFast('unused',output,{readers,full:true});assert.equal(full.reusedRegions,0);
+}));
+test('mutation after parallel preflight cannot authorize cached pool reuse',()=>fixture(async({output,readers,run,calls})=>{
+ run();calls.length=0;let changed=false;
+ const value=await rebuildRecordPoolsFast('unused',output,{readers,onProgress:metric=>{
+  if(metric.code==='11110'&&!changed){changed=true;writeFileSync(join(output,'28185/2026-09-daily.bin'),'damaged');}
+ }});
+ assert.equal(value.metrics[1].reused,false);assert.equal(value.metrics[1].rebuiltQuarters,1);assert.equal(calls.length,2);
+}));
+
+test('parallel verifier works from an inline module without inheriting eval options',()=>fixture(({output,run})=>{
+ run();const module=new URL('./housing-pool-verifier.mjs',import.meta.url).href;
+ const script='import{verifyPoolFiles}from '+JSON.stringify(module)+';const rows=JSON.parse(process.argv[2]);const c=await verifyPoolFiles(process.argv[1],rows);if(!c.valid(...rows[0]))process.exit(2);';
+ const index=JSON.parse(readFileSync(join(output,'11110/index.json'))),entry=Object.entries(index.files)[0];
+ const value=spawnSync(process.execPath,['--input-type=module','-e',script,output,JSON.stringify([['11110',...entry]])],{encoding:'utf8'});
+ assert.equal(value.status,0,value.stderr);
 }));
