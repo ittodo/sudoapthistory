@@ -60,3 +60,9 @@ test('parallel verifier works from an inline module without inheriting eval opti
  const value=spawnSync(process.execPath,['--input-type=module','-e',script,output,JSON.stringify([['11110',...entry]])],{encoding:'utf8'});
  assert.equal(value.status,0,value.stderr);
 }));
+
+test('changed bytes in an already completed region fail final verification',()=>fixture(async({output,readers,run})=>{
+ run();await assert.rejects(rebuildRecordPoolsFast('unused',output,{readers,onProgress:metric=>{
+  if(metric.code==='28185')writeFileSync(join(output,'11110/2026-09-daily.bin'),'damaged after use');
+ }}),/Pool output changed/);
+}));

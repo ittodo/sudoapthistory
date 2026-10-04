@@ -83,9 +83,9 @@ export async function rebuildRecordPoolsFast(site,output,options={}){
  const result=rebuildRecordPools(site,output,{...options,codes,readers,outputChecks,onProgress:metric=>{
   options.onProgress?.(metric);if(process.env.NODO_RECORD_POOL_TIMINGS==='1')process.stderr.write('record pool region: '+metric.code+' '+metric.seconds.toFixed(6)+'s '+metric.reason+'\n');
  }});checkpoint('build');
- const current=poolRows(output,codes),final=await verifyPoolFiles(output,current);
- if(current.some(([code,name,digest])=>!final.valid(code,name,digest)))throw Error('Pool output changed during build');
+ const current=poolRows(output,codes),changed=current.filter(([code,name,digest])=>!outputChecks.valid(code,name,digest)),final=await verifyPoolFiles(output,changed);
+ if(current.some(([code,name,digest])=>!outputChecks.valid(code,name,digest)&&!final.valid(code,name,digest)))throw Error('Pool output changed during build');
  for(const reader of Object.values(readers))reader.recheck?.();checkpoint('finalBytes');
- result.timings=timings;result.parallelOutputChecks={files:rows.length,finalFiles:current.length,threads:outputChecks.threads};result.seconds=(performance.now()-begin)/1000;return result;
+ result.timings=timings;result.parallelOutputChecks={files:rows.length,finalFiles:changed.length,reusedFinalChecks:current.length-changed.length,threads:outputChecks.threads};result.seconds=(performance.now()-begin)/1000;return result;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){const[site,output]=process.argv.slice(2);if(!site||!output)throw Error('SITE OUTPUT required');console.log(JSON.stringify(await rebuildRecordPoolsFast(site,output)));}
