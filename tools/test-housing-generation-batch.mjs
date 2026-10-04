@@ -49,3 +49,21 @@ test('accepted no-change retains quarter/state proofs; correction, changed openi
   const path='data/daily/regions/11110/quarters/2026-Q1.bin';writeFileSync(join(unchanged.output,path),'damaged');price['2026-09']++;assert.throws(()=>build('damaged'),/cached output changed/);
  }finally{rmSync(base,{recursive:true,force:true});}
 });
+
+test('exact excluded-sale integer keys survive pending serialization and cannot alias text or numbers',()=>{
+ const root=mkdtempSync(join(tmpdir(),'generation-exact-key-')),cache=join(root,'cache'),output=join(root,'out'),other=join(root,'next');
+ const path='data/sale-details/11110/excluded.bin',identity={11110:{complexes:['source'],areas:[[0,'59.01']],source:[['source',false]]}};
+ mkdirSync(join(output,path,'..'),{recursive:true});mkdirSync(other);writeFileSync(join(output,path),'exact fact bytes');
+ const batch={schema:1,revision:'current',seq:0,batches:[]},session=o=>new GenerationFileSession({site:root,output:o,cache,batch,engine:'current'});
+ const key=amount=>['sale','11110',[[0,20261001,amount,1,null,4,'ab'.repeat(10)]]];
+ try{
+  const first=session(output);first.save('sale/11110',key(600001n),identity,{rows:1},[path]);
+  const pending=first.finish(),body=JSON.parse(readFileSync(pending.pending)).body;
+  assert.match(body.scopes['sale/11110'].key,/^[a-f0-9]{64}$/);cpSync(pending.pending,join(cache,'generation-consumer.json'));
+  const next=session(other),emitted=[];assert.deepEqual(next.load('sale/11110',key(600001n),identity,p=>p===path,(p,b)=>emitted.push(b.toString())),{rows:1});
+  assert.deepEqual(emitted,['exact fact bytes']);
+  for(const amount of [600001,'600001',['bigint','600001'],600002n])assert.equal(session(other).load('sale/11110',key(amount),identity,p=>p===path,()=>{}),null);
+  const large=9007199254740993n;first.save('large',key(large),identity,{rows:1},[path]);assert.doesNotThrow(()=>first.finish());
+  assert.throws(()=>first.save('invalid',key(Infinity),identity,{},[path]),/finite/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});

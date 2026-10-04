@@ -4,6 +4,22 @@ import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync}fr
 import{join,resolve,dirname,sep}from'node:path';import{createHash}from'node:crypto';
 import{validationEngine}from'./validation-session.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex'),eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+// Dependency keys can contain exact integer mantissas from excluded sale facts.
+// Encode every value with its type so bigint, decimal text and numbers cannot collide.
+// Only the digest is persisted; transaction bytes and public identities stay unchanged.
+function dependencyValue(value){
+ const type=typeof value;
+ if(value===null)return ['null'];
+ if(type==='bigint')return ['bigint',value.toString()];
+ if(type==='undefined')return ['undefined'];
+ if(type==='string'||type==='boolean')return [type,value];
+ if(type==='number'){if(!Number.isFinite(value))throw Error('Generation dependency finite number');return [type,Object.is(value,-0)?'-0':value];}
+ if(Array.isArray(value))return ['array',value.map(dependencyValue)];
+ if(type==='object'&&(Object.getPrototypeOf(value)===Object.prototype||Object.getPrototypeOf(value)===null))return ['object',Object.entries(value).map(([key,item])=>[key,dependencyValue(item)])];
+ throw Error('Generation dependency key type');
+}
+const dependencyKey=value=>hash(JSON.stringify(dependencyValue(value)));
+
 function identityFits(old,now){return Object.entries(old).every(([code,v])=>now[code]&&['complexes','areas','source'].every(k=>(v[k]||[]).every((x,i)=>eq(x,now[code][k]?.[i]))));}
 function safe(root,path){if(!/^data\//.test(path)||path.split('/').some(p=>!p||p==='.'||p==='..')||/[\\:]/.test(path))throw Error('Generation output path');let p=root;for(const part of path.split('/')){p=join(p,part);if(lstatSync(p).isSymbolicLink())throw Error('Generation artifact link');}if(realpathSync(p).toLowerCase()!==p.toLowerCase())throw Error('Generation artifact path');return p;}
 export class GenerationFileSession{
@@ -30,7 +46,7 @@ export class GenerationFileSession{
  }
  peek(scope){return this.old?.scopes?.[scope]??null;}
  load(scope,key,identity,allowed,emit){
-  const prior=this.peek(scope);if(!prior||!eq(prior.key,key)||!identityFits(prior.identity,identity))return null;
+  const prior=this.peek(scope);if(!prior||prior.key!==dependencyKey(key)||!identityFits(prior.identity,identity))return null;
   const root=realpathSync(this.old.output);
   if(root===this.output||this.output.startsWith(root+sep)||root.startsWith(this.output+sep))throw Error('Generation output overlap');
   const assets=[];for(const[path,r]of Object.entries(prior.files)){if(!allowed(path))throw Error('Generation scope inventory');const p=safe(root,path);if(lstatSync(p).size>25*1024*1024)throw Error('Generation cached file size');const bytes=readFileSync(p);if(bytes.length!==r.bytes||hash(bytes)!==r.sha256)throw Error('Generation cached output changed');assets.push([path,bytes]);}
@@ -42,7 +58,7 @@ export class GenerationFileSession{
  }
  save(scope,key,identity,result,paths){
   const files={};for(const path of paths){const b=readFileSync(safe(this.output,path));files[path]={bytes:b.length,sha256:hash(b)};}
-  this.scopes[scope]={key,identity:structuredClone(identity),result,files};this.metrics.scopesBuilt++;
+  this.scopes[scope]={key:dependencyKey(key),identity:structuredClone(identity),result,files};this.metrics.scopesBuilt++;
  }
  finish(){
   if(!this.checkpoint||this.batch==null)return {status:'NOT_RUN',...this.metrics};
