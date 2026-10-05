@@ -50,14 +50,49 @@ export class ValidationSession {
   mkdirSync(this.directory,{recursive:true});const target=this.file+'.'+process.pid+'.tmp';writeFileSync(target,JSON.stringify({schema:1,engine:this.engine,records:this.records,digest:digest(JSON.stringify(this.records))}));renameSync(target,this.file);
  }
 }
-export function manifestDependencies(root,names){
- const inputs={};
- for(const name of names){const bytes=readFileSync(join(root,name));inputs[name]=digest(bytes);const manifest=JSON.parse(bytes);
-  for(const [path,expected] of [...Object.entries(manifest.sources??{}),...Object.entries(manifest.shards??{})]){
-   if(!/^data\//.test(path)||path.split('/').some(p=>!p||p==='..'||p==='.')||/[\\:]/.test(path))throw Error('Unsafe validation dependency');
-   let target=root;for(const part of path.split('/')){target=join(target,part);if(lstatSync(target).isSymbolicLink())throw Error('Validation source symlink');}
-   const actual=digest(readFileSync(target));if(actual!==expected)throw Error('Validation source mismatch: '+path);if(inputs[path]&&inputs[path]!==actual)throw Error('Shared validation digest mismatch');inputs[path]=actual;
+// This cache lives only for one call. Every distinct dependency is read from
+// disk, hashed, and checked for mutation; no persistent proof is promoted.
+export function manifestDependencies(root,names,{stats={}}={}){
+ root=resolve(root);const inputs={},files=new Map(),directories=new Map(),manifests=new Set(names);
+ Object.assign(stats,{references:0,reads:0,reused:0,bytes:0});
+ const identity=s=>[s.dev,s.ino,s.mode].join(':');
+ const signature=s=>[identity(s),s.size,s.mtimeNs,s.ctimeNs].join(':');
+ function targetFor(path){
+  if(!/^data\//.test(path)||path.split('/').some(p=>!p||p==='..'||p==='.')||/[\\:]/.test(path))throw Error('Unsafe validation dependency');
+  let target=root;
+  for(const part of path.split('/').slice(0,-1)){
+   target=join(target,part);
+   if(!directories.has(target)){
+    const state=lstatSync(target,{bigint:true});
+    if(state.isSymbolicLink()||!state.isDirectory())throw Error('Validation source symlink or non-directory');
+    directories.set(target,identity(state));
+   }
+  }
+  return join(root,path);
+ }
+ function read(path){
+  stats.references++;const target=targetFor(path),previous=files.get(path);
+  if(previous){stats.reused++;return previous;}
+  const before=lstatSync(target,{bigint:true});
+  if(before.isSymbolicLink()||!before.isFile())throw Error('Validation source symlink or non-file');
+  const bytes=readFileSync(target),after=lstatSync(target,{bigint:true});
+  if(signature(before)!==signature(after)||BigInt(bytes.length)!==after.size)throw Error('Validation source changed during reading: '+path);
+  const value={target,signature:signature(after),digest:digest(bytes)};
+  if(manifests.has(path))value.manifest=JSON.parse(bytes);
+  files.set(path,value);stats.reads++;stats.bytes+=bytes.length;return value;
+ }
+ for(const name of names){
+  const value=read(name);
+  inputs[name]=value.digest;
+  for(const [path,expected] of [...Object.entries(value.manifest.sources??{}),...Object.entries(value.manifest.shards??{})]){
+   const actual=read(path).digest;
+   if(actual!==expected)throw Error('Validation source mismatch: '+path);
+   if(inputs[path]&&inputs[path]!==actual)throw Error('Shared validation digest mismatch');
+   inputs[path]=actual;
   }
  }
+ // Recheck every identity after the complete traversal, including cached paths.
+ for(const [target,expected] of directories){const state=lstatSync(target,{bigint:true});if(state.isSymbolicLink()||!state.isDirectory()||identity(state)!==expected)throw Error('Validation source directory changed');}
+ for(const [path,value] of files){const state=lstatSync(value.target,{bigint:true});if(state.isSymbolicLink()||!state.isFile()||signature(state)!==value.signature)throw Error('Validation source changed during validation: '+path);}
  return inputs;
 }

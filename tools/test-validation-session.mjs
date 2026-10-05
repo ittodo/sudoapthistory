@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,symlinkSync,renameSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
@@ -56,4 +56,54 @@ test('scoped engine follows transitive code but ignores unrelated UI and tests',
  const options={roots:['tools/check.mjs']},first=validationEngine(root,options);writeFileSync(join(root,'js/ui.js'),'after');assert.equal(validationEngine(root,options),first);
  writeFileSync(join(root,'tools/model.mjs'),'export const value=2;');assert.notEqual(validationEngine(root,options),first);
  writeFileSync(join(root,'tools/model.mjs'),'import(variable);');assert.equal(validationEngine(root,options),fullValidationEngine(root));
+}));
+
+
+test('shared manifest inputs are hashed once per call and conflicts still fail',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));writeFileSync(join(root,'data/shared.bin'),'original');
+ const first={sources:{'data/shared.bin':hash('original')}};
+ for(const name of ['one','two'])writeFileSync(join(root,`data/${name}.json`),JSON.stringify(first));
+ const stats={},inputs=manifestDependencies(root,['data/one.json','data/two.json'],{stats});
+ assert.deepEqual(Object.keys(inputs),['data/one.json','data/shared.bin','data/two.json']);
+ assert.equal(stats.references,4);assert.equal(stats.reads,3);assert.equal(stats.reused,1);
+ writeFileSync(join(root,'data/two.json'),JSON.stringify({shards:{'data/shared.bin':hash('other')}}));
+ assert.throws(()=>manifestDependencies(root,['data/one.json','data/two.json']),/source mismatch/);
+ // A fresh call always hashes current bytes, even if the previous call passed.
+ writeFileSync(join(root,'data/shared.bin'),'modified');
+ assert.throws(()=>manifestDependencies(root,['data/one.json']),/source mismatch/);
+}));
+
+test('dependency manifest names cannot escape data or be symlinks',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));writeFileSync(join(root,'outside.json'),'{}');
+ for(const path of ['../outside.json','data/../outside.json','outside.json','data/./a.json','data\\a.json'])
+  assert.throws(()=>manifestDependencies(root,[path]),/Unsafe/);
+}));
+
+
+test('mutation after hashing a shared dependency is rejected at the end',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));writeFileSync(join(root,'data/shared.bin'),'original');
+ for(const name of ['one','two'])writeFileSync(join(root,`data/${name}.json`),JSON.stringify({sources:{'data/shared.bin':hash('original')}}));
+ const stats=new Proxy({},{set(target,key,value){target[key]=value;if(key==='reads'&&value===3)writeFileSync(join(root,'data/shared.bin'),'changed!');return true;}});
+ assert.throws(()=>manifestDependencies(root,['data/one.json','data/two.json'],{stats}),/changed during validation/);
+}));
+
+test('a manifest referenced as another shard is still read only once',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));const second=JSON.stringify({sources:{}});writeFileSync(join(root,'data/two.json'),second);
+ writeFileSync(join(root,'data/one.json'),JSON.stringify({sources:{'data/two.json':hash(second)}}));
+ const stats={};manifestDependencies(root,['data/one.json','data/two.json'],{stats});assert.equal(stats.reads,2);assert.equal(stats.reused,1);
+}));
+
+
+test('nested directory junctions cannot redirect dependency reads',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));mkdirSync(join(root,'other'));writeFileSync(join(root,'other/q.bin'),'original');
+ symlinkSync(join(root,'other'),join(root,'data/alias'),process.platform==='win32'?'junction':'dir');
+ writeFileSync(join(root,'data/index.json'),JSON.stringify({sources:{'data/alias/q.bin':hash('original')}}));
+ assert.throws(()=>manifestDependencies(root,['data/index.json']),/symlink/);
+}));
+
+test('directory replacement after a shared read cannot retain a successful proof',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));mkdirSync(join(root,'data/parts'));writeFileSync(join(root,'data/parts/q.bin'),'original');
+ for(const name of ['one','two'])writeFileSync(join(root,`data/${name}.json`),JSON.stringify({sources:{'data/parts/q.bin':hash('original')}}));
+ const stats=new Proxy({},{set(target,key,value){target[key]=value;if(key==='reads'&&value===3){renameSync(join(root,'data/parts'),join(root,'data/old-parts'));mkdirSync(join(root,'data/parts'));writeFileSync(join(root,'data/parts/q.bin'),'original');}return true;}});
+ assert.throws(()=>manifestDependencies(root,['data/one.json','data/two.json'],{stats}),/directory changed/);
 }));
