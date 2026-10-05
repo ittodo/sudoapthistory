@@ -67,3 +67,17 @@ test('approved rental sources share one cache bundle but retain source weights a
  assert.deepEqual(plain(next.frame),plain(rentalFrames(ctx,c,changed,'2026-09','41','monthly')));
  c[2].publicId='other-approved';const linked=rentalGroupFrames(ctx,c,s,'2026-09','41','monthly',{...options,previous:first.records});assert.equal(linked.stats.computedGroups,2);
 });
+
+test('approved split, unlink and move drop stale groups and reuse the unrelated sale group',()=>{
+ const first=run();
+ const split=structuredClone(payload);split.d[0].memberSources=[{id:'a'}];split.d.push({id:'new-public',r:0,admin:['41','gu','dong'],memberSources:[{id:'b'}]});
+ const r=run(split,shard,first.records);assert.equal(r.stats.computedGroups,2);assert.equal(r.stats.reusedGroups,1);assert.deepEqual(plain(r.frame),plain(saleFrames(ctx,catalog,split,shard,'2026-09')));
+ const unlinked=structuredClone(split);unlinked.d=unlinked.d.filter(g=>g.id!=='new-public');const u=run(unlinked,shard,r.records);assert.equal(u.stats.reusedGroups,2);assert.ok(!u.records.some(g=>g.id==='new-public'));assert.deepEqual(plain(u.frame),plain(saleFrames(ctx,catalog,unlinked,shard,'2026-09')));
+ const merged=structuredClone(split);merged.d=merged.d.filter(g=>g.id!=='merged');merged.d.find(g=>g.id==='new-public').memberSources.push({id:'a'});const m=run(merged,shard,r.records);assert.equal(m.stats.reusedGroups,1);assert.ok(!m.records.some(g=>g.id==='merged'));assert.deepEqual(plain(m.frame),plain(saleFrames(ctx,catalog,merged,shard,'2026-09')));
+});
+test('rental approval move and revocation refresh both owners without changing source weights',()=>{
+ const c=[{id:'a',r:0,publicId:'old',coord:[37,127],admin:['41','gu','dong']},{id:'b',r:0,publicId:'old',coord:[37,127],admin:['41','gu','dong']},{id:'c',r:0,publicId:'unrelated',coord:[37,127],admin:['41','gu','dong']}];
+ const row=(ci,value)=>[ci,'59.01',20260801,10000,10,1,5,0,null,null,null,null,null,value,0,'2026-07',6,String(ci)];const s={opening:[row(0,100),row(1,200),row(2,700)],updates:[]},opts={engine:'e',calculate:rentalFrames,pack:packFrames};
+ const first=rentalGroupFrames(ctx,c,s,'2026-09','41','monthly',opts);c[1].publicId='new';const moved=rentalGroupFrames(ctx,c,s,'2026-09','41','monthly',{...opts,previous:first.records});assert.equal(moved.stats.computedGroups,2);assert.equal(moved.stats.reusedGroups,1);assert.deepEqual(plain(moved.frame),plain(rentalFrames(ctx,c,s,'2026-09','41','monthly')));
+ c[1].publicId=null;const revoked=rentalGroupFrames(ctx,c,s,'2026-09','41','monthly',{...opts,previous:moved.records});assert.ok(!revoked.records.some(g=>g.id==='public:new'));assert.equal(revoked.stats.reusedGroups,2);assert.deepEqual(plain(revoked.frame),plain(rentalFrames(ctx,c,s,'2026-09','41','monthly')));
+});

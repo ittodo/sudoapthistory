@@ -17,7 +17,7 @@ for(const kind of ['daily','rental']){
   const rows=m.sources[rowPath]?json(join(scratch,rowPath),m.sources[rowPath]).rows:[],state=m.sources[statePath]?json(join(scratch,statePath),m.sources[statePath]):{opening:[],updates:[]};return scopedNativeMonth(code,{rows,...state});
  }};
 }
-readers.regionFingerprint=code=>hash(JSON.stringify(['daily','rental'].map(kind=>{const m=manifestsFor(kind,code);return [kind,m.months,Object.entries(m.sources).filter(([path])=>path.endsWith('.bin')).sort(([a],[b])=>a.localeCompare(b,'en')).map(([path,digest])=>{if(!generationSession?.old)nativeInputs.check(join(spec.generated[code],path),digest);return [path,digest];})];})));
+readers.regionFingerprint=code=>hash(JSON.stringify(['daily','rental'].map(kind=>{const m=manifestsFor(kind,code);return [kind,m.months,Object.entries(m.sources).filter(([path,digest])=>{if(path===`data/${kind}/catalog.bin`){nativeInputs.check(join(spec.generated[code],path),digest);return false;}return path.endsWith('.bin');}).sort(([a],[b])=>a.localeCompare(b,'en')).map(([path,digest])=>{if(!generationSession?.old)nativeInputs.check(join(spec.generated[code],path),digest);return [path,digest];})];})));
 readers.periodFingerprint=(code,months)=>hash(JSON.stringify(['daily','rental'].map(kind=>{
  const m=manifestsFor(kind,code),province=code.startsWith('41')?0:code.startsWith('11')?1:2;
  return [kind,months.map(month=>{const p=kind==='daily'?`data/daily/${province}/${month}.bin`:`data/rental/months/${month}-${code.slice(0,2)}.bin`;
