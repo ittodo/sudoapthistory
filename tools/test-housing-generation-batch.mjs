@@ -1,6 +1,6 @@
 import test from'node:test';import assert from'node:assert/strict';
 import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,cpSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';
-import{GenerationFileSession}from'./housing-generation-batch.mjs';
+import{GenerationFileSession,compactGenerationScopes}from'./housing-generation-batch.mjs';
 import{buildHousingRegions}from'./build-housing-regions.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 test('retained DB chain, current revision, cache corruption and identity movement cannot silently reuse',()=>{
@@ -65,5 +65,63 @@ test('exact excluded-sale integer keys survive pending serialization and cannot 
   for(const amount of [600001,'600001',['bigint','600001'],600002n])assert.equal(session(other).load('sale/11110',key(amount),identity,p=>p===path,()=>{}),null);
   const large=9007199254740993n;first.save('large',key(large),identity,{rows:1},[path]);assert.doesNotThrow(()=>first.finish());
   assert.throws(()=>first.save('invalid',key(Infinity),identity,{},[path]),/finite/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+
+test('dictionary deduplicates exact snapshots, keeps append prefixes and preserves legacy receipts',()=>{
+ const root=mkdtempSync(join(tmpdir(),'generation-identity-dictionary-')),cache=join(root,'cache'),output=join(root,'out'),nextOutput=join(root,'next'),path='data/daily/regions/11110/quarters/2026-Q4.bin';
+ mkdirSync(join(output,path,'..'),{recursive:true});mkdirSync(nextOutput);writeFileSync(join(output,path),'same facts');
+ const batch={schema:1,revision:'same',seq:0,batches:[]},identity={11110:{complexes:['A'],areas:[[0,'59.12345']]}};
+ const session=o=>new GenerationFileSession({site:root,output:o,cache,batch,engine:'tested'});
+ try{
+  const first=session(output);first.save('region/11110',['region'],identity,{rows:1},[path]);first.save('quarter/11110/2026-Q4',['quarter'],identity,{rows:1},[path]);
+  const pending=first.finish(),receipt=JSON.parse(readFileSync(pending.pending));assert.equal(receipt.body.identityStorage,'dictionary-v1');assert.equal(Object.keys(receipt.body.identities).length,1);assert.equal(pending.identityReferences,2);
+  assert.equal(receipt.body.scopes['region/11110'].identity,undefined);cpSync(pending.pending,join(cache,'generation-consumer.json'));
+  identity[11110].complexes.push('new');identity[11110].areas.push([1,'80.0001']);
+  const next=session(nextOutput);assert.ok(next.load('region/11110',['region'],identity,()=>true,()=>{}));assert.ok(next.scopes['quarter/11110/2026-Q4']);assert.equal(next.scopes['region/11110'].identity,next.scopes['quarter/11110/2026-Q4'].identity);
+  assert.equal(next.load('region/11110',['region'],{11110:{complexes:['B'],areas:[[0,'59.12345']]}},()=>true,()=>{}),null);
+  // A real legacy body is read as-is, never re-signed or overwritten by the reader.
+  const legacy={...receipt.body};delete legacy.identityStorage;delete legacy.identities;legacy.scopes=Object.fromEntries(Object.entries(receipt.body.scopes).map(([name,{identityRef,...value}])=>[name,{...value,identity:receipt.body.identities[identityRef]}]));
+  const legacyBytes=JSON.stringify({body:legacy,sha256:hash(JSON.stringify(legacy))});writeFileSync(join(cache,'generation-consumer.json'),legacyBytes);
+  assert.ok(session(nextOutput).load('region/11110',['region'],identity,()=>true,()=>{}));assert.equal(readFileSync(join(cache,'generation-consumer.json'),'utf8'),legacyBytes);
+  const expanded={...legacy.scopes};expanded.other={...expanded['region/11110'],identity:{11110:{complexes:['A','new'],areas:[[0,'59.12345'],[1,'80.0001']]}}};const compact=compactGenerationScopes(expanded);assert.equal(Object.keys(compact.identities).length,2);assert.equal(compact.scopes.other.identityRef===compact.scopes['region/11110'].identityRef,false);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+test('dictionary contents, references and unknown storage must fail closed even with a valid outer digest',()=>{
+ const root=mkdtempSync(join(tmpdir(),'generation-identity-corrupt-')),cache=join(root,'cache'),output=join(root,'out'),other=join(root,'next'),path='data/sale-details/11110/2026.bin';
+ mkdirSync(join(output,path,'..'),{recursive:true});mkdirSync(other);writeFileSync(join(output,path),'exact');
+ const batch={schema:1,seq:0,revision:'same',batches:[]},identity={11110:{complexes:['A'],areas:[[0,'59.001']]}};
+ try{
+  const first=new GenerationFileSession({site:root,output,cache,batch,engine:'e'});first.save('sale/11110',['sale'],identity,{rows:1},[path]);const original=JSON.parse(readFileSync(first.finish().pending)).body,id=Object.keys(original.identities)[0];
+  const check=(change,error)=>{const b=structuredClone(original);change(b);writeFileSync(join(cache,'generation-consumer.json'),JSON.stringify({body:b,sha256:hash(JSON.stringify(b))}));assert.throws(()=>new GenerationFileSession({site:root,output:other,cache,batch,engine:'e'}),error);};
+  check(b=>b.identities[id][11110].areas[0][1]='59.1',/dictionary digest/);
+  check(b=>delete b.identities[id],/reference missing/);
+  check(b=>b.scopes['sale/11110'].identityRef=[id],/reference missing/);
+  check(b=>b.scopes['sale/11110'].identity=identity,/reference missing/);
+  check(b=>b.identityStorage='unknown',/storage format/);
+  check(b=>delete b.identityStorage,/storage format/);
+  check(b=>b.scopes=[],/checkpoint corrupt/);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
+
+test('regional child index carries only contained current byte receipts with compatible identities',()=>{
+ const root=mkdtempSync(join(tmpdir(),'generation-child-index-')),cache=join(root,'cache'),output=join(root,'out'),other=join(root,'next'),path='data/daily/regions/11110/quarters/2026-Q4.bin',otherPath='data/daily/regions/11110/quarters/2025-Q4.bin';
+ mkdirSync(join(output,path,'..'),{recursive:true});mkdirSync(other);writeFileSync(join(output,path),'current');writeFileSync(join(output,otherPath),'unrelated');
+ const batch={schema:1,seq:0,revision:'same',batches:[]},identity={11110:{complexes:['A'],areas:[[0,'59.001']]}};
+ const session=o=>new GenerationFileSession({site:root,output:o,cache,batch,engine:'e'});
+ try{
+  const first=session(output);
+  first.save('year/11110/2026',['year'],identity,{rows:1},[path]);
+  first.save('quarter/11110/2026-Q4',['good'],identity,{rows:1},[path]);
+  first.save('state-year/11110/2026',['foreign byte'],identity,{rows:1},[otherPath]);
+  first.save('quarter/11110/2025-Q4',['foreign year'],identity,{rows:1},[path]);
+  first.save('quarter/11140/2026-Q4',['foreign region'],identity,{rows:1},[path]);
+  first.save('quarter/11110/2026-Q3',['changed identity'],{11110:{complexes:['B'],areas:[[0,'59.001']]}},{rows:1},[path]);
+  cpSync(first.finish().pending,join(cache,'generation-consumer.json'));
+  const next=session(other);assert.ok(next.load('year/11110/2026',['year'],identity,()=>true,()=>{}));
+  assert.deepEqual(Object.keys(next.scopes).sort(),['quarter/11110/2026-Q4','year/11110/2026']);
  }finally{rmSync(root,{recursive:true,force:true});}
 });

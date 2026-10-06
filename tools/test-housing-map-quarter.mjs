@@ -17,3 +17,14 @@ test('map quarter keeps structural, group/order and scope guards',()=>{
  const order=codec.openColumns(codec.schemas.TradeOrder,value.sections.order),entries=Array.from({length:order.rowCount},(_,i)=>order.row(i));entries[1]=entries[0];
  assert.throws(()=>decodeMapQuarter(encodeQuarter({...value,sections:{...value.sections,order:codec.encodeColumns(codec.schemas.TradeOrder,entries)}}),identity,codec,scope,'rental'),/reference/);
 });
+
+
+test('map projection does not materialize unused sale facts or unreferenced rental facts',()=>{
+ const value=fixture(),bytes=encodeQuarter(value),calls=new Map(),observed={...codec,openColumns(schema,input){const opened=codec.openColumns(schema,input);return {...opened,row(i){calls.set(schema.name,(calls.get(schema.name)||0)+1);return opened.row(i);}};}};
+ decodeMapQuarter(bytes,identity,observed,scope,'daily');assert.equal(calls.get(codec.schemas.SaleFact.name)||0,0);assert.equal(calls.get(codec.schemas.RentalFact.name)||0,0);
+ calls.clear();decodeMapQuarter(bytes,identity,observed,scope,'rental');assert.equal(calls.get(codec.schemas.SaleFact.name)||0,0);assert.equal(calls.get(codec.schemas.RentalFact.name),3);
+ const facts=codec.openColumns(codec.schemas.SaleFact,value.sections.sale),rows=Array.from({length:facts.rowCount},(_,i)=>facts.row(i));rows[0][0]=32;
+ assert.throws(()=>decodeMapQuarter(encodeQuarter({...value,sections:{...value.sections,sale:codec.encodeColumns(codec.schemas.SaleFact,rows)}}),identity,codec,scope,'daily'),/fact day/);
+ rows[0][0]=1;rows[0][rows[0].length-1]=2;
+ assert.throws(()=>decodeMapQuarter(encodeQuarter({...value,sections:{...value.sections,sale:codec.encodeColumns(codec.schemas.SaleFact,rows)}}),identity,codec,scope,'daily'),/multiplicity/);
+});

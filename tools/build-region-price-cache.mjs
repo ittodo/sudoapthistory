@@ -1,4 +1,5 @@
 import {regionalReader} from './regional-data.mjs';
+import {createHousingDecodeCache} from './housing-regional-reader.mjs';
 import {saleGroupFrames,rentalGroupFrames,priceBindings} from './region-price-groups.mjs';
 import {readFileSync,writeFileSync,existsSync,mkdirSync,lstatSync} from 'node:fs';
 import {join} from 'node:path';
@@ -45,7 +46,7 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
   for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink region cache output');mkdirSync(directory,{recursive:true});
   const read=p=>readFileSync(join(root,p)),snapshots=new Map(['data/map/index.json','data/daily/index.json','data/rental/index.json'].map(p=>[p,read(p)])),json=p=>JSON.parse(snapshots.get(p)||read(p)),payload=json('data/map/index.json'),sale=json('data/daily/index.json'),rental=json('data/rental/index.json');
   const verified=(path,manifest)=>{const b=read(path);if(hash(b)!==manifest.sources[path])throw Error('Region cache input changed: '+path);inputs[path]=hash(b);return JSON.parse(path.endsWith('.bin')?gunzipSync(b):b);};
-  const saleReader=regionalReader(root,'daily',{verifyOnce:!reference&&!full}),rentReader=regionalReader(root,'rental',{verifyOnce:!reference&&!full}),saleCatalog=saleReader.catalog,rentalCatalog=rentReader.catalog.complexes;
+  const saleDecodeCache=createHousingDecodeCache(),rentalDecodeCache=createHousingDecodeCache(),saleReader=regionalReader(root,'daily',{verifyOnce:!reference&&!full,decodeCache:saleDecodeCache}),rentReader=regionalReader(root,'rental',{verifyOnce:!reference&&!full,decodeCache:rentalDecodeCache}),saleCatalog=saleReader.catalog,rentalCatalog=rentReader.catalog.complexes;
   sale.schema??=1;rental.schema??=1;ctx.NodoRental.normalizeDistricts(rentalCatalog);
   const enginePaths=['tools/build-region-price-cache.mjs','tools/region-price-groups.mjs','tools/regional-data.mjs','js/regional-data.js',...(sale.schema===3?['tools/housing-regional-reader.mjs','tools/housing-map-quarter.mjs','js/housing-quarter.mjs','js/housing-facts.mjs','js/housing-state-timeline.mjs','js/housing-validation.mjs','js/housing-partition.mjs','js/generated/housing-columns.mjs']:[]),...models.map(n=>'js/'+n+'.js')],codeHash=hash(Buffer.concat(enginePaths.map(read)));
   const mapHash=hash(snapshots.get('data/map/index.json')),membershipHash=hash(JSON.stringify(payload.d.map(c=>[c.id,c.r,c.admin,c.memberSources?.map(s=>s.id)])));inputs['data/map/index.json']=mapHash;
@@ -120,5 +121,5 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
     quarterSources[path]=hash(bytes);assets.push({path,source:target,sha256:quarterSources[path],size:bytes.length});
   }
   const packedOnly=sale.schema===3&&rental.schema===3;if(packedOnly){for(let i=assets.length-1;i>=0;i--)if(sources[assets[i].path])assets.splice(i,1);for(const p of Object.keys(sources))delete sources[p];}
-  for(const[p,bytes]of snapshots)if(!read(p).equals(bytes))throw Error('Region manifest changed during build: '+p);if(hash(Buffer.concat(enginePaths.map(read)))!==codeHash)throw Error('Region calculation code changed during build');saleReader.recheck?.();rentReader.recheck?.();Object.assign(inputs,saleReader.inputs,rentReader.inputs);assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:packedOnly?2:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources,quarterSources}))});return assets;
+  for(const[p,bytes]of snapshots)if(!read(p).equals(bytes))throw Error('Region manifest changed during build: '+p);if(hash(Buffer.concat(enginePaths.map(read)))!==codeHash)throw Error('Region calculation code changed during build');saleReader.recheck?.();rentReader.recheck?.();stats.housingDecodeCache={sale:{...saleDecodeCache.stats},rental:{...rentalDecodeCache.stats}};Object.assign(inputs,saleReader.inputs,rentReader.inputs);assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:packedOnly?2:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources,quarterSources}))});return assets;
 }
