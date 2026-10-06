@@ -29,6 +29,24 @@
   const finishBucket=b=>({count:b.count,sum:b.sum,avg:b.count?b.sum/b.count:null,ppCount:b.ppCount,ppAvg:b.ppCount?b.ppSum/b.ppCount:null});
   function finish(g){const out={count:g.count,excluded:g.excluded};for(const key of ['monthly','deposit']){const m=g[key];out[key]={...finishBucket(m),median:median(m.prices),ppMedian:median(m.pps),simple:m.simple.map(finishBucket),detail:m.detail.map(finishBucket)};}return out;}
   function aggregate(rows,catalog,s){const total=group(),districts={},byRegion={};for(const row of rows){const c=catalog[row[0]];if(!matches(row,c,s))continue;add(total,row,s);add(districts[c.g]??=group(),row,s);add(byRegion[codes[c.r]]??=group(),row,s);}return {total:finish(total),districts:Object.fromEntries(Object.entries(districts).map(([k,g])=>[k,finish(g)])),regions:Object.fromEntries(Object.entries(byRegion).map(([k,g])=>[k,finish(g)]))};}
+  // One build-time pass; retain exact medians, never average district medians.
+  function summarize(rows,catalog){
+    const groups={};
+    for(const row of rows){const c=catalog[row[0]];if(!c)throw Error('Unknown market complex');const type=row[4]===0?'jeonse':'monthly';
+      for(const contract of ['all',String(row[5])]){const key=type+':'+contract,g=groups[key]??={total:group(),districts:{},regions:{}};
+        add(g.total,row,{type});add(g.districts[c.g]??=group(),row,{type});add(g.regions[codes[c.r]]??=group(),row,{type});
+      }
+    }
+    for(const type of ['jeonse','monthly'])for(const contract of ['all','0','1','2']){const key=type+':'+contract,g=groups[key]??={total:group(),districts:{},regions:{}};
+      groups[key]={total:finish(g.total),districts:Object.fromEntries(Object.entries(g.districts).map(([k,v])=>[k,finish(v)])),regions:Object.fromEntries(Object.entries(g.regions).map(([k,v])=>[k,finish(v)]))};
+    }return groups;
+  }
+  function summaryEligible(s){return (s.gus||[]).length<=1&&!s.searchIds?.length&&!['q','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'].some(k=>s[k]!==''&&s[k]!=null);}
+  function selectSummary(groups,s){const g=groups[s.type+':'+s.contract];if(!g)throw Error('Missing market summary');const empty=finish(group());
+    if(s.gus?.length){const name=s.gus[0],region=groups.districtRegions?.[name],found=(!s.region||s.region===region)?g.districts[name]:null,v=found||empty;return {total:v,districts:found?{[name]:v}:{},regions:found&&region?{[region]:v}:{}};}
+    if(!s.region)return g;
+    const total=g.regions[s.region]||empty;return {total,districts:Object.fromEntries(Object.entries(g.districts).filter(([name])=>groups.districtRegions?.[name]===s.region)),regions:g.regions[s.region]?{[s.region]:total}:{}};
+  }
   function normalize(url,meta,saved={}){
     const p=url.searchParams,h=new URLSearchParams(url.hash.slice(1)),first=meta.months[0],last=meta.months.at(-1),get=k=>p.get(k)??saved[k];
     const type=['sale','jeonse','monthly'].includes(get('tenure'))?get('tenure'):'sale';
@@ -43,5 +61,5 @@
     for(const k of ['q','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'])s[k]=get('rental_'+k)||'';
     if(type==='jeonse')s.rentMin=s.rentMax='';return s;
   }
-  const api={regions,codes,months,shift,monthNumber,monthString,values,boundaries,tier,matches,aggregate,normalize};root.NodoMarketRental=api;if(typeof module!=='undefined')module.exports=api;
+  const api={regions,codes,months,shift,monthNumber,monthString,values,boundaries,tier,matches,aggregate,summarize,summaryEligible,selectSummary,normalize};root.NodoMarketRental=api;if(typeof module!=='undefined')module.exports=api;
 })(globalThis);

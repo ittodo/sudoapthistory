@@ -35,7 +35,7 @@ export function build(root, output, sha) {
   root=resolve(root); output=resolve(output);
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
-  const started=performance.now(),timings={},regionPriceStats={},verificationEngine=weeklyEngine(root),fullVerification=process.env.NODO_FULL_VERIFY==='1';
+  const started=performance.now(),timings={},regionPriceStats={},rentalMarketStats={},verificationEngine=weeklyEngine(root),fullVerification=process.env.NODO_FULL_VERIFY==='1';
   const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
   if(existsSync(join(root,'js/market-mortgage.js')))phase('mortgage',()=>validateMortgage(JSON.parse(readFileSync(join(root,'data/market-rates/mortgage.json'),'utf8')),new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())));
   const validation=new ValidationSession(root);
@@ -72,7 +72,7 @@ export function build(root, output, sha) {
   if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).sources)){
     if(assets.find(f=>f.path===path)?.sha256!==hash)throw Error('Search source changed during packaging: '+path);
   }
-  assets.push(...generatedSearch,...phase('rental-map',()=>rentalMapAssets(root)),...phase('rental-market',()=>rentalMarketAssets(root)),...phase('region-prices',()=>regionPriceAssets(root,{stats:regionPriceStats})));
+  assets.push(...generatedSearch,...phase('rental-map',()=>rentalMapAssets(root)),...phase('rental-market',()=>rentalMarketAssets(root,{stats:rentalMarketStats})),...phase('region-prices',()=>regionPriceAssets(root,{stats:regionPriceStats})));
   const packagingStarted=performance.now();
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
@@ -104,7 +104,7 @@ export function build(root, output, sha) {
   emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
   timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
   if(weeklyEngine(root)!==verificationEngine)throw Error('Verification engine changed during build');
-  const result={fullVerification,verificationEngine,gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
+  const result={fullVerification,verificationEngine,gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,rentalMarketStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
   writeFileSync(join(root,'cloudflare/dist/build-timings.json'),JSON.stringify(result));
   return result;
 }

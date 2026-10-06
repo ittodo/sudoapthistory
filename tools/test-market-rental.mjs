@@ -6,6 +6,8 @@ import {join,resolve,dirname} from 'node:path';
 import vm from 'node:vm';
 import {createHash,webcrypto} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
+import * as codec from '../js/generated/housing-columns.mjs';
+import {packQuarter,encodeQuarter} from '../js/housing-quarter.mjs';
 import {compactMarketShard,rentalMarketAssets} from './build-rental-market-cache.mjs';
 const root=resolve(import.meta.dirname,'..');
 const ctx=vm.createContext({URLSearchParams});vm.runInContext(readFileSync(join(root,'js/market-rental-model.js'),'utf8'),ctx);const M=ctx.NodoMarketRental;
@@ -116,4 +118,48 @@ test('a metric change during download shares the pending file instead of cancell
   const next=w.request('view',{...s,metric:'deposit'});release();
   assert.equal((await old).stale,true);assert.equal((await next).rowCount,2);
   assert.equal(w.fetched.filter(p=>p===path).length,1,'the interrupted UI request does not restart its shared download');
+});
+
+function addSummaries(w){
+ const manifest=JSON.parse(w.files['data/rental/index.json']),years={};
+ for(const month of manifest.months){const rows=[];for(const region of ['11','41','28'])rows.push(...compactMarketShard(JSON.parse(gunzipSync(w.files[`data/rental/months/${month}-${region}.bin`]))).rows);
+  const groups=M.summarize(rows,cat);groups.districtRegions={'종로구':'11','수원시':'41'};(years[month.slice(0,4)]??={})[month]={schema:2,month,groups};}
+ const sources={};for(const[year,months]of Object.entries(years)){const path=`data/rental/market-cache/${year}-summary.bin`;w.add(path,{schema:2,months});sources[path]=w.sources[path];}
+ w.files['data/rental/market-cache/index.json']=Buffer.from(JSON.stringify({schema:2,sourceVersion:manifest.version,inputs:manifest.sources,sources,saleStartYear:2006,districts:{'11':['종로구'],'41':['수원시'],'28':[]}}));return w;
+}
+test('precomputed statistics match transaction aggregation for region, district, contracts and both types',()=>{
+ const rows=[row(10000,50),row(20000,100,6,60,1,2),row(5000,90,null),row(10000,0,null),row(20000,0,null,44,1,0)];const groups=M.summarize(rows,cat);groups.districtRegions={'종로구':'11','수원시':'41'};
+ for(const type of ['jeonse','monthly'])for(const contract of ['all','0','1','2'])for(const scope of [{},{region:'11'},{region:'41'},{gus:['수원시']},{region:'11',gus:['종로구']},{gus:['없는구']}]){
+  const query={...s,type,contract,...scope};assert.deepEqual(JSON.parse(JSON.stringify(M.selectSummary(groups,query))),JSON.parse(JSON.stringify(M.aggregate(rows,cat,query))));
+ }
+ assert.equal(M.summaryEligible({...s,gus:['종로구','수원시']}),false);assert.equal(M.summaryEligible({...s,areaMin:'1'}),false);
+});
+test('summary view loads annual statistics only; detail is opt-in and exact filters retain transaction calculation',async()=>{
+ const w=addSummaries(workerHarness());await w.request('init');const first=await w.request('view',s);
+ assert.equal(first.error,undefined);assert.equal(first.mode,'summary');assert.equal(first.rowCount,2);assert.equal(first.detailsLoaded,false);assert.equal(first.rows.length,0);
+ assert.equal(w.fetched.some(p=>p.includes('/months/')||p.endsWith('catalog.bin')),false,'charts require no transaction or catalog download');
+ const count=w.fetched.length;const district=await w.request('view',{...s,region:'11',gus:['종로구'],metric:'deposit',pm:'pyeong',tier:'detail'});assert.equal(district.data['2026-09'].total.count,2);assert.equal(w.fetched.length,count);
+ const detail=await w.request('view',{...s,details:true});assert.equal(detail.mode,'summary');assert.equal(detail.rows.length,2);assert.equal(detail.detailsLoaded,true);
+ assert.deepEqual(w.fetched.filter(p=>p.includes('/months/')).sort(),['11','28','41'].map(r=>`data/rental/months/2026-09-${r}.bin`));
+ const filtered=await w.request('view',{...s,rentMin:'70'});assert.equal(filtered.mode,'transactions');assert.equal(filtered.data['2026-09'].total.count,1);
+});
+test('summary corruption blocks charts and retry repairs only the failed year; stale source falls back safely',async()=>{
+ const w=addSummaries(workerHarness());const path='data/rental/market-cache/2026-summary.bin',saved=w.files[path];w.files[path]=Buffer.from('corrupt');await w.request('init');assert.ok((await w.request('view',s)).error);w.files[path]=saved;assert.equal((await w.request('view',s)).mode,'summary');
+ const stale=addSummaries(workerHarness());const index=JSON.parse(stale.files['data/rental/market-cache/index.json']);index.sourceVersion='old';stale.files['data/rental/market-cache/index.json']=Buffer.from(JSON.stringify(index));await stale.request('init');assert.equal((await stale.request('view',s)).mode,'transactions');
+});
+
+test('packed production summaries reuse unchanged months, invalidate metadata and reject corrupt input',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'nodo-market-packed-'));try{
+  for(const p of ['tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
+  const sources={},code='11110',base='data/daily/regions/'+code,identity={complexes:['11110-source'],areas:[[0,'33.05785']]};
+  const emit=(path,value,binary=false)=>{const bytes=binary?gzipSync(value):Buffer.from(JSON.stringify(value));mkdirSync(dirname(join(dir,path)),{recursive:true});writeFileSync(join(dir,path),bytes);sources[path]=hash(bytes);};
+  const rent=sourceRow(row(10000,50));rent[0]=code+':0';rent[1]='33.05785';rent[17]='01'.repeat(10);
+  const q=base+'/quarters/2026-Q3.bin',metadata=base+'/metadata.json';emit(q,encodeQuarter(packQuarter(code,'2026-Q3',{'2026-09':{daily:{rows:[],opening:[],updates:[]},rental:{rows:[rent],opening:[],updates:[rent]}}},identity,codec)),true);
+  emit(base+'/identities.json',identity);emit(metadata,{complexes:[{id:'11110-source',n:'단지',r:1,g:'종로구',d:'창신동'}],areas:[]});emit('data/daily/regions/index.json',{schema:3,regions:{[code]:{identities:base+'/identities.json',metadata}}});
+  const writeManifest=()=>{mkdirSync(join(dir,'data/rental'),{recursive:true});writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({schema:3,version:'packed',months:['2026-09'],sources,regional:{format:'packed-region',kind:'rental',authority:'data/daily/regions/index.json',quarters:{[code]:{'2026-09':q}},states:{[code]:{'2026-09':null}}}}));};writeManifest();
+  const stats={},assets=rentalMarketAssets(dir,{stats});assert.equal(stats.calculated,1);const output=assets.find(a=>a.path.endsWith('summary.bin')),summary=JSON.parse(gunzipSync(output.bytes));assert.equal(summary.months['2026-09'].groups['monthly:all'].total.count,1);
+  const second={};assert.equal(hash(rentalMarketAssets(dir,{stats:second})[0].bytes),hash(output.bytes));assert.equal(second.reused,1);
+  emit(metadata,{complexes:[{id:'11110-source',n:'단지',r:1,g:'중구',d:'창신동'}],areas:[]});writeManifest();const changed={};const updated=JSON.parse(gunzipSync(rentalMarketAssets(dir,{stats:changed})[0].bytes));assert.equal(changed.calculated,1);assert.equal(updated.months['2026-09'].groups['monthly:all'].districts['중구'].count,1);
+  writeFileSync(join(dir,q),Buffer.from('corrupt'));assert.throws(()=>rentalMarketAssets(dir),/source mismatch/i);
+ }finally{rmSync(dir,{recursive:true,force:true});}
 });

@@ -59,6 +59,12 @@ jobs:
           path: cloudflare/dist/region-price-cache-v2
           key: region-prices-v2-${{ runner.os }}-${{ github.sha }}
           restore-keys: region-prices-v2-${{ runner.os }}-
+      - name: Reuse rental market monthly statistics
+        uses: actions/cache@v4
+        with:
+          path: cloudflare/dist/rental-market-summary-v2
+          key: rental-market-summary-v2-${{ runner.os }}-${{ github.sha }}
+          restore-keys: rental-market-summary-v2-${{ runner.os }}-
       - name: Reuse verified data checks
         uses: actions/cache@v4
         with:
