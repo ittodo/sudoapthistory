@@ -5,7 +5,7 @@ import{scopedNativeMonth}from'./housing-native-adapter.mjs';
 import{VerifiedNativeInputs}from'./housing-native-inputs.mjs';
 import{readFileSync}from'node:fs';import{join,resolve}from'node:path';import{createHash}from'node:crypto';
 import{buildHousingSales}from'./build-housing-sales.mjs';import{buildHousingDetails}from'./build-housing-details.mjs';import{buildHousingRegions}from'./build-housing-regions.mjs';import*as codec from'../js/generated/housing-columns.mjs';import'../js/regional-data.js';
-const hash=b=>createHash('sha256').update(b).digest('hex'),spec=JSON.parse(readFileSync(process.argv[2])),site=resolve(spec.site),nativeInputs=new VerifiedNativeInputs({maxParsedBytes:spec.reuse_native_inputs===true?64*1024*1024:0}),nativeManifests={};
+const hash=b=>createHash('sha256').update(b).digest('hex'),spec=JSON.parse(readFileSync(process.argv[2])),site=resolve(spec.site),nativeInputs=new VerifiedNativeInputs({maxParsedBytes:spec.reuse_native_inputs!==false?64*1024*1024:0}),nativeManifests={};
 const json=(path,expected)=>nativeInputs.json(path,expected);
 const descriptor=json(join(site,'data/daily/regions/index.json')),payloads={};for(const path of Object.values(descriptor.regions).flatMap(r=>[r.identities,r.metadata]))payloads[path]=json(join(site,path));
 const table=globalThis.NodoRegional.tables(descriptor,payloads,'daily'),readers={};
@@ -25,7 +25,7 @@ readers.periodFingerprint=(code,months)=>hash(JSON.stringify(['daily','rental'].
 })));
 readers.stateFingerprint=(code,months)=>hash(JSON.stringify(['daily','rental'].map(kind=>{const m=manifestsFor(kind,code),province=code.startsWith('41')?0:code.startsWith('11')?1:2;return[kind,months.map(month=>{const p=kind==='daily'?'data/daily/'+province+'/'+month+'-state.bin':'data/rental/months/'+month+'-'+code.slice(0,2)+'-state.bin';const digest=m.sources[p];if(digest&&!generationSession?.old)nativeInputs.check(join(spec.generated[code],p),digest);return[month,p,digest||null];})];})));
 readers.regionOpening=(kind,code,month)=>{const m=manifestsFor(kind,code),province=code.startsWith('41')?0:code.startsWith('11')?1:2,p=kind==='daily'?'data/daily/'+province+'/'+month+'-state.bin':'data/rental/months/'+month+'-'+code.slice(0,2)+'-state.bin';return m.sources[p]?scopedNativeMonth(code,{rows:[],...json(join(spec.generated[code],p),m.sources[p])}).opening:[];};
-if(spec.reuse_quarter_cache===true)readers.quarterFingerprint=readers.periodFingerprint;
+if(spec.reuse_quarter_cache!==false&&process.env.NODO_FULL_VERIFY!=='1')readers.quarterFingerprint=readers.periodFingerprint;
 function manifestsFor(kind,code){return nativeManifests[kind][code];}
 readers.verify=()=>nativeInputs.verify();
 const generationSession=spec.fileGenerationBatch==null?null:new GenerationFileSession({site,output:resolve(spec.output),cache:spec.cache,batch:spec.fileGenerationBatch,engine:spec.generationEngine??null});
