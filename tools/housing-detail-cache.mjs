@@ -1,7 +1,7 @@
 // Successful local detail-generation receipts; outputs are always verified before reuse.
 import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync}from'node:fs';
 import{join,resolve}from'node:path';import{createHash}from'node:crypto';import{fileURLToPath}from'node:url';
-import{partitionDependencies}from'../js/housing-partition.mjs';import{validationEngine}from'./validation-session.mjs';
+import{partitionDependencies}from'../js/housing-partition.mjs';import{codeDependencyEngine as validationEngine}from'./code-dependencies.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex'),equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 export function detailEngine(name){return validationEngine(fileURLToPath(new URL('../',import.meta.url)),{roots:['tools/'+name]});}
 export function detailDependencies(reader,code,months){

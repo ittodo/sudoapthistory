@@ -107,3 +107,20 @@ test('directory replacement after a shared read cannot retain a successful proof
  const stats=new Proxy({},{set(target,key,value){target[key]=value;if(key==='reads'&&value===3){renameSync(join(root,'data/parts'),join(root,'data/old-parts'));mkdirSync(join(root,'data/parts'));writeFileSync(join(root,'data/parts/q.bin'),'original');}return true;}});
  assert.throws(()=>manifestDependencies(root,['data/one.json','data/two.json'],{stats}),/directory changed/);
 }));
+
+test('independent checker engines keep receipts when an unrelated checker changes',()=>fixture(root=>{
+ mkdirSync(join(root,'tools'));writeFileSync(join(root,'tools/a.mjs'),'export const n=1;');writeFileSync(join(root,'tools/b.mjs'),'export const n=1;');
+ const a={roots:['tools/a.mjs']},b={roots:['tools/b.mjs']};
+ for(const opts of [a,b]){const s=new ValidationSession(root,opts);s.check('same-scope',{},()=>({status:'PASS'}));s.flush();}
+ writeFileSync(join(root,'tools/b.mjs'),'export const n=2;');
+ const warm=new ValidationSession(root,a);warm.check('same-scope',{},()=>{throw Error('unrelated checker expired receipt');});assert.equal(warm.stats.reused,1);
+ const cold=new ValidationSession(root,b);cold.check('same-scope',{},()=>({status:'PASS'}));assert.equal(cold.stats.checked,1);
+}));
+
+test('actual detail producers exclude checker orchestration but include fact restoration code',()=>fixture(root=>{
+ const origin=new URL('../',import.meta.url),seen=new Set();
+ function copy(name){if(seen.has(name))return;seen.add(name);const source=new URL(name,origin),bytes=readFileSync(source),dest=join(root,name);mkdirSync(join(dest,'..'),{recursive:true});writeFileSync(dest,bytes);for(const m of bytes.toString().matchAll(/['"](\.{1,2}\/[^'"\n]+\.(?:m?js|cjs|json))['"]/g)){const next=new URL(m[1],source).pathname;const base=origin.pathname;copy(decodeURIComponent(next.slice(base.length)));}}
+ copy('tools/build-housing-sales.mjs');copy('tools/build-housing-details.mjs');
+ for(const name of ['build-housing-sales.mjs','build-housing-details.mjs']){const options={roots:['tools/'+name]},first=validationEngine(root,options);assert.notEqual(first,fullValidationEngine(root));writeFileSync(join(root,'tools/validation-session.mjs'),'changed checker orchestration');assert.equal(validationEngine(root,options),first);}
+ const options={roots:['tools/build-housing-sales.mjs']},first=validationEngine(root,options);writeFileSync(join(root,'js/housing-sale-detail.mjs'),'changed actual fact restoration');assert.notEqual(validationEngine(root,options),first);
+}));

@@ -1,5 +1,5 @@
 import{detailMemo,detailEngine,detailDependencies,detailIdentity}from'./housing-detail-cache.mjs';
-import{readFileSync,writeFileSync,mkdirSync,realpathSync}from'node:fs';import{join,dirname,resolve}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';import{regionalReader}from'./regional-data.mjs';import{saleReferencePool,restoreSaleReferences,excludedSaleRows}from'../js/housing-sale-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
+import{readFileSync,writeFileSync,mkdirSync,realpathSync}from'node:fs';import{join,dirname,resolve}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';import{regionalReader}from'./regional-reader.mjs';import{saleReferencePool,restoreSaleReferences,excludedSaleRows}from'../js/housing-sale-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 import{exactDecimal}from'../js/housing-facts.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function packSaleYear(groups,facts,table,code,year,baseIds=new Set(facts.map(f=>f[10]))){

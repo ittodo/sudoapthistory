@@ -4,7 +4,7 @@ import{readFileSync,lstatSync}from'node:fs';import{join}from'node:path';import{g
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function verifyHousingSales(root){
  const safe=p=>{let x=root;for(const s of p.split('/')){if(!s||s==='.'||s==='..'||/[\\:]/.test(s))throw Error('Unsafe sale detail path');x=join(x,s);if(lstatSync(x).isSymbolicLink())throw Error('Sale detail symlink');}return x;};
- const session=new ValidationSession(root);
+ const session=new ValidationSession(root,{roots:['tools/verify-housing-sales.mjs']});
  const manifest=JSON.parse(readFileSync(safe('data/sale-details/index.json'))),shared=regionalReader(root,'daily'),expected=new Set(),factSources=new Set();let rows=0,excludedCount=0;
  if(manifest.schema!==1||manifest.format!=='sale-fact-references'||!manifest.sources||!manifest.facts)throw Error('Invalid sale references');
  const read=p=>{expected.add(p);const b=readFileSync(safe(p));if(b.length>25*1024*1024||hash(b)!==manifest.sources[p])throw Error('Sale reference digest/size mismatch');return new Uint8Array(gunzipSync(b));};

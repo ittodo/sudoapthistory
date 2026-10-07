@@ -5,7 +5,7 @@ import {gzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
 import {pathToFileURL} from 'node:url';
-import {regionalReader} from './regional-data.mjs';
+import {regionalReader} from './regional-reader.mjs';
 import {verifyPoolFiles} from './housing-pool-verifier.mjs';
 import {partitionDependencies} from '../js/housing-partition.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
@@ -14,7 +14,7 @@ function safeDirectory(path){for(let p=resolve(path);;){if(existsSync(p)&&lstatS
 export function rebuildRecordPools(site,output,{codes=null,full=process.env.NODO_FULL_VERIFY==='1',readers=null,outputChecks=null,onProgress=null}={}){
  const started=performance.now(),d=readers?.daily??regionalReader(site,'daily'),r=readers?.rental??regionalReader(site,'rental');
  if(d.manifest.schema!==3||r.manifest.schema!==3)throw Error('Packed source required');
- const engine=hash(['./housing-record-pool.mjs','./housing-pool-verifier.mjs','./regional-data.mjs','./housing-regional-reader.mjs','../js/regional-data.js','../js/housing-validation.mjs','../js/housing-quarter.mjs','../js/housing-facts.mjs','../js/housing-state-timeline.mjs','../js/housing-partition.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
+ const engine=hash(['./housing-record-pool.mjs','./regional-reader.mjs','./housing-regional-reader.mjs','../js/regional-data.js','../js/housing-validation.mjs','../js/housing-quarter.mjs','../js/housing-facts.mjs','../js/housing-state-timeline.mjs','../js/housing-partition.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
  safeDirectory(output);const all={},metrics=[];
  for(const code of codes??[...d.table.regions.keys()].sort()){
   if(!/^\d{5}$/.test(code)||!d.table.regions.has(code)||!r.table.regions.has(code))throw Error('Unknown pool region');

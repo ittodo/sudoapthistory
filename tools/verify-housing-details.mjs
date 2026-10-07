@@ -4,7 +4,7 @@ import{readFileSync,lstatSync}from'node:fs';import{join}from'node:path';import{g
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function verifyHousingDetails(root){
  const safe=p=>{let x=root;for(const part of p.split('/')){if(!part||part==='.'||part==='..'||/[\\:]/.test(part))throw Error('Unsafe contract path');x=join(x,part);if(lstatSync(x).isSymbolicLink())throw Error('Contract symlink');}return x;};
- const session=new ValidationSession(root);
+ const session=new ValidationSession(root,{roots:['tools/verify-housing-details.mjs']});
  const manifest=JSON.parse(readFileSync(safe('data/contracts/index.json'))),rent=JSON.parse(readFileSync(safe('data/apartment-rent/index.json'))),rental=regionalReader(root,'rental');
  if(manifest.schema!==2||rent.schema!==2||manifest.rentalVersion!==rental.manifest.version||rent.rentalVersion!==rental.manifest.version||rent.contractsHash!==hash(readFileSync(safe('data/contracts/index.json')))||rent.catalogHash!==hash(readFileSync(safe('data/apartments/index.json'))))throw Error('Detail manifest binding mismatch');
  const read=p=>{const b=readFileSync(safe(p));if(b.length>25*1024*1024||hash(b)!==manifest.sources[p])throw Error('Contract hash/size mismatch');return p.endsWith('.bin')?new Uint8Array(gunzipSync(b)):JSON.parse(b);};let count=0,unmatched=0;const expected=new Set(),displayUsage=new Map();

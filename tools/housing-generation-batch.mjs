@@ -2,7 +2,7 @@
 // No public schema change and no DB writes. Checkpoint is accepted by outer Rust prepare.
 import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync}from'node:fs';
 import{join,resolve,dirname,sep}from'node:path';import{createHash}from'node:crypto';
-import{validationEngine}from'./validation-session.mjs';
+import{codeDependencyEngine as validationEngine}from'./code-dependencies.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex'),eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 // Dependency keys can contain exact integer mantissas from excluded sale facts.
 // Encode every value with its type so bigint, decimal text and numbers cannot collide.

@@ -2,7 +2,7 @@ import{contractInput}from'./housing-contract-input.mjs';
 import{detailMemo,detailEngine,detailDependencies,detailIdentity}from'./housing-detail-cache.mjs';
 // Read-only migration of published apartment contracts into references + sparse extras.
 import{readFileSync,writeFileSync,mkdirSync,realpathSync}from'node:fs';import{resolve,join,dirname}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
-import{regionalReader}from'./regional-data.mjs';import{packContractDetails,restoreDetails}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
+import{regionalReader}from'./regional-reader.mjs';import{packContractDetails,restoreDetails}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex'),canonical=r=>JSON.stringify(Object.fromEntries(Object.keys(r).sort().map(k=>[k,r[k]])));
 export function retainUnconvertedContracts(previous,manifest,emit){
  const inputs=new Map(),read=p=>{const b=readFileSync(join(previous,p));inputs.set(p,hash(b));return b;},prior=JSON.parse(read('data/contracts/index.json'));if(![1,2].includes(prior.schema))throw Error('Unsupported previous contract manifest');

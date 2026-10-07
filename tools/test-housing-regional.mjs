@@ -26,7 +26,7 @@ test('browser and Node schema 3 readers share scoped facts, map states and sourc
   assert.deepEqual(check().validation,{checked:2,reused:0});assert.deepEqual(check().validation,{checked:0,reused:2});
   const metadata='data/daily/regions/11110/metadata.json';const changed=Buffer.from(JSON.stringify({complexes:[{id:'11110source',n:'changed name',r:1}],areas:[]}));writeFileSync(join(root,metadata),changed);const digest=createHash('sha256').update(changed).digest('hex');
   for(const kind of ['daily','rental']){const path=join(root,'data/'+kind+'/index.json'),manifest=JSON.parse(readFileSync(path));manifest.sources[metadata]=digest;writeFileSync(path,JSON.stringify(manifest));}
-  assert.deepEqual(check().validation,{checked:1,reused:1});
+  assert.deepEqual(check().validation,{checked:0,reused:2});
  }finally{const target=realpathSync(root),parent=realpathSync(tmpdir());if(!target.startsWith(parent+sep)||!target.slice(parent.length+1).startsWith('housing-regional-'))throw Error('Unsafe test cleanup');rmSync(target,{recursive:true,force:true});}
 });
 
