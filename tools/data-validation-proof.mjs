@@ -4,12 +4,33 @@ import {createHash} from 'node:crypto';
 import {existsSync,lstatSync,readFileSync,writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {validationEngine,manifestDependencies} from './validation-session.mjs';
+import {currentReviewContract,housingPublicationMode} from './housing-publication-contract.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 export const proofPath='data/.housing-validation.json';
 export const proofManifests=['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json','data/contracts/index.json','data/apartment-rent/index.json','data/rental/index.json'];
+function metadataCheck(housing,map,housingSha256,mapSha256){
+ if(housingPublicationMode(housing,map)==='legacy')return null;
+ return {contract:currentReviewContract,sourceVersion:housing.meta.sourceVersion,housingSha256,mapSha256,individualApprovals:'preserved_from_workbench'};
+}
+// This binds the final publication metadata. It does not replace transaction
+// verification or convert individual workbench decisions into approvals.
+export function currentReviewMetadataCheck(root){
+ const housing=readFileSync(join(root,'data/housing-v3/index.json')),map=readFileSync(join(root,'data/map/index.json'));
+ return metadataCheck(JSON.parse(housing),JSON.parse(map),hash(housing),hash(map));
+}
+function publicationCheck(root,sources,check){
+ const housingPath='data/housing-v3/index.json',mapPath='data/map/index.json';
+ if(!sources[housingPath]&&!sources[mapPath]&&!check)return null;
+ const read=path=>{const bytes=readFileSync(join(root,path));if(hash(bytes)!==sources[path])throw Error('Publication proof source mismatch: '+path);return JSON.parse(bytes);};
+ const expected=metadataCheck(read(housingPath),read(mapPath),sources[housingPath],sources[mapPath]);
+ if(!expected){if(check)throw Error('Current review proof requires current publication metadata');return null;}
+ if(!check||Object.entries(expected).some(([key,value])=>check[key]!==value))throw Error('Current review proof does not match publication metadata');
+ return expected;
+}
 export function createDataValidationProof(root,checks){
  if(checks.status!=='PASS'||checks.schema!==3||checks.sales?.status!=='PASS'||checks.details?.status!=='PASS'||checks.apartment?.verified!==true)throw Error('Complete verified housing checks required');
  const body={schema:1,engine:validationEngine(root),sources:manifestDependencies(root,proofManifests),checks:{status:'PASS',schema:3,saleRows:checks.sales.rows,rentalRows:checks.details.contracts,excluded:checks.sales.excluded,unmatched:checks.details.unmatched}};
+ const currentReview=publicationCheck(root,body.sources,checks.currentReview);if(currentReview)body.checks.currentReview=currentReview;
  const proof={...body,digest:hash(JSON.stringify(body))};writeFileSync(join(root,proofPath),JSON.stringify(proof));return proof;
 }
 export function dataValidationProof(root,{full=process.env.NODO_FULL_VERIFY==='1'}={}){
@@ -23,5 +44,6 @@ export function dataValidationProof(root,{full=process.env.NODO_FULL_VERIFY==='1
  // a byte inconsistent with its own dataset manifest remains a hard failure.
  const current=manifestDependencies(root,proofManifests);
  if(JSON.stringify(current)!==JSON.stringify(proof.sources))return {status:'INPUT_CHANGED'};
+ try{publicationCheck(root,current,proof.checks.currentReview);}catch{return {status:'INVALID'};}
  return {status:'VERIFIED',digest,checks:proof.checks};
 }

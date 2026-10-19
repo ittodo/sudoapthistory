@@ -10,6 +10,7 @@ test('rental date loads retain the completed frame; tenure and filter changes cl
  const context=vm.createContext({window:{},location:{hash:''},URLSearchParams,settings,ResizeObserver:class{observe(){}},
   document:{querySelector:()=>host,createElement:()=>status},fetch:async()=>({ok:true,json:async()=>({d:[],meta:{sources:{}}})}),createVerifiedDataClient:()=>()=>{},NodoRental:{REGIONS:['41','11','28']},
   NodoMapRegions:{create:()=>({render(){},setSummaries(values){shownSummaries=values;}})},
+  NodoMapParcels:{create:()=>({render(){}})},
   L:{map:()=>map,control:{zoom:()=>({addTo(){}})},tileLayer:()=>({addTo(){}}),divIcon:x=>x,marker:(anchor,options)=>({options,element:{innerHTML:options.icon.html},getElement(){return this.element;},addTo(){layers.add(this);return this;},on(){},setLatLng(){},setIcon(){assert.fail('Existing marker DOM must be reused like the sale map');}})},
   NodoMapModel:{bindMapTap(){},labelPosition:()=>[37,127]}});
  vm.runInContext(readFileSync(new URL('../js/rental-map-view.js',import.meta.url),'utf8'),context);

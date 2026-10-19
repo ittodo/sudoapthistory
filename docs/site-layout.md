@@ -14,6 +14,12 @@ directory without requiring Git. `--root DIRECTORY` selects a different reposito
 `--json` reports each path, byte size and content hash, plus a reproducible manifest hash.
 Git snapshots use Git blob hashes; disk artifacts use SHA-256.
 
+The CLI also supports Windows extended paths (`\\?\D:\...`). This includes a
+relative script path from an extended working directory, as used by the Rust
+publisher. These calls run the same checks and return the same report and exit
+status. A module import does not run the CLI. Run `node tools/test-site-layout.mjs`
+to check these entry points with valid and forbidden output files.
+
 `--allow-existing-legacy` is audit-only and must never appear in a publish command.
 Retired `data/div/` and `div/data/`, nested earnings directories and data backup/temp
 files are forbidden. A duplicate-content count is informational, not authorization

@@ -5,7 +5,17 @@ import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync,truncateSync,sta
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {publicAsset,runtime,injection,build,sha256} from './build-cloudflare-assets.mjs';
+import {publicAsset,runtime,injection,build,sha256,assertPublishableMetadata} from './build-cloudflare-assets.mjs';
+test('current review preview cannot enter a production package',()=>{
+ const root=mkdtempSync(join(tmpdir(),'review-package-'));
+ try {
+  mkdirSync(join(root,'data/housing-v3'),{recursive:true});
+  writeFileSync(join(root,'data/housing-v3/index.json'),JSON.stringify({meta:{candidateOnly:true,approvedOnly:false}}));
+  assert.throws(()=>assertPublishableMetadata(root),/Local review candidate/);
+  writeFileSync(join(root,'data/housing-v3/index.json'),JSON.stringify({meta:{approvedOnly:true}}));
+  assert.doesNotThrow(()=>assertPublishableMetadata(root));
+ } finally {rmSync(root,{recursive:true,force:true});}
+});
 test('one-file-at-a-time packaging preserves bytes and manifest hashes and rejects oversized assets',()=>{
  const root=mkdtempSync(join(tmpdir(),'nodo-assets-stream-'));
  try {

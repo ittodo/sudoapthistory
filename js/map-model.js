@@ -11,7 +11,12 @@
     if (f.r != null && c.r !== f.r) return null;
     if (!range(c.tu, f.uL, f.uH) || !range(c.b, f.bL, f.bH)) return null;
     const areas = c.areas.filter(a => range(a.a, f.aL, f.aH));
-    if (!areas.length) return null;
+    if (!areas.length) {
+      // A located review target can have no published sale facts yet.
+      // Keep it visible unless the user asks for a measured area or price.
+      return !c.areas.length && ['current_review_candidate','current_review'].includes(c.scope) && [f.aL,f.aH,f.pL,f.pH].every(v=>v==null)
+        ? {complex:c,areas:[],area:null} : null;
+    }
     const area = latestArea(areas);
     if (!range(area ? area.latest[1]/10000 : null, f.pL, f.pH)) return null;
     return {complex:c, areas, area};
@@ -108,7 +113,7 @@
   }
   // Move only the price label; parcel coordinates and identities stay unchanged.
   function labelPosition(complex,map) {
-    const center=map.latLngToContainerPoint(complex.coord),bounds=complex.parcelBounds;
+    const center=map.latLngToContainerPoint(complex.coord),bounds=complex.displayBounds||complex.parcelBounds;
     let y=center.y-36;
     if(bounds?.length===2&&bounds.flat().every(Number.isFinite)){
       const top=map.latLngToContainerPoint([bounds[1][0],complex.coord[1]]);

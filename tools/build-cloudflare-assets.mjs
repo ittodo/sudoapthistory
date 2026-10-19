@@ -18,9 +18,20 @@ import {searchAssets} from './build-search-data.mjs';
 import {regionPriceAssets} from './build-region-price-cache.mjs';
 import {rentalMapAssets} from './build-rental-map-cache.mjs';
 import {rentalMarketAssets} from './build-rental-market-cache.mjs';
+import {housingPublicationMode} from './housing-publication-contract.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const injection = '<script src="/deployment-version.js"></script>';
+export function assertPublishableMetadata(root) {
+  const metadata=[];
+  for(const path of ['data/housing-v3/index.json','data/map/index.json']){
+    if(!existsSync(join(root,path))){metadata.push(null);continue;}
+    const value=JSON.parse(readFileSync(join(root,path),'utf8'));
+    if(value.meta?.candidateOnly===true)throw Error('Local review candidate cannot be packaged for production: '+path);
+    metadata.push(value);
+  }
+  if(metadata.some(value=>value?.meta?.contract?.startsWith('current-review-')))housingPublicationMode(...metadata);
+}
 export function publicAsset(path) {
   if (path.split('/').some(p => p.startsWith('.') || /^(docs|tools|cloudflare|supabase|schemas|tests?|logs?)$/i.test(p))) return false;
   if (forbiddenReason(path)) return false;
@@ -35,6 +46,7 @@ export function build(root, output, sha) {
   root=resolve(root); output=resolve(output);
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
+  assertPublishableMetadata(root);
   const started=performance.now(),timings={},regionPriceStats={},rentalMarketStats={},verificationEngine=weeklyEngine(root),fullVerification=process.env.NODO_FULL_VERIFY==='1';
   const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
   if(existsSync(join(root,'js/market-mortgage.js')))phase('mortgage',()=>validateMortgage(JSON.parse(readFileSync(join(root,'data/market-rates/mortgage.json'),'utf8')),new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())));

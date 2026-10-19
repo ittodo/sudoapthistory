@@ -4,12 +4,36 @@
 > 현재 운영·공개 자료 계약은 문서 목록의 기준 문서를 따릅니다. 날짜·건수·성능 수치는 해당 검증 조건의 기록입니다.
 
 
-`/map/` first groups the existing area rows by `aptSeq`. Approved K-APT publications
+In the legacy publication mode, `/map/` first groups the existing area rows by `aptSeq`. Approved K-APT publications
 in `data/housing-v3/index.json` can then combine multiple active transaction sources
 into one map complex. Only apartment/trade publications with K-APT codes qualify;
 shared names, addresses or PNUs alone never combine identities. The publication
 snapshot is hashed with the map inputs and supplied to map/parcel release builds.
 Ambiguous overlapping publications or cross-district groups fail the build.
+
+현재 리뷰 공개 모드는 기존 공개 단지 ID를 유지한다. 원천별 필지 목록이 달라도
+같은 공개 단지를 자동 분리하지 않는다. 각 원천의 수정된 필지는 `memberSources`에
+보존한다. 서로 다른 공개 단지는 이름이나 필지가 같다는 이유로 합치지 않는다.
+
+현재 리뷰의 지도 외곽선은 생성 단계에서 단지별로 합친다. 맞닿은 필지의 내부 선을
+없앤다. 떨어진 구역과 내부 구멍은 보존한다. 하나의 단지로 선택되며 빈 땅을 채우지
+않는다. 검토 보정 경계가 포함되면 점선으로 표시한다. 원래 PNU와 보정 도형은 별도로
+보존한다. 이 외곽선은 지적 필지 한 개를 뜻하지 않는다.
+
+합친 도형은 `data/map/boundaries/{g}.json`에 저장한다. 지도 행의 `boundaryKey`와
+상세 DTO의 `map.boundary`가 같은 도형을 가리킨다. 지도는 현재 화면의 지역 파일만
+불러와 재사용한다. 브라우저에서 경계를 합치거나 현재 단지의 PNU를 하나씩 재조회하지
+않는다. 경계 파일의 해시는 지도와 상세 목록에 연결한다. 새 필드가 없는 기존 공개
+자료는 필지별 표시를 유지한다.
+
+2026-10-19 격리 미리보기에서 20,542개 단지의 외곽선을 생성했다. 돈의문센트레빌의
+3개 필지는 한 외곽선으로 표시됐다. 정든마을 동아 2단지와 우성 6단지는 다른 경계로
+유지됐다. 매매 상세 위치와 전세 경계 클릭을 브라우저에서 확인했다.
+정식 계약으로 생성한 자료는 Windows 검증 명령의 경로 처리를 고친 뒤 별도 전체
+검증을 통과했다. 기존 공개 ID와 댓글 행 연결도 보존됐다. 원래 생성 실행의 실패
+기록과 별도 검증 결과는 구분해 보존했다.
+[검산 기록](../../15_26/_ops/current-review-migration/boundary-display-verification-20261019.json)은
+격리 생성과 미리보기 결과이며 라이브 배포 완료를 뜻하지 않는다.
 
 A presentation group uses the smallest existing aptSeq as its canonical ID and
 keeps every old aptSeq as an alias via `memberSources`. It shows the approved name,
@@ -55,8 +79,8 @@ Thin boundaries use one pinned SGIS 2025 vintage, including parent codes/names.
 The public SGIS map uses the same year. Current address text and 2025 boundaries
 can differ after reorganizations (e.g. Hwaseong); the UI always states the vintage.
 The raw EPSG:5179 snapshot is cached at `15_26/data/map_admin_boundaries.json.gz`.
-Refresh explicitly with `python collect_map_admin.py --year YEAR` in that repo,
-never on a page request or release build. Builds require shapely 2.x and pyproj 3.x.
+Refresh the source with the Rust `collect-map-admin` collector in `15_26/rust-kapt`.
+Do not collect it on a page request or release build. The native build uses the pinned GEOS/PROJ runtime.
 Point-in-polygon runs on unsimplified native geometry, with invalid geometry repaired
 and the repair IDs recorded. Ambiguous/missing points never infer administrative dong
 from a legal-dong name. Known parents still count them; the UI reports unassigned dong.
@@ -77,40 +101,43 @@ Legacy name-only/district coordinates are intentionally not used. Missing points
 remain searchable. Lifecycle exclusions match the screener, including partial
 and unknown predecessor scopes.
 
-Build using the current release's static inputs:
+Map generation uses the Rust release pipeline. See [the release contract](../../15_26/docs/site-release-workflow.md).
+The former Python map and daily builders are retired. Their reference cases remain in Git history.
 
-```powershell
-python tools/build-map-data.py --database D:/Work/15_26/snapshots/kapt_manual_review.db --coordinate-cache D:/Work/15_26/data/map_address_coordinates.json --admin-source D:/Work/15_26/data/map_admin_boundaries.json.gz
-python tools/build-map-data.py --verify
-node tools/test-map-model.cjs
-python tools/test-map-groups.py
-python tools/test-map-data.py
-python tools/test-map-admin.py
-```
+The current review adapter supports isolated previews and the current publication contract.
+It preserves map IDs, transaction row IDs and aliases. It keeps manual source
+outlines in `corrections`. The display boundary includes these outlines in the
+complex union described above. A union with a correction uses a dashed outline.
+A point without a parcel remains selectable and states that its boundary is missing.
+Only visible geometry is drawn. A correction without a PNU does not trigger a parcel request.
+
+Use `node tools/test-map-model.cjs` and `node tools/test-map-parcels.cjs` for these display rules.
+
 
 `data/map/index.json` carries SHA-256 hashes of its source files and regional
 parcel shards. Detail requests verify their bytes before resolving row IDs.
 A mixed release prompts refresh instead of displaying another apartment's data.
 The initial page fetches the map index and visible administrative boundary shards.
-From zoom 13, it also fetches cached parcel shards only for filtered complexes
-whose `parcelBounds` intersects the viewport. Bounds include all cached PNU geometry,
+From zoom 13, it also fetches boundary shards for current complexes and parcel shards
+for legacy complexes. It fetches only regions of filtered complexes whose
+`displayBounds` or `parcelBounds` intersects the viewport. Bounds include all cached geometry,
 not just the representative coordinate, and are checked by the builder verifier.
 Monthly and transaction data still load only upon selection. Parcel requests are
 coalesced and cached; stale render completions cannot redraw an old viewport.
 
-`js/map-parcels.js` keeps one visible layer per PNU. Unselected parcels have a 1px
+`js/map-parcels.js` keeps one visible layer per current complex, or per legacy PNU. Unselected boundaries have a 1px
 teal stroke and transparent fill; selected parcels use the existing 3px highlight.
 Both the stroke and interior select an apartment without panning or zooming. Shared
 PNU owners and overlapping polygons open a choice list without merging aptSeq IDs;
 polygon holes are excluded. Closing detail restores thin outlines. Below zoom 13,
 only the selected complex remains eligible for boundary rendering. Unselected
-complexes use static cache only; selected missing parcels retain the existing
-V-World fallback. All published parcel members and representative scope survive.
-Parcel and price selection take precedence over regional interaction. Missing
-cached parcels fall back to the shared V-World service with bounded concurrency.
+complexes use static cache only. Legacy selections retain the existing V-World
+fallback. Current unions report missing parcel boundaries without separate fallback
+layers. All published parcel members and representative scope survive.
+Parcel and price selection take precedence over regional interaction.
 Neither building approvals nor trade databases are modified by the builder.
 
-The production release entry point remains `D:/Work/15_26/site_release.py`.
+The production entry point is `D:/Work/15_26/rust/target/release/nodostream-pipeline.exe release`.
 `prepare --kind map` rebuilds map outputs against the committed site's current
 index, transactions, monthly data and parcel membership. Full and parcel releases
 also regenerate the map so row IDs and source hashes remain synchronized.

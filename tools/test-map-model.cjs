@@ -8,6 +8,8 @@ const projection=scale=>({latLngToContainerPoint:([lat,lng])=>({x:lng*scale,y:-l
 const footprint={coord:[5,5],parcelBounds:[[0,0],[10,10]]};
 assert.deepEqual(model.labelPosition(footprint,projection(20)),[8,5],'large parcels place price 40 pixels below their north edge');
 assert.deepEqual(model.labelPosition(footprint,projection(40)),[9,5],'zoom recomputes the upper inset');
+assert.deepEqual(model.labelPosition({...footprint,displayBounds:[[0,0],[14,10]]},projection(20)),[12,5],'current union bounds take precedence over individual parcel bounds');
+assert.deepEqual(model.labelPosition({coord:[5,5],displayBounds:[[0,0],[14,10]]},projection(20)),[12,5],'correction-only bounds also position the label');
 assert.deepEqual(model.labelPosition({coord:[5,5]},projection(20)),[6.8,5],'unmapped footprint lifts only the label');
 assert.deepEqual(footprint.coord,[5,5],'label placement never changes the complex location');
 assert.deepEqual(model.labelPosition({...footprint,parcelBounds:[[5,5],[5,5]]},projection(20)),[6.8,5],'zero size bounds use the offset fallback');
@@ -22,6 +24,9 @@ assert.equal(model.match(complex,{r:2}),null);
 assert.equal(model.latestArea([area(1,84,20260201,100000),area(0,59,20260201,95000)]).a,59);
 assert.equal(model.match({...complex,areas:[{i:0,a:59,latest:null}]},{}).area,null);
 assert.equal(model.match({...complex,areas:[{i:0,a:59,latest:null}]},{pH:100}),null);
+assert.equal(model.match({...complex,areas:[],scope:'current_review_candidate'},{}).area,null);
+assert.equal(model.match({...complex,areas:[],scope:'current_review_candidate'},{aL:1}),null);
+assert.equal(model.match({...complex,areas:[],scope:'current_review_candidate'},{pH:100}),null);
 assert.equal(model.trades({'2026':[[1,2,5000,3,2,'26.01.03'],[2,3,6000,4,1]]})[0].flags,1);
 const other={...complex,id:'B',tu:2000,areas:[area(2,59,20260201,50000)]};
 assert.deepEqual(model.clusterSummary([model.match(complex,{}),model.match(other,{})]),{count:2,pricedCount:2,average:100000});

@@ -22,14 +22,14 @@
 `tools/build-search-data.mjs`가 빌드/로컬 서버 시작 시 아래 자료를 합쳐 `/data/search/apartments.json`을 생성한다. 거래 내역 파일은 검색 자료 생성이나 검색 Worker에서 읽지 않는다.
 
 - `data/index.json`: 평형 행과 원천 식별자
-- `data/apartments/index.json`: 기존 승인된 식별자 연결과 모호한 연결 목록
+- `data/apartments/index.json`: 공개 식별자 연결과 모호한 연결 목록
 - 매매·전월세 manifest와 지역 번호표·metadata: regionalReader가 현재 공개 형식을 해석해 단지 카탈로그를 구성합니다. 과거 catalog.bin 고정 경로를 직접 요구하지 않습니다.
 - `data/map/index.json`: 지도 식별자와 좌표
-- `data/housing-v3/index.json`: 승인된 단지 메타데이터
+- `data/housing-v3/index.json`: 공개 단지 메타데이터와 공개 계약
 
 연결이 확인된 식별자로만 합치고 이름이나 좌표 유사도로 합치지 않는다. 연결 미확정 전월세 단지는 `rental:<원천 ID>`로 유지한다. 등록된 이름 변형은 별칭에 보존한다. 숫자 시군구 코드는 기존 전월세 모델의 이름 변환을 재사용한다.
 
-검색 후보 수와 입력 지문은 현재 `/data/search/apartments.json`의 apartments/sources로 확인합니다. [검색 생성기](../tools/build-search-data.mjs)가 원천 번호표·지역 자료와 승인된 lookup을 합치며 원본이 포장 도중 바뀌면 빌드가 실패합니다. 자료 구조는 [현재 저장 계약](../../15_26/docs/housing-packed-storage.md)을 따릅니다.
+검색 후보 수와 입력 지문은 현재 `/data/search/apartments.json`의 apartments/sources로 확인합니다. [검색 생성기](../tools/build-search-data.mjs)가 원천 번호표·지역 자료와 공개 lookup을 합치며 원본이 포장 도중 바뀌면 빌드가 실패합니다. 공개 계약과 후보 차단은 아래 로컬 실행 절을 따릅니다. 자료 구조는 [현재 저장 계약](../../15_26/docs/housing-packed-storage.md)을 따릅니다.
 
 2026-09-20 검증 당시 자료 버전: `ed3ff04ed6e96b6da0f046970b3b31bf3a46b22e965e2daf09b5d5cb42ad9377`.
 
@@ -89,6 +89,34 @@
 ## 로컬 실행
 
 `npm ci` 후 `npm run preview`로 실행한다. 기본 주소는 `http://127.0.0.1:8793`이다. 검색 모델 또는 원본 자료를 변경하면 로컬 서버를 다시 시작해 생성된 자료와 Worker를 갱신한다. 운영 산출물은 `npm run build`로 생성되며 이 작업만으로 운영 배포되지는 않는다.
+
+현재 리뷰 후보의 검색은 `tools/prepare-current-review-search.mjs`로 별도 준비한다. 후보의 평형 행·상세 식별자·지도·단지 정보와 기존 공개 자료의 매매·전월세 단지 번호표만 합친다. 거래 내역은 읽지 않는다. 같은 공개 단지에 여러 원천이나 필지가 있어도 기존 식별자 연결을 유지한다. 결과는 후보 폴더의 `data/search/apartments.json`에만 저장한다.
+
+현재 원천이나 지역 근거가 없는 보존 단지는 “지역 미확인”으로 이름 검색에 남긴다. 지역을 추측해서 채우지 않는다. 상세 갱신은 기존 거래·면적·댓글 ID를 유지하고 충돌 없는 새 원천 링크만 추가한다. 다른 공개 ID가 가진 링크는 덮어쓰지 않고 미확정으로 표시한다. 임대 표시는 현재 임대 근거가 있을 때만 적용한다.
+
+후보는 `_ops` 아래의 별도 폴더여야 한다. 후보 manifest의 `candidateOnly`는 `true`여야 한다. 주택 메타데이터도 `candidateOnly: true`, `approvedOnly: false`여야 한다. 운영 검색 생성기는 후보를 받지 않는다. 아래 `CANDIDATE_DIRECTORY`를 준비된 후보의 절대 경로로 바꾼다.
+
+```text
+node tools/prepare-current-review-search.mjs D:/Work/sudoapthistory CANDIDATE_DIRECTORY
+node tools/prepare-current-review-timeline.mjs D:/Work/sudoapthistory CANDIDATE_DIRECTORY
+node tools/preview-current-review.mjs CANDIDATE_DIRECTORY
+```
+
+후보 미리보기는 `http://127.0.0.1:8794/map/`이다. 공개 데이터는 후보 파일을 우선 읽고 나머지 공유 거래 파일은 기존 소스에서 읽는다. HTML·JS·CSS는 현재 소스를 사용한다. GET·HEAD만 허용하며 로그인 API와 운영 쓰기는 연결하지 않는다. 화면에 “현재 리뷰 데이터 미리보기 · 운영 미반영”을 표시한다. 내부 evidence와 manifest는 제공하지 않는다.
+
+타임라인 후처리는 후보의 일별·전월세 manifest를 현재 지도 버전에 연결한다. 일별 manifest의 지도 파일 해시와 이에 종속된 미리보기 버전도 갱신한다. 검색 목록에는 실제 제공되는 두 manifest의 해시를 넣는다. 거래 파일·원천 revision·단지 번호표·가격 통계는 바꾸지 않는다. 전월세 자료 버전은 기존 계약 상세와 맞도록 보존한다. 준비된 후보에도 별도로 실행할 수 있다. 기존 공개 단지 ID가 빠졌거나 후보 manifest에 지도 참조 외 변경이 있으면 중단한다. 운영 자료와 공개 모드 선택에는 영향을 주지 않는다.
+
+이전 검색·지도 가격 캐시·단지 외곽선은 후보 대신 제공하지 않는다. 후보에 가격 캐시가 없으면 지도는 공유 거래 자료로 조회한다. 없는 검색 Worker 번들만 기존 포장 결과를 재사용한다. 준비된 검색의 입력 해시는 미리보기가 실제 제공하는 파일과 일치해야 한다.
+
+합친 단지 외곽선은 `data/map/boundaries/{g}.json`에 저장한다. 상세 DTO의 `map.boundary`는 공개 지도 ID, 시군구와 경계 근거를 참조한다. 검색 목록에는 도형을 복제하지 않는다. 지도에 선언한 외곽선 샤드 해시는 상세 인덱스와 검색 `sources`에도 포함한다. 후보 경계가 없거나 해시가 다르면 준비를 중단한다. 외곽선의 생성·표시는 [지도 문서](map-explorer.md)를 따른다.
+
+전용 검증은 `node --test tools/test-prepare-current-review-search.mjs tools/test-prepare-current-review-timeline.mjs tools/test-preview-current-review.mjs`로 실행한다. 임시 자료로 원천·식별자 보존, 입력 해시, 타임라인 초기화, 후보 우선순위, 읽기 전용 요청과 비공개 경로 차단을 확인한다.
+
+정식 현재 리뷰 계약의 Node 지원은 구현했지만 운영 전환은 아직 적용하지 않았다. 정식 자료는 주택·지도 메타데이터의 `contract`가 모두 `current-review-publication-v1`이고 `candidateOnly`가 모두 `false`여야 한다. 주택의 `approvedOnly`는 `false`여야 한다. 주택 `sourceVersion`과 지도 `publicationSourceVersion`도 같아야 한다. 지도 `sourceVersion`은 최종 행정 구역 연결까지 반영한 별도 버전이다. 기존 공개 형식은 `approvedOnly: true` 조건을 유지한다. 이 계약은 개별 검토 항목의 승인을 뜻하지 않는다.
+
+정식 상세 생성 경로는 생산자가 준비한 version 2 DTO를 재사용한다. 기존 거래·면적·댓글 ID를 다시 집계하지 않는다. `--verify`를 지정했을 때만 기존 상세 검증을 실행한다. 정식 검색은 후보와 같은 “지역 미확인” 처리를 쓴다. 현재 원천이 없다고 명시된 거래 없는 보존 단지만 이 처리를 받을 수 있다. 거래 원천의 지역 누락은 계속 오류로 처리한다.
+
+생산자 검증 결과의 `checks.currentReview`는 계약, 원천 버전, 주택·지도 파일 해시와 `individualApprovals: preserved_from_workbench`를 보존한다. 최종 `verify-housing-regions.mjs`는 실제 주택·지도 파일의 계약과 버전 연결을 확인하고 이 값을 구성한다. 완료 기록을 만들 때 manifest에 연결된 해시와 다시 대조한다. 기존 일별·전월세·거래 상세·아파트 DTO 검증 결과는 그대로 필요하다. 이전 `buildingAudit` 성공 결과를 대신 만들어 넣지 않는다. 후보 자료나 서로 다른 원천 버전은 완료 기록을 만들 수 없다. CLI 진입점은 일반 경로와 Rust가 전달하는 Windows 확장 경로(`\\?\D:\…`)를 같은 파일 URL로 판정한다. 두 경로 모두 검증을 실행하고 JSON 결과를 출력한다. 모듈을 import할 때는 자동 실행하지 않는다. 관련 독립 검증은 `node --test tools/test-verify-housing-regions.mjs tools/test-housing-publication-contract.mjs tools/test-cloudflare-apartment-sale.mjs tools/test-validation-session.mjs`로 실행한다.
 
 ## 예약 배포 호환
 

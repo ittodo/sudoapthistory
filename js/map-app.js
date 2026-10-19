@@ -209,7 +209,26 @@
   }
   async function loadBoundary() {
     const token=++boundaryToken,c=selected;
-    if(!c.pnus.length){$('boundaryInfo').textContent='확인된 필지 경계가 없습니다.';return;}
+    if(c.boundaryKey){
+      $('boundaryInfo').textContent='단지 외곽선을 불러오는 중…';
+      try{
+        const boundaries=await client(`data/map/boundaries/${c.g}.json`);
+        if(token!==boundaryToken)return;
+        const boundary=boundaries[c.boundaryKey];
+        if(!boundary?.features?.length)throw Error('단지 외곽선 자료가 없습니다.');
+        await parcelView.render(filtered,selected);
+        if(token!==boundaryToken)return;
+        const coverage=boundary.features[0].properties||{};
+        $('boundaryInfo').textContent='단지 외곽선 표시 · 필지 사이 내부 선은 합쳤습니다.'+(c.boundarySource==='review_display_correction'?' · 검토 보정 경계 포함':'')+(coverage.missingParcelCount?` · ${coverage.totalParcelCount}개 필지 중 ${coverage.missingParcelCount}개 경계 미확보`:'');
+      }catch(error){if(token===boundaryToken)retryMessage($('boundaryInfo'),error,loadBoundary);}
+      return;
+    }
+    const corrected=(c.corrections||[]).some(v=>['Polygon','MultiPolygon'].includes(v.geometry?.type));
+    if(!c.pnus.length){
+      parcelView.render(filtered,selected);
+      $('boundaryInfo').textContent=corrected?'검토 보정 경계 표시 · 지적 경계와 구분됩니다.':c.coord?'위치 점만 확보되어 있습니다. 필지 경계는 없습니다.':'위치와 필지 경계를 아직 확보하지 못했습니다.';
+      return;
+    }
     $('boundaryInfo').textContent='선택 단지의 필지 경계를 불러오는 중…';
     const failed=[];
     let cached={};
@@ -227,7 +246,7 @@
     }
     parcelView.render(filtered,selected);
     const label=c.scope.startsWith('representative')?'대표 필지':'공개된 단지 필지';
-    $('boundaryInfo').textContent=`${label} ${c.pnus.length-failed.length}/${c.pnus.length}개 표시${failed.length?' · 일부 경계를 불러오지 못했습니다.':''}`;
+    $('boundaryInfo').textContent=`${label} ${c.pnus.length-failed.length}/${c.pnus.length}개 표시${corrected?' · 검토 보정 경계 포함':''}${failed.length?' · 일부 경계를 불러오지 못했습니다.':''}`;
     if(failed.length){const button=document.createElement('button');button.textContent='경계 재시도';button.onclick=loadBoundary;$('boundaryInfo').append(button);}
   }
   function close(push=true) {

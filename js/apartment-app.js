@@ -35,9 +35,9 @@
     $('area-select').replaceChildren(...apartment.areas.map(a=>new Option(`${a.area}㎡ · ${(a.area/3.3058).toFixed(1)}평`,a.area)));
     if(area)$('area-select').value=area.area;else{$('area-select').add(new Option('평형 자료 없음',''));$('area-select').disabled=true;}
     $('area-units').textContent=area?`선택 평형 ${number(area.units)}세대`:'';
-    const notices=[];if(apartment.rental)notices.push('임대 단지로 확인되어 매매 실거래 통계를 제공하지 않습니다.');if(apartment.conflict)notices.push('단지 연결 정보를 확인 중입니다. 확정되지 않은 거래는 합쳐 표시하지 않습니다.');if(['demolished','closed','partial_closed','inactive'].includes(apartment.status))notices.push('과거 또는 일부 폐쇄 이력이 있는 단지입니다. 아래 가격은 과거 거래를 포함합니다.');
+    const notices=[];if(apartment.rental)notices.push('임대 단지로 확인되어 매매 실거래 통계를 제공하지 않습니다.');if(apartment.conflict)notices.push(apartment.review?'단지 연결 정보를 확인 중입니다. 거래는 기존 공개 단지 기준으로 표시합니다.':'단지 연결 정보를 확인 중입니다. 확정되지 않은 거래는 합쳐 표시하지 않습니다.');if(['demolished','closed','partial_closed','inactive'].includes(apartment.status))notices.push('과거 또는 일부 폐쇄 이력이 있는 단지입니다. 아래 가격은 과거 거래를 포함합니다.');
     $('apartment-notices').innerHTML=notices.map(t=>`<div class="nodo-notice">${esc(t)}</div>`).join('');
-    $('apartment-stamp').textContent=`거래 자료 기준 ${apartment.updated} · 국토교통부 실거래가 · 단지정보: 건축물대장·승인된 K-APT 연결`;
+    $('apartment-stamp').textContent=`거래 자료 기준 ${apartment.updated} · 국토교통부 실거래가 · 단지정보: ${apartment.review?'현재 주택 리뷰 연결 자료':'건축물대장·승인된 K-APT 연결'}`;
   }
   const metric=(label,value,hint='')=>`<div class="nodo-metric"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(hint)}</small></div>`;
   const latestHint=()=>area?.latest?`${date(area.latest.date)} · ${area.latest.floor??'미확인'}층${area.latest.flags&1?' · 직거래':''}`:'해제되지 않은 거래가 없습니다.';
@@ -60,6 +60,35 @@
     $('apartment-panel').innerHTML=`<div class="nodo-card"><div class="nodo-actions" style="justify-content:space-between;margin-bottom:18px"><h2 style="margin:0">${esc(area.area)}㎡ 매매 실거래</h2><label class="nodo-field">기간<select id="trade-year"><option value="">전체 기간</option>${[...new Set(rows.map(t=>Math.floor(t.date/10000)))].map(y=>`<option>${y}</option>`).join('')}</select></label></div><p class="nodo-muted">해제·원천에서 사라진 거래는 표시하되 가격 통계에서 제외합니다.</p><div class="nodo-table-wrap"><table class="nodo-table"><thead><tr><th>거래일</th><th class="numeric">거래금액</th><th>층</th><th>거래기록 단지명</th><th>계산</th></tr></thead><tbody id="trade-rows"></tbody></table></div><button id="trade-more" class="nodo-button" style="margin-top:16px">이전 거래 더 보기</button><div id="trade-count" class="nodo-muted"></div></div>`;
     let count=30;const render=()=>{const filtered=rows.filter(r=>!$('trade-year').value||String(r.date).startsWith($('trade-year').value));$('trade-rows').innerHTML=txRows(filtered.slice(0,count))||'<tr><td colspan="4">선택한 기간에 거래가 없습니다.</td></tr>';$('trade-more').hidden=count>=filtered.length;$('trade-count').textContent=`${Math.min(count,filtered.length)} / ${filtered.length}건`;};$('trade-more').onclick=()=>{count+=30;render();};$('trade-year').onchange=()=>{count=30;render();};render();
   }
+  async function showLocationBoundary(token){
+    const boundary=apartment.map?.boundary;
+    if(boundary){
+      const shard=await client('data/map/boundaries/'+boundary.region+'.json');
+      if(token!==generation)return;
+      const fc=shard[boundary.key];
+      if(!fc?.features?.length)throw Error('단지 외곽선 자료가 없습니다.');
+      const corrected=boundary.source==='review_display_correction';
+      const outline=L.geoJSON(fc,{style:{color:'#168d79',weight:2,fillOpacity:.12,dashArray:corrected?'6 4':null}}).addTo(map);
+      outline.bindTooltip(corrected?'단지 외곽선 · 검토 보정 경계 포함':'단지 외곽선');
+      map.fitBounds(outline.getBounds(),{padding:[24,24],maxZoom:17});
+      const coverage=fc.features[0].properties||{};
+      $('parcel-status').textContent='단지 외곽선 표시 · 필지 사이 내부 선은 합쳤습니다.'+(corrected?' · 검토 보정 경계 포함':'')+(coverage.missingParcelCount?` · ${coverage.totalParcelCount}개 필지 중 ${coverage.missingParcelCount}개 경계 미확보`:'');
+      return;
+    }
+    let shown=0;
+    for(let start=0;start<apartment.pnus.length;start+=4){
+      await Promise.allSettled(apartment.pnus.slice(start,start+4).map(async pnu=>{
+        const fc=await NodoMapServices.parcel(pnu);
+        if(token===generation){L.geoJSON(fc,{style:{color:'#168d79',weight:2,fillOpacity:.12}}).addTo(map);shown++;}
+      }));
+      if(token!==generation)return;
+    }
+    let corrected=0;
+    for(const c of apartment.corrections||[])if(['Polygon','MultiPolygon'].includes(c.geometry?.type)){
+      L.geoJSON(c.geometry,{style:{color:'#168d79',weight:2,fillOpacity:.08,dashArray:'6 4'}}).addTo(map).bindTooltip('검토 보정 경계');corrected++;
+    }
+    $('parcel-status').textContent=apartment.pnus.length?'확인된 필지 '+shown+'/'+apartment.pnus.length+'개 표시'+(corrected?' · 검토 보정 경계 포함':''):corrected?'검토 보정 경계 표시 · 지적 경계와 구분됩니다.':'위치 점만 확보되어 있습니다. 필지 경계는 없습니다.';
+  }
   async function render(){document.dispatchEvent(new Event('nodo:apartment-view'));const token=++generation;window.NodoRent?.clear();if(chart){chart.destroy();chart=null;}if(map){map.remove();map=null;}
     $('apartment-tabs').innerHTML=Object.entries(tabs).map(([id,n])=>`<button id="tab-${id}" role="tab" aria-controls="apartment-panel" aria-selected="${id===tab}" tabindex="${id===tab?0:-1}" data-tab="${id}">${n}</button>`).join('');
     $('apartment-panel').setAttribute('aria-labelledby','tab-'+tab);$('apartment-panel').innerHTML=status('자료를 불러오고 있습니다…');
@@ -80,10 +109,10 @@
           const update=()=>{const a=$('return-start').value,b=$('return-end').value;$('period-return').textContent=a&&b&&a<=b?pct((area.yearly[b].average/area.yearly[a].average-1)*100):'기간을 확인하세요';};$('return-start').onchange=update;$('return-end').onchange=update;update();
         }
       }else if(tab==='facts'){
-        $('apartment-panel').innerHTML=`<div class="nodo-card"><h2>단지 기본정보</h2>${facts([['단지명',apartment.name],['지번 주소',apartment.address],['도로명',apartment.road||'미확인'],['단지 전체 세대수',number(apartment.units)+'세대'],['선택 평형 세대수',number(area?.units)+'세대'],['준공연도',apartment.years.join('–')||'미확인'],['주차대수',number(apartment.parking)+'대'],['세대당 주차',apartment.units&&apartment.parking?number(apartment.parking/apartment.units)+'대':'미확인'],['용적률',number(apartment.far)+'%'],['확인된 필지',apartment.pnus.length+'개']])}${apartment.registry.length?'<h2 style="margin-top:24px">건축물 정보</h2>'+facts(apartment.registry.map(r=>[r.name,[r.purpose,r.units?number(r.units)+'세대':''].filter(Boolean).join(' · ')])):''}<p class="nodo-muted" style="margin-top:18px">단지·세대 정보는 건축물대장 및 승인된 K-APT 연결 자료입니다. 확인되지 않은 값은 임의로 합산하지 않습니다.</p></div>`;
+        $('apartment-panel').innerHTML=`<div class="nodo-card"><h2>단지 기본정보</h2>${facts([['단지명',apartment.name],['지번 주소',apartment.address],['도로명',apartment.road||'미확인'],['단지 전체 세대수',number(apartment.units)+'세대'],['선택 평형 세대수',number(area?.units)+'세대'],['준공연도',apartment.years.join('–')||'미확인'],['주차대수',number(apartment.parking)+'대'],['세대당 주차',apartment.units&&apartment.parking?number(apartment.parking/apartment.units)+'대':'미확인'],['용적률',number(apartment.far)+'%'],['확인된 필지',apartment.pnus.length+'개']])}${apartment.registry.length?'<h2 style="margin-top:24px">건축물 정보</h2>'+facts(apartment.registry.map(r=>[r.name,[r.purpose,r.units?number(r.units)+'세대':''].filter(Boolean).join(' · ')])):''}<p class="nodo-muted" style="margin-top:18px">단지·세대 정보는 ${apartment.review?'현재 주택 리뷰의 연결 자료':'건축물대장 및 승인된 K-APT 연결 자료'}입니다. 확인되지 않은 값은 임의로 합산하지 않습니다.</p></div>`;
       }else if(tab==='location'){
         $('apartment-panel').innerHTML=apartment.coord?'<div class="nodo-card"><h2>단지 위치</h2><div id="apartment-map" style="height:440px;border-radius:10px;z-index:0"></div><p id="parcel-status" class="nodo-muted" role="status">필지 경계를 불러오는 중…</p></div>':status('확인된 좌표가 없습니다. 주소와 단지정보는 다른 탭에서 확인할 수 있습니다.');
-        if(apartment.coord){const link=document.createElement('a');link.className='nodo-button';link.textContent='주변 단지 지도에서 보기';link.href='/map/#'+new URLSearchParams({lat:apartment.coord[0],lng:apartment.coord[1],z:16});$('apartment-panel').firstElementChild.append(link);if(!document.getElementById('leaflet-css')){const l=document.createElement('link');l.id='leaflet-css';l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';document.head.append(l);}await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/map-services.js');if(token!==generation)return;map=L.map('apartment-map').setView(apartment.coord,16);L.tileLayer(NodoMapServices.tileURL,{maxZoom:19,attribution:'© V-World'}).on('tileerror',()=>{if(token===generation)$('parcel-status').textContent='배경 지도를 불러오지 못했습니다. 주소 정보는 단지정보 탭에서 확인하세요.';}).addTo(map);L.marker(apartment.coord).addTo(map).bindPopup(document.createTextNode(apartment.name));let shown=0;for(let start=0;start<apartment.pnus.length;start+=4){await Promise.allSettled(apartment.pnus.slice(start,start+4).map(async pnu=>{const fc=await NodoMapServices.parcel(pnu);if(token===generation){L.geoJSON(fc,{style:{color:'#168d79',weight:2,fillOpacity:.12}}).addTo(map);shown++;}}));if(token!==generation)return;}$('parcel-status').textContent=`확인된 필지 ${shown}/${apartment.pnus.length}개 표시 · ${apartment.parcelScope?.startsWith('representative')?'대표 필지 기준':'공개된 필지 기준'}`;}
+        if(apartment.coord){const link=document.createElement('a');link.className='nodo-button';link.textContent='주변 단지 지도에서 보기';link.href='/map/#'+new URLSearchParams({lat:apartment.coord[0],lng:apartment.coord[1],z:16});$('apartment-panel').firstElementChild.append(link);if(!document.getElementById('leaflet-css')){const l=document.createElement('link');l.id='leaflet-css';l.rel='stylesheet';l.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';document.head.append(l);}await script('https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js');await script('/js/map-services.js');if(token!==generation)return;map=L.map('apartment-map').setView(apartment.coord,16);L.tileLayer(NodoMapServices.tileURL,{maxZoom:19,attribution:'© V-World'}).on('tileerror',()=>{if(token===generation)$('parcel-status').textContent='배경 지도를 불러오지 못했습니다. 주소 정보는 단지정보 탭에서 확인하세요.';}).addTo(map);L.marker(apartment.coord).addTo(map).bindPopup(document.createTextNode(apartment.name));await showLocationBoundary(token);}
       }else if(tab==='comments'){
         if(!area){$('apartment-panel').innerHTML=status('연결된 평형이 없어 기존 단지 의견이 없습니다. 공용 게시판에서 의견을 남겨 주세요.');return;}
         $('apartment-panel').innerHTML=`<div class="nodo-card"><h2>단지 의견</h2><label class="nodo-field">기존 의견의 단지·평형<select id="comment-source">${area.rows.map(r=>`<option value="${r.commentId}">${esc(r.name)} · ${area.area}㎡</option>`).join('')}</select></label><div id="apt-comments"></div></div>`;

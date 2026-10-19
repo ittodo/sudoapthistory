@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, relative, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 export function forbiddenReason(name) {
   if (name === 'data/.company-export.json') return 'producer-completion-record';
@@ -102,6 +102,7 @@ function main(argv) {
   }
   if (report.violations.length && !audit) process.exitCode = 1;
 }
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+// Rust passes Windows canonical paths with the \\?\ prefix, including as cwd.
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   try { main(process.argv.slice(2)); } catch (error) { console.error(error.message); process.exitCode = 1; }
 }

@@ -8,7 +8,7 @@
 
 - 모든 공개 페이지에서 공통 메뉴와 라이트·다크·시스템 테마를 사용한다.
 - 검색·비교·실거래·지도·단지정보에서 아파트 선택 시 `/apartment/`로 이동한다. 전월세는 확인된 기존 aptSeq가 있는 단지만 연결한다.
-- 상세는 개요, 실거래, 투자분석, 단지정보, 위치, 의견 6개 탭이다. 평형과 탭을 URL에 저장한다.
+- 상세는 개요, 실거래, 전월세, 투자분석, 단지정보, 위치, 의견 7개 탭이다. 평형과 탭을 URL에 저장한다.
 - 최신 유효 거래와 최근 평균가의 기간·건수를 각각 표시한다. 해제·원천에서 사라진 거래는 통계에서 제외하되 내역에서 확인할 수 있다.
 - 단지 전체 세대수와 선택 평형 세대수를 구분한다. 여러 원천이 연결된 단지의 미확인 주차·용적률·평형 세대수는 임의 합산하지 않는다.
 - 기존 `apt_<row id>` 의견을 그대로 조회한다. 여러 원천 평형이 연결된 경우 의견 원천을 선택한다.
@@ -24,6 +24,29 @@
 공식 Rust [부동산 릴리스](../../15_26/docs/site-release-workflow.md)에서 자료 갱신 후 상세 자료를 생성·검증한다. 매매/전월세 계약 상세는 [공통 거래 참조](../../15_26/docs/housing-packed-storage.md)를 사용하며 아파트 목록 256개 JSON 조각과 구분한다. 사이트 빌드는 원천 해시와 상세 자료가 다르면 중단한다. 브라우저도 조각 및 거래 파일 해시를 검증한다.
 
 ## 로컬 확인
+
+### 현재 리뷰 자료의 격리 미리보기
+
+현재 리뷰의 [공개 후보 내보내기](../../ops-dashboard/housing-review/docs/hub-source.md#현재-리뷰의-공개-후보-내보내기)로 새 `_ops` 폴더에 후보를 만든다.
+`tools/prepare-current-review.mjs`는 그 후보의 행정동과 상세 자료를 준비한다. 요청 JSON은 `baseline`, `candidate`, `pipeline`, `adminSource`, `runtime`, `runtimeSha256` 경로와 값을 받는다.
+`baseline`은 기존 공개 저장소다. `pipeline`은 기존 Rust `nodostream-pipeline` 실행 파일이다.
+
+```text
+node tools/prepare-current-review.mjs REQUEST_JSON
+node tools/prepare-current-review-search.mjs BASELINE CANDIDATE
+node tools/preview-current-review.mjs CANDIDATE
+```
+
+미리보기는 `http://127.0.0.1:8794/map/`이다. 운영 DB·공개 파일·사용자 의견에는 쓰지 않는다.
+후보의 `candidateOnly=true`, `approvedOnly=false`를 유지한다. 공개 패키지는 후보 자료를 거부한다.
+기존 단지 ID·별칭·평형 행·댓글 ID·가격 통계는 재사용한다. 필지 차이만으로 기존 단지를 나누지 않는다.
+같은 단지의 여러 필지는 한 선택 대상에 합친다. 원천별 필지 귀속은 내부 근거에 남긴다.
+확인되지 않은 평형 세대수·대지권·주차·용적률은 이전 값으로 채우지 않는다.
+보정 경계는 점선으로 표시한다. 좌표만 있는 단지는 위치 점을 표시한다.
+
+이는 공개 전환을 검토하는 경로다. 야간 생성·검색·임대 연결까지 현재 계약으로 전환한 뒤 운영 반영을 진행한다.
+
+### 기존 사이트 확인
 
 ```text
 npm run build:apartments

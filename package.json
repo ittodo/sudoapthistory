@@ -9,9 +9,7 @@
     "test:native": "cargo build --locked --manifest-path tools/native-projection/Cargo.toml && node tools/test-native-projection.mjs",
     "test:regional": "node --test tools/test-regional-data.mjs tools/test-regional-packaging.mjs && node tools/test-regional-worker.cjs && npm run test:housing",
     "test:daily": "npm run test:regional && npm run test:native && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs",
-    "test:daily:reference": "python -m unittest discover -s tools -p test_daily_data.py",
     "build:daily": "cargo run --locked --manifest-path tools/native-projection/Cargo.toml -- daily-build",
-    "build:daily:reference": "python tools/daily_data.py",
     "build:apartments": "node tools/build-apartment-data.mjs",
     "test:site": "node --test tools/test-apartment-data.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs",
     "preview": "node tools/preview-site.mjs",
@@ -24,7 +22,8 @@
     "build:salary": "node tools/build-salary.mjs",
     "test:salary": "node --test tools/test-salary.mjs",
     "verify:salary": "npm run test:salary && npm run build:salary",
-    "test:housing": "node --test tools/test-housing-native-inputs.mjs tools/test-housing-facts.mjs tools/test-housing-state-timeline.mjs tools/test-housing-regional.mjs tools/test-housing-map-quarter.mjs tools/test-housing-contracts.mjs tools/test-housing-sales.mjs tools/test-housing-partition.mjs tools/test-housing-packing-cache.mjs tools/test-housing-record-pool.mjs tools/test-housing-native-reuse.mjs tools/test-housing-detail-reuse.mjs tools/test-housing-generation-batch.mjs && node --experimental-vm-modules tools/test-housing-worker.cjs"
+    "test:housing": "node --test tools/test-housing-native-inputs.mjs tools/test-housing-facts.mjs tools/test-housing-state-timeline.mjs tools/test-housing-regional.mjs tools/test-housing-map-quarter.mjs tools/test-housing-contracts.mjs tools/test-housing-sales.mjs tools/test-housing-partition.mjs tools/test-housing-packing-cache.mjs tools/test-housing-record-pool.mjs tools/test-housing-native-reuse.mjs tools/test-housing-detail-reuse.mjs tools/test-housing-generation-batch.mjs && node --experimental-vm-modules tools/test-housing-worker.cjs",
+    "test:current-review": "node --test tools/test-current-review-metadata.mjs tools/test-current-review-split-facts.mjs tools/test-preview-current-review.mjs tools/test-prepare-current-review-search.mjs tools/test-prepare-current-review-timeline.mjs tools/test-housing-publication-contract.mjs tools/test-verify-housing-regions.mjs tools/test-cloudflare-rental-map-state.mjs tools/test-cloudflare-rental-map-boundaries.mjs && node tools/test-map-model.cjs && node tools/test-map-parcels.cjs"
   },
   "dependencies": {
     "es-hangul": "2.4.0",

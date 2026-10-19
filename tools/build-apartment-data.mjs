@@ -2,6 +2,9 @@ import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve,dirname,join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {housingPublicationMode} from './housing-publication-contract.mjs';
+import {verifyApartmentSale} from './verify-apartment-sale.mjs';
+import {mapBoundarySources} from './map-boundary-metadata.mjs';
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 export function districtFromAddress(address){const parts=String(address||'').trim().split(/\s+/).slice(1);return parts.filter((p,i)=>i<2&&/[시군구]$/.test(p)).join(' ');}
 export function summarize(rows) {
@@ -19,7 +22,17 @@ export function summarize(rows) {
 export function buildApartmentData(root,{verify=false}={}) {
   const inputHashes={},read=path=>{const bytes=readFileSync(join(root,path));inputHashes[path]=sha(bytes);return JSON.parse(bytes);};
   const index=read('data/index.json'),map=read('data/map/index.json'),housing=read('data/housing-v3/index.json');
-  if(housing.meta.approvedOnly!==true)throw Error('Only approved publications may identify apartments');
+  const mode=housingPublicationMode(housing,map);
+  if(mode==='current-review'){
+    // The producer refreshes metadata on the existing packed DTOs. Rebuilding
+    // them from the obsolete data/tx layout would discard preserved facts.
+    const prepared=JSON.parse(readFileSync(join(root,'data/apartments/index.json')));
+    if(prepared.version!==2||!prepared.lookup||!prepared.shards||Object.keys(prepared.shards).length!==512||Object.keys(prepared.sources||{}).some(p=>p.startsWith('data/tx/')))
+      throw Error('Prepared packed apartment DTOs required for current review publication');
+    for(const[path,digest]of Object.entries({...inputHashes,...mapBoundarySources(map)}))if(prepared.sources?.[path]!==digest)throw Error('Prepared apartment metadata out of date: '+path);
+    if(verify)return {...verifyApartmentSale(root),reused:true};
+    return {count:prepared.count,shards:256,aliases:Object.keys(prepared.lookup).length,ambiguous:prepared.ambiguous?.length||0,reused:true,verified:false};
+  }
   const status=existsSync(join(root,'data/building-status.json'))?read('data/building-status.json').sites:{};
   const bySource=new Map(),locations=new Map();
   for(const r of index.d){if(!r.as)throw Error('Missing stable apartment ID');if(!bySource.has(r.as))bySource.set(r.as,[]);bySource.get(r.as).push(r);}

@@ -34,6 +34,7 @@ jobs:
           key: native-projection-${{ runner.os }}-1.92.0-${{ hashFiles('tools/native-projection/Cargo.lock', 'tools/native-projection/Cargo.toml', 'tools/native-projection/build.rs', 'tools/native-projection/src/**', 'tools/native-projection/vendor/**') }}
           restore-keys: native-projection-${{ runner.os }}-1.92.0-
       - run: npm run test:search
+      - run: npm run test:current-review
       - name: Verify explicitly approved production target and plan
         env:
           NODESTREAM_DEPLOYMENT_PROVIDER: ${{ vars.NODESTREAM_DEPLOYMENT_PROVIDER }}

@@ -6,6 +6,8 @@ import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {buildSync} from 'esbuild';
 import '../js/rental-model.js';
+import {housingPublicationMode} from './housing-publication-contract.mjs';
+import {mapBoundarySources} from './map-boundary-metadata.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const order = (a,b) => a < b ? -1 : a > b ? 1 : 0;
@@ -63,6 +65,21 @@ export function combineCatalogs({sale = [], rental = [], rows = [], map = [], me
   })).sort((a,b)=>order(a.id,b.id));
 }
 
+// Current publications can retain an identity after its current source is lost.
+// Only those explicit metadata-only records may omit their region.
+export function markUnlocatedPublications(apartments,metadata){
+  const publications=new Map(metadata.map(p=>[p.id,p]));let count=0;
+  for(const c of apartments){
+    if([0,1,2].includes(c.r)&&c.g&&!/^\d{5}$/.test(c.g))continue;
+    const p=publications.get(c.id);
+    if(p?.review?.identityUnresolved===true&&!p.transactionKeys?.length&&!c.saleIds.length&&!c.rentalIds.length){
+      c.r=[0,1,2].includes(c.r)?c.r:null;c.g=c.g&&!/^\d{5}$/.test(c.g)?c.g:'지역 미확인';
+      c.locationUnresolved=true;count++;
+    }
+  }
+  return count;
+}
+
 export function searchData(root) {
   const sources = {};
   const read = path => {
@@ -72,9 +89,13 @@ export function searchData(root) {
   const index = read('data/index.json'), identities = read('data/apartments/index.json');
   const saleReader=regionalReader(root,'daily'),rentReader=regionalReader(root,'rental');const sale=saleReader.catalog,rental=rentReader.catalog,map=read('data/map/index.json');Object.assign(sources,saleReader.inputs,rentReader.inputs);
   const metadata=read('data/housing-v3/index.json');
-  if(metadata.meta?.approvedOnly!==true)throw Error('Search metadata must use approved apartment identities');
+  const mode=housingPublicationMode(metadata,map);
+  for(const[path,expected]of Object.entries(mapBoundarySources(map))){
+    const bytes=readFileSync(join(root,path));if(hash(bytes)!==expected)throw Error('Map boundary source mismatch: '+path);sources[path]=expected;
+  }
   const apartments = combineCatalogs({sale:sale.complexes.filter(c=>saleReader.manifest.schema===1||c.hasSale!==false),rental:rental.complexes.filter(c=>rentReader.manifest.schema===1||c.hasRental!==false),rows:index.d,map:map.d,metadata:metadata.complexes,lookup:identities.lookup,ambiguous:identities.ambiguous});
-  if (!apartments.length || apartments.some(c=>!c.name || !c.id || ![0,1,2].includes(c.r) || !c.g || /^\d{5}$/.test(c.g))) throw Error('Invalid apartment search catalog');
+  if(mode==='current-review')markUnlocatedPublications(apartments,metadata.complexes);
+  if (!apartments.length || apartments.some(c=>!c.name || !c.id || (![0,1,2].includes(c.r)&&!(mode==='current-review'&&c.r===null&&c.locationUnresolved)) || !c.g || /^\d{5}$/.test(c.g))) throw Error('Invalid apartment search catalog');
   const payload = {schema:1,version:hash(JSON.stringify({schema:1,sources,apartments})),sources,apartments};
   return Buffer.from(JSON.stringify(payload));
 }
