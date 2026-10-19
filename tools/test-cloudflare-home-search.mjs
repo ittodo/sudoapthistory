@@ -50,7 +50,15 @@ test('published inputs retain every sale row and every catalog identity in the c
  const root=fileURLToPath(new URL('../',import.meta.url)),search=JSON.parse(searchData(root)),assets=homeSearchAssets(root,search);
  const parts=assets.filter(a=>a.path.endsWith('.bin')).map(a=>JSON.parse(gunzipSync(a.bytes))),prices=parts.flatMap(p=>p.prices),apartments=parts.flatMap(p=>p.apartments);
  const original=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))).d,roster=M.join(original,apartments,prices),byRow=new Map(roster.map(r=>[r.i,r])),ids=new Set(roster.map(r=>r._homeId));
+ const identities=JSON.parse(readFileSync(new URL('../data/apartments/index.json',import.meta.url)));
  for(const row of original){const actual=byRow.get(row.i);for(const key of Object.keys(row))if(key!=='si')assert.deepEqual(actual[key],row[key]);}
+ for(const row of original){
+  const actual=byRow.get(row.i),canonical=identities.lookup[row.as][0];
+  assert.equal(actual._homeId,canonical,`${row.i}: home price owner`);
+  assert.equal(actual._detailId,canonical,`${row.i}: detail and comment destination`);
+  assert.deepEqual(identities.legacy[row.i],[canonical,row.a],`${row.i}: legacy comment route`);
+  for(const member of actual.si)assert.equal(byRow.get(member)?._homeId,canonical,`${row.i}: visible representative group crosses identities`);
+ }
  for(const e of apartments)assert.ok(ids.has(e.id),e.id);
  const keys=new Set(roster.map(r=>JSON.stringify([r._homeId,Math.round(r.a)])));for(const t of prices)assert.ok(keys.has(JSON.stringify([t.id,t.area])));
  assert.equal(new Set(roster.map(r=>r.i)).size,roster.length);

@@ -11,6 +11,10 @@ on:
       - "data/redevelopment-review-queue.json"
       - "tools/verify-redevelopment-data.mjs"
       - "tools/test-redevelopment-model.mjs"
+      - "tools/test-cloudflare-redevelopment-current.mjs"
+      - "js/main-app.js"
+      - "css/main.css"
+      - "data/housing-v3/index.json"
       - ".github/workflows/verify-redevelopment.yml"
   pull_request:
     paths:
@@ -22,6 +26,10 @@ on:
       - "data/redevelopment-review-queue.json"
       - "tools/verify-redevelopment-data.mjs"
       - "tools/test-redevelopment-model.mjs"
+      - "tools/test-cloudflare-redevelopment-current.mjs"
+      - "js/main-app.js"
+      - "css/main.css"
+      - "data/housing-v3/index.json"
       - ".github/workflows/verify-redevelopment.yml"
 
 permissions:
@@ -37,3 +45,4 @@ jobs:
           node-version: 22
       - run: node tools/verify-redevelopment-data.mjs
       - run: node tools/test-redevelopment-model.mjs
+      - run: node --test tools/test-cloudflare-redevelopment-current.mjs

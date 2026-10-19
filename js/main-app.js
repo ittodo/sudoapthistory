@@ -1492,7 +1492,7 @@ function lifecycleSource(src){
   return includeInactive?rows:rows.filter(x=>!x._hiddenInactive);
 }
 function statusLabel(status){
-  return ({active:'현행',rebuilding:'재건축 중',rebuilt:'재건축 완료',demolished:'멸실',partial_closed:'일부폐쇄'})[status]||'';
+  return ({active:'현행',rebuilding:'재건축 중',rebuilt:'재건축 완료',demolished:'멸실',partial_closed:'일부폐쇄',closed:'대장 폐쇄·말소',unknown:'상태 미확인'})[status]||'';
 }
 function stageLabel(stage){
   return ({planned:'계획',approved:'사업 승인',construction:'공사 중',completed:'완료',unknown:'확인 중'})[stage]||'';
@@ -1505,8 +1505,9 @@ function statusBadgeHtml(x){
   if(!x||!x._status||x._status==='active') return '';
   const scopes=x._relationScopes||[];
   const partial=scopes.includes('partial')||scopes.includes('unknown');
-  const label=partial&&x._status!=='partial_closed'?'일부 편입':statusLabel(x._status);
-  return `<span class="lifecycle-badge lifecycle-${partial?'partial':x._status}">${escHtml(label)}</span>`;
+  const label=partial&&['demolished','rebuilding','rebuilt'].includes(x._status)?'일부 편입':statusLabel(x._status);
+  const description=x._status==='closed'?'건축물대장 폐쇄·말소 이력이며 철거 확정을 뜻하지 않습니다.':x._status==='unknown'?'현재 대장 연결로 상태를 확인하지 못했습니다.':'';
+  return `<span class="lifecycle-badge lifecycle-${partial?'partial':x._status}"${description?` title="${escHtml(description)}"`:''}>${escHtml(label)}</span>`;
 }
 async function loadLifecycleData(base,assetVersion){
   const suffix=assetVersion?'?v='+encodeURIComponent(assetVersion):'';
@@ -1515,13 +1516,13 @@ async function loadLifecycleData(base,assetVersion){
     catch(e){console.warn('Lifecycle data unavailable',e);return fallback;}
   };
   const [status,relations]=await Promise.all([
-    load('data/building-status.json',{version:2,sites:{}}),
+    load('data/building-status.json',{version:2,sites:{},unavailable:true}),
     load('data/redevelopment-relations.json',{version:1,relations:[]})
   ]);
   return {status,relations};
 }
 function applyLifecycleData(data){
-  BUILDING_STATUS=data?.status||{version:2,sites:{}};
+  BUILDING_STATUS=data?.status||{version:2,sites:{},unavailable:true};
   REDEVELOPMENT_RELATIONS=data?.relations||{version:1,relations:[]};
   SITE_ENTRY=new Map(); REL_BY_SITE=new Map();
   D.forEach(x=>{const key=siteKeyOf(x);if(!SITE_ENTRY.has(key))SITE_ENTRY.set(key,x);});
@@ -1536,13 +1537,14 @@ function applyLifecycleData(data){
     });
   });
   const inactive=new Set(['demolished','rebuilding','rebuilt']);
+  const current=BUILDING_STATUS.contract==='current-review-publication-v1';
   D.forEach(x=>{
     const key=siteKeyOf(x), item=BUILDING_STATUS.sites?.[key]||null;
     const links=REL_BY_SITE.get(key)||[];
     const scopes=links.filter(v=>v.role==='predecessor').map(v=>v.ref.scope||'unknown');
     x._siteKey=key;
-    x._status=item?.status||(x.bs==='멸실'?'demolished':'active');
-    x._statusDate=item?.date||(x.bsd?String(x.bsd):'');
+    x._status=item?.status||(current||BUILDING_STATUS.unavailable?'unknown':x.bs==='멸실'?'demolished':'active');
+    x._statusDate=item?.date||(current||BUILDING_STATUS.unavailable?'':x.bsd?String(x.bsd):'');
     x._statusName=item?.displayName||x.n;
     x._relationScopes=scopes;
     x._hiddenInactive=inactive.has(x._status)&&!scopes.some(s=>s==='partial'||s==='unknown');

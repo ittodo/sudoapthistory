@@ -3,6 +3,67 @@ import assert from 'node:assert/strict';
 import {summarize,districtFromAddress} from './build-apartment-data.mjs';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {housingPublicationMode} from './housing-publication-contract.mjs';
+
+// This is an output audit. It does not run in the producer or the browser.
+function assertGeneratedScope({index,rows,publications,current,readShard}){
+ const byRow=new Map(rows.map(r=>[r.i,r])),byPublication=new Map(publications.map(p=>[p.id,p]));
+ assert.equal(byRow.size,rows.length,'Source row IDs must be unique');
+ const owners=new Map();
+ for(const p of publications)for(const source of p[current?'transactionClaimKeys':'transactionKeys']||[]){
+  if(!owners.has(source))owners.set(source,[]);owners.get(source).push(p.id);
+ }
+ const seen=new Set(),canonicalIds=new Set();let areas=0;
+ for(let n=0;n<256;n++){
+  const shard=n.toString(16).padStart(2,'0');
+  for(const[id,apt]of Object.entries(readShard(shard))){
+   assert.equal(apt.id,id,'DTO key must be its canonical ID');
+   assert.deepEqual(index.lookup[id],[id,shard],'Canonical lookup must resolve to its own DTO');
+   canonicalIds.add(id);
+   const publication=byPublication.get(id),first=byRow.get(apt.areas[0]?.rows[0]?.i);
+   assert.equal(apt.units,publication?publication.units??null:current?null:first?.tu??null,`${id}: whole-complex households`);
+   for(const area of apt.areas){
+    areas++;
+    assert.equal(area.units,current?null:area.rows.length===1?byRow.get(area.rows[0].i)?.u??null:null,`${id}/${area.area}: area households`);
+    for(const row of area.rows){
+     const source=byRow.get(row.i);
+     assert.ok(source,`${id}: unknown source row ${row.i}`);
+     assert.ok(!seen.has(row.i),`Source row ${row.i} cannot belong to two DTOs`);seen.add(row.i);
+     assert.equal(row.source,source.as,`${row.i}: stable source ID`);
+     assert.equal(area.area,source.a,`${row.i}: display area`);
+     assert.equal(row.commentId,'apt_'+source.i,`${row.i}: permanent comment ID`);
+     assert.deepEqual(index.legacy[source.i],[id,source.a],`${row.i}: legacy route`);
+     assert.equal(index.lookup[source.as]?.[0],id,`${row.i}: source alias owner`);
+     const claims=owners.get(source.as)||[];
+     assert.equal(id,claims.length===1?claims[0]:source.as,`${row.i}: publication transaction ownership`);
+     assert.equal(row.units,current?null:source.u??null,`${row.i}: source area households`);
+     if(current){
+      assert.equal(Object.hasOwn(source,'u'),false,`${row.i}: unverified area households must not return`);
+      if(source.ci)assert.equal(source.ci,id,`${row.i}: published canonical ID`);
+     }
+    }
+   }
+  }
+ }
+ assert.equal(canonicalIds.size,index.count,'All declared canonical DTOs must exist');
+ assert.equal(seen.size,rows.length,'Every source row must retain one comment owner');
+ assert.equal(Object.keys(index.legacy).length,rows.length,'Every legacy route must retain its source row');
+ for(const[alias,[id,shard]]of Object.entries(index.lookup)){
+  assert.ok(canonicalIds.has(id),`${alias}: missing canonical DTO`);
+  assert.deepEqual(index.lookup[id],[id,shard],`${alias}: canonical shard mismatch`);
+ }
+ for(const p of publications)assert.equal(index.lookup[p.id]?.[0],p.id,`${p.id}: publication identity`);
+ for(const row of rows)if(row.si){
+  assert.ok(row.si.includes(row.i),`${row.i}: representative group must include itself`);
+  assert.equal(new Set(row.si).size,row.si.length,`${row.i}: duplicate representative member`);
+  // Raw siblings precede publication metadata. The home roster rebuilds them
+  // from canonical IDs; this file checks that their source rows still exist.
+  for(const member of row.si){
+   assert.ok(byRow.has(member),`${row.i}: missing representative member ${member}`);
+  }
+ }
+ return {complexes:canonicalIds.size,areas,comments:seen.size};
+}
 
 test('metadata-only apartments keep district filters separate from neighborhood names',()=>{
  assert.equal(districtFromAddress('서울 강남구 역삼동 123'),'강남구');
@@ -21,15 +82,52 @@ test('detail links preserve source IDs and zero-valued legacy row IDs',()=>{
  assert.equal(context.window.NodoApartmentLinks.url({row:0,area:59,tab:'trades'}),'/apartment/?row=0&area=59&tab=trades');
  assert.equal(context.window.NodoApartmentLinks.url({id:'41281-3250',area:85}),'/apartment/?id=41281-3250&area=85&tab=overview');
 });
-test('generated representative and canonical identities preserve household scope and legacy comments',()=>{
+test('generated representative and canonical identities preserve household scope and legacy comments',t=>{
  const base=new URL('../data/apartments/',import.meta.url),index=JSON.parse(readFileSync(new URL('index.json',base)));
  const read=id=>{const [canonical,shard]=index.lookup[id];return JSON.parse(readFileSync(new URL(shard+'.json',base)))[canonical];};
- const source=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))).d.find(r=>r.as==='41281-3250'&&r.a===85);
- const apt=read(source.as);assert.equal(apt.units,source.tu);assert.equal(apt.areas.find(a=>a.area===85).units,source.u);
+ const rows=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))).d;
+ const housing=JSON.parse(readFileSync(new URL('../data/housing-v3/index.json',import.meta.url)));
+ const map=JSON.parse(readFileSync(new URL('../data/map/index.json',import.meta.url)));
+ const current=housingPublicationMode(housing,map)==='current-review';
+ const source=rows.find(r=>r.as==='41281-3250'&&r.a===85);
+ const apt=read(source.as);assert.equal(apt.units,source.tu);assert.equal(apt.areas.find(a=>a.area===85).units,current?null:source.u);
  for(const a of apt.areas)for(const row of a.rows)assert.equal(row.commentId,'apt_'+row.i);
  assert.equal(read('11440-5530').id,'pub_0008933ed9d689371e570144');
  assert.equal(Object.keys(index.shards).length,512);
- const map=JSON.parse(readFileSync(new URL('../data/map/index.json',import.meta.url)));
  for(const complex of map.d)assert.ok(index.lookup[complex.publicationId||complex.id],complex.id);
  for(const source of index.ambiguous)assert.equal(index.lookup[source][0],source,'Ambiguous source must remain independent');
+ const report=assertGeneratedScope({index,rows,publications:housing.complexes.filter(p=>p.housingFamily==='apartment'),current,
+  readShard:shard=>JSON.parse(readFileSync(new URL(shard+'.json',base)))});
+ t.diagnostic(JSON.stringify({contract:current?'current-review':'legacy',...report}));
+});
+
+function scopeFixture(current=true){
+ const rows=[{i:0,as:'A',a:85,tu:500,si:[0]},{i:1,as:'B',a:85,tu:700,si:[1]}];
+ const apt={id:'canonical',units:1200,areas:[{area:85,units:null,rows:rows.map(r=>({i:r.i,source:r.as,units:null,commentId:'apt_'+r.i}))}]};
+ const index={count:1,lookup:{canonical:['canonical','00'],A:['canonical','00'],B:['canonical','00']},legacy:{0:['canonical',85],1:['canonical',85]}};
+ const publication={id:'canonical',units:1200,transactionKeys:['A','B'],transactionClaimKeys:['A','B']};
+ if(!current){rows[0].u=200;rows[1].u=300;apt.areas[0].rows[0].units=200;apt.areas[0].rows[1].units=300;}
+ return {index,rows,publications:[publication],current,apt,readShard:shard=>shard==='00'?{canonical:apt}:{}};
+}
+
+test('household audit separates current publication totals from source and area households',()=>{
+ const f=scopeFixture();assertGeneratedScope(f);
+ f.publications[0].units=null;f.apt.units=null;assertGeneratedScope(f);
+ f.apt.units=500;assert.throws(()=>assertGeneratedScope(f),/whole-complex households/);
+ f.apt.units=null;f.apt.areas[0].units=1200;assert.throws(()=>assertGeneratedScope(f),/area households/);
+ f.apt.areas[0].units=null;f.apt.areas[0].rows[0].units=500;assert.throws(()=>assertGeneratedScope(f),/source area households/);
+ f.apt.areas[0].rows[0].units=null;f.rows[0].u=500;assert.throws(()=>assertGeneratedScope(f),/unverified area households/);
+ assertGeneratedScope(scopeFixture(false));
+});
+
+test('identity audit rejects lost comments, moved legacy routes and incorrect canonical owners',()=>{
+ const mutations=[
+  [f=>f.apt.areas[0].rows[0].commentId='apt_1',/permanent comment ID/],
+  [f=>f.index.legacy[0]=['canonical',84],/legacy route/],
+  [f=>f.index.lookup.A=['other','00'],/source alias owner/],
+  [f=>f.publications[0].transactionClaimKeys=['B'],/publication transaction ownership/],
+  [f=>f.apt.areas[0].rows.pop(),/Every source row/],
+  [f=>f.rows[0].si=[0,99],/missing representative member/]
+ ];
+ for(const[mutate,expected]of mutations){const f=scopeFixture();mutate(f);assert.throws(()=>assertGeneratedScope(f),expected);}
 });
