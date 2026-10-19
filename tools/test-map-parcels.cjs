@@ -1,4 +1,5 @@
 const assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm');
+require('../js/map-pricing.js');
 require('../js/map-model.js');const model=globalThis.NodoMapModel;
 function bounds(raw) {
   return {raw,intersects(other){return raw[0][0]<=other.raw[1][0]&&raw[1][0]>=other.raw[0][0]&&raw[0][1]<=other.raw[1][1]&&raw[1][1]>=other.raw[0][1];},

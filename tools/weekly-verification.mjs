@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {validationEngine} from './validation-session.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
 const directory='cloudflare/dist/weekly-verification-v1',receiptName='completed.json',selectionName='selection.json';
-const roots=['tools/build-region-price-cache.mjs','js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js',
+const roots=['tools/build-region-price-cache.mjs','js/map-pricing.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js',
  'tools/housing-map-quarter.mjs','tools/housing-regional-reader.mjs','js/housing-quarter.mjs','js/housing-facts.mjs',
  'js/housing-state-timeline.mjs','js/housing-validation.mjs','js/housing-partition.mjs','js/generated/housing-columns.mjs'];
 export function weeklyEngine(root){

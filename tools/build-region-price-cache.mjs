@@ -8,7 +8,7 @@ import {gunzipSync,gzipSync} from 'node:zlib';
 import vm from 'node:vm';
 
 const hash=b=>createHash('sha256').update(b).digest('hex'),prefix='data/map/price-cache/';
-const models=['map-model','daily-model','rental-model','rental-map-model'];
+const models=['map-pricing','daily-model','rental-model','rental-map-model'];
 export function regionModels(root){const ctx=vm.createContext({});for(const name of models)vm.runInContext(readFileSync(join(root,'js',name+'.js'),'utf8'),ctx);return ctx;}
 export function packFrames(days,snapshot){
   let previous=new Map(),previousPoints=new Map();const updates=[];let opening;
@@ -30,12 +30,12 @@ export function rentalFrames(ctx,catalog,shard,month,region,type){
   });
 }
 export function saleFrames(ctx,catalog,payload,shard,month){
-  const original=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])])),group=ctx.NodoMapModel.createPriceGroups(catalog,original,ctx.NodoDailyModel),cursor=ctx.NodoDailyModel.priceCursor(shard);
+  const original=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])])),group=ctx.NodoMapPricing.createPriceGroups(catalog,original,ctx.NodoDailyModel),cursor=ctx.NodoDailyModel.priceCursor(shard);
   const days=[month+'-00',...new Set(shard.updates.map(r=>ctx.NodoDailyModel.iso(r[1])))].sort();
   return packFrames(days,day=>{
     const f=cursor.seek(Number(day.replaceAll('-',''))),result=group.update({values:[f.values],changes:f.events,reset:f.reset},{});
-    const matches=result.complexes.map(c=>ctx.NodoMapModel.match(c,{})).filter(Boolean);
-    return {regions:[...ctx.NodoMapModel.regionGroups(matches)].map(([id,members])=>{const s=ctx.NodoMapModel.clusterTotals(members);return [id,[s.count,s.pricedCount,s.sum]];}),meta:{complexCount:matches.length,count:matches.length}};
+    const matches=result.complexes.map(c=>ctx.NodoMapPricing.match(c,{})).filter(Boolean);
+    return {regions:[...ctx.NodoMapPricing.regionGroups(matches)].map(([id,members])=>{const s=ctx.NodoMapPricing.clusterTotals(members);return [id,[s.count,s.pricedCount,s.sum]];}),meta:{complexCount:matches.length,count:matches.length}};
   });
 }
 export function regionPriceAssets(root,{months,stats={},reference=false}={}){

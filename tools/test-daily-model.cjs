@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict');
 require('../js/daily-model.js');
+require('../js/map-pricing.js');
 require('../js/map-model.js');
 const M=globalThis.NodoDailyModel;
 assert.equal(M.shift('2024-01-31',1,'month'),'2024-02-29');

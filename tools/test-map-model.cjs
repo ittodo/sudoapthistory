@@ -2,8 +2,20 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const {webcrypto} = require('node:crypto');
+require('../js/map-pricing.js');
 require('../js/map-model.js');
 const model=globalThis.NodoMapModel;
+// Load the actual page script order so both entry points receive pricing rules.
+for (const page of ['map/index.html','apartment/index.html']) {
+  const html=fs.readFileSync(require('node:path').join(__dirname,'..',page),'utf8');
+  const context=vm.createContext({});
+  for (const [,src] of html.matchAll(/<script\b[^>]*src="([^"]+)"/g)) {
+    const name=src.split('?')[0].split('/').at(-1);
+    if (['map-pricing.js','map-model.js'].includes(name))
+      vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../js',name),'utf8'),context);
+  }
+  assert.equal(context.NodoMapModel?.clusterSummary([{area:{latest:[20261019,185000]}}]).average,185000,page);
+}
 const projection=scale=>({latLngToContainerPoint:([lat,lng])=>({x:lng*scale,y:-lat*scale}),containerPointToLatLng:([x,y])=>[ -y/scale,x/scale ]});
 const footprint={coord:[5,5],parcelBounds:[[0,0],[10,10]]};
 assert.deepEqual(model.labelPosition(footprint,projection(20)),[8,5],'large parcels place price 40 pixels below their north edge');

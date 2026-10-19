@@ -42,10 +42,18 @@ restores ordinary apartment prices and details. Initial catalogs and map boundar
 files remain shared with the existing map; this cache does not replace them.
 
 The packaging cache is outside tracked data under
-`cloudflare/dist/region-price-cache-v1`. Each entry checks input and calculation
+`cloudflare/dist/region-price-cache-v2`. Each entry checks input and calculation
 hashes plus output integrity before reuse. CI restores this directory; changed
 or corrupted entries are rebuilt. The generated manifest pins the sale, rental
 and map source versions. Python and operational database writes are not involved.
+
+Price selection and aggregation use `js/map-pricing.js`. Map display and pointer
+rules use `js/map-model.js`. Both the map and apartment detail pages load pricing
+before the display model.
+The regional calculation hash includes the pricing module. It excludes the
+display module. A display-only change reuses valid price frames. A pricing or
+input change still rebuilds the affected frames. The weekly calculation hash
+uses the same pricing module. The first build after this split has a new hash.
 
 Checks: `node --test tools/test-cloudflare-region-cache.mjs`, the rental-worker,
 daily-client and map-model regressions, and `npm run test:site`. The region tests
