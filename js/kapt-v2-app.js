@@ -7,25 +7,17 @@ const price=value=>value==null?'없음':`${Number(value).toLocaleString('ko-KR',
 const date=value=>{const s=String(value||'');return /^\d{8}$/.test(s)?`${s.slice(0,4)}.${s.slice(4,6)}.${s.slice(6,8)}`:'없음'};
 const address=value=>{try{const parsed=JSON.parse(value||'');return Array.isArray(parsed)?parsed.join(' · '):String(value||'')}catch{return String(value||'')}};
 const latest=item=>Math.max(0,...item.transactions.flatMap(group=>group.areas.map(row=>Number(row.latestDate)||0)));
-const rental=item=>item.publicationMode==='metadata_only'||item.tenure==='rental';
+const rental=item=>item.tenure==='rental';
+const currentPublication=()=>state.data?.meta?.contract==='current-review-publication-v1';
 
 async function loadData(){
-  if('DecompressionStream' in window){
-    try{
-      const response=await fetch('data/housing-v3/index.packed.bin?v=20260905');
-      if(response.ok){
-        const packed=new Uint8Array(await response.arrayBuffer());
-        const magic=new TextEncoder().encode('HSGV3Z1\0');
-        if(magic.every((value,index)=>packed[index]===value)){
-          const stream=new Blob([packed.slice(magic.length)]).stream().pipeThrough(new DecompressionStream('deflate'));
-          return JSON.parse(await new Response(stream).text());
-        }
-      }
-    }catch(error){console.warn('공동주택 압축 데이터 fallback',error)}
-  }
-  const response=await fetch('data/housing-v3/index.json?v=20260905');
+  const response=await fetch('data/housing-v3/index.json?v=20261019-current');
   if(!response.ok)throw new Error(`데이터 응답 ${response.status}`);
-  return response.json();
+  const data=await response.json();
+  if(data.meta?.candidateOnly===true)throw new Error('미리보기 자료는 공개 목록에서 표시하지 않습니다.');
+  if(!Array.isArray(data.complexes))throw new Error('공동주택 목록 형식이 올바르지 않습니다.');
+  if(data.meta?.contract&&data.meta.contract!=='current-review-publication-v1')throw new Error('지원하지 않는 공동주택 공개 형식입니다.');
+  return data;
 }
 
 function filtered(){
@@ -64,8 +56,8 @@ function select(code,replace=false){
 
 function renderDetail(item){
   if(!item){$('#detail').innerHTML='<div class="empty-state">목록에서 단지를 선택하세요.</div>';return}
-  const groups=item.transactions.map(group=>`<div class="trade-group"><div class="trade-head"><div><strong>${esc(group.name)}</strong><br><small>${esc(group.key)}</small></div><small>${group.areas.length}개 면적</small></div><table class="area-table"><thead><tr><th>전용면적</th><th>최근가</th><th>거래량</th><th>최근 거래</th></tr></thead><tbody>${group.areas.map(row=>`<tr><td>${number(row.area)}㎡</td><td>${price(row.latestPrice)}</td><td>${number(row.volume)}건</td><td>${date(row.latestDate)}</td></tr>`).join('')}</tbody></table></div>`).join('');
-  const tradeSection=rental(item)?'<div class="rental-notice"><strong>임대 단지</strong><span>임대 단지로 확인되어 매매 실거래 통계를 제공하지 않습니다.</span></div>':`<h3>연결된 거래기록</h3>${groups||'<div class="notice">승인된 거래기록이 없습니다.</div>'}`;
+  const groups=item.transactions.map(group=>`<div class="trade-group"><div class="trade-head"><div><strong>${esc(group.name)}</strong><br><small>${esc(group.key)}</small></div><small>${group.areas.length}개 면적</small></div>${group.areas.length?`<table class="area-table"><thead><tr><th>전용면적</th><th>최근가</th><th>거래량</th><th>최근 거래</th></tr></thead><tbody>${group.areas.map(row=>`<tr><td>${number(row.area)}㎡</td><td>${price(row.latestPrice)}</td><td>${number(row.volume)}건</td><td>${date(row.latestDate)}</td></tr>`).join('')}</tbody></table>`:'<div class="notice">이 목록에서는 면적별 거래 요약을 제공하지 않습니다.</div>'}</div>`).join('');
+  const tradeSection=rental(item)?'<div class="rental-notice"><strong>임대 단지</strong><span>임대 단지로 확인되어 매매 실거래 통계를 제공하지 않습니다.</span></div>':`<h3>연결된 거래기록</h3>${groups||'<div class="notice">연결된 거래기록이 없습니다.</div>'}`;
   $('#detail').innerHTML=`<div class="detail-title"><div><h2>${esc(item.name)}</h2><div class="detail-address">${esc(item.lotAddress||'지번 주소 없음')}<br>${esc(address(item.roadAddress)||'도로명 주소 없음')}</div></div><div class="detail-badges"><span class="badge family-${item.housingFamily}">${item.housingFamily==='rowhouse'?'연립·다세대':'아파트'}</span>${rental(item)?'<span class="badge rental">임대</span>':''}</div></div><div class="facts"><div class="fact"><span>세대수</span><strong>${number(item.units)}</strong></div><div class="fact"><span>필지</span><strong>${number(item.parcels.length)}</strong></div><div class="fact"><span>건축물대장</span><strong>${number(item.registry.length)}</strong></div><div class="fact"><span>공개 단지 ID</span><strong>${esc(item.id)}</strong></div></div>${tradeSection}`;
 }
 
@@ -87,8 +79,11 @@ async function start(){
   bind();
   try{
     state.data=await loadData();
-    const meta=state.data.meta;
-    $('#summary').textContent=`사용자 승인 ${number(meta.publications)}개 · 아파트 ${number(meta.families.apartment)}개 · 연립·다세대 ${number(meta.families.rowhouse)}개`;
+    const items=state.data.complexes;
+    const families={apartment:items.filter(item=>item.housingFamily==='apartment').length,rowhouse:items.filter(item=>item.housingFamily==='rowhouse').length};
+    const approved=items.filter(item=>item.review?.approved===true).length;
+    const label=currentPublication()?'공개 공동주택':state.data.meta?.approvedOnly===true?'사용자 승인':'공개 공동주택';
+    $('#summary').textContent=`${label} ${number(items.length)}개 · 아파트 ${number(families.apartment)}개 · 연립·다세대 ${number(families.rowhouse)}개${currentPublication()?` · 개별 검토 승인 ${number(approved)}개`:''}`;
     renderList();
     aptSearch=NodoApartmentSearch.bind($('#search'),{scope:()=>({r:({'서울':1,'경기':0,'인천':2})[state.region]??''}),enabled:()=>state.family!=='rowhouse',onSelect:c=>{state.query=c.name;renderList();},onClear:()=>{state.query=$('#search').value;renderList();}});
     await aptSearch.restore();
@@ -96,7 +91,7 @@ async function start(){
     const initial=params.get('k');
     if(initial&&state.data.complexes.some(item=>item.id===initial||(item.legacyIds||[]).includes(initial)))select(initial,true);
   }catch(error){
-    $('#summary').textContent='승인된 공동주택 데이터가 아직 준비되지 않았습니다.';
+    $('#summary').textContent='공동주택 데이터를 불러오지 못했습니다.';
     $('#complexList').innerHTML=`<div class="empty-state">${esc(error.message)}</div>`;
   }
 }

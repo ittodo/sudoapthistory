@@ -138,9 +138,9 @@ Parcel and price selection take precedence over regional interaction.
 Neither building approvals nor trade databases are modified by the builder.
 
 The production entry point is `D:/Work/15_26/rust/target/release/nodostream-pipeline.exe release`.
-`prepare --kind map` rebuilds map outputs against the committed site's current
-index, transactions, monthly data and parcel membership. Full and parcel releases
-also regenerate the map so row IDs and source hashes remain synchronized.
+Use `prepare --kind full`. The current Rust release supports full generation.
+It updates the map with the index, transactions, and parcel membership. Follow the
+[release contract](../../15_26/docs/site-release-workflow.md) for the command and input review.
 Review the manifest and every unpushed commit before using `publish`. Public
 verification checks map data and the committed UI files after the exact SHA
 Cloudflare Production workflow succeeds; Worker, manifest and public bytes must agree. The publication and projection gates still apply.
