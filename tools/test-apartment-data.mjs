@@ -6,9 +6,26 @@ import vm from 'node:vm';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
 
 // This is an output audit. It does not run in the producer or the browser.
-function assertGeneratedScope({index,rows,publications,current,readShard}){
+function assertGeneratedScope({index,rows,publications,current,areaUnits=null,readShard}){
  const byRow=new Map(rows.map(r=>[r.i,r])),byPublication=new Map(publications.map(p=>[p.id,p]));
  assert.equal(byRow.size,rows.length,'Source row IDs must be unique');
+ if(current){
+  const basis='current_hub_apartment_exclusive_units';
+  for(const row of rows){
+   if(Object.hasOwn(row,'u')){
+    assert.ok(areaUnits?.basis===basis&&row.us===basis&&Number.isSafeInteger(row.u)&&row.u>0&&!row.up,
+     `${row.i}: unverified area households must not return`);
+   }else assert.equal(Object.hasOwn(row,'us'),false,`${row.i}: unknown area must not claim a household source`);
+  }
+  if(areaUnits){
+   assert.equal(areaUnits.basis,basis,'Current household basis');
+   assert.equal(areaUnits.rounding,'transaction_round_ties_even','Current household rounding');
+   assert.equal(areaUnits.unknownOmitted,true,'Unknown households must be omitted');
+   const known=rows.filter(row=>Object.hasOwn(row,'u')).length;
+   assert.equal(areaUnits.knownRows,known,'Known household coverage');
+   assert.equal(areaUnits.unknownRows,rows.length-known,'Unknown household coverage');
+  }
+ }
  const owners=new Map();
  for(const p of publications)for(const source of p[current?'transactionClaimKeys':'transactionKeys']||[]){
   if(!owners.has(source))owners.set(source,[]);owners.get(source).push(p.id);
@@ -38,7 +55,6 @@ function assertGeneratedScope({index,rows,publications,current,readShard}){
      assert.equal(id,claims.length===1?claims[0]:source.as,`${row.i}: publication transaction ownership`);
      assert.equal(row.units,current?null:source.u??null,`${row.i}: source area households`);
      if(current){
-      assert.equal(Object.hasOwn(source,'u'),false,`${row.i}: unverified area households must not return`);
       if(source.ci)assert.equal(source.ci,id,`${row.i}: published canonical ID`);
      }
     }
@@ -85,10 +101,12 @@ test('detail links preserve source IDs and zero-valued legacy row IDs',()=>{
 test('generated representative and canonical identities preserve household scope and legacy comments',t=>{
  const base=new URL('../data/apartments/',import.meta.url),index=JSON.parse(readFileSync(new URL('index.json',base)));
  const read=id=>{const [canonical,shard]=index.lookup[id];return JSON.parse(readFileSync(new URL(shard+'.json',base)))[canonical];};
- const rows=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))).d;
+ const stock=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))),rows=stock.d;
  const housing=JSON.parse(readFileSync(new URL('../data/housing-v3/index.json',import.meta.url)));
  const map=JSON.parse(readFileSync(new URL('../data/map/index.json',import.meta.url)));
  const current=housingPublicationMode(housing,map)==='current-review';
+ const areaUnits=current?stock.meta.reviewCandidate?.areaUnits:null;
+ if(current)assert.deepEqual(areaUnits,housing.meta.areaUnits,'Public household metadata must share its current source');
  const source=rows.find(r=>r.as==='41281-3250'&&r.a===85);
  const apt=read(source.as);assert.equal(apt.units,source.tu);assert.equal(apt.areas.find(a=>a.area===85).units,current?null:source.u);
  for(const a of apt.areas)for(const row of a.rows)assert.equal(row.commentId,'apt_'+row.i);
@@ -96,7 +114,7 @@ test('generated representative and canonical identities preserve household scope
  assert.equal(Object.keys(index.shards).length,512);
  for(const complex of map.d)assert.ok(index.lookup[complex.publicationId||complex.id],complex.id);
  for(const source of index.ambiguous)assert.equal(index.lookup[source][0],source,'Ambiguous source must remain independent');
- const report=assertGeneratedScope({index,rows,publications:housing.complexes.filter(p=>p.housingFamily==='apartment'),current,
+ const report=assertGeneratedScope({index,rows,publications:housing.complexes.filter(p=>p.housingFamily==='apartment'),current,areaUnits,
   readShard:shard=>JSON.parse(readFileSync(new URL(shard+'.json',base)))});
  t.diagnostic(JSON.stringify({contract:current?'current-review':'legacy',...report}));
 });
@@ -118,6 +136,25 @@ test('household audit separates current publication totals from source and area 
  f.apt.areas[0].units=null;f.apt.areas[0].rows[0].units=500;assert.throws(()=>assertGeneratedScope(f),/source area households/);
  f.apt.areas[0].rows[0].units=null;f.rows[0].u=500;assert.throws(()=>assertGeneratedScope(f),/unverified area households/);
  assertGeneratedScope(scopeFixture(false));
+});
+
+test('current HUB area counts require explicit provenance, complete counts and matching coverage',()=>{
+ const known=()=>{
+  const f=scopeFixture();
+  f.rows[0].u=200;f.rows[0].us='current_hub_apartment_exclusive_units';
+  f.areaUnits={basis:f.rows[0].us,rounding:'transaction_round_ties_even',unknownOmitted:true,knownRows:1,unknownRows:1};
+  return f;
+ };
+ assertGeneratedScope(known());
+ for(const mutate of [
+  f=>{delete f.rows[0].us;},f=>{f.rows[0].us='legacy';},
+  f=>{f.rows[0].u=0;},f=>{f.rows[0].u=1.5;},f=>{f.rows[0].up=true;},
+  f=>{f.areaUnits=null;}
+ ]){
+  const f=known();mutate(f);assert.throws(()=>assertGeneratedScope(f),/unverified area households/);
+ }
+ const f=known();f.areaUnits.knownRows=2;
+ assert.throws(()=>assertGeneratedScope(f),/Known household coverage/);
 });
 
 test('identity audit rejects lost comments, moved legacy routes and incorrect canonical owners',()=>{

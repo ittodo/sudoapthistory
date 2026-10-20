@@ -26,3 +26,6 @@
 지역 선택은 통계와 목록에 적용된다. 가격대·평형·단지 검색은 목록에 적용된다.
 회귀검사는 `node --test tools/test-cloudflare-price-bands.mjs`로 실행한다.
 운영 CI의 기존 `test-cloudflare-*.mjs` 검사에도 포함된다.
+`test-apartment-data.mjs`는 현재 HUB 원천 표식, 양의 정수 세대수, 부분 집계 제외와
+확인·미확인 항목 수를 검사한다. 현재 리뷰의 단지 상세 DTO가 보관하는 총세대수와
+통계 index의 평형별 세대수는 별도로 검사한다.
