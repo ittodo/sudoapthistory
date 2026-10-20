@@ -303,9 +303,7 @@
     $('retryStartup').hidden=true;
     try {
       if(typeof L==='undefined')throw new Error('지도 도구를 불러오지 못했습니다. 새로고침해 주세요.');
-      const response=await fetch('../data/map/index.json',{cache:'no-cache'});
-      if(!response.ok)throw new Error('지도 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
-      payload=await response.json();
+      payload=await window.loadMapIndex();
       if(payload.meta?.version!==1 || !Array.isArray(payload.d))throw new Error('지도 데이터 형식을 확인할 수 없습니다.');
       if(!payload.admin?.regions?.length)throw new Error('지역 경계 데이터가 업데이트 중입니다. 잠시 후 다시 시도해 주세요.');
       byId=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])]));

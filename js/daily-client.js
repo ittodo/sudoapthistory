@@ -1,6 +1,6 @@
 (function(root) {
   'use strict';
-  async function create() {
+  async function create({lazyCatalog=false}={}) {
     const response=await fetch('/data/daily/index.json',{cache:'no-cache'});
     if(!response.ok)throw Error('일별 데이터를 불러오지 못했습니다. 다시 시도해 주세요.');
     const index=await response.json();
@@ -22,10 +22,15 @@
     load.promote=p=>{if(cache.has(p))cache.get(p).background=false;};
     const stateFile=p=>p.includes('-state.')||/^data\/daily\/regions\/\d{5}\/(base|months|states)\//.test(p);
     const extension=index.encoding==='gzip-json'?'bin':'json';
-    const regional=index.schema>=2?await globalThis.NodoRegional.create(index,'daily',load):null;
-    const catalog=regional||await load('data/daily/catalog.'+extension);
+    let regional=null,catalog=null,catalogPromise;
+    async function ensureCatalog(){
+      if(catalog)return catalog;
+      if(!catalogPromise)catalogPromise=(async()=>{regional=index.schema>=2?await globalThis.NodoRegional.create(index,'daily',load):null;return catalog=regional||await load('data/daily/catalog.'+extension);})().catch(e=>{catalogPromise=null;throw e;});
+      return catalogPromise;
+    }
+    if(!lazyCatalog)await ensureCatalog();
     const statePath=(ym,r)=>`data/daily/${r}/${ym}-state.${extension}`;
-    const month=(ym,r,state=false,background=false)=>index.months.includes(ym)?(regional?regional.shard(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,ym,r,background):load(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,background)):Promise.resolve(state?{opening:[],updates:[]}:{rows:[]});
+    const month=async(ym,r,state=false,background=false)=>{if(!index.months.includes(ym))return state?{opening:[],updates:[]}:{rows:[]};await ensureCatalog();return regional?regional.shard(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,ym,r,background):load(`data/daily/${r}/${ym}${state?'-state':''}.${extension}`,background);};
     const regions=f=>f.r==null?[0,1,2]:[f.r];
     async function trades(ym,f={}) {const groups=await Promise.all(regions(f).map(r=>month(ym,r)));return groups.flatMap(g=>g.rows.map(row=>NodoDailyModel.decode(row,catalog)));}
     async function prices(date,f={}) {const groups=await Promise.all(regions(f).map(r=>month(date.slice(0,7),r,true)));return groups.flatMap(g=>[...NodoDailyModel.snapshot(g,NodoDailyModel.number(date)).values()]);}
@@ -33,6 +38,7 @@
     function cancelPrices(){frameSerial++;activePricePaths=new Set();for(const [path,entry]of cache)if(stateFile(path)&&!entry.settled){entry.controller.abort();cache.delete(path);}}
     async function priceFrame(date,f={},fromDate=null){
       const serial=++frameSerial,selected=regions(f),ym=date.slice(0,7),day=NodoDailyModel.number(date);
+      await ensureCatalog();if(serial!==frameSerial)return {values:[],events:[],changes:[],reset:true};
       const wanted=new Set(selected.flatMap(r=>regional?regional.paths(ym,r):[statePath(ym,r)]));
       if(fromDate)for(let m=fromDate.slice(0,7);m<ym;m=NodoDailyModel.shift(m+'-01',1,'month').slice(0,7))for(const r of selected)for(const p of regional?regional.paths(m,r):[statePath(m,r)])wanted.add(p);
       activePricePaths=wanted;
@@ -63,7 +69,7 @@
       }catch(error){if(serial!==frameSerial)return {values:[],events:[],changes:[],reset:true};throw error;}
     }
     function prefetch(date,f={},state=false){const next=NodoDailyModel.shift(date,1,'month').slice(0,7);if(index.months.includes(next))for(const r of regions(f))month(next,r,state,true).catch(()=>{});}
-    return {index,catalog,load,month,trades,prices,priceFrame,prefetch,cancelPrices};
+    return {index,get catalog(){return catalog;},load,month,trades,prices,priceFrame,prefetch,cancelPrices};
   }
   root.NodoDailyClient={create};
 })(window);

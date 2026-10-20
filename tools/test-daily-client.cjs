@@ -36,5 +36,11 @@ vm.runInNewContext(fs.readFileSync(require.resolve('../js/daily-client.js'),'utf
   block=false;const count=fetched,reopened=await scope.window.NodoDailyClient.create();
   assert.equal((await reopened.priceFrame('2026-01-02',{r:1})).values[0].get(0)[4],90);
   assert.equal(fetched-count,2,'new client downloads index and catalog, but reuses stored state');
+  const lazyBefore=fetched,lazy=await scope.window.NodoDailyClient.create({lazyCatalog:true});
+  assert.equal(fetched-lazyBefore,1,'current map reads only the manifest, not historical identities');
+  assert.equal(lazy.catalog,null);
+  assert.equal((await lazy.priceFrame('2026-01-02',{r:1})).values[0].get(0)[4],90);
+  assert.ok(lazy.catalog,'first historical read prepares the catalog');
+  assert.equal(fetched-lazyBefore,2,'historical catalog loads once and stored state remains reusable');
   console.log('Price client: month boundaries, interval effects, reverse seeks, no-fetch playback and stale requests passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -4,6 +4,14 @@
 
 (function(){
   function _base(){ return (typeof window!=='undefined' && window.APT_BASE) || ''; }
+  let mapIndex;
+  window.loadMapIndex = function(){
+    if(!mapIndex)mapIndex=fetch('/data/map/index.json',{cache:'no-cache'}).then(r=>{
+      if(!r.ok)throw Error('지도 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+      return r.json();
+    }).catch(error=>{mapIndex=null;throw error;});
+    return mapIndex;
+  };
 
   // Content-verified, retryable client for pages that load detail files on demand.
   window.createVerifiedDataClient = function(base, sources){

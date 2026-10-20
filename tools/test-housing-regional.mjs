@@ -50,3 +50,41 @@ test('decoded cache has byte and entry limits, LRU eviction and no retained over
  assert.throws(()=>cache.set('invalid',{},NaN),/size/);assert.throws(()=>cache.set('invalid',{},1,0),/estimate/);
  const packed=createHousingDecodeCache({maxBytes:100});packed.set('packed-state',{},1000,64);assert.ok(packed.get('packed-state'));assert.equal(packed.stats.retainedEstimatedBytes,64);
 });
+
+test('assembled province months survive district cache churn and share pending reads',async()=>{
+ const sources={},regions={},quarters={},states={},files=new Map(),requested=[],promoted=[];
+ const months=Array.from({length:7},(_,i)=>'2026-'+String(i+1).padStart(2,'0'));
+ function emit(path,value,binary=false){const bytes=binary?gzipSync(value):Buffer.from(JSON.stringify(value));files.set(path,bytes);sources[path]=createHash('sha256').update(bytes).digest('hex');}
+ // More districts than the decoded file cache can retain.
+ for(let i=0;i<15;i++){
+  const code=String(11000+i),base='data/daily/regions/'+code,identity={complexes:[code+'source'],areas:[[0,'59.1']]};
+  emit(base+'/identities.json',identity);emit(base+'/metadata.json',{complexes:[{id:code+'source',n:'단지',r:1}],areas:[]});
+  regions[code]={identities:base+'/identities.json',metadata:base+'/metadata.json'};quarters[code]={};states[code]={};
+  const inputs={},opening={};
+  for(const month of months){
+   const day=Number(month.replace('-','')+'01'),row=[code+':0',day,100,2,0,null,null,null,null,0,'01'.repeat(11),null];
+   inputs[month]={daily:{rows:[row],updates:[[code+':0',day,100,100,100,1]],opening:[]},rental:{rows:[],updates:[],opening:[]}};
+   opening[month]=[[code+':0',20251231,90,90,90,1]];
+   quarters[code][month]=base+'/quarters/2026-Q'+Math.ceil(Number(month.slice(5))/3)+'.bin';
+   states[code][month]=base+'/states/daily/2026.bin';
+  }
+  for(const q of [1,2,3])emit(base+'/quarters/2026-Q'+q+'.bin',encodeQuarter(packQuarter(code,'2026-Q'+q,Object.fromEntries(Object.entries(inputs).filter(([m])=>Math.ceil(Number(m.slice(5))/3)===q)),identity,codec)),true);
+  emit(base+'/states/daily/2026.bin',encodeStateFile(packStateTimeline(code,'daily',opening,codec)),true);
+ }
+ emit('data/daily/regions/index.json',{schema:3,regions});
+ const manifest={schema:3,months,sources,regional:{format:'packed-region',kind:'daily',authority:'data/daily/regions/index.json',quarters,states}};
+ let failure;
+ const load=async path=>{requested.push(path);if(path===failure){failure=null;throw Error('temporary download');}const bytes=files.get(path);return path.endsWith('.bin')?new Uint8Array(gunzipSync(bytes)):JSON.parse(bytes);};
+ load.promote=p=>promoted.push(p);
+ const browser=await create(manifest,'daily',load),get=(m,state=true,background=false)=>browser.shard('probe/'+m+(state?'-state':'')+'.bin',m,1,background);
+ const before=requested.length,[first,shared]=await Promise.all([get(months[0],true,true),get(months[0])]);
+ assert.equal(first,shared);assert.equal(requested.length-before,30,'one read per district quarter/state');
+ assert.equal(first.opening.length,15);assert.ok(promoted.length>0,'foreground claims shared downloads');
+ assert.equal(await get(months[0]),first);assert.equal(requested.length-before,30,'same-month seeks never reread evicted district files');
+ const rows=await get(months[0],false);assert.equal(rows.opening.length,0);assert.deepEqual(rows.rows,first.rows);
+ for(const month of months.slice(1,6))await get(month);
+ const beforeEvicted=requested.length;assert.deepEqual(await get(months[0]),first);assert.ok(requested.length>beforeEvicted,'old assembled months are evicted');
+ failure=quarters['11000'][months[6]];
+ await assert.rejects(get(months[6]),/temporary download/);
+ assert.equal((await get(months[6])).rows.length,15,'failed month remains retryable');
+});

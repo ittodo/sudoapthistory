@@ -58,7 +58,7 @@ window.NodoRentalMapView=({settings,refresh,stop,detailURL,esc,money})=>{
   draw();cancelAnimationFrame(moveFrame);moveFrame=requestAnimationFrame(refresh);
  });
  // Boundaries are independent of rental history; load them without blocking prices.
- fetch('/data/map/index.json').then(r=>{if(!r.ok)throw Error('경계 자료 오류');return r.json();}).then(payload=>{
+ window.loadMapIndex().then(payload=>{
   for(const c of payload.d){complexes.set(c.id,c);if(c.publicationId&&!complexes.has(c.publicationId))complexes.set(c.publicationId,c);}
   const aliases=new Map();
   for(const c of payload.d)for(const source of c.memberSources||[]){if(!aliases.has(source.id))aliases.set(source.id,c);else if(aliases.get(source.id)?.id!==c.id)aliases.set(source.id,null);}

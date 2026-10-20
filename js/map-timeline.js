@@ -26,7 +26,7 @@
     map.on('zoomend',()=>{if(mode==='price'&&regionalFrame!==(map.getZoom()<16))refresh();});
     let renderedMode='current',renderedDay='',priceAreaOwners=new Map(),districtRegion;
     function stop(){playing=false;clearTimeout(timer);timer=null;$('timePlay').textContent='▶ 재생';$('timePlay').setAttribute('aria-pressed','false');}
-    async function ensure(){if(!clientPromise)clientPromise=NodoDailyClient.create().catch(e=>{clientPromise=null;throw e;});client=await clientPromise;if(client.index.mapVersion!==payload.meta.sourceVersion)throw Error('지도와 일별 데이터가 업데이트 중입니다. 새로고침해 주세요.');return client;}
+    async function ensure(){if(!clientPromise)clientPromise=NodoDailyClient.create({lazyCatalog:true}).catch(e=>{clientPromise=null;throw e;});client=await clientPromise;if(client.index.mapVersion!==payload.meta.sourceVersion)throw Error('지도와 일별 데이터가 업데이트 중입니다. 새로고침해 주세요.');return client;}
     function settings(){return {...getFilters(),...(district?{g:district}:{})};}
     function sync(){
       panel.sync({summary:(mode==='current'?'현재 지도 · '+today():'표시일 · '+(day||'준비 중')),playable:mode!=='current'});
@@ -42,7 +42,7 @@
       }}
       if(client){for(const id of ['timeDate','timeStart','timeEnd']){$(id).min=client.index.minDate;$(id).max=client.index.maxDate;}
         $('timeSlider').max=Math.max(0,Math.round((Date.parse(end)-Date.parse(start))/M.DAY));$('timeSlider').value=Math.max(0,Math.round((Date.parse(day)-Date.parse(start))/M.DAY));
-        const r=getFilters().r??'all';if(districtRegion!==r){const options=[...new Set(client.catalog.complexes.filter(c=>r==='all'||c.r===r).map(c=>c.g))].sort();
+        const r=getFilters().r??'all';if(districtRegion!==r){const options=[...new Set(payload.d.filter(c=>r==='all'||c.r===r).map(c=>c.g))].sort();
           $('timeDistrict').innerHTML='<option value="">전체 시·군·구</option>'+options.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');districtRegion=r;}
         // Keep a multi-district filter from the period list visible in the map selector.
         const districtSelect=$('timeDistrict');districtSelect.querySelector('[data-combined-districts]')?.remove();

@@ -13,6 +13,7 @@ test('rental date loads retain the completed frame; tenure and filter changes cl
   NodoMapParcels:{create:()=>({render(){}})},
   L:{map:()=>map,control:{zoom:()=>({addTo(){}})},tileLayer:()=>({addTo(){}}),divIcon:x=>x,marker:(anchor,options)=>({options,element:{innerHTML:options.icon.html},getElement(){return this.element;},addTo(){layers.add(this);return this;},on(){},setLatLng(){},setIcon(){assert.fail('Existing marker DOM must be reused like the sale map');}})},
   NodoMapModel:{bindMapTap(){},labelPosition:()=>[37,127]}});
+ context.window.loadMapIndex=()=>context.fetch().then(r=>r.json());
  vm.runInContext(readFileSync(new URL('../js/rental-map-view.js',import.meta.url),'utf8'),context);
  const view=context.window.NodoRentalMapView({settings,refresh(){},stop(){},esc:String,money:String});
  await new Promise(resolve=>setImmediate(resolve));
@@ -39,6 +40,21 @@ test('rental date loads retain the completed frame; tenure and filter changes cl
  view.setData([point]);settings.contract='new';assert.equal(view.beginView(),true);assert.equal(layers.size,0);
  view.setData([point]);settings.type='sale';view.beginView();assert.equal(layers.size,0);
  settings.type='jeonse';view.beginView();assert.equal(layers.size,0);
+});
+
+test('sale and rental map readers share one in-flight index and retry failed downloads',async()=>{
+ let requests=0,fail=true;
+ const payload={d:[{id:'same-release'}]};
+ const context=vm.createContext({window:{},fetch:async()=>{
+  requests++;return {ok:!fail,json:async()=>payload};
+ }});
+ vm.runInContext(readFileSync(new URL('../js/data-loader.js',import.meta.url),'utf8'),context);
+ const read=context.window.loadMapIndex;
+ const first=read();assert.equal(read(),first);
+ await assert.rejects(first,/지도 데이터를/);fail=false;
+ const [sale,rental]=await Promise.all([read(),read()]);
+ assert.equal(sale,payload);assert.equal(rental,payload);
+ assert.equal(await read(),payload);assert.equal(requests,2);
 });
 
 test('a superseded request cannot paint after asynchronous map initialization',async()=>{

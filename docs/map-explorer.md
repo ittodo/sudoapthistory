@@ -3,6 +3,15 @@
 > 문서 역할: **기능·구현 설명** · [문서 목록](README.md)
 > 현재 운영·공개 자료 계약은 문서 목록의 기준 문서를 따릅니다. 날짜·건수·성능 수치는 해당 검증 조건의 기록입니다.
 
+현재 지도는 `data/map/index.json`의 최신 가격을 먼저 표시한다. 과거 거래 카탈로그는
+과거 단지 가격이나 거래 내역을 요청할 때 준비한다. 날짜 범위는 일별 인덱스에서,
+시군구 선택지는 지도 인덱스에서 읽는다. 매매·전월세 전환은 같은 페이지에서 받은
+지도 인덱스를 공유한다. 다운로드가 실패하면 다음 요청에서 다시 받는다.
+
+공통 거래 판독기는 조립한 시도·월 자료를 최대 6개 보관한다. 같은 달의 날짜·필터
+변경은 이 자료를 재사용한다. 시군구 파일 캐시에서 이전 자료가 밀려나도 전체 시도의
+다운로드·압축 해제를 반복하지 않는다. 진행 중인 같은 요청도 공유하며 실패한 요청은
+다시 시도할 수 있다. 새 달을 처음 조회하는 다운로드 비용은 남는다.
 
 In the legacy publication mode, `/map/` first groups the existing area rows by `aptSeq`. Approved K-APT publications
 in `data/housing-v3/index.json` can then combine multiple active transaction sources

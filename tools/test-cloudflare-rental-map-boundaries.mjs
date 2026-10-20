@@ -31,6 +31,7 @@ async function fixture({fail=false}={}){
   NodoApartmentLinks:{open:url=>opened.push(url)},NodoRental:{REGIONS:['41','11','28']},NodoMapRegions:{create:()=>({render(){},setSummaries(){}})},
   addEventListener:(name,handler)=>windowEvents.set(name,handler)});
  context.window=context;
+ context.loadMapIndex=()=>context.fetch().then(r=>r.json());
  vm.runInContext(readFileSync(new URL('../js/map-pricing.js',import.meta.url),'utf8'),context);
  vm.runInContext(readFileSync(new URL('../js/map-model.js',import.meta.url),'utf8'),context);
  vm.runInContext(readFileSync(new URL('../js/map-parcels.js',import.meta.url),'utf8'),context);
