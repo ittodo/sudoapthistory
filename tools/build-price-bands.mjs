@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const repoRoot = resolve(import.meta.dirname, "..");
 const indexPath = resolve(repoRoot, "data/index.json");
@@ -157,9 +158,7 @@ function addRow(scope, row, priceArr, volumeArr, yearsLen) {
   addLiquidity(scope, priceArr, volumeArr, yearsLen);
 }
 
-const indexData = JSON.parse(await readFile(indexPath, "utf8"));
-const prices = JSON.parse(await readFile(pricesPath, "utf8"));
-const volumes = JSON.parse(await readFile(volumesPath, "utf8"));
+export function buildPriceBands(indexData, prices, volumes) {
 const rows = indexData.d || [];
 const years = indexData.meta?.years || [];
 const scopes = {};
@@ -214,6 +213,11 @@ const output = {
       missingBeforeFirstObservation: true,
     },
     unitBasis: "area_row_units_u",
+    unitCoverage: {
+      knownRows: rows.filter(row => !row.up && Number(row.u) > 0).length,
+      unknownRows: rows.filter(row => row.up || !(Number(row.u) > 0)).length,
+      missingIsZero: false,
+    },
     liquidityBasis: {
       numerator: "annual transaction count from data/volumes.json",
       denominator: "units assigned to the same yearly price bucket",
@@ -235,7 +239,15 @@ const output = {
   },
   scopes,
 };
+return output;
+}
 
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+const [indexData, prices, volumes] = await Promise.all(
+  [indexPath, pricesPath, volumesPath].map(async path => JSON.parse(await readFile(path, "utf8"))),
+);
+const output = buildPriceBands(indexData, prices, volumes);
 await writeFile(outputPath, `${JSON.stringify(output)}\n`, "utf8");
 console.log(`wrote ${outputPath}`);
-console.log(`rows=${rows.length} scopes=${Object.keys(scopes).length} extraPriceKeys=${extraPriceKeys} missingPriceKeys=${missingPriceKeys} extraVolumeKeys=${extraVolumeKeys} missingVolumeKeys=${missingVolumeKeys}`);
+console.log(`rows=${output.meta.indexRows} scopes=${Object.keys(output.scopes).length} knownHouseholdRows=${output.meta.unitCoverage.knownRows} unknownHouseholdRows=${output.meta.unitCoverage.unknownRows}`);
+}

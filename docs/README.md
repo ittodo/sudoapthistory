@@ -23,6 +23,7 @@
 - [전월세 지도 UI와 성능](rental-map.md)
 - [전월세 월간 시장 동향](rental-market.md)
 - [시장동향 주담대 평균금리 비교](market-mortgage.md)
+- [가격대 세대수·거래 회전율](price-band-statistics.md)
 
 ## 회원·통계·개인정보
 

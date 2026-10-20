@@ -22,13 +22,13 @@
 
   const regionLabels = { "0": "경기", "1": "서울", "2": "인천" };
   const colors = ["var(--muted)", "#3b82f6", "#22c55e", "#f59e0b", "var(--up)", "#a855f7", "#f97316"];
-  const dataVersion = "20260814-turnover1";
+  const dataVersion = "20261020-current-households";
 
   const $ = (id) => document.getElementById(id);
-  const fmtUnits = (v) => `${Math.round(v || 0).toLocaleString()}세대`;
+  const fmtUnits = (v) => v == null ? "미확인" : `${Math.round(v).toLocaleString()}세대`;
   const fmtTransactions = (v) => `${Math.round(v || 0).toLocaleString()}건`;
-  const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
-  const fmtTurnover = (v) => `${(v || 0).toFixed(2)}%`;
+  const fmtPct = (v) => v == null ? "산정 불가" : `${v.toFixed(1)}%`;
+  const fmtTurnover = (v) => v == null ? "산정 불가" : `${v.toFixed(2)}%`;
   const fmtPrice = (v) => v > 0 ? `${Number(v).toFixed(2)}억` : "-";
   const fmtTrillion = (v) => {
     const n = Number(v || 0);
@@ -36,6 +36,7 @@
     return `${n.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}조`;
   };
   const fmtCap = (v) => {
+    if (v == null) return "산정 불가";
     const n = Number(v || 0);
     if (!Number.isFinite(n) || n <= 0) return "-";
     if (n >= 10000) return `${(n / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 1 })}조`;
@@ -220,12 +221,20 @@
     const over10Cap = (scope.current.marketCapByBucketEok || []).slice(2).reduce((a, b) => a + b, 0);
     const over20Cap = (scope.current.marketCapByBucketEok || []).slice(3).reduce((a, b) => a + b, 0);
     const topBucketIndex = scope.current.buckets.reduce((best, value, i, arr) => value > arr[best] ? i : best, 0);
+    if (!currentUnits) {
+      $("kpis").innerHTML = [
+        ["확인 세대 시가총액", "산정 불가"], ["평균 세대가", "산정 불가"],
+        ["10억+ 시총", "산정 불가"], ["20억+ 시총", "산정 불가"],
+        ["가격·세대수 확인", "미확인"], ["최대 구간", "산정 불가"],
+      ].map(([label, value]) => `<div class="kpi-card"><div class="label">${label}</div><div class="value">${value}</div><div class="sub">평형별 세대수·가격 근거 부족</div></div>`).join("");
+      return;
+    }
     const cards = [
-      ["전체 시가총액", fmtCap(marketCap), "실거래 평균가 기반 추정"],
+      ["확인 세대 시가총액", fmtCap(marketCap), "세대수 확인 평형 · 최근 실거래 평균가"],
       ["평균 세대가", fmtPrice(currentUnits ? marketCap / currentUnits : 0), fmtUnits(currentUnits)],
       ["10억+ 시총", fmtCap(over10Cap), `${fmtUnits(over10)} · ${fmtPct(currentUnits ? over10 / currentUnits * 100 : 0)}`],
       ["20억+ 시총", fmtCap(over20Cap), `${fmtUnits(over20)} · ${fmtPct(currentUnits ? over20 / currentUnits * 100 : 0)}`],
-      ["가격 확인 세대", fmtUnits(currentUnits), `커버리지 ${fmtPct(coverageUnits ? currentUnits / coverageUnits * 100 : 0)}`],
+      ["가격 확인 세대", fmtUnits(currentUnits), `세대수 확인분 중 가격 확보 ${fmtPct(coverageUnits ? currentUnits / coverageUnits * 100 : null)}`],
       ["최대 구간", buckets[topBucketIndex].label, `${fmtUnits(scope.current.buckets[topBucketIndex] || 0)} · ${fmtCap((scope.current.marketCapByBucketEok || [])[topBucketIndex] || 0)}`],
     ];
     $("kpis").innerHTML = cards.map(([label, value, sub]) => (
@@ -243,7 +252,7 @@
     const years = state.stats.meta.years;
     const datasets = state.stats.meta.buckets.map((bucket, i) => ({
       label: bucket.label,
-      data: scope.trend.buckets[i],
+      data: scope.trend.buckets[i].map((n, yi) => scope.trend.unitsByYear[yi] > 0 ? n : null),
       backgroundColor: colors[i],
       borderWidth: 0,
     }));
@@ -269,7 +278,8 @@
 
   function renderCurrentChart(scope) {
     const isCap = state.currentMetric === "cap";
-    const values = isCap ? (scope.current.marketCapByBucketEok || []) : scope.current.buckets;
+    const values = (isCap ? (scope.current.marketCapByBucketEok || []) : scope.current.buckets)
+      .map(n => scope.current.units > 0 ? n : null);
     if (state.currentChart) state.currentChart.destroy();
     state.currentChart = new Chart($("currentChart"), {
       type: "bar",
@@ -310,7 +320,7 @@
     const yi = years.indexOf(year);
     const unitsByBucket = state.stats.meta.buckets.map((_, i) => Number(scope.trend?.buckets?.[i]?.[yi] || 0));
     const transactionsByBucket = state.stats.meta.buckets.map((_, i) => Number(scope.liquidity?.transactionsByBucket?.[i]?.[yi] || 0));
-    const turnoverByBucket = unitsByBucket.map((units, i) => units > 0 ? transactionsByBucket[i] / units * 100 : 0);
+    const turnoverByBucket = unitsByBucket.map((units, i) => units > 0 ? transactionsByBucket[i] / units * 100 : null);
     const units = unitsByBucket.reduce((sum, value) => sum + value, 0);
     const transactions = transactionsByBucket.reduce((sum, value) => sum + value, 0);
     const rawTransactions = Number(scope.coverage?.allTransactionsByYear?.[yi] || 0);
@@ -325,13 +335,13 @@
     const snap = liquiditySnapshot(scope);
     const latestCompleteYear = Number(state.stats.meta.latestCompleteYear || 0);
     const yearLabel = snap.year > latestCompleteYear ? `${snap.year} YTD` : `${snap.year}년`;
-    const overallTurnover = snap.units > 0 ? snap.transactions / snap.units * 100 : 0;
+    const overallTurnover = snap.units > 0 ? snap.transactions / snap.units * 100 : null;
     const coverage = snap.rawTransactions > 0 ? snap.transactions / snap.rawTransactions * 100 : 0;
     const topLabel = snap.topBucketIndex >= 0 ? state.stats.meta.buckets[snap.topBucketIndex].label : "-";
     const topTurnover = snap.topBucketIndex >= 0 ? snap.turnoverByBucket[snap.topBucketIndex] : 0;
     const cards = [
-      [`${yearLabel} 거래량`, fmtTransactions(snap.transactions), `원자료 ${fmtTransactions(snap.rawTransactions)}`],
-      [`${yearLabel} 회전율`, fmtTurnover(overallTurnover), `${fmtUnits(snap.units)} 기준`],
+      [`${yearLabel} 확인 평형 거래량`, snap.units > 0 ? fmtTransactions(snap.transactions) : "산정 불가", `원자료 ${fmtTransactions(snap.rawTransactions)}`],
+      [`${yearLabel} 회전율`, fmtTurnover(overallTurnover), `${fmtUnits(snap.units || null)} 기준`],
       ["거래량 커버리지", fmtPct(coverage), "세대수·가격대 확인 거래 기준"],
       ["최고 회전 가격대", topLabel, topLabel === "-" ? "거래 없음" : fmtTurnover(topTurnover)],
     ];
@@ -383,9 +393,9 @@
       const transactionShare = snap.transactions > 0 ? snap.transactionsByBucket[i] / snap.transactions * 100 : 0;
       return `<tr>
         <td><span class="bucket-chip">${bucket.label}</span></td>
-        <td class="num">${Math.round(snap.unitsByBucket[i]).toLocaleString()}</td>
-        <td class="num">${Math.round(snap.transactionsByBucket[i]).toLocaleString()}</td>
-        <td class="num">${fmtPct(transactionShare)}</td>
+        <td class="num">${snap.units > 0 ? Math.round(snap.unitsByBucket[i]).toLocaleString() : "미확인"}</td>
+        <td class="num">${snap.units > 0 ? Math.round(snap.transactionsByBucket[i]).toLocaleString() : "산정 불가"}</td>
+        <td class="num">${fmtPct(snap.transactions > 0 ? transactionShare : null)}</td>
         <td class="num">${fmtTurnover(snap.turnoverByBucket[i])}</td>
       </tr>`;
     }).join("");
@@ -415,16 +425,16 @@
     const totalUnits = scope.current.units || 0;
     const totalCap = scope.current.marketCapEok || 0;
     $("bucketHead").innerHTML = "<tr><th>가격대</th><th class=\"num\">세대수</th><th class=\"num\">세대수 %</th><th class=\"num\">시가총액</th><th class=\"num\">시총 %</th><th class=\"num\">평균가</th></tr>";
-    $("bucketCaption").textContent = `${fmtUnits(totalUnits)} · ${fmtCap(totalCap)}`;
+    $("bucketCaption").textContent = `${fmtUnits(totalUnits || null)} · ${fmtCap(totalUnits ? totalCap : null)}`;
     $("bucketBody").innerHTML = state.stats.meta.buckets.map((bucket, i) => {
       const units = scope.current.buckets[i] || 0;
       const cap = (scope.current.marketCapByBucketEok || [])[i] || 0;
       return `<tr>
         <td><span class="bucket-chip">${bucket.label}</span></td>
-        <td class="num">${Math.round(units).toLocaleString()}</td>
-        <td class="num">${fmtPct(totalUnits ? units / totalUnits * 100 : 0)}</td>
-        <td class="num">${fmtCap(cap)}</td>
-        <td class="num">${fmtPct(totalCap ? cap / totalCap * 100 : 0)}</td>
+        <td class="num">${totalUnits > 0 ? Math.round(units).toLocaleString() : "미확인"}</td>
+        <td class="num">${fmtPct(totalUnits ? units / totalUnits * 100 : null)}</td>
+        <td class="num">${fmtCap(totalUnits ? cap : null)}</td>
+        <td class="num">${fmtPct(totalCap ? cap / totalCap * 100 : null)}</td>
         <td class="num">${fmtPrice(units ? cap / units : 0)}</td>
       </tr>`;
     }).join("");
@@ -441,10 +451,10 @@
       const cap = child.current.marketCapEok || 0;
       return `<tr>
         <td>${child.label}</td>
-        <td class="num">${Math.round(units).toLocaleString()}</td>
-        <td class="num">${fmtPct(totalUnits ? units / totalUnits * 100 : 0)}</td>
-        <td class="num">${fmtCap(cap)}</td>
-        <td class="num">${fmtPct(totalCap ? cap / totalCap * 100 : 0)}</td>
+        <td class="num">${units > 0 ? Math.round(units).toLocaleString() : "미확인"}</td>
+        <td class="num">${fmtPct(totalUnits && units ? units / totalUnits * 100 : null)}</td>
+        <td class="num">${fmtCap(units ? cap : null)}</td>
+        <td class="num">${fmtPct(totalCap && units ? cap / totalCap * 100 : null)}</td>
         <td class="num">${fmtPrice(units ? cap / units : 0)}</td>
       </tr>`;
     }).join("") : "<tr><td class=\"empty-row\" colspan=\"6\">표시할 하위 지역이 없습니다.</td></tr>";
@@ -532,7 +542,7 @@
         <td class="num">${fmtTax(propertyTax)}</td>
         <td class="num">${fmtTax(creTax)}</td>
         <td class="num">${fmtTax(holdingTax)}</td>
-        <td class="num">${cap && holdingTax ? fmtPct(holdingTax / cap * 100) : "-"}</td>
+        <td class="num">${cap && holdingTax ? fmtPct(holdingTax / cap * 100) : "산정 불가"}</td>
         <td class="num">${fmtTax(acquisitionTax)}</td>
         <td class="num">${fmtTax(capitalGainsTax)}</td>
         <td>${Array.from(new Set(bases)).join(" · ") || "-"}</td>
@@ -548,6 +558,7 @@
     const yi = (state.stats.meta.years || []).indexOf(year);
     if (yi < 0) return 0;
     const scope = state.stats.scopes[scopeKey];
+    if (!scope || scope.coverage?.missingUnitsRows > 0) return 0;
     const eok = scope?.trend?.marketCapByYearEok?.[yi] || 0;
     return eok / 10000;
   }
@@ -568,8 +579,7 @@
     const selectedBucket = state.selectedBucket === "" ? -1 : Number(state.selectedBucket);
     const rows = state.rows.filter((row) => {
       if (!rowMatchesScope(row)) return false;
-      const units = Number(row.u || 0);
-      if (units <= 0 || !(row.lp > 0)) return false;
+      if (!(row.lp > 0)) return false;
       const py = pyeong(row);
       if (areaMin && py < areaMin) return false;
       if (areaMax && py > areaMax) return false;
@@ -588,13 +598,14 @@
       const bi = bucketIndex(Number(row.lp || 0));
       const bucket = bi >= 0 ? state.stats.meta.buckets[bi].label : "-";
       const py = pyeong(row);
-      const cap = Number(row.u || 0) * Number(row.lp || 0);
+      const knownUnits = !row.up && Number(row.u) > 0;
+      const cap = knownUnits ? Number(row.u) * Number(row.lp) : null;
       return `<tr>
         <td class="name" title="${row.n || ""}">${row.n || "-"}</td>
         <td>${row.g || "-"} <span class="muted-cell">${row.d || ""}</span></td>
         <td class="num">${py ? py.toFixed(1) : "-"}평</td>
         <td class="num">${fmtPrice(row.lp)}</td>
-        <td class="num">${Number(row.u || 0).toLocaleString()}</td>
+        <td class="num">${knownUnits ? Number(row.u).toLocaleString() : "미확인"}</td>
         <td class="num">${fmtCap(cap)}</td>
         <td><span class="bucket-chip">${bucket}</span></td>
         <td class="num muted-cell">${row.ld || "-"}</td>
@@ -608,8 +619,9 @@
       ? "연도별 평균가·직전 유효가 이월 기준"
       : "연도별 평균가 기준";
     $("trendCaption").textContent = `${label} | ${trendBasis}`;
-    $("currentCaption").textContent = `${label} | 최근가 lp 기준`;
-    $("statsMeta").textContent = `${state.stats.meta.updated || "-"} 업데이트 | ${state.stats.meta.indexRows.toLocaleString()}개 평형 | 가격·거래량·세대수 결합`;
+    $("currentCaption").textContent = `${label} | 세대수 확인 평형의 최근 실거래 평균가`;
+    const known = scope.coverage.rows - scope.coverage.missingUnitsRows;
+    $("statsMeta").textContent = `${state.stats.meta.updated || "-"} 업데이트 | ${label} ${scope.coverage.rows.toLocaleString()}개 평형 중 세대수 확인 ${known.toLocaleString()}개 · 미확인 ${scope.coverage.missingUnitsRows.toLocaleString()}개`;
   }
 
   function render() {
