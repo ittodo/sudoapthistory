@@ -122,11 +122,11 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
 .table-wrap::-webkit-scrollbar { width: 5px; height: 5px; }
 .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-/* Load more btn */
+/* Retry button */
 .load-more-btn {
   width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px;
   background: transparent; color: var(--muted); cursor: pointer; font-size: 12px;
-  transition: all .15s; margin-top: 8px;
+  transition: all .15s; margin-bottom: 10px;
 }
 .load-more-btn:hover:not(:disabled) { border-color: var(--muted); color: var(--text); background: rgba(255,255,255,.03); }
 .load-more-btn:disabled { opacity: .4; cursor: not-allowed; }
@@ -231,8 +231,10 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
       <span class="month-label" id="monthLabel">—</span>
       <button class="month-btn" id="nextMonth" onclick="changeMonth(1)" title="다음 월">&rarr;</button>
     </div>
-    <div id="loadStatus" class="sa" style="opacity:.6;"></div>
+    <div id="loadStatus" class="sa" role="status" style="opacity:.6;"></div>
   </div>
+
+  <button class="load-more-btn" id="loadMoreBtn" onclick="loadNextPage()" style="display:none;"></button>
 
   <!-- Filter Panel -->
   <div class="filter-panel">
@@ -327,9 +329,6 @@ tbody tr:hover { background: rgba(59,130,246,.08); }
   <!-- Mobile Cards -->
   <div class="mobile-cards" id="mobileCards" style="display:none;"></div>
 
-  <!-- Load more data button -->
-  <button class="load-more-btn" id="loadMoreBtn" onclick="loadNextPage()" style="display:none;"></button>
-
   <!-- Footer -->
   <div class="footer-disclaimer">
     국토교통부 실거래가 공개시스템 데이터 기반 &middot; 참고용이며 투자 결정의 근거로 사용하지 마세요
@@ -400,6 +399,7 @@ const state = {
   availableGus: [],
   filterTimer: null,
   firstPageCache: null,  // 최초 fetch 캐시
+  monthLoad: null,
   prevPriceMap: null,
   prevMapDataLen: -1
 };
@@ -494,11 +494,14 @@ async function detectLatestMonth() {
 }
 
 async function loadMonth(ym) {
+  state.monthLoad?.controller.abort();
+  state.monthLoad = {month:ym, controller:new AbortController(), pages:new Map(), failed:new Set(), empty:false};
   state.allData = [];
   state.loadedPages = 0;
   state.totalPages = 0;
   state.totalRecords = 0;
   state.allPagesLoaded = false;
+  state.loading = false;
   state.month = ym;
   state.availableGus = [];
   state.prevPriceMap = null;
@@ -508,93 +511,95 @@ async function loadMonth(ym) {
   document.getElementById('prevMonth').disabled = false;
   document.getElementById('nextMonth').disabled = false;
 
-  await loadNextPage(); // 1페이지 로드 후 나머지 백그라운드 자동 로드
-  if (state.totalPages > 1 && state.month === ym) {
-    loadAllPagesBackground(ym);
-  } else {
-    state.allPagesLoaded = true;
-    render();
-  }
+  return loadNextPage();
 }
 
-async function loadNextPage() {
-  if (state.loading) return;
-  if (state.totalPages > 0 && state.loadedPages >= state.totalPages) return;
-
-  state.loading = true;
-  const pageNum = state.loadedPages + 1;
-  const btn = document.getElementById('loadMoreBtn');
-  if (btn) { btn.disabled = true; }
-
-  setLoadStatus('페이지 ' + pageNum + ' 로딩 중...');
-
+async function loadMonthPage(request, pageNum) {
   try {
     let json;
-    if (state.firstPageCache && state.firstPageCache.ym === state.month && pageNum === 1) {
+    if (state.firstPageCache?.ym === request.month && pageNum === 1) {
       json = state.firstPageCache.json;
       state.firstPageCache = null;
     } else {
-      const res = await fetch(`${DATA_BASE}/${state.month}/${pageNum}.json`);
-      if (!res.ok) {
-        if (pageNum === 1) {
-          renderEmpty('이 달의 데이터가 없습니다');
-          updateSummary([]);
-        }
-        state.loading = false;
-        setLoadStatus('');
-        updateLoadMoreBtn();
+      const res = await fetch(`${DATA_BASE}/${request.month}/${pageNum}.json`,{signal:request.controller.signal});
+      if (state.monthLoad !== request) return;
+      if (res.status === 404 && pageNum === 1) {
+        request.empty = true;
+        request.failed.delete(pageNum);
         return;
       }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       json = await res.json();
     }
-
-    state.totalPages = json.meta.pages;
-    state.totalRecords = json.meta.total;
-    state.loadedPages = pageNum;
-    state.allData = state.allData.concat(json.data || []);
-    updateAvailableGus(json.data || []);
-
-    setLoadStatus('');
-    render();
-
-  } catch(e) {
-    console.error('로드 오류:', e);
-    setLoadStatus('로드 오류');
+    // The body may finish after another month (or the same month again) was selected.
+    if (state.monthLoad !== request) return;
+    const meta = json?.meta;
+    if (!Array.isArray(json?.data) || !Number.isSafeInteger(meta?.pages) || meta.pages < 1 ||
+        meta.page !== pageNum || meta.pages < pageNum || !Number.isSafeInteger(meta.total) || meta.total < 0 ||
+        (pageNum !== 1 && (meta.pages !== state.totalPages || meta.total !== state.totalRecords))) {
+      throw new Error('월별 자료 형식이 올바르지 않습니다.');
+    }
+    if (pageNum === 1) {
+      state.totalPages = meta.pages;
+      state.totalRecords = meta.total;
+    }
+    request.pages.set(pageNum,json.data);
+    request.failed.delete(pageNum);
+  } catch {
+    if (state.monthLoad === request) request.failed.add(pageNum);
   }
-
-  state.loading = false;
-  updateLoadMoreBtn();
 }
 
-async function loadAllPagesBackground(ym) {
-  const pagesToLoad = [];
-  for (let p = 2; p <= state.totalPages; p++) pagesToLoad.push(p);
-  if (!pagesToLoad.length) { state.allPagesLoaded = true; render(); return; }
-
-  // 더보기 버튼 숨기기 (자동 로드 중)
-  const btn = document.getElementById('loadMoreBtn');
-  if (btn) btn.style.display = 'none';
-  setLoadStatus('집계 데이터 로딩 중... (' + state.totalPages + '페이지)');
-
-  const results = await Promise.all(
-    pagesToLoad.map(p =>
-      fetch(`${DATA_BASE}/${ym}/${p}.json`).then(r => r.ok ? r.json() : null).catch(() => null)
-    )
-  );
-
-  if (state.month !== ym) return; // 월이 바뀐 경우 중단
-
-  for (const json of results) {
-    if (!json) continue;
-    state.allData = state.allData.concat(json.data || []);
-    updateAvailableGus(json.data || []);
-  }
-  state.loadedPages = state.totalPages;
-
-  state.allPagesLoaded = true;
-  setLoadStatus('');
-  updateLoadMoreBtn();
+function applyMonthPages(request) {
+  if (state.monthLoad !== request) return;
+  state.allData = [...request.pages].sort(([a],[b])=>a-b).flatMap(([,rows])=>rows);
+  state.loadedPages = request.pages.size;
+  state.allPagesLoaded = request.empty || (request.pages.has(1) && state.loadedPages === state.totalPages);
+  state.availableGus = [];
+  state.prevPriceMap = null;
+  state.prevMapDataLen = -1;
+  updateAvailableGus(state.allData);
   render();
+  if (request.empty) renderEmpty('이 달의 데이터가 없습니다');
+}
+
+async function loadNextPage() {
+  const request = state.monthLoad;
+  if (!request || state.loading || state.allPagesLoaded) return;
+  state.loading = true;
+  updateLoadMoreBtn();
+  setLoadStatus(request.pages.has(1)?'받지 못한 자료를 다시 불러오는 중…':'첫 페이지를 불러오는 중…');
+  // Clear the previous month's rows and show loading before the request can yield.
+  if (!state.loadedPages) render();
+  try {
+    if (!request.pages.has(1)) await loadMonthPage(request,1);
+    if (state.monthLoad !== request) return;
+    if (state.totalPages > 1 && !state.loadedPages) applyMonthPages(request);
+    if (request.pages.has(1)) await loadAllPagesBackground(request);
+  } finally {
+    // An old completion must not clear the new month's loading state or retry button.
+    if (state.monthLoad === request) {
+      state.loading = false;
+      applyMonthPages(request);
+      setLoadStatus(request.failed.size
+        ? `${request.failed.size}개 페이지를 받지 못했습니다. 받은 자료는 유지했습니다. 아래에서 다시 시도하세요.`
+        : '');
+      updateLoadMoreBtn();
+    }
+  }
+}
+
+async function loadAllPagesBackground(request) {
+  const pagesToLoad = [];
+  for (let p = 2; p <= state.totalPages; p++) if (!request.pages.has(p)) pagesToLoad.push(p);
+  if (!pagesToLoad.length) return;
+  setLoadStatus('집계 데이터 로딩 중... (' + state.totalPages + '페이지)');
+  let next = 0;
+  await Promise.all(Array.from({length:Math.min(3,pagesToLoad.length)},async()=>{
+    while (state.monthLoad === request && next < pagesToLoad.length) {
+      await loadMonthPage(request,pagesToLoad[next++]);
+    }
+  }));
 }
 
 function updateAvailableGus(records) {
@@ -620,10 +625,10 @@ function setLoadStatus(msg) {
 function updateLoadMoreBtn() {
   const btn = document.getElementById('loadMoreBtn');
   if (!btn) return;
-  if (state.loadedPages < state.totalPages) {
+  if (!state.loading && state.monthLoad?.failed.size) {
     btn.style.display = 'block';
-    btn.disabled = state.loading;
-    btn.textContent = '데이터 더 불러오기 (' + state.loadedPages + '/' + state.totalPages + ' 페이지)';
+    btn.disabled = false;
+    btn.textContent = '받지 못한 ' + state.monthLoad.failed.size + '개 페이지 다시 받기';
   } else {
     btn.style.display = 'none';
   }
@@ -901,13 +906,14 @@ function updateSummary(data) {
 
   if (!state.allPagesLoaded) {
     // 전체 로드 전: 필터 없으면 서버 전체 건수, 필터 있으면 계산 중
+    const pending = !state.loading && state.monthLoad?.failed.size ? '자료 미완료' : '계산 중…';
     document.getElementById('sumTotal').textContent =
-      (!hasFilters && state.totalRecords > 0) ? state.totalRecords.toLocaleString() + '건' : '계산 중…';
-    document.getElementById('sumAvg').textContent    = '계산 중…';
-    document.getElementById('sumAvgPp').textContent  = '계산 중…';
-    document.getElementById('sumMedian').textContent = '계산 중…';
-    document.getElementById('sumMax').textContent    = '계산 중…';
-    document.getElementById('sumMin').textContent    = '계산 중…';
+      (!hasFilters && state.totalRecords > 0) ? state.totalRecords.toLocaleString() + '건' : pending;
+    document.getElementById('sumAvg').textContent    = pending;
+    document.getElementById('sumAvgPp').textContent  = pending;
+    document.getElementById('sumMedian').textContent = pending;
+    document.getElementById('sumMax').textContent    = pending;
+    document.getElementById('sumMin').textContent    = pending;
   } else {
     // 전체 로드 완료: 필터된 정확한 건수와 통계
     document.getElementById('sumTotal').textContent   = s.count.toLocaleString() + '건';
@@ -919,10 +925,17 @@ function updateSummary(data) {
   }
 }
 
+function emptyTradesMessage() {
+  if (!state.allPagesLoaded) return state.loading
+    ? '자료를 불러오는 중…'
+    : '일부 자료를 받지 못했습니다. 다시 받은 뒤 거래를 확인하세요.';
+  return state.monthLoad?.empty ? '이 달의 데이터가 없습니다' : '조건에 맞는 거래가 없습니다';
+}
+
 function renderTable(data) {
   const tbody = document.getElementById('tableBody');
   if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="no-data">조건에 맞는 거래가 없습니다</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="no-data">' + emptyTradesMessage() + '</td></tr>';
     return;
   }
 
@@ -959,7 +972,7 @@ function renderTable(data) {
 function renderCards(data) {
   const container = document.getElementById('mobileCards');
   if (!data.length) {
-    container.innerHTML = '<div class="no-data">조건에 맞는 거래가 없습니다</div>';
+    container.innerHTML = '<div class="no-data">' + emptyTradesMessage() + '</div>';
     return;
   }
 
@@ -1066,6 +1079,10 @@ function renderGuChips() {
 function updateDataInfo() {
   const loaded = state.allData.length;
   const total  = state.totalRecords;
+  if (!state.loadedPages && !state.monthLoad?.empty) {
+    document.getElementById('dataInfo').textContent = state.loading?'자료를 불러오는 중…':'자료 미완료';
+    return;
+  }
   document.getElementById('dataInfo').textContent =
     loaded.toLocaleString() + '건 로드 (' + state.loadedPages + '/' + state.totalPages + ' 페이지) · 전체 ' + total.toLocaleString() + '건';
 }
@@ -1244,10 +1261,9 @@ async function init() {
     return;
   }
 
-  await loadMonth(month);
-
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  await loadMonth(month);
 }
 
 init();

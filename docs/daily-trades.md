@@ -12,11 +12,26 @@ schema 3의 공통 거래는 지역·분기 PGHOUSE1 형식입니다. 지도 상
 
 화면 요청은 선택 지역·기간에 필요한 자료만 읽고 완료 캐시를 재사용합니다. 오래된 응답이 새 날짜/조건 화면을 덮어쓰지 않도록 합니다. 조회 실패, 자료 갱신 중, 조건에 맞는 거래 없음은 서로 구분합니다.
 
+## 월별 매매 목록의 다운로드
+
+`/trades/`는 첫 페이지를 먼저 표시하고 나머지 페이지를 최대 3개씩 받습니다.
+월을 바꾸면 이전 요청을 중단합니다. 응답 본문이 늦게 도착해도 현재 조회와 다른
+요청의 결과는 반영하지 않습니다. 같은 월로 돌아와도 새 조회로 구분합니다.
+
+받은 페이지는 페이지 번호별로 보관합니다. 일부 페이지가 실패하면 받은 거래는
+유지하며 통계는 `자료 미완료`로 표시합니다. `받지 못한 N개 페이지 다시 받기`는
+누락된 페이지만 요청합니다. 재시도 버튼은 상단 상태 안내 바로 아래에 표시합니다.
+조회 중, 다운로드 실패, 거래 없음은 별도로 안내합니다.
+모든 페이지를 받은 뒤 전체 통계를 계산합니다.
+첫 페이지의 404는 자료가 없는 월입니다. 다른 HTTP 오류, 후속 페이지의 404,
+잘못된 응답 본문은 다운로드 실패로 처리하고 재시도를 제공합니다.
+
 ## 구현과 검증 위치
 
 - [일별 모델](../js/daily-model.js), [읽기 계층](../js/daily-client.js), [목록 화면](../js/daily-app.js)
 - [지도 재생](../js/map-timeline.js), [재생 패널](../js/map-timeline-panel.js), [지도 조작부](map-timeline-overlay.md)
 - [지역 자료 판독](../js/housing-regional.mjs), [상태 재생](../js/housing-state-timeline.mjs)
 - [자료 검사](../tools/verify-daily-data.mjs), [모델 검사](../tools/test-daily-model.cjs), [클라이언트 검사](../tools/test-daily-client.cjs)
+- [월별 매매 목록](../trades/index.html), [요청 전환·실패·재시도 검사](../tools/test-cloudflare-monthly-trades.mjs). 검사는 `test:site`와 운영 CI의 `test-cloudflare-*.mjs`에 포함됩니다.
 
 실행 방법은 package.json의 test:daily와 공식 생성기 [릴리스 계약](../../15_26/docs/site-release-workflow.md)을 따릅니다. 이 문서에 구현 소스를 복사해서 별도 버전으로 유지하지 않습니다. [정리 전 코드 사본](archive/daily-trades.md)은 당시 기록이며 실행 대상이 아닙니다.
