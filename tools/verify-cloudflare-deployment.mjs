@@ -25,6 +25,12 @@ export async function verify(origin,sha,localManifest,{signal}={}) {
   if(!probe)throw new Error('Small JSON probe missing from manifest');
   const samples=['index.html','deployment-version.js',probe.path];
   for(const path of samples) {const f=manifest.files.find(f=>f.path===path);if(!f)throw new Error(`Required public asset missing: ${path}`);if(hash(await get(`${url.origin}/${path}?v=${sha}`,signal))!==f.sha256)throw new Error(`Public hash mismatch: ${path}`);}
+  const annual=manifest.files.find(f=>/^data\/daily\/regions\/\d{5}\/states\/\d{4}\.bin$/.test(f.path));
+  if(annual){
+    const range=await fetch(`${url.origin}/${annual.path}?v=${sha}`,{redirect:'error',signal:requestSignal(signal),headers:{'Cache-Control':'no-cache',Range:'bytes=0-11'}});
+    const bytes=Buffer.from(await range.arrayBuffer());
+    if(range.status!==206||range.headers.get('Content-Range')!==`bytes 0-11/${annual.bytes}`||bytes.length!==12||bytes.subarray(0,8).toString()!=='PGSTBND1'||bytes.readUInt32LE(8)>annual.bytes-12)throw new Error('Annual map state Range response is invalid');
+  }
   const missing=await fetch(`${url.origin}/data/__migration_missing_${sha}.json`,{redirect:'error',signal:requestSignal(signal)});if(missing.status!==404)throw new Error('Missing JSON must be 404');
   return {...release,workerVersionId:health.workerVersionId,schemaVersion:health.schemaVersion};
 }

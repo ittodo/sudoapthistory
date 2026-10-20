@@ -15,6 +15,7 @@ manifest 해시 확인은 같은 호출에서 동일 경로를 한 번 읽고, �
 
 
 - `main` push → Cloudflare Production: 운영 환경 검사 → 타입·기능·자산 검사 → Worker/정적 자산 배포 → 같은 SHA·manifest·공개 파일 해시·없는 JSON 404 확인 → Google 로그인 시작 확인.
+- 연도별 지도 상태가 있으면 공개 검사에서 파일 앞 12바이트를 Range로 요청한다. 206 상태, 정확한 범위·길이와 묶음 식별자를 확인한다. 전체 200 응답은 구간 전송 성공으로 처리하지 않는다. 자산 바인딩의 길이 헤더가 없어도 묶음 헤더로 처리하는 기준은 [지도 상태 저장 계약](../../15_26/docs/housing-packed-storage.md#지도-상태의-연도-묶음)을 따른다.
 - `cloudflare-staging` push → Cloudflare Staging: 시험 DB와 Worker만 사용한다. 운영 활성화 여부는 시험 대상 검사의 조건이 아니다.
 - 운영 배포는 일반 DB migration, 데이터 초기화, secret 생성/교체를 하지 않는다. 현재 Production YAML에 명시된 승인된 board/member-library 테이블·키 검사는 고정된 대상과 검사 코드를 따르며, 기존 상태를 보존한다. 이 문서는 추가 스키마 승인이 아니다. 현재 D1과 기존 회원/관리자/세션을 보존한다. 스키마 변경은 별도 절차가 필요하다.
 - 운영 `AUTH_ENABLED=true`, `MAINTENANCE=false`, `WITHDRAWAL_ENABLED=true`를 소스에 저장했다. 배포마다 임시 옵션으로 켜는 방식은 종료한다.

@@ -47,6 +47,22 @@ test('deployment propagation retries are bounded and never hide persistent failu
   }
 });
 
+test('public annual state verification rejects full responses to partial requests',async()=>{
+ const sha='a'.repeat(40),content='fixture',path='data/daily/regions/11680/states/2026.bin',prefix=Buffer.alloc(12);prefix.write('PGSTBND1');prefix.writeUInt32LE(100,8);
+ const files=['index.html','data/index.json','data/earnings_index.json','deployment-version.js'].map(path=>({path,sha256:hash(content),bytes:content.length}));files.push({path,sha256:'b'.repeat(64),bytes:1000});
+ const manifest=JSON.stringify({schema:1,gitSha:sha,files}),release={gitSha:sha,assetManifestSha256:hash(manifest)};
+ const original=globalThis.fetch;let full=false,badRange=false;
+ globalThis.fetch=async(input,options)=>{const url=new URL(input);let body=content,status=200,headers={};
+  if(url.pathname==='/deployment.json')body=JSON.stringify(release);
+  else if(url.pathname==='/api/health')body=JSON.stringify({gitSha:sha,status:'ok',workerVersionId:'fixture-worker-version',schemaVersion:2});
+  else if(url.pathname==='/deployment-manifest.json')body=manifest;
+  else if(url.pathname==='/'+path){assert.equal(options.headers.Range,'bytes=0-11');body=prefix;status=full?200:206;headers={'Content-Range':badRange?'bytes 0-11/2000':'bytes 0-11/1000'};}
+  else if(url.pathname.startsWith('/data/__migration_missing_'))status=404;
+  const response=new Response(body,{status,headers});Object.defineProperty(response,'url',{value:url.href});return response;
+ };
+ try{await verify('https://fixture.invalid',sha);full=true;await assert.rejects(verify('https://fixture.invalid',sha),/Range response/);full=false;badRange=true;await assert.rejects(verify('https://fixture.invalid',sha),/Range response/);}finally{globalThis.fetch=original;}
+});
+
 test('verification deadline aborts an in-flight request',async()=>{
   await assert.rejects(verifyWithRetry('https://fixture.invalid','a'.repeat(40),undefined,{
     timeoutMs:10,onRetry:()=>{},
