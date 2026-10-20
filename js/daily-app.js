@@ -4,14 +4,14 @@
   const M=NodoDailyModel,$=id=>document.getElementById(id),form=$('dailyFilters');
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>v==null?'—':(v/10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
-  let client,day,period='day',span,filters={},kind='all',sort='price',token=0,limit=50,selected=[],chartRows=[];
+  let client,day,period='month',span,filters={},kind='all',sort='price',token=0,limit=50,selected=[],chartRows=[];
   const districtPicker=NodoDistrictPicker(form.elements.g);
   const aptSearch=NodoApartmentSearch.bind(form.elements.q,{queryFromURL:()=>new URLSearchParams(location.hash.slice(1)).get('q')||'',scope:()=>({r:form.elements.r.value,g:form.elements.g.value}),enabled:()=>!document.body.classList.contains('rental-active'),onSelect:()=>client&&form.requestSubmit(),onClear:()=>client&&form.requestSubmit()});
   function districtOptions(value=form.elements.g.value){districtPicker.setOptions([...new Set(client.catalog.complexes.filter(c=>form.elements.r.value===''||c.r===Number(form.elements.r.value)).map(c=>c.g))].sort(),value);}
   function restore(){
     const p=new URLSearchParams(location.hash.slice(1));filters=M.filters(p);day=M.valid(p.get('date'))?p.get('date'):client.index.maxDate;
     day=day<client.index.minDate?client.index.minDate:day>client.index.maxDate?client.index.maxDate:day;
-    period=['week','month'].includes(p.get('period'))?p.get('period'):'day';
+    period=['day','week','month'].includes(p.get('period'))?p.get('period'):'month';
     kind=['all','high','low','down','up','inactive'].includes(p.get('kind'))?p.get('kind'):'all';
     sort=['price','drop','rise','area'].includes(p.get('sort'))?p.get('sort'):kind==='down'?'drop':kind==='up'?'rise':'price';
     for(const k of ['r','q','aL','aH','pL','pH'])form.elements[k].value=filters[k]??'';

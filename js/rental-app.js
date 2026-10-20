@@ -7,6 +7,7 @@
  const isDaily=path==='/trades/daily/';
  const key='nodo:rental:preferences:v1';let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}');}catch{}
  const params=new URLSearchParams(location.search),initial=M.normalize(params,saved);
+ if(isDaily&&!params.has('rentPeriod'))initial.period='month';
  if(path==='/map/'&&!params.has('rentConvert')&&saved.rentConvert==null)initial.convert=true;
  let settings={...initial,q:'',district:'',areaMin:'',areaMax:'',depositMin:'',depositMax:'',rentMin:'',rentMax:'',sort:'date',limit:50,map:path==='/map/',compactMap:true,detail:path==='/apartment/'?(params.get('id')||'__unresolved__'):null,year:''};
  for(const n of ['q','district','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax','year','sort'])settings[n]=params.get('rental_'+n)??saved['rental_'+n]??settings[n];
@@ -39,7 +40,6 @@
   const heading=root.querySelector('.rental-heading');heading.classList.add('daily-heading');
   heading.querySelector('.rental-eyebrow').classList.add('daily-eyebrow');
   heading.querySelector('h1').after(Object.assign(document.createElement('p'),{className:'daily-muted',textContent:'일간·주간·월간 전월세 거래와 가격 변화를 살펴보세요.'}));
-  heading.insertAdjacentHTML('beforeend','<a class="daily-link" id="rental-explorer" href="/trades/">기존 실거래 탐색기 ↗</a>');
   const f=root.querySelector('#rental-filters'), controls=f.querySelector('.rental-controls');f.classList.add('daily-panel','daily-controls');controls.classList.add('daily-filters');
   const period=f.elements.period.closest('label');period.hidden=true;
   const date=f.elements.day.closest('label');date.classList.add('rental-date-label');
@@ -107,7 +107,6 @@
   root.querySelectorAll('[data-rental-category]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.rentalCategory===settings.kind));b.disabled=settings.type==='monthly'&&!settings.convert&&!['all','cancelled'].includes(b.dataset.rentalCategory);});
   $('rental-daily-map').href='/map/?'+new URLSearchParams({...NodoApartmentSearch.params(),tenure:settings.type,rentConvert:settings.convert?'1':'0',rentDate:settings.day,rentRegion:settings.region,rentContract:settings.contract,rental_district:settings.district});
   $('rental-title').textContent='기간별 실거래';root.querySelector('.rental-eyebrow').textContent='TRANSACTIONS · 수도권 아파트 '+(settings.type==='monthly'?'월세':'전세');
-  $('rental-explorer').href='/trades/?'+new URLSearchParams({tenure:settings.type,rentConvert:settings.convert?'1':'0'});
   form.elements.period.closest('label').hidden=true;
   root.querySelector('[data-rental-amount="rent"]').hidden=settings.type!=='monthly';
   root.querySelectorAll('[data-rental-period]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rentalPeriod===settings.period)));
