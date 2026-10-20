@@ -4,6 +4,7 @@ import {resolve,join,dirname,relative,isAbsolute,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {mapBoundaryReference,mapBoundarySources} from './map-boundary-metadata.mjs';
+import {buildApartmentEntries} from './build-apartment-entries.mjs';
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const inside=(root,path)=>{const r=relative(root,path);return r===''||(!r.startsWith('..'+sep)&&r!=='..'&&!isAbsolute(r));};
 function pathAt(root,name){
@@ -28,6 +29,11 @@ export function refreshMetadata(baseline,candidate){
   const locations=new Map(map.d.map(p=>[p.publicationId||p.id,p])),remaining=new Map(publications),outputs={};
   if([...publications.values()].some(p=>p.legacyGroup||p.splitFrom))throw Error('Parcel differences cannot split an existing apartment identity');
   const write=(name,value)=>{const bytes=Buffer.from(JSON.stringify(value));const path=pathAt(candidate,name);mkdirSync(dirname(path),{recursive:true});writeFileSync(path,bytes);outputs[name]=digest(bytes);return outputs[name];};
+  const salePath='data/sale-details/index.json',history=existsSync(pathAt(baseline,salePath))?read(baseline,salePath):null;
+  if(history?.format==='sale-fact-references'){
+    map.meta.sources[salePath]=digest(readFileSync(pathAt(baseline,salePath)));
+    map.meta.sourceVersion=digest(JSON.stringify(map.meta.sources)).slice(0,16);write('data/map/index.json',map);
+  }
   const pending=Array.from({length:256},()=>[]);
   for(const p of publications.values()){
     if(index.lookup[p.id]?.[0]===p.id)continue;
@@ -91,6 +97,11 @@ export function refreshMetadata(baseline,candidate){
   Object.assign(index.sources,boundaries);
   for(const name of ['data/index.json','data/map/index.json','data/housing-v3/index.json'])index.sources[name]=digest(readFileSync(pathAt(candidate,name)));
   write('data/apartments/index.json',index);
+  if(history?.format==='sale-fact-references'){
+    const rent=read(baseline,'data/apartment-rent/index.json');rent.catalogHash=outputs['data/apartments/index.json'];write('data/apartment-rent/index.json',rent);
+    Object.assign(outputs,buildApartmentEntries(candidate,{fallback:baseline}).files);
+    outputs['data/apartments/entry-index.json']=digest(readFileSync(pathAt(candidate,'data/apartments/entry-index.json')));
+  }
   const report={schema:1,status:'PREVIEW_METADATA_CREATED',candidateOnly:true,baseline,candidate,existingEntitiesPreserved:preserved,newMetadataOnlyEntities:added,
     oldAliasesPreserved:Object.keys(original.lookup).filter(k=>JSON.stringify(index.lookup[k])===JSON.stringify(original.lookup[k])).length,
     oldCommentIdsPreserved:Object.keys(original.legacy).length,transactionFilesRead:0,

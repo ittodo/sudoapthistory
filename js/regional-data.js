@@ -54,8 +54,8 @@
   return [...table.regions].filter(([,r])=>province==null||r.metadata.complexes.some(c=>c.r===province)).map(([code])=>manifest.regional.overlays?.[code]?.[month]).filter(Boolean);
  }
  function baseMonth(value,code,month,baseline){if(value.schema!==1||value.lawd!==code||value.baselineCommit!==baseline||value.previous||value.parent)throw Error('지역 기준 자료가 일치하지 않습니다.');if(value.months){if(value.quarter!==month.slice(0,4)+'-Q'+Math.ceil(Number(month.slice(5))/3))throw Error('지역 기준 분기가 일치하지 않습니다.');value=value.months[month];}if(!value||value.month!==month||value.lawd!==code||value.baselineCommit!==baseline)throw Error('지역 기준 월이 일치하지 않습니다.');return value;}
- async function create(manifest,kind,load){
-  if(manifest.schema===3)return (await import('./housing-regional.mjs')).create(manifest,kind,load);
+ async function create(manifest,kind,load,options={}){
+  if(manifest.schema===3)return (await import('./housing-regional.mjs')).create(manifest,kind,load,options);
   if(manifest.schema!==2||manifest.regional?.format!=='fixed-region')throw Error('새 지역 번호 자료가 필요합니다. 새로고침해 주세요.');
   if(!manifest.regional||manifest.regional.kind!==kind||manifest.regional.previous||manifest.regional.parent)throw Error('지역 자료 형식이 잘못되었습니다.');
   const descriptor=await load(manifest.regional.authority);

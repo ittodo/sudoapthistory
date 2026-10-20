@@ -1,8 +1,9 @@
 import{quarterMemo}from'./housing-quarter-cache.mjs';
+import{bundleStateYear,stateSections}from'./housing-state-bundles.mjs';
 import{yearMemo}from'./housing-year-cache.mjs';
 import{packedMemo,identityDependencies}from'./housing-packing-cache.mjs';
 import{partitionHousing}from'./housing-partition.mjs';import{partitionDescriptor,joinPartition}from'../js/housing-partition.mjs';
-import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync}from'node:fs';
+import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync,unlinkSync}from'node:fs';
 import{resolve,dirname,join,sep}from'node:path';import{createHash}from'node:crypto';import{gzipSync,gunzipSync}from'node:zlib';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
 import{regionalReader}from'./regional-reader.mjs';import{packQuarter,encodeQuarter,decodeQuarter}from'../js/housing-quarter.mjs';import{packStateTimeline,encodeStateFile,decodeStateFile}from'../js/housing-state-timeline.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
@@ -10,7 +11,7 @@ export function buildHousingRegions(root,output,codec,{codes=null,readers=null,p
  root=realpathSync(root);output=resolve(output);if(root===output||output.startsWith(root+sep)||root.startsWith(output+sep))throw Error('Isolated output required');
  mkdirSync(output,{recursive:true});if(realpathSync(output).toLowerCase()!==output.toLowerCase())throw Error('Output link not allowed');
  const daily=readers?.daily??regionalReader(root,'daily'),rental=readers?.rental??regionalReader(root,'rental');if(daily.manifest.schema!==2||rental.manifest.schema!==2)throw Error('Verified schema 2 input required for initial migration');
- const engine=hash(['./build-housing-regions.mjs','./build-housing-from-native.mjs','./housing-packing-cache.mjs','./housing-year-cache.mjs','./housing-quarter-cache.mjs','./housing-native-inputs.mjs','./housing-native-adapter.mjs','./regional-reader.mjs','./housing-regional-reader.mjs','../js/regional-data.js','../js/housing-validation.mjs','../js/housing-quarter.mjs','../js/housing-facts.mjs','../js/housing-state-timeline.mjs','../js/housing-partition.mjs','./housing-partition.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
+ const engine=hash(['./build-housing-regions.mjs','./housing-state-bundles.mjs','../js/housing-state-bundle.mjs','./build-housing-from-native.mjs','./housing-packing-cache.mjs','./housing-year-cache.mjs','./housing-quarter-cache.mjs','./housing-native-inputs.mjs','./housing-native-adapter.mjs','./regional-reader.mjs','./housing-regional-reader.mjs','../js/regional-data.js','../js/housing-validation.mjs','../js/housing-quarter.mjs','../js/housing-facts.mjs','../js/housing-state-timeline.mjs','../js/housing-partition.mjs','./housing-partition.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
  function packed(code,scope,kind,value,identity,path){const previous=boundaries(path,kind),key=[engine,code,scope,kind,value,identityDependencies(identity,value,kind),previous?.leaves.map(x=>x.prefix)||null];
   return packedMemo(cacheDir,key,emit=>partitionHousing({code,scope,kind,months:value,identity,codec,path,emit,previous}), (result,files)=>{if(result.path!==path&&result.path!==path.slice(0,-4)+'.parts.json')throw Error('Cache output scope mismatch');const allowed=result.path.endsWith('.parts.json')?[result.path,...partitionDescriptor(JSON.parse(files.get(result.path)),result.path,Object.fromEntries([...files].map(([p,b])=>[p,hash(b)])))]:[path];if(files.size!==allowed.length||[...files].some(([p,b])=>!allowed.includes(p)||b.length>20*1024*1024))throw Error('Cache output inventory mismatch');const raw=p=>new Uint8Array(gunzipSync(files.get(p)));let reader;
    if(result.path.endsWith('.parts.json')){const desc=JSON.parse(files.get(result.path)),sources=Object.fromEntries([...files].map(([p,b])=>[p,hash(b)]));partitionDescriptor(desc,result.path,sources);reader=joinPartition(desc,desc.leaves.map(x=>raw(x.path)),raw(desc.order),identity,codec);}else reader=kind==='quarter'?decodeQuarter(raw(result.path),identity,codec,{lawd:code,quarter:scope}):decodeStateFile(raw(result.path),codec,{lawd:code,kind});
@@ -45,19 +46,23 @@ export function buildHousingRegions(root,output,codec,{codes=null,readers=null,p
   const quarterNames=[...new Set(months.map(m=>m.slice(0,4)+'-Q'+Math.ceil(Number(m.slice(5))/3)))];quarters[code]={};states.daily[code]={};states.rental[code]={};
   let stateYear=null,opening={daily:{},rental:{}},nrows=0,newBytes=0,files=0;
   let reused=0,validationReused=0,yearsReused=0,quartersReused=0,monthsDecoded=0;
-  function flushStates(){if(stateYear===null)return;for(const kind of ['daily','rental']){if(Object.values(opening[kind]).every(rows=>rows.length===0)){for(const month of Object.keys(opening[kind]))states[kind][code][month]=null;continue;}const path=`data/daily/regions/${code}/states/${kind}/${stateYear}.bin`,part=packed(code,stateYear,kind,opening[kind],identity,path);newBytes+=part.bytes;files+=part.files;if(part.reused)reused++;if(part.validationReused)validationReused++;for(const month of Object.keys(opening[kind]))states[kind][code][month]=part.path;}opening={daily:{},rental:{}};}
+  function flushStates(){if(stateYear===null)return;const paths={};for(const kind of ['daily','rental']){if(Object.values(opening[kind]).every(rows=>rows.length===0)){paths[kind]=null;for(const month of Object.keys(opening[kind]))states[kind][code][month]=null;continue;}const path=`data/daily/regions/${code}/states/${kind}/${stateYear}.bin`,part=packed(code,stateYear,kind,opening[kind],identity,path);paths[kind]=part.path;newBytes+=part.bytes;files+=part.files;if(part.reused)reused++;if(part.validationReused)validationReused++;for(const month of Object.keys(opening[kind]))states[kind][code][month]=part.path;}
+   const bundle=bundleStateYear(code,stateYear,paths,sources,p=>readFileSync(join(output,p)),emit,(p,digest)=>{const target=resolve(output,p);if(!target.startsWith(output+sep)||realpathSync(target).toLowerCase()!==target.toLowerCase()||hash(readFileSync(target))!==digest)throw Error('Changed temporary state');unlinkSync(target);delete sources[p];});
+   if(bundle){newBytes+=bundle.bytes-bundle.oldBytes;files+=1-bundle.oldFiles;for(const kind of ['daily','rental'])if(paths[kind])for(const month of Object.keys(opening[kind]))states[kind][code][month]=bundle.path;}
+   opening={daily:{},rental:{}};
+  }
 
   for(const year of [...new Set(quarterNames.map(q=>q.slice(0,4)))]){
    const ym=months.filter(m=>m.startsWith(year+'-')),yearLayout=Object.fromEntries(Object.entries(layout).filter(([p])=>p.includes('/'+year)));
    const periodInput=readers?.periodFingerprint?.(code,ym),batchYearKey=[engine,code,year,ym,periodInput,yearLayout];
-   const batchYear=readers?.periodFingerprint?generationSession?.load('year/'+code+'/'+year,batchYearKey,{[code]:identity},p=>p.startsWith('data/daily/regions/'+code+'/')&&(p.includes('/quarters/'+year+'-Q')||p.includes('/states/daily/'+year)||p.includes('/states/rental/'+year)),emit):null;
+   const batchYear=readers?.periodFingerprint?generationSession?.load('year/'+code+'/'+year,batchYearKey,{[code]:identity},p=>p.startsWith('data/daily/regions/'+code+'/')&&(p.includes('/quarters/'+year+'-Q')||p.includes('/states/daily/'+year)||p.includes('/states/rental/'+year)||p.endsWith('/states/'+year+'.bin')),emit):null;
    if(batchYear){Object.assign(quarters[code],batchYear.quarters);for(const kind of ['daily','rental'])Object.assign(states[kind][code],batchYear.states[kind]);nrows+=batchYear.metrics.rows;newBytes+=batchYear.metrics.bytes;files+=batchYear.metrics.files;yearsReused++;continue;}
    const memo=yearMemo(readers?.periodFingerprint?cacheDir:null,batchYearKey,code,year);
    const cached=memo.load(identity,emit);
    if(cached){Object.assign(quarters[code],cached.quarters);for(const kind of ['daily','rental'])Object.assign(states[kind][code],cached.states[kind]);nrows+=cached.metrics.rows;newBytes+=cached.metrics.bytes;files+=cached.metrics.files;yearsReused++;if(readers?.periodFingerprint)generationSession?.save('year/'+code+'/'+year,batchYearKey,{[code]:identity},cached,Object.keys(cached.files));continue;}
    const before={rows:nrows,bytes:newBytes,files};
    const stateKey=generationSession&&readers?.stateFingerprint?[engine,code,year,ym,readers.stateFingerprint(code,ym),yearLayout]:null;
-   const stateAssets=[],stateScope='state-year/'+code+'/'+year,stateAllowed=p=>new RegExp('^data/daily/regions/'+code+'/states/(?:daily|rental)/'+year+'(?:(?:-p[01]+|-order)?\\.bin|\\.parts\\.json)$').test(p);
+   const stateAssets=[],stateScope='state-year/'+code+'/'+year,stateAllowed=p=>new RegExp('^data/daily/regions/'+code+'/states/(?:(?:daily|rental)/)?'+year+'(?:(?:-p[01]+|-order)?\\.bin|\\.parts\\.json)$').test(p);
    const stateHit=stateKey?generationSession?.load(stateScope,stateKey,{[code]:identity},stateAllowed,(p,b)=>stateAssets.push([p,b])):null;
    if(stateHit){for(const kind of ['daily','rental'])Object.assign(states[kind][code],stateHit.states[kind]);newBytes+=stateHit.metrics.bytes;files+=stateHit.metrics.files;}
    for(const q of quarterNames.filter(q=>q.startsWith(year))){const qm=months.filter(m=>m.slice(0,4)+'-Q'+Math.ceil(Number(m.slice(5))/3)===q),input={};if(!stateHit&&stateYear!==q.slice(0,4)){flushStates();stateYear=q.slice(0,4);}
@@ -85,7 +90,7 @@ export function buildHousingRegions(root,output,codec,{codes=null,readers=null,p
    for(const[p,b]of stateAssets)emit(p,b);const beforeState={bytes:newBytes,files};flushStates();stateYear=null;
    if(stateKey&&!stateHit)generationSession?.save(stateScope,stateKey,{[code]:identity},{states:Object.fromEntries(['daily','rental'].map(k=>[k,Object.fromEntries(Object.entries(states[k][code]).filter(([m])=>m.startsWith(year+'-')))])),metrics:{bytes:newBytes-beforeState.bytes,files:files-beforeState.files}},Object.keys(sources).filter(stateAllowed));
    const select=entries=>Object.fromEntries(Object.entries(entries).filter(([m])=>m.startsWith(year+'-')));
-   const yearPaths=Object.keys(sources).filter(p=>p.startsWith('data/daily/regions/'+code+'/')&&(p.includes('/quarters/'+year+'-Q')||p.includes('/states/daily/'+year)||p.includes('/states/rental/'+year)));
+   const yearPaths=Object.keys(sources).filter(p=>p.startsWith('data/daily/regions/'+code+'/')&&(p.includes('/quarters/'+year+'-Q')||p.includes('/states/daily/'+year)||p.includes('/states/rental/'+year)||p.endsWith('/states/'+year+'.bin')));
    if(readers?.periodFingerprint)generationSession?.save('year/'+code+'/'+year,batchYearKey,{[code]:identity},{quarters:select(quarters[code]),states:{daily:select(states.daily[code]),rental:select(states.rental[code])},metrics:{rows:nrows-before.rows,bytes:newBytes-before.bytes,files:files-before.files}},yearPaths);
    memo.save(identity,select(quarters[code]),{daily:select(states.daily[code]),rental:select(states.rental[code])},{rows:nrows-before.rows,bytes:newBytes-before.bytes,files:files-before.files},yearPaths.map(p=>[p,readFileSync(join(output,p))]));
   }
@@ -96,7 +101,7 @@ export function buildHousingRegions(root,output,codec,{codes=null,readers=null,p
  }
  json('data/daily/regions/index.json',{schema:3,format:'packed-region',regions});
  for(const kind of ['daily','rental']){
-  const old=kind==='daily'?daily.manifest:rental.manifest,m=structuredClone(old);m.schema=3;m.regional={format:'packed-region',kind,authority:'data/daily/regions/index.json',quarters,states:states[kind]};m.sources=Object.fromEntries(Object.entries(sources).filter(([p])=>!p.includes('/states/'+(kind==='daily'?'rental':'daily')+'/')));
+  const old=kind==='daily'?daily.manifest:rental.manifest,m=structuredClone(old);m.schema=3;m.regional={format:'packed-region',kind,authority:'data/daily/regions/index.json',quarters,states:states[kind],stateSections:stateSections(states[kind],kind,p=>readFileSync(join(output,p)))};m.sources=Object.fromEntries(Object.entries(sources).filter(([p])=>!p.includes('/states/'+(kind==='daily'?'rental':'daily')+'/')&&(!/^data\/daily\/regions\/\d{5}\/states\/\d{4}\.bin$/.test(p)||m.regional.stateSections[p])));
   for(const path of kind==='daily'?['data/map/index.json']:['data/rental/rates.json','data/rental/summary.json']){const bytes=readFileSync(join(root,path));if(hash(bytes)!==old.sources[path])throw Error('Changed supplemental input');m.sources[path]=hash(bytes);inputs[path]=hash(bytes);if(kind==='rental')emit(path,bytes);}
   // Neither timestamps nor whole-site release SHA are included in new transaction files.
   const semantic=JSON.stringify({regional:m.regional,sources:m.sources});m.version=hash(semantic);delete m.updated;mkdirSync(join(output,'data',kind),{recursive:true});writeFileSync(join(output,`data/${kind}/index.json`),JSON.stringify(m));

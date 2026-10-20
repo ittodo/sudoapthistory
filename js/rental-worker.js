@@ -18,7 +18,7 @@ async function ensureMapCache(){
   }).catch(()=>{});
   await mapCacheLoading;
 }
-const isMapFile=p=>p.endsWith('-state.bin')||p.startsWith(mapCachePrefix)||/^data\/daily\/regions\/\d{5}\/(base|months)\//.test(p);
+const isMapFile=p=>p.endsWith('-state.bin')||p.startsWith(mapCachePrefix)||/^data\/daily\/regions\/\d{5}\/(base|months|states)\//.test(p);
 const actualPaths=(month,region,map,type)=>{const p=map?mapPath(month,region,type):`data/rental/months/${month}-${region}.bin`;return regional&&p.startsWith('data/rental/months/')?regional.paths(month,{'41':0,'11':1,'28':2}[region]):[p];};
 let viewPathsKey='';
 function beginView(s){
@@ -58,7 +58,7 @@ async function prefetch(s,revision){
 }
 const fileCache=globalThis.NodoVerifiedDataCache.create('nodo-rental-map-v1');
 async function download(path,expected,entry,background){
-  return fileCache.download(path,expected,{signal:entry.controller.signal,background,persist:path.startsWith(mapCachePrefix)});
+  return fileCache.download(path,expected,{signal:entry.controller.signal,background,persist:isMapFile(path),range:manifest?.regional?.stateSections?.[path]});
 }
 async function physicalLoad(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}

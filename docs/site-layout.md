@@ -37,7 +37,16 @@ Pages/Purge are not current completion gates. See [deployment contract](cloudfla
 No DB backup is created by this workflow; committed static files are recoverable
 with a reviewed revert commit. Uncommitted user changes must be preserved.
 
+Apartment detail pages read the shared quarterly facts. The files in
+`data/sale-details/` hold sale references and cancellation text, not another full
+transaction history. Rental archive files under `data/contracts/apartment-rent/`
+hold only contract fields that the shared facts do not contain.
+The 64 `data/apartments/entry/` files route detail reads to the actual source region.
+The unpublished dong history copies and their producer and reader were removed.
+See the [current detail contract](apartment-and-board.md#공통-거래를-사용하는-단지-상세).
+
 ## 2026-09-13 retired-output cleanup
+
 
 Baseline commit: `ac9db9cbddb5bbe82e8a7b64b06f1cf1bc0435b1`.
 The exact retired folders plus `data/index.json.bak` and `data/prices.json.bak`

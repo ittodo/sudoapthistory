@@ -11,7 +11,7 @@
       if(!index.sources[path])throw Error('조회할 수 없는 데이터입니다. 새로고침해 주세요.');
       if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
       const entry={controller:new AbortController(),background,settled:false};
-      const promise=fileCache.download(path,index.sources[path],{signal:entry.controller.signal,background,persist:stateFile(path)}).then(async bytes=>{
+      const promise=fileCache.download(path,index.sources[path],{signal:entry.controller.signal,background,persist:stateFile(path),range:index.regional?.stateSections?.[path]}).then(async bytes=>{
         entry.controller.signal.throwIfAborted();
         const value=await globalThis.NodoVerifiedDataCache.decode(bytes,path);entry.controller.signal.throwIfAborted();return value;
       }).catch(e=>{if(cache.get(path)===entry)cache.delete(path);throw e;}).finally(()=>{entry.settled=true;});
@@ -20,7 +20,7 @@
       return promise;
     }
     load.promote=p=>{if(cache.has(p))cache.get(p).background=false;};
-    const stateFile=p=>p.includes('-state.')||/^data\/daily\/regions\/\d{5}\/(base|months)\//.test(p);
+    const stateFile=p=>p.includes('-state.')||/^data\/daily\/regions\/\d{5}\/(base|months|states)\//.test(p);
     const extension=index.encoding==='gzip-json'?'bin':'json';
     const regional=index.schema>=2?await globalThis.NodoRegional.create(index,'daily',load):null;
     const catalog=regional||await load('data/daily/catalog.'+extension);

@@ -1,3 +1,5 @@
+import {verifyApartmentEntries} from './verify-apartment-entries.mjs';
+import {existsSync as hasFile} from 'node:fs';
 // Integrity verification of Rust-generated DTOs; semantic verification runs in Rust.
 import{verifyHousingSales}from'./verify-housing-sales.mjs';
 import {readFileSync,lstatSync} from 'node:fs';
@@ -6,6 +8,7 @@ import {fileHash} from './verify-apartment-rent.mjs';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
 import {mapBoundarySources} from './map-boundary-metadata.mjs';
 export function verifyApartmentSale(root, {verifiedSales} = {}) {
+  if(hasFile(join(root,'data/apartments/entry-index.json')))verifyApartmentEntries(root);
   if(verifiedSales!==undefined&&verifiedSales.status!=='PASS')throw Error('Verified sale result required');
   const safe=path=>{let current=root;for(const part of path.split('/')){if(!part||part==='.'||part==='..'||/[\\:]/.test(part))throw Error('Unsafe apartment path');current=join(current,part);if(lstatSync(current).isSymbolicLink())throw Error('Unsafe apartment link');}return current;};
   const index=JSON.parse(readFileSync(safe('data/apartments/index.json'),'utf8'));

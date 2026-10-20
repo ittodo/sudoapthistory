@@ -1,4 +1,5 @@
 import {collectPageView,cleanupPageViews} from './page-analytics';
+import {stateAsset} from './state-asset';
 import {adminCenter,cleanupAdminAudit} from './admin-center';
 import {auth} from './auth';
 import {libraryRoute,collectEvent,cleanupAnalytics} from './member-library';
@@ -22,6 +23,7 @@ function validateBoardPost(content:string){const split=content.indexOf('\n');if(
 const notFound=()=>new HttpError(404,'NOT_FOUND','찾을 수 없습니다.');
 async function route(r:Request,env:Env):Promise<Response>{
  const url=new URL(r.url),path=url.pathname,method=r.method;
+ if(/^\/data\/daily\/regions\/\d{5}\/states\/\d{4}\.bin$/.test(path))return stateAsset(r,env.ASSETS);
  if(path.startsWith('/auth/'))return auth(r,env);
  if(!path.startsWith('/api/'))return env.ASSETS.fetch(r);
  if(path==='/api/account/withdrawal/status'&&method==='GET')return withdrawalStatus(r,env);

@@ -54,7 +54,7 @@ export function build(root, output, sha) {
   const checked=(name,manifests,fn)=>phase(name,()=>validation.check(name,manifestDependencies(root,manifests),fn));
   const producerProof=phase('producer-proof',()=>dataValidationProof(root));
   if(producerProof.status!=='VERIFIED'){
-  if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) checked('sale-details',['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json'],()=>verifyApartmentSale(root));
+  if(existsSync(join(root,'apartment/index.html')) || existsSync(join(root,'data/apartments/index.json'))) checked('sale-details',['data/apartments/index.json','data/sale-details/index.json','data/daily/index.json',...(existsSync(join(root,'data/apartments/entry-index.json'))?['data/apartments/entry-index.json']:[])],()=>verifyApartmentSale(root));
   if(existsSync(join(root,'js/apartment-rent.js'))) checked('rental-details',['data/contracts/index.json','data/apartment-rent/index.json','data/apartments/index.json','data/rental/index.json'],()=>verifyApartmentRent(root));
   if(existsSync(join(root,'trades/daily/index.html'))&&!existsSync(join(root,'data/daily/index.json')))throw Error('Daily page requires its data manifest');
   phase('common-trades',()=>{verifyDailyData(root);verifyRentalData(root);});
@@ -87,7 +87,7 @@ export function build(root, output, sha) {
   assets.push(...generatedSearch,...phase('rental-map',()=>rentalMapAssets(root)),...phase('rental-market',()=>rentalMarketAssets(root,{stats:rentalMarketStats})),...phase('region-prices',()=>regionPriceAssets(root,{stats:regionPriceStats})));
   const packagingStarted=performance.now();
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
-  if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000');
+  if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000: '+(assets.length+3));
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));
   const manifest=JSON.stringify({schema:1,gitSha:sha,files:assets.map(f=>({path:f.path,sha256:f.sha256??sha256(f.bytes),bytes:f.size??f.bytes.length}))});
   // Only this known generated directory is ever replaced; never clean the source tree.

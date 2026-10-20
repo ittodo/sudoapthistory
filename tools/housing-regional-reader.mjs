@@ -1,4 +1,6 @@
 import{decodeMapQuarter}from'./housing-map-quarter.mjs';
+import{isStateBundle,stateBundle}from'../js/housing-state-bundle.mjs';
+import{gunzipSync}from'node:zlib';import{createHash}from'node:crypto';
 import{joinPartition,partitionDescriptor,verifyPartitionSources}from'../js/housing-partition.mjs';
 import{validateManifest,validateRows}from'../js/housing-validation.mjs';
 import {decodeQuarter} from '../js/housing-quarter.mjs';
@@ -27,7 +29,7 @@ export function packedReader(kind,manifest,physical,{decodeCache=decoded}={}){
   if(hit!==undefined){for(const p of [path,...deps])physical(p,false);return hit;}
   let rawBytes=0,value,retainedEstimate=null;
   if(descriptor){const leaves=descriptor.leaves.map(x=>{const b=physical(x.path);rawBytes+=b.byteLength;return b;}),order=physical(descriptor.order);rawBytes+=order.byteLength;value=joinPartition(descriptor,leaves,order,region.identity,codec);}
-  else{const bytes=physical(path);rawBytes=bytes.byteLength;value=decode(bytes);
+  else{let bytes=physical(path);if(isStateBundle(bytes)){const bundle=stateBundle(bytes,{lawd:code,year:path.split('/').at(-1).slice(0,4)}),part=bundle.part(kind),section=manifest.regional.stateSections?.[path];if(!section||Object.entries(bundle.sections[kind]).some(([k,v])=>section[k]!==v)||createHash('sha256').update(part).digest('hex')!==section.sha256)throw Error('State section mismatch');bytes=new Uint8Array(gunzipSync(part));}rawBytes=bytes.byteLength;value=decode(bytes);
    // State readers retain packed columns plus month-reference arrays, not decoded
    // 18-cell rental rows for all months. Account for those actual retained shapes.
    if(path.includes('/states/')){const size=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).getUint32(8,true),header=JSON.parse(new TextDecoder().decode(bytes.subarray(12,12+size)));retainedEstimate=rawBytes*4+header.counts.reduce((sum,n)=>sum+n,0)*16+4096;}
@@ -36,7 +38,7 @@ export function packedReader(kind,manifest,physical,{decodeCache=decoded}={}){
  }
  function regionMonth(code,month,withState=true,mapStateOnly=false){const region=table.regions.get(code);if(!region)throw Error('Unknown region');const q=manifest.regional.quarters?.[code]?.[month],state=manifest.regional.states?.[code]?.[month];if(!q){if(state)throw Error('Orphan state');return {rows:[],opening:[],updates:[]};}
   const scope={lawd:code,quarter:month.slice(0,4)+'-Q'+Math.ceil(Number(month.slice(5))/3)},quarter=opened(q,b=>mapStateOnly?decodeMapQuarter(b,region.identity,codec,scope,kind):decodeQuarter(b,region.identity,codec,scope),mapStateOnly?'map:'+kind:'full');
-  if(withState&&state===undefined)throw Error('Missing state');const opening=withState&&state!==null?opened(state,b=>decodeStateFile(b,codec,{lawd:code,kind})).month(month):[];const value=quarter.month(month)[kind];return validateRows({rows:mapStateOnly?[]:value.rows,updates:value.updates,opening},code,kind,region.identity);
+  if(withState&&state===undefined)throw Error('Missing state');const opening=withState&&state!==null?opened(state,b=>decodeStateFile(b,codec,{lawd:code,kind}),'state:'+kind).month(month):[];const value=quarter.month(month)[kind];return validateRows({rows:mapStateOnly?[]:value.rows,updates:value.updates,opening},code,kind,region.identity);
  }
  const match=path=>kind==='daily'?path.match(/^data\/daily\/([012])\/(\d{4}-\d{2})(-state)?\.bin$/):path.match(/^data\/rental\/months\/(\d{4}-\d{2})-(41|11|28)(-state)?\.bin$/);
  function scope(path){const m=match(path);return m?{month:kind==='daily'?m[2]:m[1],province:kind==='daily'?Number(m[1]):{'41':0,'11':1,'28':2}[m[2]],state:!!m[3]}:null;}

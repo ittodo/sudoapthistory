@@ -19,7 +19,9 @@ export function packContractDetails(rawRows,facts,table,codec){
  for(const a of pools.values())a.sort((a,b)=>a[17].localeCompare(b[17]));
  const rows=[],unmatched=[],display={},used=new Map();
  // API response order is deliberately not serialized.
- for(const raw of rawRows.slice().sort((a,b)=>canonical(stableContract(a)).localeCompare(canonical(stableContract(b)),'en')||canonical(a).localeCompare(canonical(b),'en'))){
+ const ordered=rawRows.map(raw=>({raw,stable:canonical(stableContract(raw)),full:canonical(raw)}));
+ ordered.sort((a,b)=>a.stable.localeCompare(b.stable,'en')||a.full.localeCompare(b.full,'en'));
+ for(const {raw} of ordered){
   const candidates=pools.get(contractCore(raw));if(!candidates?.length){unmatched.push([canonical(raw),'not_in_eligible_regional_facts']);continue;}
   const f=candidates.shift(),id=f[17],n=used.get(id)||0;used.set(id,n+1);const row=detailRow(raw,id,n),meta=Object.fromEntries(displayKeys.map(k=>[k,raw[k]]));
   const restored=restoreContract(f,raw.entityId,row,meta);if(canonical(restored)!==canonical(raw))throw Error('Contract detail roundtrip mismatch');

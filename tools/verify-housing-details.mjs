@@ -1,3 +1,4 @@
+import {verifyContractArchive} from './verify-contract-archive.mjs';
 import {ValidationSession} from './validation-session.mjs';
 import {partitionDependencies} from '../js/housing-partition.mjs';
 import{readFileSync,lstatSync}from'node:fs';import{join}from'node:path';import{gunzipSync}from'node:zlib';import{createHash}from'node:crypto';import{regionalReader}from'./regional-data.mjs';import{restoreDetails,contractDisplay}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
@@ -7,6 +8,7 @@ export function verifyHousingDetails(root){
  const session=new ValidationSession(root,{roots:['tools/verify-housing-details.mjs']});
  const manifest=JSON.parse(readFileSync(safe('data/contracts/index.json'))),rent=JSON.parse(readFileSync(safe('data/apartment-rent/index.json'))),rental=regionalReader(root,'rental');
  if(manifest.schema!==2||rent.schema!==2||manifest.rentalVersion!==rental.manifest.version||rent.rentalVersion!==rental.manifest.version||rent.contractsHash!==hash(readFileSync(safe('data/contracts/index.json')))||rent.catalogHash!==hash(readFileSync(safe('data/apartments/index.json'))))throw Error('Detail manifest binding mismatch');
+ verifyContractArchive(root,rent.contractArchive);
  const read=p=>{const b=readFileSync(safe(p));if(b.length>25*1024*1024||hash(b)!==manifest.sources[p])throw Error('Contract hash/size mismatch');return p.endsWith('.bin')?new Uint8Array(gunzipSync(b)):JSON.parse(b);};let count=0,unmatched=0;const expected=new Set(),displayUsage=new Map();
  for(const p of manifest.partitions){if(p.format!=='regional-reference'){const path='data/contracts/'+p.path;expected.add(path);const value=read(path);if(value.rows.length!==p.count)throw Error('Contract count mismatch');continue;}
   const prefix=`data/contracts/apartment-rent/${p.lawd}/${p.month}`;if(!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month)||(p.details!==null&&p.details!==prefix+'-details.bin')||(p.unmatched!==null&&p.unmatched!==prefix+'-unmatched.bin')||(p.display!==null&&p.display!==`data/contracts/apartment-rent/${p.lawd}/display.json`)||((p.details===null)!==(p.display===null))||!Array.isArray(p.regionCodes)||new Set(p.regionCodes).size!==p.regionCodes.length)throw Error('Invalid contract scope');

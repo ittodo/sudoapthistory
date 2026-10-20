@@ -5,7 +5,7 @@ const hash=v=>createHash('sha256').update(v).digest('hex'),equal=(a,b)=>JSON.str
 export function yearMemo(directory,key,code,year){
  if(!/^\d{5}$/.test(code)||!/^\d{4}$/.test(year))throw Error('Year packing scope invalid');
  const digest=hash(JSON.stringify(key)),target=directory?join(resolve(directory),'native-years',digest):null;
- const allowed=p=>new RegExp('^data/daily/regions/'+code+'/(?:quarters/'+year+'-Q[1-4](?:-p[01]+|-order)?\\.bin|quarters/'+year+'-Q[1-4]\\.parts\\.json|states/(?:daily|rental)/'+year+'(?:-p[01]+|-order)?\\.bin|states/(?:daily|rental)/'+year+'\\.parts\\.json)$').test(p);
+ const allowed=p=>new RegExp('^data/daily/regions/'+code+'/(?:quarters/'+year+'-Q[1-4](?:-p[01]+|-order)?\\.bin|quarters/'+year+'-Q[1-4]\\.parts\\.json|states/(?:(?:daily|rental)/)?'+year+'(?:-p[01]+|-order)?\\.bin|states/(?:daily|rental)/'+year+'\\.parts\\.json)$').test(p);
  function safe(p){if(lstatSync(p).isSymbolicLink()||realpathSync(p).toLowerCase()!==p.toLowerCase())throw Error('Year packing cache link');}
  return{
   load(identity,emit){

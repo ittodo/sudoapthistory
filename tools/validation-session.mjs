@@ -65,7 +65,7 @@ export function manifestDependencies(root,names,{stats={}}={}){
  for(const name of names){
   const value=read(name);
   inputs[name]=value.digest;
-  for(const [path,expected] of [...Object.entries(value.manifest.sources??{}),...Object.entries(value.manifest.shards??{})]){
+  for(const [path,expected] of [...Object.entries(value.manifest.sources??{}),...Object.entries(value.manifest.shards??{}),...Object.entries(value.manifest.contractArchive?.sources??{})]){
    const actual=read(path).digest;
    if(actual!==expected)throw Error('Validation source mismatch: '+path);
    if(inputs[path]&&inputs[path]!==actual)throw Error('Shared validation digest mismatch');
