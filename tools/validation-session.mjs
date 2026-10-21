@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {existsSync,lstatSync,mkdirSync,readFileSync,realpathSync,readdirSync,renameSync,writeFileSync} from 'node:fs';
+import {existsSync,lstatSync,mkdirSync,readFileSync,realpathSync,readdirSync,renameSync,writeFileSync} from './cache-store.mjs';
 import {join,resolve,dirname,sep} from 'node:path';
 const digest = x => createHash('sha256').update(x).digest('hex');
 // Receipts are an optimization of successful checks, never an alternative to

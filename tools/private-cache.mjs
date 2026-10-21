@@ -10,7 +10,7 @@ export function privateCache(root,scope,{database=process.env.NODO_CACHE_DB}={})
   mkdirSync(dirname(path),{recursive:true});
   const db=new DatabaseSync(path);db.exec('PRAGMA busy_timeout=3000');
   const tables=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all();
-  if(tables.length&&!tables.some(t=>['cache_dataset','calculation_cache'].includes(t.name))){db.close();throw Error('Refusing a source database as private cache');}
+  if(tables.length&&!tables.some(t=>['cache_dataset','calculation_cache','cache_artifact'].includes(t.name))){db.close();throw Error('Refusing a source database as private cache');}
   db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL');
   const hash=b=>createHash('sha256').update(b).digest('hex');
   db.exec('CREATE TABLE IF NOT EXISTS calculation_cache(scope TEXT NOT NULL,key TEXT NOT NULL,payload BLOB NOT NULL,sha256 TEXT NOT NULL,PRIMARY KEY(scope,key))');

@@ -1,5 +1,13 @@
 import{createHash}from'node:crypto';
+import * as store from './cache-store.mjs';import{existsSync}from'node:fs';
 const createDigest=v=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
+test('database packing cache survives reopen and produces identical bytes',()=>{
+ const root=mkdtempSync(join(tmpdir(),'housing-db-cache-')),cache=join(root,'_ops/regional-transaction-cache/test/packed');let made=0;
+ const make=emit=>{made++;emit('data/example.bin',Buffer.from('exact public bytes'));return{path:'data/example.bin'};};
+ const check=(r,files)=>assert.equal(files.get(r.path).toString(),'exact public bytes');
+ try{const first=[],second=[];assert.equal(packedMemo(cache,['same'],make,check,(p,b)=>first.push([p,b])).reused,false);store.closeCacheStores();assert.equal(packedMemo(cache,['same'],make,check,(p,b)=>second.push([p,b])).reused,true);assert.deepEqual(first,second);assert.equal(made,1);assert.equal(existsSync(cache),false);}
+ finally{store.closeCacheStores();rmSync(root,{recursive:true,force:true});}
+});
 import{test}from'node:test';import assert from'node:assert/strict';import{mkdtempSync,rmSync,readFileSync,writeFileSync,realpathSync,readdirSync}from'node:fs';import{join,sep}from'node:path';import{tmpdir}from'node:os';import{packedMemo,identityDependencies}from'./housing-packing-cache.mjs';
 test('verified packing cache reuses output but validates it again, and rejects corruption',()=>{const root=mkdtempSync(join(tmpdir(),'housing-cache-'));try{let made=0,checked=0;const make=emit=>{made++;emit('data/test.bin',Buffer.from('preserved'));return {path:'data/test.bin'};},validate=(r,files)=>{checked++;assert.equal(files.get(r.path).toString(),'preserved');},emit=()=>{};assert.equal(packedMemo(root,['a'],make,validate,emit).reused,false);assert.equal(packedMemo(root,['a'],make,validate,emit).reused,true);assert.equal(made,1);assert.equal(checked,2);const entry=join(root,readdirSync(root)[0],'0.bin');writeFileSync(entry,'corrupt');assert.throws(()=>packedMemo(root,['a'],make,validate,emit),/hash mismatch/);}finally{const p=realpathSync(root),t=realpathSync(tmpdir());if(!p.startsWith(t+sep)||!p.slice(t.length+1).startsWith('housing-cache-'))throw Error('Unsafe cleanup');rmSync(p,{recursive:true});}});
 test('metadata and unrelated appended IDs do not invalidate a quarter cache dependency',()=>{const a={complexes:['source'],areas:[[0,'59.1']],name:'before'},b={complexes:['source','new source'],areas:[[0,'59.1'],[1,'80.9']],name:'after'},m={'2026-09':{daily:{rows:[['11110:0']],updates:[]},rental:{rows:[],updates:[]}}};assert.deepEqual(identityDependencies(a,m,'quarter'),identityDependencies(b,m,'quarter'));});

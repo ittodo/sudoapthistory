@@ -1,6 +1,6 @@
 // Private candidate consumption, bound to DB batches and current producer manifests.
 // No public schema change and no DB writes. Checkpoint is accepted by outer Rust prepare.
-import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync}from'node:fs';
+import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync}from'./cache-store.mjs';
 import{join,resolve,dirname,sep}from'node:path';import{createHash}from'node:crypto';
 import{codeDependencyEngine as validationEngine}from'./code-dependencies.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex'),eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);

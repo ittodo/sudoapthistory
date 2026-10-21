@@ -1,5 +1,5 @@
 // Private parsed inventory only; detail PASS receipts still authorize output reuse.
-import{readFileSync,writeFileSync,mkdirSync,existsSync,lstatSync,realpathSync,renameSync}from'node:fs';
+import{readFileSync,writeFileSync,mkdirSync,existsSync,lstatSync,realpathSync,renameSync}from'./cache-store.mjs';
 import{join,resolve}from'node:path';import{createHash}from'node:crypto';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function contractInput(directory,engine,partition,bytes){

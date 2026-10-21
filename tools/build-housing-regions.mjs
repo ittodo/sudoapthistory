@@ -3,7 +3,7 @@ import{bundleStateYear,stateSections}from'./housing-state-bundles.mjs';
 import{yearMemo}from'./housing-year-cache.mjs';
 import{packedMemo,identityDependencies}from'./housing-packing-cache.mjs';
 import{partitionHousing}from'./housing-partition.mjs';import{partitionDescriptor,joinPartition}from'../js/housing-partition.mjs';
-import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync,unlinkSync}from'node:fs';
+import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync,unlinkSync}from'./cache-store.mjs';
 import{resolve,dirname,join,sep}from'node:path';import{createHash}from'node:crypto';import{gzipSync,gunzipSync}from'node:zlib';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
 import{regionalReader}from'./regional-reader.mjs';import{packQuarter,encodeQuarter,decodeQuarter}from'../js/housing-quarter.mjs';import{packStateTimeline,encodeStateFile,decodeStateFile}from'../js/housing-state-timeline.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');

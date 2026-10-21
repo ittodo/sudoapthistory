@@ -1,5 +1,5 @@
 // Local successful packaging receipts, never a public baseline/overlay format.
-import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync}from'node:fs';
+import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync}from'./cache-store.mjs';
 import{join,resolve}from'node:path';import{createHash}from'node:crypto';
 const hash=v=>createHash('sha256').update(v).digest('hex'),equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 export function yearMemo(directory,key,code,year){

@@ -5,8 +5,9 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {ValidationSession,manifestDependencies} from './validation-session.mjs';
+import {closeCacheStores,readFileSync as readCache,writeFileSync as writeCache} from './cache-store.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
-function fixture(fn){const root=mkdtempSync(join(tmpdir(),'nodo-validation-'));try{return fn(root);}finally{rmSync(root,{recursive:true,force:true});}}
+function fixture(fn){const root=mkdtempSync(join(tmpdir(),'nodo-validation-'));try{return fn(root);}finally{closeCacheStores();rmSync(root,{recursive:true,force:true});}}
 test('successful scopes survive restart; changed scope, engine and full mode require fresh checks',()=>fixture(root=>{
  let calls=0;const verify=()=>{calls++;return {status:'PASS',rows:2};};
  let s=new ValidationSession(root,{engine:'a'});s.check('region/11',{q:'one'},verify);s.check('region/41',{q:'two'},verify);s.flush();
@@ -17,7 +18,7 @@ test('successful scopes survive restart; changed scope, engine and full mode req
 test('failed checks cannot stamp PASS; corrupted receipt requires revalidation',()=>fixture(root=>{
  const s=new ValidationSession(root,{engine:'a'});assert.throws(()=>s.check('scope',{},()=>{throw Error('bad');}),/bad/);assert.equal(s.records.scope,undefined);
  assert.throws(()=>s.check('scope',{},()=>({status:'FAIL'})),/did not PASS/);
- s.check('scope',{},()=>({status:'PASS'}));s.flush();const file=join(root,'cloudflare/dist/validation-cache-v1/receipts.json');const proof=JSON.parse(readFileSync(file));proof.records.scope.result.rows=999;writeFileSync(file,JSON.stringify(proof));
+ s.check('scope',{},()=>({status:'PASS'}));s.flush();const file=join(root,'cloudflare/dist/validation-cache-v1/receipts.json');const proof=JSON.parse(readCache(file));proof.records.scope.result.rows=999;writeCache(file,JSON.stringify(proof));
  const next=new ValidationSession(root,{engine:'a'});next.check('scope',{},()=>({status:'PASS',rows:1}));assert.equal(next.stats.checked,1);
 }));
 test('current bytes must match manifests even when successful receipts exist',()=>fixture(root=>{

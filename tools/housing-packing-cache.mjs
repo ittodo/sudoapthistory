@@ -1,4 +1,4 @@
-import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,renameSync}from'node:fs';import{join,resolve}from'node:path';import{createHash}from'node:crypto';
+import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,renameSync}from'./cache-store.mjs';import{join,resolve}from'node:path';import{createHash}from'node:crypto';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 export function packedMemo(cacheDir,key,make,validate,emit,{reuseValidation=false}={}){
  const keyHash=hash(JSON.stringify(key)),target=cacheDir?join(resolve(cacheDir),keyHash):null;let result,files=new Map(),reused=false,validated=false;

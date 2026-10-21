@@ -1,5 +1,5 @@
 // One parse per selected native input, bounded memory, final live-byte verification.
-import {readFileSync} from 'node:fs';
+import {readFileSync} from './cache-store.mjs';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 const hash=b=>createHash('sha256').update(b).digest('hex');

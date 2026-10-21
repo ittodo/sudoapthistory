@@ -5,7 +5,7 @@ import {performance} from 'node:perf_hooks';
 // Invoked only by the official Rust generator, using its verified regional scratch outputs.
 import{scopedNativeMonth}from'./housing-native-adapter.mjs';
 import{VerifiedNativeInputs}from'./housing-native-inputs.mjs';
-import{readFileSync}from'node:fs';import{join,resolve}from'node:path';import{createHash}from'node:crypto';
+import{readFileSync}from'./cache-store.mjs';import{join,resolve}from'node:path';import{createHash}from'node:crypto';
 import{buildHousingSales}from'./build-housing-sales.mjs';import{buildHousingDetails}from'./build-housing-details.mjs';import{buildHousingRegions}from'./build-housing-regions.mjs';import*as codec from'../js/generated/housing-columns.mjs';import'../js/regional-data.js';
 const hash=b=>createHash('sha256').update(b).digest('hex'),spec=JSON.parse(readFileSync(process.argv[2])),site=resolve(spec.site),nativeInputs=new VerifiedNativeInputs({maxParsedBytes:spec.reuse_native_inputs!==false?64*1024*1024:0}),nativeManifests={};
 const json=(path,expected)=>nativeInputs.json(path,expected);

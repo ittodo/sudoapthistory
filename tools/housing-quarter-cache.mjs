@@ -1,5 +1,5 @@
 // Verified private quarter receipts. Public schema and paths remain unchanged.
-import {readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync,renameSync} from './cache-store.mjs';
 import {join,resolve} from 'node:path';import {createHash} from 'node:crypto';import {gzipSync,gunzipSync} from 'node:zlib';
 const hash=b=>createHash('sha256').update(b).digest('hex'),equal=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 export function quarterMemo(directory,key,code,quarter) {

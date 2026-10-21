@@ -1,5 +1,5 @@
 // Reuse region-local identifier pools only after checking current input and output bytes.
-import {readFileSync,writeFileSync,mkdirSync,existsSync,renameSync,lstatSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,existsSync,renameSync,lstatSync} from './cache-store.mjs';
 import {join,resolve} from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';

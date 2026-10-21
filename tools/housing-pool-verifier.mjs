@@ -1,6 +1,6 @@
 // Bounded, same-run byte checks for private identifier pools; no stored PASS receipt.
 import {Worker,isMainThread,parentPort,workerData} from 'node:worker_threads';
-import {readFileSync,lstatSync,realpathSync} from 'node:fs';
+import {readFileSync,lstatSync,realpathSync} from './cache-store.mjs';
 import {resolve,join,sep} from 'node:path';
 import {createHash} from 'node:crypto';
 const hash=b=>createHash('sha256').update(b).digest('hex');
