@@ -1,3 +1,4 @@
+import {privateCache} from './private-cache.mjs';
 import {regionalReader} from './regional-data.mjs';
 import {createHousingDecodeCache} from './housing-regional-reader.mjs';
 import {saleGroupFrames,rentalGroupFrames,priceBindings} from './region-price-groups.mjs';
@@ -41,6 +42,8 @@ export function saleFrames(ctx,catalog,payload,shard,month){
 export function regionPriceAssets(root,{months,stats={},reference=false}={}){
   if(!existsSync(join(root,'data/map/index.json'))||!existsSync(join(root,'data/daily/index.json'))||!existsSync(join(root,'data/rental/index.json')))return [];
   const ctx=regionModels(root),assets=[],sources={},inputs={},directory=join(root,reference?'cloudflare/dist/region-price-reference-v1':'cloudflare/dist/region-price-cache-v2');
+  const cache=privateCache(root,reference?'cloudflare/dist/region-price-reference-v1':'cloudflare/dist/region-price-cache-v2');
+  try {
   Object.assign(stats,{computedGroups:0,reusedGroups:0,decoratedGroups:0,rentalStateParses:0,reusedMonths:0,writtenMonths:0,reusedQuarters:0,writtenQuarters:0,invalidReceipts:0,invalidationReasons:{missing:0,inputs:0,engine:0,corrupt:0}});
   const saleMonths=new Map(),rentalMonths=new Map(),full=process.env.NODO_FULL_VERIFY==='1';
   for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink region cache output');mkdirSync(directory,{recursive:true});
@@ -48,7 +51,7 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
   const verified=(path,manifest)=>{const b=read(path);if(hash(b)!==manifest.sources[path])throw Error('Region cache input changed: '+path);inputs[path]=hash(b);return JSON.parse(path.endsWith('.bin')?gunzipSync(b):b);};
   const saleDecodeCache=createHousingDecodeCache(),rentalDecodeCache=createHousingDecodeCache(),saleReader=regionalReader(root,'daily',{verifyOnce:!reference&&!full,decodeCache:saleDecodeCache}),rentReader=regionalReader(root,'rental',{verifyOnce:!reference&&!full,decodeCache:rentalDecodeCache}),saleCatalog=saleReader.catalog,rentalCatalog=rentReader.catalog.complexes;
   sale.schema??=1;rental.schema??=1;ctx.NodoRental.normalizeDistricts(rentalCatalog);
-  const enginePaths=['tools/build-region-price-cache.mjs','tools/region-price-groups.mjs','tools/regional-data.mjs','tools/regional-reader.mjs','js/regional-data.js',...(sale.schema===3?['tools/housing-regional-reader.mjs','tools/housing-map-quarter.mjs','js/housing-quarter.mjs','js/housing-facts.mjs','js/housing-state-timeline.mjs','js/housing-state-bundle.mjs','js/housing-validation.mjs','js/housing-partition.mjs','js/generated/housing-columns.mjs']:[]),...models.map(n=>'js/'+n+'.js')],codeHash=hash(Buffer.concat(enginePaths.map(read)));
+  const enginePaths=['tools/build-region-price-cache.mjs','tools/private-cache.mjs','tools/region-price-groups.mjs','tools/regional-data.mjs','tools/regional-reader.mjs','js/regional-data.js',...(sale.schema===3?['tools/housing-regional-reader.mjs','tools/housing-map-quarter.mjs','js/housing-quarter.mjs','js/housing-facts.mjs','js/housing-state-timeline.mjs','js/housing-state-bundle.mjs','js/housing-validation.mjs','js/housing-partition.mjs','js/generated/housing-columns.mjs']:[]),...models.map(n=>'js/'+n+'.js')],codeHash=hash(Buffer.concat(enginePaths.map(read)));
   const mapHash=hash(snapshots.get('data/map/index.json')),membershipHash=hash(JSON.stringify(payload.d.map(c=>[c.id,c.r,c.admin,c.memberSources?.map(s=>s.id)])));inputs['data/map/index.json']=mapHash;
   const owners=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(x=>[x.id,c])]));
   let rentalMaxDate=rental.months.at(-1)+'-01';
@@ -67,7 +70,7 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
       const raw=manifest.schema===1?read(input):null,inputHash=manifest.schema>=2?reader.fingerprint(input,true):hash(raw);if(raw&&inputHash!==manifest.sources[input])throw Error('Region cache input mismatch: '+input);if(raw)inputs[input]=inputHash;
       const fingerprint=hash(JSON.stringify([codeHash,type==='sale'&&(manifest.schema!==3||reference)?membershipHash:null,manifest.schema===3?null:manifest.sources[type==='sale'?'data/daily/catalog.bin':'data/rental/catalog.bin'],inputHash,type]));
       const name=`${month}-${region}-${type}.bin`,path=prefix+name,target=join(directory,name),stamp=target+'.json';let proof,bytes;
-      try{if(full)throw Error("Full verification requested");proof=JSON.parse(readFileSync(stamp));if(proof.fingerprint===fingerprint&&hash(readFileSync(target))===proof.sha256)bytes=readFileSync(target);}catch{}
+      try{if(full)throw Error("Full verification requested");proof=JSON.parse(cache.read(stamp));if(proof.fingerprint===fingerprint&&hash(cache.read(target))===proof.sha256)bytes=cache.read(target);}catch{}
       if(manifest.schema===3&&!reference){
         const dependencyPaths=type==='sale'?[0,1,2].flatMap(p=>reader.dependencies(`data/daily/${p}/${month}-state.bin`)):reader.dependencies(input);
         const rawDependencies=[...new Set(dependencyPaths.filter(p=>!p.endsWith('.json')||p.endsWith('.parts.json')))];
@@ -75,11 +78,11 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
         const rawFingerprint=hash(JSON.stringify([codeHash,type,rawDependencies.map(p=>[p,manifest.sources[p]])]));
         let reusable=false;
         try{if(full)throw Error('Full verification requested');
-          const old=JSON.parse(readFileSync(stamp));
+          const old=JSON.parse(cache.read(stamp));
           if(old.rawFingerprint===rawFingerprint&&typeof old.bindingsCompressed==='string'&&Number.isSafeInteger(old.groupCount)&&old.groupCount>=0){
             const blob=Buffer.from(old.bindingsCompressed,'base64');if(hash(blob)!==old.bindingsSha256)throw Error('Month bindings corrupted');const bindings=JSON.parse(gunzipSync(blob));if(!Array.isArray(bindings))throw Error('Month bindings invalid');
             const current=priceBindings(type==='sale'?'sale':'rental',type==='sale'?saleCatalog:rentalCatalog,payload,bindings.map(x=>x[0]),owners);
-            const candidate=readFileSync(target);
+            const candidate=cache.read(target);
             if(JSON.stringify(current)===JSON.stringify(bindings)&&hash(candidate)===old.sha256){bytes=candidate;reusable=true;stats.reusedMonths++;stats.reusedGroups+=old.groupCount;}
           }
         }catch{}
@@ -88,20 +91,20 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
         if(type!=='sale'&&!combined){combined=reader.read(input);stats.rentalStateParses++;rentalMonths.set(input,combined);}
         if(!combined){combined={opening:[],updates:[]};for(const province of [0,1,2]){const statePath=`data/daily/${province}/${month}-state.bin`,x=full?reader.read(statePath):reader.readMapState(statePath);combined.opening.push(...x.opening);combined.updates.push(...x.updates);}combined.updates.sort((a,b)=>a[1]-b[1]);saleMonths.clear();saleMonths.set(month,combined);}
         const groupFile=target+'.groups.bin',groupStamp=groupFile+'.json';let previous=[],invalidReceipt=false;
-        try{if(full)throw Error('Full verification requested');const proof=JSON.parse(readFileSync(groupStamp)),blob=readFileSync(groupFile);if(proof.schema!==2||hash(blob)!==proof.sha256)throw Error('Group receipt corrupted');previous=JSON.parse(gunzipSync(blob));if(!Array.isArray(previous))throw Error('Group receipt invalid');}catch{if(!full&&existsSync(groupFile)){stats.invalidReceipts++;invalidReceipt=true;}}
+        try{if(full)throw Error('Full verification requested');const proof=JSON.parse(cache.read(groupStamp)),blob=cache.read(groupFile);if(proof.schema!==2||hash(blob)!==proof.sha256)throw Error('Group receipt corrupted');previous=JSON.parse(gunzipSync(blob));if(!Array.isArray(previous))throw Error('Group receipt invalid');}catch{if(!full&&cache.exists(groupFile)){stats.invalidReceipts++;invalidReceipt=true;}}
         const result=type==='sale'?saleGroupFrames(ctx,saleCatalog,payload,combined,month,{previous,engine:codeHash,calculate:saleFrames,pack:packFrames,province:r}):rentalGroupFrames(ctx,rentalCatalog,combined,month,region,type,{previous,engine:codeHash,calculate:rentalFrames,pack:packFrames});
         stats.decoratedGroups+=result.stats.decoratedGroups;stats.computedGroups+=result.stats.computedGroups;stats.reusedGroups+=result.stats.reusedGroups;for(const key of Object.keys(stats.invalidationReasons))stats.invalidationReasons[key]+=result.stats.invalidationReasons[key];
         const next=gzipSync(JSON.stringify(result.frame),{level:6});
-        let old;try{old=readFileSync(target);}catch{}
-        if(old?.equals(next)){bytes=old;stats.reusedMonths++;}else{bytes=next;writeFileSync(target,bytes);stats.writtenMonths++;}
-        if(result.stats.computedGroups||result.stats.decoratedGroups||!existsSync(groupFile)||invalidReceipt){const blob=gzipSync(JSON.stringify(result.records),{level:1});writeFileSync(groupFile,blob);writeFileSync(groupStamp,JSON.stringify({schema:2,sha256:hash(blob)}));}
+        let old;try{old=cache.read(target);}catch{}
+        if(old?.equals(next)){bytes=old;stats.reusedMonths++;}else{bytes=next;cache.write(target,bytes);stats.writtenMonths++;}
+        if(result.stats.computedGroups||result.stats.decoratedGroups||!cache.exists(groupFile)||invalidReceipt){const blob=gzipSync(JSON.stringify(result.records),{level:1});cache.write(groupFile,blob);cache.write(groupStamp,JSON.stringify({schema:2,sha256:hash(blob)}));}
         const bindings=priceBindings(type==='sale'?'sale':'rental',type==='sale'?saleCatalog:rentalCatalog,payload,result.references,owners);
         const bindingBytes=gzipSync(JSON.stringify(bindings),{level:6});
-        writeFileSync(stamp,JSON.stringify({fingerprint,rawFingerprint,bindingsCompressed:bindingBytes.toString('base64'),bindingsSha256:hash(bindingBytes),groupCount:result.records.length,sha256:hash(bytes)}));
+        cache.write(stamp,JSON.stringify({fingerprint,rawFingerprint,bindingsCompressed:bindingBytes.toString('base64'),bindingsSha256:hash(bindingBytes),groupCount:result.records.length,sha256:hash(bytes)}));
         }
-      }else if(!bytes){const shard=reader.read(input);const packed=type==='sale'?saleFrames(ctx,saleCatalog,payload,shard,month):rentalFrames(ctx,rentalCatalog,shard,month,region,type);bytes=gzipSync(JSON.stringify(packed),{level:6});writeFileSync(target,bytes);writeFileSync(stamp,JSON.stringify({fingerprint,sha256:hash(bytes)}));stats.writtenMonths++;}else stats.reusedMonths++;
+      }else if(!bytes){const shard=reader.read(input);const packed=type==='sale'?saleFrames(ctx,saleCatalog,payload,shard,month):rentalFrames(ctx,rentalCatalog,shard,month,region,type);bytes=gzipSync(JSON.stringify(packed),{level:6});cache.write(target,bytes);cache.write(stamp,JSON.stringify({fingerprint,sha256:hash(bytes)}));stats.writtenMonths++;}else stats.reusedMonths++;
       if(type!=='sale'&&month===rental.months.at(-1)){let shard=rentalMonths.get(input);if(!shard){shard=reader.read(input);stats.rentalStateParses++;rentalMonths.set(input,shard);}for(const row of shard.updates){const day=ctx.NodoRental.iso(row[2]);if(day>rentalMaxDate)rentalMaxDate=day;}}
-      if(bytes.length>25*1024*1024)throw Error('Region cache asset exceeds limit');sources[path]=hash(bytes);assets.push({path,source:target,sha256:sources[path],size:bytes.length});
+      if(bytes.length>25*1024*1024)throw Error('Region cache asset exceeds limit');cache.materialize(target,bytes);sources[path]=hash(bytes);assets.push({path,source:target,sha256:sources[path],size:bytes.length});
     }
   }
   // Preserve the original public ordering, independently of internal work order.
@@ -116,10 +119,11 @@ export function regionPriceAssets(root,{months,stats={},reference=false}={}){
   for(const [path,members]of groups){const frames={};
     for(const [month,asset]of members){const bytes=readFileSync(asset.source);if(hash(bytes)!==asset.sha256)throw Error('Region month changed during packing: '+asset.path);frames[month]=bytes;}
     const target=join(directory,path.slice(prefix.length)),stamp=target+'.json',dependencyHash=hash(JSON.stringify([codeHash,members.map(([month,a])=>[month,a.sha256])]));let bytes;
-    try{if(full)throw Error('Full verification requested');const proof=JSON.parse(readFileSync(stamp)),old=readFileSync(target);if(proof.dependencyHash===dependencyHash&&proof.sha256===hash(old)){bytes=old;stats.reusedQuarters++;}}catch{}
-    if(!bytes){for(const month of Object.keys(frames))frames[month]=JSON.parse(gunzipSync(frames[month]));bytes=gzipSync(JSON.stringify({schema:1,months:frames}),{level:6});if(bytes.length>25*1024*1024)throw Error('Region quarter exceeds limit');let old;try{old=readFileSync(target);}catch{}if(old?.equals(bytes))stats.reusedQuarters++;else{writeFileSync(target,bytes);stats.writtenQuarters++;}writeFileSync(stamp,JSON.stringify({dependencyHash,sha256:hash(bytes)}));}
-    quarterSources[path]=hash(bytes);assets.push({path,source:target,sha256:quarterSources[path],size:bytes.length});
+    try{if(full)throw Error('Full verification requested');const proof=JSON.parse(cache.read(stamp)),old=cache.read(target);if(proof.dependencyHash===dependencyHash&&proof.sha256===hash(old)){bytes=old;stats.reusedQuarters++;}}catch{}
+    if(!bytes){for(const month of Object.keys(frames))frames[month]=JSON.parse(gunzipSync(frames[month]));bytes=gzipSync(JSON.stringify({schema:1,months:frames}),{level:6});if(bytes.length>25*1024*1024)throw Error('Region quarter exceeds limit');let old;try{old=cache.read(target);}catch{}if(old?.equals(bytes))stats.reusedQuarters++;else{cache.write(target,bytes);stats.writtenQuarters++;}cache.write(stamp,JSON.stringify({dependencyHash,sha256:hash(bytes)}));}
+    cache.materialize(target,bytes);quarterSources[path]=hash(bytes);assets.push({path,source:target,sha256:quarterSources[path],size:bytes.length});
   }
   const packedOnly=sale.schema===3&&rental.schema===3;if(packedOnly){for(let i=assets.length-1;i>=0;i--)if(sources[assets[i].path])assets.splice(i,1);for(const p of Object.keys(sources))delete sources[p];}
   for(const[p,bytes]of snapshots)if(!read(p).equals(bytes))throw Error('Region manifest changed during build: '+p);if(hash(Buffer.concat(enginePaths.map(read)))!==codeHash)throw Error('Region calculation code changed during build');saleReader.recheck?.();rentReader.recheck?.();stats.housingDecodeCache={sale:{...saleDecodeCache.stats},rental:{...rentalDecodeCache.stats}};Object.assign(inputs,saleReader.inputs,rentReader.inputs);assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:packedOnly?2:1,versions:{sale:sale.version,rental:rental.version,map:payload.meta.sourceVersion},rentalMaxDate,inputs,sources,quarterSources}))});return assets;
+  } finally { cache.close(); }
 }

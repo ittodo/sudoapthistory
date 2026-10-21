@@ -1,3 +1,4 @@
+import {privateCache} from './private-cache.mjs';
 import '../js/rental-model.js';
 import '../js/market-rental-model.js';
 import {regionalReader} from './regional-data.mjs';
@@ -34,7 +35,9 @@ export function rentalMarketAssets(root,options={}){
 // Cache each month independently; only changed months are decoded again.
 function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
  const M=globalThis.NodoMarketRental,R=globalThis.NodoRental,m=reader.manifest,assets=[],sources={},inputs={},years={},directory=join(root,'cloudflare/dist/rental-market-summary-v2');
- const codeHash=hash(Buffer.concat(['tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js'].map(p=>readFileSync(join(root,p)))));
+ const cache=privateCache(root,'cloudflare/dist/rental-market-summary-v2');
+ try {
+ const codeHash=hash(Buffer.concat(['tools/private-cache.mjs','tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js'].map(p=>readFileSync(join(root,p)))));
  for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink market cache output');mkdirSync(directory,{recursive:true});
  const catalog=reader.catalog.complexes;R.normalizeDistricts(catalog);
  const districts=Object.fromEntries(['11','41','28'].map(r=>[r,[...new Set(catalog.filter(c=>M.codes[c.r]===r).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]));
@@ -42,11 +45,11 @@ function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
  for(const month of months){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!m.months.includes(month))throw Error('Invalid market month');
   const dependencies=['11','41','28'].map(r=>reader.fingerprint(`data/rental/months/${month}-${r}.bin`,true));
   const fingerprint=hash(JSON.stringify([codeHash,dependencies])),target=join(directory,month+'.bin'),stamp=target+'.json';let saved,bytes;
-  try{saved=JSON.parse(readFileSync(stamp));if(saved.inputHash===fingerprint&&existsSync(target)){const cached=readFileSync(target);if(hash(cached)===saved.hash)bytes=cached;}}catch{}
+  try{saved=JSON.parse(cache.read(stamp));if(saved.inputHash===fingerprint&&cache.exists(target)){const cached=cache.read(target);if(hash(cached)===saved.hash)bytes=cached;}}catch{}
   if(bytes)stats.reused++;else{
    const rows=[];for(const r of ['11','41','28'])for(const row of compactMarketShard(reader.read(`data/rental/months/${month}-${r}.bin`)).rows)rows.push(row);
    bytes=gzipSync(JSON.stringify({schema:2,month,groups:{...M.summarize(rows,catalog),districtRegions}}),{level:6});
-   writeFileSync(target,bytes);writeFileSync(stamp,JSON.stringify({inputHash:fingerprint,hash:hash(bytes)}));stats.calculated++;
+   cache.write(target,bytes);cache.write(stamp,JSON.stringify({inputHash:fingerprint,hash:hash(bytes)}));stats.calculated++;
   }
   (years[month.slice(0,4)]??={})[month]=JSON.parse(gunzipSync(bytes));
  }
@@ -55,4 +58,5 @@ function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
  for(const[year,data]of Object.entries(years)){const bytes=gzipSync(JSON.stringify({schema:2,months:data}),{level:6}),path=prefix+year+'-summary.bin';if(bytes.length>25*1024*1024)throw Error('Market summary exceeds 25 MiB');sources[path]=hash(bytes);assets.push({path,bytes});}
  const sale=join(root,'data/market.json'),saleStartYear=existsSync(sale)?JSON.parse(readFileSync(sale)).meta.startYear:2006;
  assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:2,sourceVersion:m.version,months,saleStartYear,districts,inputs,sources}))});stats.bytes=assets.reduce((n,a)=>n+a.bytes.length,0);return assets;
+ } finally { cache.close(); }
 }

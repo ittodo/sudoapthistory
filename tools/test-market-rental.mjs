@@ -45,7 +45,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex');
 function sourceRow(r,cancelled=0){return [r[0],r[1],r[2],r[3],r[4],r[5],r[6],cancelled,null,null,null,null,null,null,0,r[8],r[7],r[9]];}
 test('generated compact assets exclude cancelled contracts and invalidate on changed source',()=>{
   const dir=mkdtempSync(join(tmpdir(),'nodo-market-'));try{
-    for(const p of ['tools/build-rental-market-cache.mjs','tools/regional-data.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
+    for(const p of ['tools/private-cache.mjs','tools/build-rental-market-cache.mjs','tools/regional-data.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
     mkdirSync(join(dir,'data/rental/months'),{recursive:true});const input='data/rental/months/2026-09-11.bin';
     const write=rows=>{const bytes=gzipSync(JSON.stringify({rows}));writeFileSync(join(dir,input),bytes);writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({version:'v1',months:['2026-09'],sources:{[input]:hash(bytes)}}));};
     write([sourceRow(row(10000,50)),sourceRow(row(20000,100),1)]);const first=rentalMarketAssets(dir),a=first.find(f=>f.source);assert.equal(JSON.parse(gunzipSync(readFileSync(a.source))).rows.length,1);const old=a.sha256;
@@ -150,7 +150,7 @@ test('summary corruption blocks charts and retry repairs only the failed year; s
 
 test('packed production summaries reuse unchanged months, invalidate metadata and reject corrupt input',()=>{
  const dir=mkdtempSync(join(tmpdir(),'nodo-market-packed-'));try{
-  for(const p of ['tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
+  for(const p of ['tools/private-cache.mjs','tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
   const sources={},code='11110',base='data/daily/regions/'+code,identity={complexes:['11110-source'],areas:[[0,'33.05785']]};
   const emit=(path,value,binary=false)=>{const bytes=binary?gzipSync(value):Buffer.from(JSON.stringify(value));mkdirSync(dirname(join(dir,path)),{recursive:true});writeFileSync(join(dir,path),bytes);sources[path]=hash(bytes);};
   const rent=sourceRow(row(10000,50));rent[0]=code+':0';rent[1]='33.05785';rent[17]='01'.repeat(10);

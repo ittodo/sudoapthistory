@@ -1,3 +1,5 @@
+import {privateCache} from './private-cache.mjs';
+import {createHash} from 'node:crypto';
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -243,11 +245,16 @@ return output;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-const [indexData, prices, volumes] = await Promise.all(
-  [indexPath, pricesPath, volumesPath].map(async path => JSON.parse(await readFile(path, "utf8"))),
-);
-const output = buildPriceBands(indexData, prices, volumes);
-await writeFile(outputPath, `${JSON.stringify(output)}\n`, "utf8");
-console.log(`wrote ${outputPath}`);
-console.log(`rows=${output.meta.indexRows} scopes=${Object.keys(output.scopes).length} knownHouseholdRows=${output.meta.unitCoverage.knownRows} unknownHouseholdRows=${output.meta.unitCoverage.unknownRows}`);
+const cache=privateCache(repoRoot,'statistics/price-bands');
+try {
+ const inputs=await Promise.all([indexPath,pricesPath,volumesPath,resolve(repoRoot,'tools/build-price-bands.mjs'),resolve(repoRoot,'tools/private-cache.mjs')].map(p=>readFile(p)));
+ const fingerprint=createHash('sha256').update(JSON.stringify(inputs.map(b=>createHash('sha256').update(b).digest('hex')))).digest('hex');
+ const key=resolve(repoRoot,'statistics/price-bands/current.json');
+ let saved;try{saved=JSON.parse(cache.read(key));}catch{}
+ let output;
+ if(saved?.fingerprint===fingerprint){output=saved.output;console.log('price bands: REUSED');}
+ else {output=buildPriceBands(...inputs.slice(0,3).map(b=>JSON.parse(b)));cache.write(key,JSON.stringify({fingerprint,output}));console.log('price bands: BUILT');}
+ await writeFile(outputPath,JSON.stringify(output)+'\n','utf8');
+ console.log('rows='+output.meta.indexRows+' knownHouseholdRows='+output.meta.unitCoverage.knownRows+' unknownHouseholdRows='+output.meta.unitCoverage.unknownRows);
+} finally {cache.close();}
 }

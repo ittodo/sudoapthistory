@@ -3,6 +3,10 @@
 `/stats/?tenure=sale`은 `data/index.json`, `data/price_bands.json`,
 `data/tax_revenue_actuals.json`을 읽는다. 생성기는 `tools/build-price-bands.mjs`다.
 현재 리뷰 자료로 index를 보강한 뒤 통계를 생성한다.
+가격대 집계는 비공개 SQLite 캐시의 `statistics/price-bands` scope에 저장한다.
+index·연도별 가격·거래량 파일과 계산 코드가 같으면 이전 결과를 그대로 출력한다.
+입력 파일이 바뀌면 다시 계산한다. 생성기에 전유부·HUB 원문 조회는 없다.
+DB 경로와 CI 보관은 [공통 캐시 기준](cloudflare-auto-deployment.md#앞으로-지킬-배포검증-규칙)을 따른다.
 세대수의 원천과 중복 방지는 [현재 HUB 집계 기준](../../ops-dashboard/housing-review/docs/hub-source.md#공개-평형별-세대수)을 따른다.
 
 세대수는 각 index 행의 `u`다. 단지 전체 `tu`로 대체하지 않는다.

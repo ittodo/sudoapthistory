@@ -41,8 +41,10 @@ Those effects use the existing detailed loader in the background. Zooming in
 restores ordinary apartment prices and details. Initial catalogs and map boundary
 files remain shared with the existing map; this cache does not replace them.
 
-The packaging cache is outside tracked data under
-`cloudflare/dist/region-price-cache-v2`. Each entry checks input and calculation
+The private SQLite cache is outside tracked data at
+`cloudflare/dist/housing-cache.sqlite`. The price scope stores calculation results.
+`cloudflare/dist/region-price-cache-v2` contains output files for packaging.
+Each entry checks input and calculation
 hashes plus output integrity before reuse. CI restores this directory; changed
 or corrupted entries are rebuilt. The generated manifest pins the sale, rental
 and map source versions. Python and operational database writes are not involved.
