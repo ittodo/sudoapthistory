@@ -148,7 +148,7 @@ test('summary corruption blocks charts and retry repairs only the failed year; s
  const stale=addSummaries(workerHarness());const index=JSON.parse(stale.files['data/rental/market-cache/index.json']);index.sourceVersion='old';stale.files['data/rental/market-cache/index.json']=Buffer.from(JSON.stringify(index));await stale.request('init');assert.equal((await stale.request('view',s)).mode,'transactions');
 });
 
-test('packed production summaries reuse unchanged months, invalidate metadata and reject corrupt input',()=>{
+test('packed summaries reuse display edits but invalidate grouping and transaction changes',()=>{
  const dir=mkdtempSync(join(tmpdir(),'nodo-market-packed-'));try{
   for(const p of ['tools/private-cache.mjs','tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
   const sources={},code='11110',base='data/daily/regions/'+code,identity={complexes:['11110-source'],areas:[[0,'33.05785']]};
@@ -159,7 +159,19 @@ test('packed production summaries reuse unchanged months, invalidate metadata an
   const writeManifest=()=>{mkdirSync(join(dir,'data/rental'),{recursive:true});writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({schema:3,version:'packed',months:['2026-09'],sources,regional:{format:'packed-region',kind:'rental',authority:'data/daily/regions/index.json',quarters:{[code]:{'2026-09':q}},states:{[code]:{'2026-09':null}}}}));};writeManifest();
   const stats={},assets=rentalMarketAssets(dir,{stats});assert.equal(stats.calculated,1);const output=assets.find(a=>a.path.endsWith('summary.bin')),summary=JSON.parse(gunzipSync(output.bytes));assert.equal(summary.months['2026-09'].groups['monthly:all'].total.count,1);
   const second={};assert.equal(hash(rentalMarketAssets(dir,{stats:second})[0].bytes),hash(output.bytes));assert.equal(second.reused,1);
+  const display={id:'11110-source',n:'새 이름',r:1,g:'종로구',d:'새 동명',coord:[37.57,127.01],tu:100};
+  emit(metadata,{complexes:[display],areas:[{u:7}]});writeManifest();const displayStats={},displayAssets=rentalMarketAssets(dir,{stats:displayStats});
+  assert.equal(displayStats.calculated,0);assert.equal(displayStats.reused,1);assert.equal(hash(displayAssets[0].bytes),hash(output.bytes));
+  assert.equal(JSON.parse(displayAssets.find(a=>a.path.endsWith('index.json')).bytes).inputs[metadata],sources[metadata],'reused summaries still bind current metadata');
+  // Normalized district codes and their names denote the same grouping.
+  emit(metadata,{complexes:[{...display,g:'41591'}],areas:[]});writeManifest();const normalized=rentalMarketAssets(dir)[0].bytes;
+  emit(metadata,{complexes:[{...display,g:'화성시 만세구'}],areas:[]});writeManifest();const normalizedStats={};
+  assert.equal(hash(rentalMarketAssets(dir,{stats:normalizedStats})[0].bytes),hash(normalized));assert.equal(normalizedStats.reused,1);
   emit(metadata,{complexes:[{id:'11110-source',n:'단지',r:1,g:'중구',d:'창신동'}],areas:[]});writeManifest();const changed={};const updated=JSON.parse(gunzipSync(rentalMarketAssets(dir,{stats:changed})[0].bytes));assert.equal(changed.calculated,1);assert.equal(updated.months['2026-09'].groups['monthly:all'].districts['중구'].count,1);
+  emit(metadata,{complexes:[{...display,r:0,g:'중구'}],areas:[]});writeManifest();const provinceStats={},province=JSON.parse(gunzipSync(rentalMarketAssets(dir,{stats:provinceStats})[0].bytes));
+  assert.equal(provinceStats.calculated,1);assert.equal(province.months['2026-09'].groups['monthly:all'].regions['41'].count,1);assert.equal(province.months['2026-09'].groups.districtRegions['중구'],'41');
+  rent[3]=20000;emit(q,encodeQuarter(packQuarter(code,'2026-Q3',{'2026-09':{daily:{rows:[],opening:[],updates:[]},rental:{rows:[rent],opening:[],updates:[rent]}}},identity,codec)),true);writeManifest();
+  const priceStats={},price=JSON.parse(gunzipSync(rentalMarketAssets(dir,{stats:priceStats})[0].bytes));assert.equal(priceStats.calculated,1);assert.equal(price.months['2026-09'].groups['monthly:all'].total.monthly.avg,150);
   writeFileSync(join(dir,q),Buffer.from('corrupt'));assert.throws(()=>rentalMarketAssets(dir),/source mismatch/i);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

@@ -42,9 +42,12 @@ function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
  const catalog=reader.catalog.complexes;R.normalizeDistricts(catalog);
  const districts=Object.fromEntries(['11','41','28'].map(r=>[r,[...new Set(catalog.filter(c=>M.codes[c.r]===r).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]));
  const districtRegions=Object.fromEntries(catalog.map(c=>[c.g,M.codes[c.r]]));stats.reused=0;stats.calculated=0;
+ // Summaries use normalized district/province bindings, not names, coordinates
+ // or household counts. Keep the compound row key bound to its grouping fields.
+ const groupingHash=hash(JSON.stringify(catalog.map(c=>[c.key,c.r,c.g])));
  for(const month of months){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!m.months.includes(month))throw Error('Invalid market month');
-  const dependencies=['11','41','28'].map(r=>reader.fingerprint(`data/rental/months/${month}-${r}.bin`,true));
-  const fingerprint=hash(JSON.stringify([codeHash,dependencies])),target=join(directory,month+'.bin'),stamp=target+'.json';let saved,bytes;
+  const dependencies=['11','41','28'].map(r=>reader.fingerprint(`data/rental/months/${month}-${r}.bin`));
+  const fingerprint=hash(JSON.stringify([codeHash,groupingHash,dependencies])),target=join(directory,month+'.bin'),stamp=target+'.json';let saved,bytes;
   try{saved=JSON.parse(cache.read(stamp));if(saved.inputHash===fingerprint&&cache.exists(target)){const cached=cache.read(target);if(hash(cached)===saved.hash)bytes=cached;}}catch{}
   if(bytes)stats.reused++;else{
    const rows=[];for(const r of ['11','41','28'])for(const row of compactMarketShard(reader.read(`data/rental/months/${month}-${r}.bin`)).rows)rows.push(row);
