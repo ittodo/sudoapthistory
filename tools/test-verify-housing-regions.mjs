@@ -12,6 +12,7 @@ import {packQuarter,encodeQuarter} from '../js/housing-quarter.mjs';
 import {verifyHousingRegions} from './verify-housing-regions.mjs';
 import {currentReviewContract} from './housing-publication-contract.mjs';
 import {dataValidationProof,proofPath} from './data-validation-proof.mjs';
+import {closeCacheStores} from './cache-store.mjs';
 
 const hash=b=>createHash('sha256').update(b).digest('hex');
 function fixture({legacy=false,alterMap=null,alterHousing=null}={}){
@@ -43,7 +44,7 @@ function fixture({legacy=false,alterMap=null,alterHousing=null}={}){
  const catalogHash=put('data/apartments/index.json',{version:2,count:1,sources:metadataSources,shards,lookup:{A:['one','00'],one:['one','00']},legacy:{7:['one',59]},ambiguous:[]});
  const contractsHash=put('data/contracts/index.json',{schema:2,rentalVersion:'rental-version',sources:{},partitions:[]});
  put('data/apartment-rent/index.json',{schema:2,rentalVersion:'rental-version',contractsHash,catalogHash,sources:{}});
- return {root,put,read,quarter,close:()=>rmSync(root,{recursive:true,force:true})};
+ return {root,put,read,quarter,close:()=>{closeCacheStores();rmSync(root,{recursive:true,force:true});}};
 }
 
 test('full regional verifier records final current metadata after actual packed fact checks',()=>{
@@ -93,6 +94,8 @@ for(const extended of [false,...(process.platform==='win32'?[true]:[])]){
 
 test('importing the regional verifier does not run its CLI',()=>{
  const script=fileURLToPath(new URL('./verify-housing-regions.mjs',import.meta.url));
- const output=spawnSync(process.execPath,['--input-type=module','-e',`await import(${JSON.stringify(pathToFileURL(script).href)})`],{encoding:'utf8'});
+ // Node 22 reports its SQLite experimental warning on import. This assertion
+ // checks CLI output, so suppress that runtime warning only in this child.
+ const output=spawnSync(process.execPath,['--disable-warning=ExperimentalWarning','--input-type=module','-e',`await import(${JSON.stringify(pathToFileURL(script).href)})`],{encoding:'utf8'});
  assert.ifError(output.error);assert.equal(output.status,0,output.stderr);assert.equal(output.stdout,'');assert.equal(output.stderr,'');
 });
