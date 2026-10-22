@@ -20,6 +20,17 @@ function dependencyValue(value){
 }
 const dependencyKey=value=>hash(JSON.stringify(dependencyValue(value)));
 
+// Rust provenance describes the whole run. Reuse is instead bound to the code
+// that consumes each scope's current inputs and produces its bytes.
+const scopeRoots={region:'housing-region-builder',year:'housing-region-builder',quarter:'housing-region-builder','state-year':'housing-region-builder',sale:'build-housing-sales',rental:'build-housing-details','contract-archive':'build-contract-archive'};
+export function generationScopeProducers(site){
+ const common=validationEngine(site,{roots:['tools/housing-generation-batch.mjs']}),stages=new Map();
+ return Object.fromEntries(Object.entries(scopeRoots).map(([kind,name])=>{
+  if(!stages.has(name))stages.set(name,hash(JSON.stringify([2,common,validationEngine(site,{roots:['tools/'+name+'.mjs']})])));
+  return [kind,stages.get(name)];
+ }));
+}
+
 // Identity snapshots are shared privately; source arrays may still append during
 // packaging. The on-disk dictionary stores exact values once, never renumbers them.
 const identityStorage='dictionary-v1';
@@ -65,7 +76,7 @@ function safe(root,path){if(!/^data\//.test(path)||path.split('/').some(p=>!p||p
 export class GenerationFileSession{
  constructor({site,output,cache,batch,engine=null}){
   this.output=resolve(output);this.checkpoint=cache?join(resolve(cache),'generation-consumer.json'):null;this.batch=batch;this.old=null;this.scopes={};this.metrics={mode:'BASELINE',scopesReused:0,scopesBuilt:0,rawInputsSkipped:0,bytesReused:0,batchesConsumed:0};
-  this.engine=engine??validationEngine(site,{roots:['tools/build-housing-from-native.mjs']});this.pending=null;this.identityPool=new Map();this.childrenByRegion=new Map();
+  this.engine=engine??validationEngine(site,{roots:['tools/build-housing-from-native.mjs']});this.producers=generationScopeProducers(site);this.pending=null;this.identityPool=new Map();this.childrenByRegion=new Map();
   if(batch==null)return;
   if(batch.schema!==1||!Number.isSafeInteger(batch.seq)||batch.seq<0||typeof batch.revision!=='string'||!Array.isArray(batch.batches))throw Error('Invalid generation file snapshot');
   let seq=0,revision=null;
@@ -75,7 +86,7 @@ export class GenerationFileSession{
   if(lstatSync(this.checkpoint).isSymbolicLink())throw Error('Generation checkpoint link');
   const v=JSON.parse(readFileSync(this.checkpoint)),body=v.body;
   if(v.sha256!==hash(JSON.stringify(body))||body.schema!==1||body.status!=='CANDIDATE_VERIFIED'||!Number.isSafeInteger(body.seq)||body.seq<0||typeof body.revision!=='string'||!body.scopes||typeof body.scopes!=='object'||Array.isArray(body.scopes)||resolve(body.checkpoint)!==this.checkpoint)throw Error('Generation checkpoint corrupt');
-  if(body.engine!==this.engine){this.metrics.mode='ENGINE_BASELINE';return;}
+  if(body.producerContract!==2){this.metrics.mode='PRODUCER_BASELINE';return;}
   if(body.seq>batch.seq)throw Error('Generation checkpoint ahead of operating DB');
   const after=batch.batches.filter(b=>b.seq>body.seq);let previous=body.revision,expected=body.seq;
   for(const b of after){const v=JSON.parse(b.payload);if(b.seq!==++expected||v.previousRevision!==previous)throw Error('Generation consumption gap');if(v.complete!==true){this.metrics.mode='INCOMPLETE_BASELINE';return;}previous=v.revision;}
@@ -91,7 +102,8 @@ export class GenerationFileSession{
   if(!this.identityPool.has(id))this.identityPool.set(id,structuredClone(identity));
   return this.identityPool.get(id);
  }
- peek(scope){return this.old?.scopes?.[scope]??null;}
+ producer(scope){return this.producers[scope.split('/')[0]]??this.engine;}
+ peek(scope){const prior=this.old?.scopes?.[scope];return prior?.producer===this.producer(scope)?prior:null;}
  load(scope,key,identity,allowed,emit){
   const prior=this.peek(scope);if(!prior||prior.key!==dependencyKey(key)||!identityFits(prior.identity,identity))return null;
   const root=realpathSync(this.old.output);
@@ -101,18 +113,18 @@ export class GenerationFileSession{
   // A verified containing scope also carries its unchanged finer receipts forward.
   const parts=scope.split('/'),contains=name=>{const n=name.split('/');return parts[0]==='region'&&n[1]===parts[1]&&['year','quarter','state-year'].includes(n[0])||parts[0]==='year'&&n[1]===parts[1]&&(n[0]==='state-year'&&n[2]===parts[2]||n[0]==='quarter'&&n[2].startsWith(parts[2]+'-Q'));};
   const fits=new Map([[prior.identity,true]]),identityCompatible=value=>{if(!fits.has(value))fits.set(value,identityFits(value,identity));return fits.get(value);};
-  if(['region','year'].includes(parts[0]))for(const[name,child]of this.childrenByRegion.get(parts[1])||[])if(contains(name)&&identityCompatible(child.identity)&&Object.entries(child.files).every(([p,r])=>eq(prior.files[p],r)))this.scopes[name]=child;
+  if(['region','year'].includes(parts[0]))for(const[name,child]of this.childrenByRegion.get(parts[1])||[])if(child.producer===this.producer(name)&&contains(name)&&identityCompatible(child.identity)&&Object.entries(child.files).every(([p,r])=>eq(prior.files[p],r)))this.scopes[name]=child;
   this.metrics.scopesReused++;return prior.result;
  }
  save(scope,key,identity,result,paths){
   const files={};for(const path of paths){const b=readFileSync(safe(this.output,path));files[path]={bytes:b.length,sha256:hash(b)};}
-  this.scopes[scope]={key:dependencyKey(key),identity:this.internIdentity(identity),result,files};this.metrics.scopesBuilt++;
+  this.scopes[scope]={producer:this.producer(scope),key:dependencyKey(key),identity:this.internIdentity(identity),result,files};this.metrics.scopesBuilt++;
  }
  finish(){
   if(!this.checkpoint||this.batch==null)return {status:'NOT_RUN',...this.metrics};
   mkdirSync(dirname(this.checkpoint),{recursive:true});
   const compact=compactGenerationScopes(this.scopes);Object.assign(this.metrics,compact.metrics);
-  const body={schema:1,status:'CANDIDATE_VERIFIED',engine:this.engine,checkpoint:this.checkpoint,output:realpathSync(this.output),seq:this.batch.seq,revision:this.batch.revision,identityStorage:compact.identityStorage,identities:compact.identities,scopes:compact.scopes};
+  const body={schema:1,producerContract:2,status:'CANDIDATE_VERIFIED',engine:this.engine,checkpoint:this.checkpoint,output:realpathSync(this.output),seq:this.batch.seq,revision:this.batch.revision,identityStorage:compact.identityStorage,identities:compact.identities,scopes:compact.scopes};
   this.pending=join(this.output,'generation-consumption.pending.json');writeFileSync(this.pending,JSON.stringify({body,sha256:hash(JSON.stringify(body))}));
   return {status:'PENDING_OUTER_VALIDATION',pending:this.pending,seq:body.seq,revision:body.revision,engine:this.engine,...this.metrics};
  }

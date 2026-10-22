@@ -175,3 +175,30 @@ test('packed summaries reuse display edits but invalidate grouping and transacti
   writeFileSync(join(dir,q),Buffer.from('corrupt'));assert.throws(()=>rentalMarketAssets(dir),/source mismatch/i);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
+
+test('packed month cache ignores appended sale identities and recalculates only changed rental statistics',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'nodo-market-scope-'));try{
+  // Deliberately small source fixture; unknown dependencies use the conservative engine.
+  for(const p of ['tools/build-rental-market-cache.mjs','js/market-rental-model.js']){mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),readFileSync(join(root,p)));}
+  const sources={},code='11110',base='data/daily/regions/'+code,identity={complexes:['source'],areas:[[0,'33.05785']]},months=['2026-07','2026-08','2026-09'];
+  const emit=(p,v,binary=false)=>{const b=binary?gzipSync(v):Buffer.from(JSON.stringify(v));mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),b);sources[p]=hash(b);};
+  const values=Object.fromEntries(months.map((m,i)=>{const rent=sourceRow(row(10000,50));rent[0]=code+':0';rent[1]='33.05785';rent[2]=Number(m.replace('-','')+'01');rent[17]=String(i+1).padStart(2,'0').repeat(10);return [m,{daily:{rows:[],opening:[],updates:[]},rental:{rows:[rent],opening:[],updates:[]}}];}));
+  const q=base+'/quarters/2026-Q3.bin',metadata=base+'/metadata.json';
+  const write=()=>{emit(q,encodeQuarter(packQuarter(code,'2026-Q3',values,identity,codec)),true);emit(base+'/identities.json',identity);emit(metadata,{complexes:[{id:'source',r:1,g:'종로구'}],areas:[]});emit('data/daily/regions/index.json',{schema:3,regions:{[code]:{identities:base+'/identities.json',metadata}}});mkdirSync(join(dir,'data/rental'),{recursive:true});writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({schema:3,version:'test',months,sources,regional:{format:'packed-region',kind:'rental',authority:'data/daily/regions/index.json',quarters:{[code]:Object.fromEntries(months.map(m=>[m,q]))},states:{[code]:Object.fromEntries(months.map(m=>[m,null]))}}}));};
+  const run=()=>{const stats={},assets=rentalMarketAssets(dir,{stats});return {stats,bytes:assets[0].bytes};};
+  write();const first=run();assert.equal(first.stats.calculated,3);
+  identity.areas.push([0,'84.999']);write();const append=run();assert.equal(append.stats.decoded,0);assert.equal(append.stats.reused,3);assert.deepEqual(append.bytes,first.bytes);
+  const rent=values['2026-09'].rental.rows[0];rent[3]=20000;write();const change=run();assert.equal(change.stats.calculated,1);assert.equal(change.stats.semanticReused,2);
+  assert.equal(JSON.parse(gunzipSync(change.bytes)).months['2026-09'].groups['monthly:all'].total.monthly.avg,150);
+  // A floor edit changes transport bytes, but none of the displayed statistics.
+  rent[6]=20;write();const floor=run();assert.equal(floor.stats.calculated,0);assert.equal(floor.stats.reused,3);assert.deepEqual(floor.bytes,change.bytes);
+  // Used identity changes must decode again and change per-area statistics.
+  identity.areas[0][1]='40';rent[1]='40';for(const m of months)values[m].rental.rows[0][1]='40';write();const area=run();assert.equal(area.stats.calculated,3);assert.notDeepEqual(area.bytes,floor.bytes);
+  rent[7]=1;write();const cancelled=run();assert.equal(cancelled.stats.calculated,1);assert.equal(JSON.parse(gunzipSync(cancelled.bytes)).months['2026-09'].groups['monthly:all'].total.count,0);
+  rent[7]=0;values['2026-09'].rental.rows.push([...rent]);write();const duplicates=run();assert.equal(duplicates.stats.calculated,1);assert.equal(JSON.parse(gunzipSync(duplicates.bytes)).months['2026-09'].groups['monthly:all'].total.count,2);
+  values['2026-09'].rental.rows=[];write();const removed=run();assert.equal(removed.stats.calculated,1);assert.equal(JSON.parse(gunzipSync(removed.bytes)).months['2026-09'].groups['monthly:all'].total.count,0);
+  const warm=run();assert.equal(warm.stats.decoded,0);assert.equal(warm.stats.reused,3);
+  const old=process.env.NODO_FULL_VERIFY;try{process.env.NODO_FULL_VERIFY='1';const full=run();assert.equal(full.stats.calculated,3);assert.deepEqual(full.bytes,warm.bytes);}finally{if(old===undefined)delete process.env.NODO_FULL_VERIFY;else process.env.NODO_FULL_VERIFY=old;}
+  writeFileSync(join(dir,q),'corrupt');assert.throws(run,/source mismatch/i);
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});

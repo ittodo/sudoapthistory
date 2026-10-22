@@ -1,7 +1,8 @@
 import {privateCache} from './private-cache.mjs';
+import {codeDependencyEngine} from './code-dependencies.mjs';
 import '../js/rental-model.js';
 import '../js/market-rental-model.js';
-import {regionalReader} from './regional-data.mjs';
+import {regionalReader} from './regional-reader.mjs';
 import {createHousingDecodeCache} from './housing-regional-reader.mjs';
 import {readFileSync,writeFileSync,existsSync,mkdirSync,lstatSync} from 'node:fs';
 import {join} from 'node:path';
@@ -37,24 +38,43 @@ function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
  const M=globalThis.NodoMarketRental,R=globalThis.NodoRental,m=reader.manifest,assets=[],sources={},inputs={},years={},directory=join(root,'cloudflare/dist/rental-market-summary-v2');
  const cache=privateCache(root,'cloudflare/dist/rental-market-summary-v2');
  try {
- const codeHash=hash(Buffer.concat(['tools/private-cache.mjs','tools/build-rental-market-cache.mjs','js/market-rental-model.js','js/rental-model.js','tools/regional-data.mjs','tools/housing-regional-reader.mjs','js/regional-data.js'].map(p=>readFileSync(join(root,p)))));
+ const codeHash=codeDependencyEngine(root,{roots:['tools/build-rental-market-cache.mjs']});
  for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink market cache output');mkdirSync(directory,{recursive:true});
  const catalog=reader.catalog.complexes;R.normalizeDistricts(catalog);
  const districts=Object.fromEntries(['11','41','28'].map(r=>[r,[...new Set(catalog.filter(c=>M.codes[c.r]===r).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]));
- const districtRegions=Object.fromEntries(catalog.map(c=>[c.g,M.codes[c.r]]));stats.reused=0;stats.calculated=0;
+ const districtRegions=Object.fromEntries(catalog.map(c=>[c.g,M.codes[c.r]]));Object.assign(stats,{reused:0,calculated:0,decoded:0,semanticReused:0});
  // Summaries use normalized district/province bindings, not names, coordinates
  // or household counts. Keep the compound row key bound to its grouping fields.
  const groupingHash=hash(JSON.stringify(catalog.map(c=>[c.key,c.r,c.g])));
+ // Identity files are append-only. Bind the exact old prefix, not unrelated new
+ // sale areas. Changed prefixes still decode; physical hashes remain in inputs.
+ const identityMemo=new Map();
+ function identityProof(counts){return [...reader.table.regions].map(([code,r])=>{
+  const lengths=counts?.[code]??[r.identity.complexes.length,r.identity.areas.length],key=code+':'+lengths.join(':');
+  if(!identityMemo.has(key))identityMemo.set(key,hash(JSON.stringify([r.identity.complexes.slice(0,lengths[0]),r.identity.areas.slice(0,lengths[1])])));
+  return [code,lengths,identityMemo.get(key)];
+ });}
+ const counts=Object.fromEntries([...reader.table.regions].map(([code,r])=>[code,[r.identity.complexes.length,r.identity.areas.length]]));
  for(const month of months){if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!m.months.includes(month))throw Error('Invalid market month');
-  const dependencies=['11','41','28'].map(r=>reader.fingerprint(`data/rental/months/${month}-${r}.bin`));
-  const fingerprint=hash(JSON.stringify([codeHash,groupingHash,dependencies])),target=join(directory,month+'.bin'),stamp=target+'.json';let saved,bytes;
-  try{saved=JSON.parse(cache.read(stamp));if(saved.inputHash===fingerprint&&cache.exists(target)){const cached=cache.read(target);if(hash(cached)===saved.hash)bytes=cached;}}catch{}
-  if(bytes)stats.reused++;else{
+  const dependencies=['11','41','28'].map(r=>{
+   const path=`data/rental/months/${month}-${r}.bin`;reader.fingerprint(path);
+   return reader.dependencies(path).filter(p=>!p.endsWith('/identities.json')).map(p=>[p,m.sources[p]]);
+  });
+  const target=join(directory,month+'.bin'),stamp=target+'.json';let saved,cached,bytes;
+  try{saved=JSON.parse(cache.read(stamp));if(process.env.NODO_FULL_VERIFY!=='1'&&saved.schema===3&&saved.codeHash===codeHash&&cache.exists(target)){const b=cache.read(target);if(hash(b)===saved.hash)cached=b;}}catch{}
+  const proof=lengths=>hash(JSON.stringify([groupingHash,dependencies,identityProof(lengths)]));
+  if(cached&&saved.inputHash===proof(saved.counts)){bytes=cached;stats.reused++;}else{
    const rows=[];for(const r of ['11','41','28'])for(const row of compactMarketShard(reader.read(`data/rental/months/${month}-${r}.bin`)).rows)rows.push(row);
-   bytes=gzipSync(JSON.stringify({schema:2,month,groups:{...M.summarize(rows,catalog),districtRegions}}),{level:6});
-   cache.write(target,bytes);cache.write(stamp,JSON.stringify({inputHash:fingerprint,hash:hash(bytes)}));stats.calculated++;
+   stats.decoded++;
+   // Preserve order and duplicate multiplicity. These are exactly the fields
+   // summarize consumes; date, source labels and sale-only changes are irrelevant.
+   const semanticHash=hash(JSON.stringify(rows.map(r=>{const c=catalog[r[0]];if(!c)throw Error('Unknown market complex');return [r[1],r[3],r[4],r[5],r[7],c.r,c.g];})));
+   if(cached&&saved.semanticHash===semanticHash){bytes=cached;stats.reused++;stats.semanticReused++;}
+   else{bytes=gzipSync(JSON.stringify({schema:2,month,groups:M.summarize(rows,catalog)}),{level:6});cache.write(target,bytes);stats.calculated++;}
+   cache.write(stamp,JSON.stringify({schema:3,codeHash,inputHash:proof(counts),counts,semanticHash,hash:hash(bytes)}));
   }
-  (years[month.slice(0,4)]??={})[month]=JSON.parse(gunzipSync(bytes));
+  const value=JSON.parse(gunzipSync(bytes));value.groups.districtRegions=districtRegions;
+  (years[month.slice(0,4)]??={})[month]=value;
  }
  // Bind every metadata/identity/quarter dependency, even on a reused month.
  Object.assign(inputs,reader.inputs);for(const[p,h]of Object.entries(inputs))reader.physical(p,false);reader.recheck();

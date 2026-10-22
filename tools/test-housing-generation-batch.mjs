@@ -1,8 +1,33 @@
 import test from'node:test';import assert from'node:assert/strict';
 import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,cpSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';
-import{GenerationFileSession,compactGenerationScopes}from'./housing-generation-batch.mjs';
+import{GenerationFileSession,compactGenerationScopes,generationScopeProducers}from'./housing-generation-batch.mjs';
+import {fileURLToPath} from 'node:url';
 import{buildHousingRegions}from'./build-housing-regions.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
+
+test('real dependency graph isolates stages and retains checks across whole-run producer changes',()=>{
+ const root=mkdtempSync(join(tmpdir(),'generation-producers-')),site=fileURLToPath(new URL('../',import.meta.url)),cache=join(root,'cache'),output=join(root,'out'),other=join(root,'next');
+ try{
+  for(const name of ['tools','js'])cpSync(join(site,name),join(root,name),{recursive:true,filter:p=>!p.includes('node_modules')&&!p.includes('native-projection')&&!p.includes('test-')});
+  const initial=generationScopeProducers(root),edit=p=>writeFileSync(join(root,p),readFileSync(join(root,p),'utf8')+'\n// changed\n');
+  edit('js/market-rental-model.js');assert.deepEqual(generationScopeProducers(root),initial,'statistics code is not a packing dependency');
+  edit('tools/build-housing-from-native.mjs');assert.deepEqual(generationScopeProducers(root),initial,'orchestration is not a byte producer');
+  edit('tools/build-contract-archive.mjs');const archive=generationScopeProducers(root);
+  assert.notEqual(archive['contract-archive'],initial['contract-archive']);for(const k of ['region','sale','rental'])assert.equal(archive[k],initial[k],k);
+  edit('tools/housing-native-readers.mjs');const native=generationScopeProducers(root);assert.notEqual(native.region,archive.region);assert.equal(native.sale,archive.sale);assert.equal(native.rental,archive.rental);assert.equal(native['contract-archive'],archive['contract-archive']);
+  const path='data/contracts/apartment-rent/11110/archive-details.bin',identity={11110:{complexes:['A'],areas:[[0,'59.1']]}};
+  mkdirSync(join(output,path,'..'),{recursive:true});mkdirSync(other);writeFileSync(join(output,path),'same contract bytes');
+  const batch={schema:1,seq:0,revision:'unchanged',batches:[]},session=(o,engine)=>new GenerationFileSession({site:root,output:o,cache,batch,engine});
+  const first=session(output,'rust-before');first.save('contract-archive/11110',['same-inputs'],identity,{rows:1},[path]);cpSync(first.finish().pending,join(cache,'generation-consumer.json'));
+  assert.ok(session(other,'rust-operating-lock-fix').load('contract-archive/11110',['same-inputs'],identity,()=>true,()=>{}));
+  const original=readFileSync(join(cache,'generation-consumer.json'));
+  edit('js/housing-contract-detail.mjs');assert.equal(session(other,'rust-operating-lock-fix').peek('contract-archive/11110'),null,'actual contract format change rebuilds');
+  assert.deepEqual(readFileSync(join(cache,'generation-consumer.json')),original,'reader never re-signs prior receipts');
+  const receipt=JSON.parse(original);delete receipt.body.producerContract;receipt.sha256=hash(JSON.stringify(receipt.body));writeFileSync(join(cache,'generation-consumer.json'),JSON.stringify(receipt));
+  assert.equal(session(other,'rust-before').metrics.mode,'PRODUCER_BASELINE','old global-only proof is not promoted');
+  const before= generationScopeProducers(root);edit('js/generated/housing-columns.mjs');const shared=generationScopeProducers(root);for(const k of Object.keys(before))assert.notEqual(shared[k],before[k],k+' codec dependency');
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
 test('retained DB chain, current revision, cache corruption and identity movement cannot silently reuse',()=>{
  const root=mkdtempSync(join(tmpdir(),'generation-chain-')),cache=join(root,'cache'),output=join(root,'out'),path='data/daily/regions/11110/quarters/2026-Q4.bin';
  mkdirSync(join(output,path,'..'),{recursive:true});writeFileSync(join(output,path),'verified');
