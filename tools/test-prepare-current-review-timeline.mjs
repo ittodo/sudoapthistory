@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,existsSync,symlinkSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
-import {createHash} from 'node:crypto';
+import {createHash,webcrypto} from 'node:crypto';
 import {runInNewContext} from 'node:vm';
 import {prepareCurrentReviewTimeline,candidateTimelineManifest} from './prepare-current-review-timeline.mjs';
 import {prepareCurrentReviewSearch} from './prepare-current-review-search.mjs';
@@ -83,10 +83,12 @@ test('browser daily client loads the overlay with the current map version and ex
   const f=fixture();let server;
   try{
     prepareCurrentReviewTimeline(f.baseline,f.candidate);server=await startCurrentReviewPreview({...f,port:0});const base='http://127.0.0.1:'+server.address().port;
-    const fetchLocal=path=>fetch(base+path),context={NodoRegional:globalThis.NodoRegional,NodoVerifiedDataCache:{create:()=>({download:async(path,expected)=>{const bytes=Buffer.from(await(await fetch(base+'/'+path)).arrayBuffer());assert.equal(hash(bytes),expected,path);return bytes;}}),decode:async bytes=>JSON.parse(bytes)}};
-    runInNewContext(readFileSync(new URL('../js/daily-client.js',import.meta.url),'utf8'),{window:context,globalThis:context,fetch:fetchLocal,AbortController});
+    const fetchLocal=(path,options)=>fetch(base+path,options),context={NodoRegional:globalThis.NodoRegional};
+    const browser={window:context,globalThis:context,fetch:fetchLocal,AbortController,crypto:webcrypto,TextDecoder,Response,Blob,DecompressionStream};
+    for(const script of ['verified-data-cache.js','daily-client.js'])runInNewContext(readFileSync(new URL('../js/'+script,import.meta.url),'utf8'),browser);
     const client=await context.NodoDailyClient.create(),map=await(await fetchLocal('/data/map/index.json')).json();assert.equal(client.index.mapVersion,map.meta.sourceVersion);assert.equal(client.catalog.complexes[0].id,'A');assert.equal(client.catalog.areas[0][1],'59.1234567');
     const search=await(await fetchLocal('/data/search/apartments.json')).json();for(const kind of ['daily','rental']){const bytes=Buffer.from(await(await fetchLocal(`/data/${kind}/index.json`)).arrayBuffer());assert.equal(hash(bytes),search.sources[`data/${kind}/index.json`]);}
+    await assert.rejects(context.NodoVerifiedDataCache.createHousing().download('data/daily/regions/11110/metadata.json','0'.repeat(64)),/자료가 업데이트/);
   }finally{if(server)await new Promise(resolve=>server.close(resolve));f.close();}
 });
 
