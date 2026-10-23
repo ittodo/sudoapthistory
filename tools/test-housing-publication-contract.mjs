@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
 import {gzipSync} from 'node:zlib';
@@ -60,9 +60,14 @@ function preparedDTO({root,put}){
  put('data/apartments/index.json',index);return {housing,index,dto};
 }
 
-test('formal apartment build reuses packed DTOs and preserves prices, comments and approval states',()=>fixture(f=>{
- const {index,dto}=preparedDTO(f),before=readFileSync(join(f.root,'data/apartments/00.json'));
+test('formal apartment build reuses prepared DTOs without changing their storage format',()=>fixture(f=>{
+ const {index,dto}=preparedDTO(f),before=readFileSync(join(f.root,'data/apartments/00.json')),beforeIndex=readFileSync(join(f.root,'data/apartments/index.json'));
  const result=buildApartmentData(f.root);assert.equal(result.reused,true);assert.equal(result.verified,false);assert.equal(result.aliases,3);
+ assert.deepEqual(readFileSync(join(f.root,'data/apartments/index.json')),beforeIndex);
+ for(const[path,digest]of Object.entries(index.shards)){
+  assert.equal(hash(readFileSync(join(f.root,path))),digest,'Prepared JSON bytes must be retained');
+  assert.equal(existsSync(join(f.root,path.replace(/\.json$/,'.bin'))),false,'Direct reuse must not create BIN siblings');
+ }
  assert.deepEqual(readFileSync(join(f.root,'data/apartments/00.json')),before);
  assert.deepEqual(JSON.parse(before),dto);assert.equal(verifyApartmentSale(f.root,{verifiedSales:{status:'PASS'}}).verified,true);
  const boundaryPath='data/map/boundaries/종로구.json',boundaryHash=index.sources[boundaryPath];delete index.sources[boundaryPath];f.put('data/apartments/index.json',index);
@@ -71,6 +76,18 @@ test('formal apartment build reuses packed DTOs and preserves prices, comments a
  f.put('data/map/index.json',{meta:mapMeta(),d:[]});assert.throws(()=>buildApartmentData(f.root),/metadata out of date/);
  index.sources['data/map/index.json']=hash(readFileSync(join(f.root,'data/map/index.json')));index.version=1;f.put('data/apartments/index.json',index);
  assert.throws(()=>buildApartmentData(f.root),/Prepared packed/);assert.throws(()=>verifyApartmentSale(f.root,{verifiedSales:{status:'PASS'}}),/requires packed/);
+}));
+
+test('legacy direct writes refuse JSON-to-BIN migration before changing any prepared file',()=>fixture(f=>{
+ const {index}=preparedDTO(f);index.version=1;
+ f.put('data/housing-v3/index.json',{meta:{approvedOnly:true},complexes:[]});f.put('data/map/index.json',{d:[]});
+ const before=f.put('data/apartments/index.json',index);
+ assert.throws(()=>buildApartmentData(f.root),/JSON-to-BIN migration requires the official isolated Rust release candidate/);
+ assert.equal(hash(readFileSync(join(f.root,'data/apartments/index.json'))),before);
+ for(const[path,digest]of Object.entries(index.shards)){
+  assert.equal(hash(readFileSync(join(f.root,path))),digest);
+  assert.equal(existsSync(join(f.root,path.replace(/\.json$/,'.bin'))),false);
+ }
 }));
 
 test('apartment integrity verification rejects a candidate even with a successful sale result',()=>fixture(f=>{

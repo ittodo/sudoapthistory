@@ -7,6 +7,8 @@ import vm from 'node:vm';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {createHash,webcrypto} from 'node:crypto';
 import {regionModels,rentalFrames,saleFrames,regionPriceAssets} from './build-region-price-cache.mjs';
+import {encodeRecords} from '../js/packed-records.mjs';
+import {openColumns,schemas} from '../js/generated/transport-columns.mjs';
 const root=new URL('../',import.meta.url).pathname.replace(/^\/(\w:)/,'$1'),ctx=regionModels(root);
 vm.runInContext(readFileSync(new URL('../js/region-price-cache.js',import.meta.url),'utf8'),ctx);
 const plain=x=>JSON.parse(JSON.stringify(x));
@@ -60,7 +62,7 @@ test('reader aborts obsolete months, reuses same-month files and rejects incompa
   await client.get('sale','2026-09-02',['41'],{sale:'v1'});assert.equal(downloads,2);
   assert.equal(await client.get('sale','2026-09-02',['41'],{sale:'old'}),null);
 });
-test('rental worker loads regional bundles without downloading apartment state, then falls back for filters',async()=>{
+for(const format of ['gzip-json','packed-records-v1'])test('rental worker reads '+format+' regional bundles before filtered state fallback',async()=>{
   const catalog=[{id:'a',r:0,coord:[37,127],admin:['31','gu','dong']}];
   const shard={opening:[[0,'84',20260801,10000,20,1,5,0,null,null,null,null,null,70,0,'2026-07',6,'a']],updates:[]};
   const files={},sources={},seen=[];
@@ -69,10 +71,11 @@ test('rental worker loads regional bundles without downloading apartment state, 
   add('data/rental/months/2026-09-41-state.bin',shard);
   const manifest={schema:1,version:'v1',sources:{...sources},months:['2026-09'],historyYears:['2026'],coverage:{}};
   add('data/rental/index.json',manifest);
-  const path='data/map/price-cache/2026-09-41-monthly.bin';add(path,rentalFrames(ctx,catalog,shard,'2026-09','41','monthly'));
-  add('data/map/price-cache/index.json',{schema:1,versions:{rental:'v1'},rentalMaxDate:'2026-09-18',sources:{[path]:sources[path]}});
+  const path='data/map/price-cache/'+(format==='gzip-json'?'2026-09':'2026-Q3')+'-41-monthly.bin',frame=plain(rentalFrames(ctx,catalog,shard,'2026-09','41','monthly'));
+  if(format==='gzip-json')add(path,frame);else{files[path]=gzipSync(encodeRecords([['2026-09',frame]]));sources[path]=createHash('sha256').update(files[path]).digest('hex');}
+  add('data/map/price-cache/index.json',{schema:format==='gzip-json'?1:2,...(format==='gzip-json'?{}:{format}),versions:{rental:'v1'},rentalMaxDate:'2026-09-18',sources:format==='gzip-json'?{[path]:sources[path]}:{},...(format==='gzip-json'?{}:{quarterSources:{[path]:sources[path]}})});
   let receive;const c=vm.createContext({Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,postMessage:v=>receive(v),fetch:async url=>{const p=url.split('?')[0].replace(/^\//,'');seen.push(p);return new Response(files[p],{status:files[p]?200:404});}});
-  c.self=c;c.importScripts=(...urls)=>{for(const url of urls)vm.runInContext(readFileSync(new URL('..'+url.split('?')[0],import.meta.url),'utf8'),c);};
+  c.self=c;c.importScripts=(...urls)=>{for(const url of urls){const filename=join(root,url.split('?')[0].replace(/^\//,''));vm.runInContext(readFileSync(filename,'utf8'),c,{filename,importModuleDynamically:vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER});}};
   vm.runInContext(readFileSync(new URL('../js/rental-worker.js',import.meta.url),'utf8'),c);
   let id=0;const request=(action,settings)=>new Promise(resolve=>{receive=resolve;c.onmessage({data:{id:++id,action,settings}});});
   const init=await request('init',{map:true});assert.equal(init.meta.lastDate,'2026-09-18');
@@ -119,32 +122,50 @@ test('failed quarter prefetch leaves the current frame valid; corrupt foreground
   damaged=true;assert.equal(await c.NodoRegionPrices.create().get('monthly','2026-04-01',['41'],{rental:'v1'}),null);
 });
 
-test('packaging reuses unchanged bundles, repairs damaged outputs and rejects changed inputs',()=>{
+test('JSON quarters preserve published bytes and change only the affected quarter',()=>{
   const fixture=mkdtempSync(join(tmpdir(),'region-price-fixture-'));
   try{
     const write=(p,b)=>{mkdirSync(dirname(join(fixture,p)),{recursive:true});writeFileSync(join(fixture,p),b);};
-    for(const p of ['js/map-pricing.js','js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js','tools/private-cache.mjs','tools/build-region-price-cache.mjs','tools/region-price-groups.mjs','tools/regional-data.mjs','tools/regional-reader.mjs','js/regional-data.js'])write(p,readFileSync(join(root,p)));
+    for(const p of ['js/map-pricing.js','js/map-model.js','js/daily-model.js','js/rental-model.js','js/rental-map-model.js','tools/private-cache.mjs','tools/build-region-price-cache.mjs','tools/region-price-quarter.mjs','tools/region-price-groups.mjs','tools/regional-data.mjs','tools/regional-reader.mjs','js/regional-data.js','js/packed-records.mjs','js/generated/transport-columns.mjs'])write(p,readFileSync(join(root,p)));
     const saleSources={},rentalSources={},add=(p,value,sources)=>{const raw=Buffer.from(JSON.stringify(value)),bytes=p.endsWith('.bin')?gzipSync(raw):raw;write(p,bytes);sources[p]=createHash('sha256').update(bytes).digest('hex');};
     add('data/daily/catalog.bin',{complexes:[{id:'a',r:0}],areas:[[0,'84']]},saleSources);
     add('data/rental/catalog.bin',{complexes:[{id:'a',r:0,coord:[37,127],admin:['31','gu','dong']}]},rentalSources);
-    for(const [r,region]of ['41','11','28'].entries()){
-      add(`data/daily/${r}/2026-09-state.bin`,{opening:r?[]:[[0,20260801,100,100,100,1]],updates:[]},saleSources);
-      add(`data/rental/months/2026-09-${region}-state.bin`,{opening:[],updates:[]},rentalSources);
-      add(`data/rental/months/2026-09-${region}.bin`,{rows:[]},rentalSources);
+    const months=['2026-06','2026-07','2026-09'];
+    for(const month of months)for(const [r,region]of ['41','11','28'].entries()){
+      add(`data/daily/${r}/${month}-state.bin`,{opening:r?[]:[[0,20260501,100,100,100,1]],updates:[]},saleSources);
+      add(`data/rental/months/${month}-${region}-state.bin`,{opening:[],updates:[]},rentalSources);
+      add(`data/rental/months/${month}-${region}.bin`,{rows:[]},rentalSources);
     }
     write('data/map/index.json',JSON.stringify({meta:{sourceVersion:'map1'},d:[{id:'a',r:0,admin:['31','gu','dong']}]}));
-    write('data/daily/index.json',JSON.stringify({version:'sale1',months:['2026-09'],sources:saleSources}));
-    write('data/rental/index.json',JSON.stringify({version:'rent1',months:['2026-09'],sources:rentalSources}));
-    const first=regionPriceAssets(fixture);assert.equal(first.length,19);assert.deepEqual(regionPriceAssets(fixture),first);
-    for(const asset of first.filter(a=>a.path.includes('-Q3-'))){const bundle=JSON.parse(gunzipSync(readFileSync(asset.source)));assert.deepEqual(Object.keys(bundle.months),['2026-09']);const monthly=first.find(a=>a.path===asset.path.replace('2026-Q3','2026-09'));assert.deepEqual(bundle.months['2026-09'],JSON.parse(gunzipSync(readFileSync(monthly.source))));}
-    writeFileSync(first[0].source,'damaged output');assert.deepEqual(regionPriceAssets(fixture),first);
+    const saleIndex=()=>write('data/daily/index.json',JSON.stringify({version:'sale1',months,sources:saleSources}));saleIndex();
+    write('data/rental/index.json',JSON.stringify({version:'rent1',months,sources:rentalSources}));
+    const first=regionPriceAssets(fixture);assert.equal(first.length,46);assert.deepEqual(regionPriceAssets(fixture),first);assert.equal(JSON.parse(first.at(-1).bytes).format,'gzip-json');
+    for(const asset of first.filter(a=>/-Q[23]-/.test(a.path))){const bytes=readFileSync(asset.source),bundle=JSON.parse(gunzipSync(bytes));assert.equal(bundle.schema,1);assert.deepEqual(Object.keys(bundle.months),asset.path.includes('-Q2-')?['2026-06']:['2026-07','2026-09']);const frames={};for(const month of Object.keys(bundle.months)){const monthly=first.find(a=>a.path===asset.path.replace(/2026-Q[23]/,month));frames[month]=JSON.parse(gunzipSync(readFileSync(monthly.source)));assert.deepEqual(bundle.months[month],frames[month]);}assert.deepEqual(bytes,gzipSync(JSON.stringify({schema:1,months:frames}),{level:6}),'published bytes retain the original JSON serializer');}
+    add('data/daily/0/2026-07-state.bin',{opening:[[0,20260501,200,200,200,1]],updates:[]},saleSources);saleIndex();
+    const corrected=regionPriceAssets(fixture);assert.equal(corrected.length,first.length);assert.deepEqual(corrected.filter(a=>a.sha256&&a.sha256!==first.find(b=>b.path===a.path).sha256).map(a=>a.path),['data/map/price-cache/2026-07-41-sale.bin','data/map/price-cache/2026-Q3-41-sale.bin']);
+    writeFileSync(corrected[0].source,'damaged output');assert.deepEqual(regionPriceAssets(fixture),corrected);
     write('data/daily/0/2026-09-state.bin','changed input');assert.throws(()=>regionPriceAssets(fixture),/input mismatch/);
   }finally{assert.ok(fixture.startsWith(join(tmpdir(),'region-price-fixture-')));rmSync(fixture,{recursive:true,force:true});}
 });
 
+test('packed quarter reader restores selected months only and reuses their buffer across directions',async()=>{
+ const prefix='data/map/price-cache/',path=prefix+'2026-Q3-41-monthly.bin',value=n=>({schema:1,opening:{regions:[['41',[2,1,n,1,n+0.125,1,10000,0,0]]],points:[[1,{ci:1,value:null,convertedValue:n+0.125,name:'단지'}]],meta:{count:2,complexCount:2,stats:{count:2,cancelled:0,unlocated:0}}},updates:[]});
+ const raw=encodeRecords([['2026-07',value(700)],['2026-08',value(800)],['2026-09',value(900)]]);
+ // The unrequested third record has a bad root kind. Opening the index remains valid;
+ // reconstructing that record fails, so eager full-quarter reconstruction cannot pass.
+ const view=new DataView(raw.buffer),indexLength=view.getUint32(12,true),index=openColumns(schemas.RecordIndex,raw.subarray(20,20+indexLength)),nodesStart=20+indexLength,headerLength=view.getUint32(nodesStart+8,true),header=JSON.parse(new TextDecoder().decode(raw.subarray(nodesStart+12,nodesStart+12+headerLength)));
+ raw[nodesStart+12+headerLength+header.columns[0].values+index.columns[1].get(2)]=7;
+ const bytes=gzipSync(raw),hash=createHash('sha256').update(bytes).digest('hex'),seen=[];
+ const c=vm.createContext({Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async url=>{seen.push(url);return url.endsWith('index.json')?Response.json({schema:2,format:'packed-records-v1',versions:{rental:'v1'},sources:{},quarterSources:{[path]:hash}}):new Response(bytes);}});
+ for(const name of ['verified-data-cache','region-price-cache'])vm.runInContext(readFileSync(join(root,'js',name+'.js'),'utf8'),c,{filename:join(root,'js',name+'.js'),importModuleDynamically:vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER});
+ const client=c.NodoRegionPrices.create();
+ for(const month of ['07','08','07']){const actual=await client.get('monthly','2026-'+month+'-01',['41'],{rental:'v1'},true);assert.deepEqual(plain(actual.regionSummaries),plain(ctx.NodoRegionPrices.frame(value(Number(month)*100),'2026-'+month+'-01',true).regionSummaries));assert.equal(actual.points[0].value,Number(month)*100+0.125);}
+ assert.equal(seen.filter(p=>p.includes('-Q3-')).length,1);assert.equal(await client.get('monthly','2026-09-01',['41'],{rental:'v1'}),null);assert.notEqual(await client.get('monthly','2026-07-01',['41'],{rental:'v1'}),null);
+});
+
 test('schema 2 regional summaries use quarter files without monthly compatibility copies',async()=>{
  const path='data/map/price-cache/2026-Q3-41-sale.bin',frame={opening:{regions:[['41',[2,2,600]]],meta:{complexCount:2}},updates:[]},bytes=gzipSync(JSON.stringify({schema:1,months:{'2026-09':frame}})),digest=createHash('sha256').update(bytes).digest('hex'),seen=[];
- const c=vm.createContext({Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async url=>{seen.push(url);return url.endsWith('index.json')?Response.json({schema:2,versions:{sale:'v1'},sources:{},quarterSources:{[path]:digest}}):new Response(bytes);}});
+ const c=vm.createContext({Response,Blob,TextDecoder,DecompressionStream,AbortController,crypto:webcrypto,fetch:async url=>{seen.push(url);return url.endsWith('index.json')?Response.json({schema:2,format:'gzip-json',versions:{sale:'v1'},sources:{},quarterSources:{[path]:digest}}):new Response(bytes);}});
  for(const name of ['verified-data-cache','region-price-cache'])vm.runInContext(readFileSync(new URL('../js/'+name+'.js',import.meta.url),'utf8'),c);
  const value=await c.NodoRegionPrices.create().get('sale','2026-09-01',['41'],{sale:'v1'});assert.equal(value.complexCount,2);assert.equal(new Map(value.regionSummaries).get('41').average,300);assert.equal(seen.filter(p=>p.includes('2026-09')).length,0);
 });

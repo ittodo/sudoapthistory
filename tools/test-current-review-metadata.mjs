@@ -5,7 +5,9 @@ import {join,dirname} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {refreshMetadata} from './refresh-current-review-metadata.mjs';
+import {apartmentShard,apartmentShardValues} from './build-apartment-records.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
+const readDTO=(root,id,summary=false)=>{const index=JSON.parse(readFileSync(join(root,'data/apartments/index.json'))),path=apartmentShard(index,hash(id).slice(0,2),summary);return apartmentShardValues(readFileSync(join(root,path)),path,index)[id];};
 
 function metadataFixture(){
   const root=mkdtempSync(join(tmpdir(),'review-source-continuity-')),baseline=join(root,'baseline'),candidate=join(root,'_ops','candidate');
@@ -31,7 +33,7 @@ function metadataFixture(){
   ]};
   const boundaryPath='data/map/boundaries/용인수지구.json',boundaryHash=put(candidate,boundaryPath,{'pub-one':{type:'FeatureCollection',features:[]}});
   put(candidate,'data/housing-v3/index.json',housing);put(candidate,'data/map/index.json',{meta:{sources:{[boundaryPath]:boundaryHash}},d:[{id:'pub-one',coord:[37.5,127],g:'용인수지구',boundaryKey:'pub-one',boundarySource:'parcel_union',displayBounds:[[37.4,126.9],[37.6,127.1]]}]});
-  const dto=id=>JSON.parse(readFileSync(join(candidate,'data/apartments/'+hash(id).slice(0,2)+'.json')))[id];
+  const dto=id=>readDTO(candidate,id);
   return {root,baseline,candidate,put,index,facts,housing,dto,boundaryPath,boundaryHash,close:()=>rmSync(root,{recursive:true,force:true})};
 }
 test('metadata refresh preserves exact trade summaries, aliases and comments without transaction files',()=>{
@@ -54,7 +56,7 @@ test('metadata refresh preserves exact trade summaries, aliases and comments wit
     put(candidate,'data/map/index.json',{d:[{id,coord:[37.4,127.1],scope:'current_review_candidate'}]});
     const result=refreshMetadata(baseline,candidate);
     assert.equal(result.transactionFilesRead,0);assert.equal(result.newMetadataOnlyEntities,1);
-    const dto=JSON.parse(readFileSync(join(candidate,'data/apartments/'+shard+'.json')))[id];
+    const dto=readDTO(candidate,id);
     assert.equal(dto.name,'현재');assert.deepEqual(dto.pnus,['correct']);assert.equal(dto.areas[0].area,84.97);
     assert.deepEqual(dto.areas[0].monthly,facts.monthly);assert.deepEqual(dto.areas[0].latest,facts.latest);assert.equal(dto.areas[0].total,4);
     assert.equal(dto.areas[0].rows[0].commentId,'apt_7');assert.equal(dto.areas[0].units,null);
@@ -93,7 +95,7 @@ test('rental labels require current evidence in both detail and summary',()=>{
     refreshMetadata(f.baseline,f.candidate);
     for(const [id,rental]of [['pub-one',false],['other',true],['missing',false]]){
       assert.equal(f.dto(id).rental,rental,id);
-      const summary=JSON.parse(readFileSync(join(f.candidate,'data/apartments/summary/'+hash(id).slice(0,2)+'.json')))[id];
+      const summary=readDTO(f.candidate,id,true);
       assert.equal(summary.rental,rental,id);
     }
     assert.equal(f.dto('missing').review.state,'current_target_missing');assert.equal(f.dto('missing').conflict,true);

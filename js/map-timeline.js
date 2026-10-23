@@ -12,7 +12,7 @@
     const $=id=>el.querySelector('#'+id);
     const panel=NodoMapTimelinePanel.mount({host:document.getElementById('workspace'),content:el,playButton:$('timePlay'),retryButton:$('timeRetry')});
     let client,clientPromise,mode='current',day='',start='',end='',kind='all',district='',step='day',speed=1;
-    let timer=null,playing=false,loading=false,request=0,complexes=[],currentFilters={},pendingFocus=null,selectedId=null;
+    let timer=null,playing=false,loading=false,request=0,complexes=[],currentFilters={},pendingFocus=null;
     const preferenceKey='nodo-map-timeline-v1';let preferences={version:1,mode:'current',price:null},restoredOnce=false;
     try{const stored=JSON.parse(localStorage.getItem(preferenceKey));if(stored?.version===1&&['current','price'].includes(stored.mode)){preferences.mode=stored.mode;if(stored.price&&typeof stored.price==='object'&&!Array.isArray(stored.price))preferences.price=Object.fromEntries(['date','start','end','step','speed','fx','g'].filter(k=>['string','number'].includes(typeof stored.price[k])).map(k=>[k,String(stored.price[k])]));}}catch{}
     function remember(){
@@ -81,7 +81,7 @@
       return [...groups.values()];
     }
     async function refresh({keepPlaying=false}={}){
-      if(!keepPlaying)stop();const serial=++request;loading=true;el.setAttribute('aria-busy','true');selectedId=null;map.closePopup();effects.clear();$('timeRetry').hidden=true;
+      if(!keepPlaying)stop();const serial=++request;loading=true;el.setAttribute('aria-busy','true');map.closePopup();effects.clear();$('timeRetry').hidden=true;
       if(mode==='current'){
         regionPrices.cancel();regionalFrame=false;
         client?.cancelPrices();
@@ -157,7 +157,7 @@
         return true;
       }catch(e){if(serial!==request)return false;stop();el.setAttribute('aria-busy','false');$('timeStatus').textContent=e.message+(renderedDay&&renderedMode===mode?' · 지도는 '+renderedDay+' 기준 유지':'');$('timeRetry').hidden=false;return false;}
     }
-    function write(p){remember();if(mode==='current'){p.set('mode','current');return;}p.set('mode',mode);p.set('date',day);p.set('start',start);p.set('end',end);p.set('step',step);p.set('speed',speed);p.set('kind',kind);if(district)p.set('g',district);if(selectedId)p.set('a',selectedId);if(!$('timeEffects').checked)p.set('fx','0');}
+    function write(p){remember();if(mode==='current'){p.set('mode','current');return;}p.set('mode',mode);p.set('date',day);p.set('start',start);p.set('end',end);p.set('step',step);p.set('speed',speed);p.set('kind',kind);if(district)p.set('g',district);if(!$('timeEffects').checked)p.set('fx','0');}
     function restore(){
       stop();let p=new URLSearchParams(location.hash.slice(1));
       const explicit=['mode','date','start','end','step','speed','fx','a'].some(key=>p.has(key));
@@ -168,12 +168,10 @@
     function select(id){
       if(loading)return;
       stop();const c=complexes.find(c=>c.id===id);if(!c?.coord)return;
-      selectedId=id;save();
-      const div=document.createElement('div');div.className='timeline-popup';
-      let rows=mode==='day'?c.dailyRows.map(t=>`<div class="timeline-item"><b>${money(t.p)}</b> · ${t.a}㎡ · ${t.f??'미상'}층<p>${esc(M.badge(t))}</p>${t.previousMin?`<p>직전 ${M.iso(t.previousDate)} 최저 ${money(t.previousMin)}<br>대비 ${((t.p/t.previousMin-1)*100).toFixed(2)}%</p>`:''}</div>`):c.areas.map(a=>`<div class="timeline-item"><b>${spread(a.min,a.max)}</b> · ${a.a}㎡<p>${M.iso(a.latest[0])} 계약 · ${a.latest[4]}건 · ${esc(a.sourceName)}</p></div>`);
-      const detail= '/apartment/?'+new URLSearchParams({id:c.publicationId||c.publicId||c.id,tab:'trades'});
-      div.innerHTML=`<h3>${esc(c.n)}</h3><p>${esc(day)} ${mode==='day'?'당일 거래':'이전 마지막 가격'}</p>${rows.join('')}<p><a href="${esc(detail)}">최신 단지 상세로 이동 ↗</a></p>`;
-      L.popup({maxWidth:340,autoPanPaddingTopLeft:[10,75],autoPanPaddingBottomRight:[10,20]}).setLatLng(root.NodoMapModel.labelPosition(c,map)).setContent(div).openOn(map);
+      // The detail URL owns selection. Do not reopen it when returning to the map.
+      save();
+      const area=root.NodoMapModel.match(c,currentFilters)?.area||root.NodoMapModel.latestArea(c.areas);
+      root.NodoApartmentLinks.go({id:c.publicationId||c.publicId||c.id,area:area?M.detailArea(area.a):undefined,tab:'trades',tenure:'sale'});
     }
     async function tick(){if(!playing)return;const next=M.shift(day,1,step);if(day>=end){stop();return;}day=next>end?end:next;const ok=await refresh({keepPlaying:true});if(ok&&playing){if(day>=end)stop();else timer=setTimeout(tick,1000/speed);}}
     $('timePlay').onclick=()=>{if(playing){stop();return;}if(!client)return;playing=true;$('timePlay').textContent='❚❚ 일시정지';$('timePlay').setAttribute('aria-pressed','true');if(day>=end)day=start;refresh({keepPlaying:true}).then(ok=>{if(ok&&playing)timer=setTimeout(tick,1000/speed);});};

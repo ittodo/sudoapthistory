@@ -1,10 +1,11 @@
-import test from'node:test';import assert from'node:assert/strict';import{packQuarter,encodeQuarter,decodeQuarter}from'../js/housing-quarter.mjs';import{decodeMapQuarter}from'./housing-map-quarter.mjs';import*as codec from'../js/generated/housing-columns.mjs';
+import test from'node:test';import assert from'node:assert/strict';import{packQuarter,encodeQuarter,decodeQuarter}from'../js/housing-quarter.mjs';import{decodeMapQuarter}from'./housing-map-quarter.mjs';import{decodeMapQuarter as browserMapQuarter}from'../js/housing-map-quarter.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const identity={complexes:['A','B'],areas:[[0,'59.001'],[1,'72.12345']]},scope={lawd:'11110',quarter:'2026-Q3'};
 function fixture(){
  const months={};for(const m of ['2026-07','2026-08','2026-09']){const d=Number(m.replace('-','')+'01'),sale=['11110:0',d,60000.25,null,2,null,null,null,null,0,'01'.repeat(11),null],rent=['11110:1','72.12345',d,10000.25,100.125,2,null,0,20260601,20000.5,21000.25,30000.75,31000.5,102.375,8,'2026-06',3.5,'02'.repeat(10)];months[m]={daily:{rows:[sale,sale],updates:[['11110:0',d,60000.25,60000.25,60000.25,2]]},rental:{rows:[rent,rent],updates:[rent,rent]}};}
  return packQuarter(scope.lawd,scope.quarter,months,identity,codec);
 }
 test('map-only quarter preserves exact updates, duplicates, comparison fields and null floor across months',()=>{
+ assert.equal(decodeMapQuarter,browserMapQuarter,'Node and browser share one map reader');
  const bytes=encodeQuarter(fixture()),full=decodeQuarter(bytes,identity,codec,scope);
  for(const kind of ['daily','rental']){const focused=decodeMapQuarter(bytes,identity,codec,scope,kind);for(const m of ['2026-07','2026-08','2026-09'])assert.deepEqual(focused.month(m)[kind],{rows:[],updates:full.month(m)[kind].updates});}
 });
@@ -21,8 +22,10 @@ test('map quarter keeps structural, group/order and scope guards',()=>{
 
 test('map projection does not materialize unused sale facts or unreferenced rental facts',()=>{
  const value=fixture(),bytes=encodeQuarter(value),calls=new Map(),observed={...codec,openColumns(schema,input){const opened=codec.openColumns(schema,input);return {...opened,row(i){calls.set(schema.name,(calls.get(schema.name)||0)+1);return opened.row(i);}};}};
- decodeMapQuarter(bytes,identity,observed,scope,'daily');assert.equal(calls.get(codec.schemas.SaleFact.name)||0,0);assert.equal(calls.get(codec.schemas.RentalFact.name)||0,0);
- calls.clear();decodeMapQuarter(bytes,identity,observed,scope,'rental');assert.equal(calls.get(codec.schemas.SaleFact.name)||0,0);assert.equal(calls.get(codec.schemas.RentalFact.name),3);
+ const daily=decodeMapQuarter(bytes,identity,observed,scope,'daily');assert.equal(calls.get(codec.schemas.SaleFact.name)||0,0);assert.equal(calls.get(codec.schemas.RentalFact.name)||0,0);assert.equal(calls.get(codec.schemas.SaleMapState.name)||0,0);
+ const july=daily.month('2026-07');assert.equal(calls.get(codec.schemas.SaleMapState.name),1);assert.equal(daily.month('2026-07'),july);assert.equal(calls.get(codec.schemas.SaleMapState.name),1);
+ calls.clear();const rental=decodeMapQuarter(bytes,identity,observed,scope,'rental');assert.equal(calls.get(codec.schemas.SaleFact.name)||0,0);assert.equal(calls.get(codec.schemas.RentalFact.name)||0,0);
+ const september=rental.month('2026-09');assert.equal(calls.get(codec.schemas.RentalFact.name),1,'only requested month facts are materialized');assert.equal(september.rental.updates.length,2,'duplicate updates are retained');assert.equal(rental.month('2026-09'),september);assert.equal(calls.get(codec.schemas.RentalFact.name),1);rental.month('2026-07');assert.equal(calls.get(codec.schemas.RentalFact.name),2);assert.throws(()=>rental.month('2026-06'),/not covered/);
  const facts=codec.openColumns(codec.schemas.SaleFact,value.sections.sale),rows=Array.from({length:facts.rowCount},(_,i)=>facts.row(i));rows[0][0]=32;
  assert.throws(()=>decodeMapQuarter(encodeQuarter({...value,sections:{...value.sections,sale:codec.encodeColumns(codec.schemas.SaleFact,rows)}}),identity,codec,scope,'daily'),/fact day/);
  rows[0][0]=1;rows[0][rows[0].length-1]=2;

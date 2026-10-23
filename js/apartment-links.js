@@ -19,7 +19,7 @@
   function top(){if(panel)panel.style.top=Math.max(0,document.querySelector('.nodo-header')?.getBoundingClientRect().bottom||0,host?.id==='workspace'?host.getBoundingClientRect().top:0)+'px';}
   function open(value,{push=true,opener=document.activeElement}={}){
     let target;try{target=new URL(value,location.href);}catch{return false;}if(target.origin!==location.origin||target.pathname!=='/apartment/')return false;
-    if(!desktop.matches||location.pathname.startsWith('/apartment/')){location.assign(clean(target));return true;}
+    if(!desktop.matches||location.pathname.startsWith('/apartment/')){if(!location.pathname.startsWith('/apartment/'))storedReturn();location.assign(clean(target));return true;}
     if(push&&currentURL&&!target.searchParams.has('tenure')&&(target.searchParams.get('tab')||'overview')==='overview'){const previous=new URL(currentURL,location.origin);for(const key of ['tab','rentType','rentPeriod'])if(previous.searchParams.has(key))target.searchParams.set(key,previous.searchParams.get(key));}
     storedReturn();if(!target.searchParams.has('from'))target.searchParams.set('from',source());target.searchParams.delete('view');target.searchParams.delete('panelKey');const next=target.pathname+target.search;
     trigger=opener;document.querySelectorAll('.nodo-detail-selected').forEach(e=>e.classList.remove('nodo-detail-selected'));const selected=Array.from(document.querySelectorAll('a[href]')).find(a=>{try{const u=new URL(a.href,location.href);return u.pathname==='/apartment/'&&['id','row'].some(k=>target.searchParams.has(k)&&u.searchParams.get(k)===target.searchParams.get(k));}catch{return false;}});selected?.closest?.('tr,.complex-row,.member-card')?.classList.add('nodo-detail-selected');

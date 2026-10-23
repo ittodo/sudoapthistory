@@ -4,6 +4,7 @@ import {summarize,districtFromAddress} from './build-apartment-data.mjs';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
+import {apartmentShard,apartmentShardValues} from './build-apartment-records.mjs';
 
 // This is an output audit. It does not run in the producer or the browser.
 function assertGeneratedScope({index,rows,publications,current,areaUnits=null,readShard}){
@@ -100,7 +101,8 @@ test('detail links preserve source IDs and zero-valued legacy row IDs',()=>{
 });
 test('generated representative and canonical identities preserve household scope and legacy comments',t=>{
  const base=new URL('../data/apartments/',import.meta.url),index=JSON.parse(readFileSync(new URL('index.json',base)));
- const read=id=>{const [canonical,shard]=index.lookup[id];return JSON.parse(readFileSync(new URL(shard+'.json',base)))[canonical];};
+ const readShard=shard=>{const path=apartmentShard(index,shard);return apartmentShardValues(readFileSync(new URL('../'+path,import.meta.url)),path,index);};
+ const read=id=>{const [canonical,shard]=index.lookup[id];return readShard(shard)[canonical];};
  const stock=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))),rows=stock.d;
  const housing=JSON.parse(readFileSync(new URL('../data/housing-v3/index.json',import.meta.url)));
  const map=JSON.parse(readFileSync(new URL('../data/map/index.json',import.meta.url)));
@@ -115,7 +117,7 @@ test('generated representative and canonical identities preserve household scope
  for(const complex of map.d)assert.ok(index.lookup[complex.publicationId||complex.id],complex.id);
  for(const source of index.ambiguous)assert.equal(index.lookup[source][0],source,'Ambiguous source must remain independent');
  const report=assertGeneratedScope({index,rows,publications:housing.complexes.filter(p=>p.housingFamily==='apartment'),current,areaUnits,
-  readShard:shard=>JSON.parse(readFileSync(new URL(shard+'.json',base)))});
+  readShard});
  t.diagnostic(JSON.stringify({contract:current?'current-review':'legacy',...report}));
 });
 

@@ -1,13 +1,34 @@
 import {Env,HttpError,body,text,json,now,session,rate,cookie,setCookie,hash} from './shared';
+import {createApartmentRecordReader} from '../../js/apartment-records.mjs';
+import {createApartmentEntryReader} from '../../js/apartment-entry.mjs';
 type User=Awaited<ReturnType<typeof session>>;
 type Row=Record<string,any>;
 const bad=()=>new HttpError(400,'INVALID_INPUT','입력 내용을 확인해 주세요.');
 const missing=()=>new HttpError(404,'NOT_FOUND','저장 항목을 찾을 수 없습니다.');
 const conflict=()=>new HttpError(409,'CONFLICT','다른 기기에서 변경되었습니다. 다시 불러와 주세요.');
 const publicCache=new Map<string,Row>();
-async function asset(env:Env,path:string){const key=env.SITE_ORIGIN+'|'+env.RELEASE_SHA+'|'+path;if(publicCache.has(key))return publicCache.get(key)!;const r=await env.ASSETS.fetch(new Request(env.SITE_ORIGIN+path));if(!r.ok)throw new HttpError(503,'DATA_UNAVAILABLE','단지 자료를 불러오지 못했습니다.');const data=await r.json() as Row;if(publicCache.size>=16)publicCache.delete(publicCache.keys().next().value!);publicCache.set(key,data);return data;}
+async function asset(env:Env,path:string,optional=false){const key=env.SITE_ORIGIN+'|'+env.RELEASE_SHA+'|'+path;if(publicCache.has(key))return publicCache.get(key)!;const r=await env.ASSETS.fetch(new Request(env.SITE_ORIGIN+path));if(optional&&r.status===404)return null;if(!r.ok)throw new HttpError(503,'DATA_UNAVAILABLE','단지 자료를 불러오지 못했습니다.');const data=await r.json() as Row;if(publicCache.size>=16)publicCache.delete(publicCache.keys().next().value!);publicCache.set(key,data);return data;}
+const recordReaders=new Map<string,ReturnType<typeof createApartmentRecordReader>>();
+const entryReaders=new Map<string,ReturnType<typeof createApartmentEntryReader>>();
+async function apartmentEntry(env:Env,id:string){
+ const key=env.SITE_ORIGIN+'|'+env.RELEASE_SHA;let reader=entryReaders.get(key);
+ if(!reader){reader=createApartmentEntryReader(async path=>{const response=await env.ASSETS.fetch(new Request(env.SITE_ORIGIN+'/'+path));if(!response.ok){const error=Object.assign(Error('Apartment entry unavailable'),{status:response.status});throw error;}return response.arrayBuffer();});entryReaders.set(key,reader);while(entryReaders.size>2)entryReaders.delete(entryReaders.keys().next().value!);}
+ try{return await reader(id);}catch(error){if((error as {status?:number}).status===404)return null;throw new HttpError(503,'DATA_UNAVAILABLE','단지 자료를 불러오지 못했습니다.');}
+}
+async function record(env:Env,ref:[string,string,string],metadata:Row){
+ const key=env.SITE_ORIGIN+'|'+env.RELEASE_SHA;let reader=recordReaders.get(key);
+ if(!reader){reader=createApartmentRecordReader(async path=>{const response=await env.ASSETS.fetch(new Request(env.SITE_ORIGIN+'/'+path));if(!response.ok)throw new HttpError(503,'DATA_UNAVAILABLE','단지 자료를 불러오지 못했습니다.');return response.arrayBuffer();});recordReaders.set(key,reader);while(recordReaders.size>2)recordReaders.delete(recordReaders.keys().next().value!);}
+ try{return await reader(ref,metadata);}catch(error){if(error instanceof HttpError)throw error;throw new HttpError(503,'DATA_UNAVAILABLE','단지 자료를 불러오지 못했습니다.');}
+}
 export async function cleanupAnalytics(db:D1Database,time=now()){await db.prepare('DELETE FROM apartment_events WHERE created_at<?').bind(time-30*86400).run();}
-async function apartment(env:Env,id:string){const catalog=await asset(env,'/data/apartments/index.json'),ref=catalog.lookup[id];if(!ref)throw missing();const data=await asset(env,'/data/apartments/summary/'+ref[1]+'.json');const a=data[ref[0]];if(!a)throw missing();return a as Row;}
+async function apartment(env:Env,id:string){
+ const entry=await apartmentEntry(env,id);let a:Row|undefined;
+ if(entry?.summaries?.[id])a=await record(env,entry.summaries[id],entry);
+ else{if(entry?.schema===3)throw missing();const catalog=(await asset(env,'/data/apartments/index.json'))!,ref=catalog.lookup[id];if(!ref)throw missing();const path='data/apartments/summary/'+ref[1]+(catalog.format==='packed-records-v1'?'.bin':'.json');
+  if(catalog.shards?.[path])a=await record(env,[ref[0],path,catalog.shards[path]],catalog);else a=(await asset(env,'/'+path))?.[ref[0]];
+ }
+ if(!a)throw missing();return a;
+}
 export async function libraryRoute(r:Request,env:Env,user:User):Promise<Response|null>{
  const url=new URL(r.url),path=url.pathname,method=r.method,db=env.DB;
  const all=async(sql:string,...args:any[])=>(await db.prepare(sql).bind(...args).all<Row>()).results;

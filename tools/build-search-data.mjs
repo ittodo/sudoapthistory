@@ -8,6 +8,7 @@ import {buildSync} from 'esbuild';
 import '../js/rental-model.js';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
 import {mapBoundarySources} from './map-boundary-metadata.mjs';
+import {packedAssetSet} from './packed-asset-cache.mjs';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const order = (a,b) => a < b ? -1 : a > b ? 1 : 0;
@@ -106,5 +107,7 @@ export function searchAssets(root) {
   const bundle = buildSync({entryPoints:[join(root,'js/apartment-search-worker.js')],bundle:true,write:false,format:'esm',platform:'browser',target:'es2022',minify:true,legalComments:'inline'}).outputFiles[0].contents;
   // Include the pinned library's license in the self-hosted bundle.
   const license = readFileSync(join(root,'node_modules/es-hangul/LICENSE'),'utf8').replaceAll('*/','* /');
-  return [...homeSearchAssets(root,JSON.parse(bytes)),{path:'data/search/apartments.json',bytes},{path:'js/apartment-search-worker.bundle.js',bytes:Buffer.concat([Buffer.from('/*! es-hangul 2.4.0\n'+license+'\n*/\n'),Buffer.from(bundle)])}];
+  const data=JSON.parse(bytes),packed=packedAssetSet(root,'data/search/catalog',data.apartments.map(v=>[v.id,v]));
+  const {apartments,...metadata}=data;
+  return [...homeSearchAssets(root,data),...packed.assets,{path:'data/search/apartments.json',bytes:Buffer.from(JSON.stringify({...metadata,...packed.manifest,inputs:metadata.sources,sources:packed.manifest.sources}))},{path:'js/apartment-search-worker.bundle.js',bytes:Buffer.concat([Buffer.from('/*! es-hangul 2.4.0\n'+license+'\n*/\n'),Buffer.from(bundle)])}];
 }

@@ -212,10 +212,8 @@
     document.getElementById('loadMsg').textContent='데이터 로드 실패';
     return;
   }
+  // Annual prices support comparison charts and regional price changes.
   loadPrices();
-  loadVolumes();
-  loadDetails();
-  loadGeo();
 
   // 기본: 시/구 레벨
   areaLevel='gu';
@@ -244,7 +242,7 @@
   }, 1000);
 })();
 
-// 비교 페이지에서 단지 카드 클릭 → 같은 페이지의 단지 상세 패널 표시 (main-app.js의 showDetail 재사용)
+// 단지 카드는 공통 상세 페이지로 연결합니다 (데스크톱에서는 상세 패널).
 window.goToComplex = function(dataIdx){
   const x = DI[dataIdx];
   if(!x) return;

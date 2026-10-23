@@ -19,7 +19,7 @@ test('browser and Node schema 3 readers share scoped facts, map states and sourc
    const decodeCache=createHousingDecodeCache(),node=regionalReader(root,kind,{decodeCache}),load=async path=>{const bytes=readFileSync(join(root,path));assert.equal(createHash('sha256').update(bytes).digest('hex'),manifest.sources[path]);return path.endsWith('.bin')?new Uint8Array(gunzipSync(bytes)):JSON.parse(bytes);};const browser=await create(manifest,kind,load);
    const requested=[];const scoped=await create(manifest,kind,async path=>{requested.push(path);return load(path);},{codes:['11110']});assert.deepEqual(await scoped.regionMonth('11110','2026-09',false,false),{...originals['11110'][kind],opening:[]});assert.ok(requested.every(p=>!p.includes('/28185/')));await assert.rejects(scoped.regionMonth('28185','2026-09'),/Unknown region/);
    for(const code of Object.keys(regions)){assert.deepEqual(node.regionMonth(code,'2026-09'),originals[code][kind]);assert.deepEqual(await browser.regionMonth(code,'2026-09'),originals[code][kind]);}
-   const path=kind==='daily'?'data/daily/1/2026-09-state.bin':'data/rental/months/2026-09-11-state.bin';assert.deepEqual(await browser.shard(path,'2026-09',1),node.read(path));assert.equal(node.read(path).rows.length,1);const fullState=node.read(path),mapState=node.readMapState(path);assert.deepEqual(mapState,{...fullState,rows:[]});assert.throws(()=>node.readMapState(path.replace('-state','')),/Map state path/);
+   const path=kind==='daily'?'data/daily/1/2026-09-state.bin':'data/rental/months/2026-09-11-state.bin';assert.deepEqual(await browser.shard(path,'2026-09',1),node.readMapState(path));assert.equal(node.read(path).rows.length,1);const fullState=node.read(path),mapState=node.readMapState(path);assert.deepEqual(mapState,{...fullState,rows:[]});assert.throws(()=>node.readMapState(path.replace('-state','')),/Map state path/);
    assert.ok(decodeCache.stats.hits>0);const quarter=join(root,quarters['11110']['2026-09']),saved=readFileSync(quarter);writeFileSync(quarter,Buffer.concat([saved,Buffer.from('changed')]));assert.throws(()=>node.readMapState(path),/Regional source mismatch/);writeFileSync(quarter,saved);
   }
  const module=new URL('./regional-data.mjs',import.meta.url).href;
@@ -81,10 +81,26 @@ test('assembled province months survive district cache churn and share pending r
  assert.equal(first,shared);assert.equal(requested.length-before,30,'one read per district quarter/state');
  assert.equal(first.opening.length,15);assert.ok(promoted.length>0,'foreground claims shared downloads');
  assert.equal(await get(months[0]),first);assert.equal(requested.length-before,30,'same-month seeks never reread evicted district files');
- const rows=await get(months[0],false);assert.equal(rows.opening.length,0);assert.deepEqual(rows.rows,first.rows);
+ const rows=await get(months[0],false);assert.equal(rows.opening.length,0);assert.equal(rows.rows.length,15);assert.deepEqual(rows.updates,first.updates);assert.equal(first.rows.length,0,'map shards omit transaction rows');
  for(const month of months.slice(1,6))await get(month);
  const beforeEvicted=requested.length;assert.deepEqual(await get(months[0]),first);assert.ok(requested.length>beforeEvicted,'old assembled months are evicted');
  failure=quarters['11000'][months[6]];
  await assert.rejects(get(months[6]),/temporary download/);
- assert.equal((await get(months[6])).rows.length,15,'failed month remains retryable');
+ assert.equal((await get(months[6])).updates.length,15,'failed month remains retryable');
+ const resident=new Map(),opened=new Map(),residentLoad=async path=>{
+  if(!resident.has(path)){
+   const wire=files.get(path),value=path.endsWith('.bin')?new Uint8Array(gunzipSync(wire)):JSON.parse(wire);
+   if(value instanceof Uint8Array){const subarray=value.subarray.bind(value);value.subarray=(...args)=>{opened.set(path,(opened.get(path)||0)+1);return subarray(...args);};}
+   resident.set(path,value);
+  }
+  return resident.get(path);
+ };
+ const retained=await create(manifest,'daily',residentLoad),firstMap=await retained.regionMonth('11000',months[0],false,true,true);
+ const firstQuarter=quarters['11000'][months[0]],firstState=states['11000'][months[0]],quarterOpens=opened.get(firstQuarter),stateOpens=opened.get(firstState);
+ for(const code of Object.keys(regions).slice(1))await retained.regionMonth(code,months[0],false,true,true);
+ const revisited=await retained.regionMonth('11000',months[0],false,true,true);
+ assert.equal(revisited.updates,firstMap.updates,'resident buffers preserve map views after the 12-entry cache turns over');
+ assert.equal(opened.get(firstQuarter),quarterOpens,'resident quarter is not decoded again');assert.equal(opened.get(firstState),stateOpens,'resident annual state is not decoded again');
+ assert.equal((await retained.regionMonth('11000',months[0],false,false)).rows.length,1,'map and transaction readers do not share projected rows');
+ assert.equal((await retained.regionMonth('11000',months[1],false,true,true)).updates[0][1],20260201,'another month uses the same quarter without losing its date');
 });

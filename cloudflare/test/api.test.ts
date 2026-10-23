@@ -9,6 +9,8 @@ import {readyWithdrawal,withdrawalKey} from './withdrawal-fixture';
 import {purgeAccounts,expireAccounts,issueRecovery,RECOVERY_SECONDS} from '../src/account-lifecycle';
 import {cleanupAnalytics} from '../src/member-library';
 import {cleanupAdminAudit} from '../src/admin-center';
+import {gzipSync} from 'node:zlib';
+import {encodeRecords} from '../../js/packed-records.mjs';
 
 const origin='https://test.example';
 const digest=(s:string)=>createHash('sha256').update(s).digest('hex');
@@ -16,7 +18,10 @@ const bundle=await build({entryPoints:['cloudflare/src/index.ts'],bundle:true,wr
 const sql=await readFile('cloudflare/migrations/0001_initial.sql','utf8');
 async function setup(maintenance=false){
  const mock=createFetchMock();mock.disableNetConnect();
- const options={modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-08-01',d1Databases:['DB'],bindings:{SITE_ORIGIN:origin,GOOGLE_CLIENT_ID:'test-client',GOOGLE_CLIENT_SECRET:'fake-secret',RELEASE_SHA:'abc123',MAINTENANCE:String(maintenance),AUTH_ENABLED:'true',WITHDRAWAL_ENABLED:'true',WITHDRAWAL_ENCRYPTION_KEY:withdrawalKey},serviceBindings:{ASSETS:(r:Request)=>{const p=new URL(r.url).pathname;if(p==='/data/apartments/index.json')return Response.json({lookup:{testapt:['testapt','00'],alias:['testapt','00']}});if(p==='/data/apartments/summary/00.json')return Response.json({testapt:{id:'testapt',name:'시험아파트',region:'서울',district:'강남구',areas:[{area:84},{area:59}]}});return new Response('asset',{status:404});}},fetchMock:mock};
+ const summary=gzipSync(encodeRecords([['testapt',[1,{id:'testapt',name:'시험아파트',region:'서울',district:'강남구',areas:[{area:84},{area:59}]}]]])),summaryHash=createHash('sha256').update(summary).digest('hex');
+ const entry=JSON.stringify({schema:3,lookup:{testapt:['testapt','00'],alias:['testapt','00']},legacy:{},routes:{testapt:null,alias:null}}),entryHash=digest(entry);
+ const entryIndex={schema:3,metadata:{version:2,format:'packed-records-v1',updated:'2026-10-23',sources:{}},basis:{sale:'fixture',rental:'fixture'},shards:{'data/apartments/00.bin':summaryHash,'data/apartments/summary/00.bin':summaryHash},sources:Object.fromEntries(Array.from({length:64},(_,n)=>['data/apartments/entry/'+n.toString(16).padStart(2,'0')+'.json',entryHash]))};
+ const options={modules:true,script:bundle.outputFiles[0].text,compatibilityDate:'2026-08-01',d1Databases:['DB'],bindings:{SITE_ORIGIN:origin,GOOGLE_CLIENT_ID:'test-client',GOOGLE_CLIENT_SECRET:'fake-secret',RELEASE_SHA:'abc123',MAINTENANCE:String(maintenance),AUTH_ENABLED:'true',WITHDRAWAL_ENABLED:'true',WITHDRAWAL_ENCRYPTION_KEY:withdrawalKey},serviceBindings:{ASSETS:(r:Request)=>{const p=new URL(r.url).pathname;if(p==='/data/apartments/entry-index.json')return Response.json(entryIndex);if(/^\/data\/apartments\/entry\/[0-3][a-f0-9]\.json$/.test(p))return new Response(entry);if(p==='/data/apartments/summary/00.bin')return new Response(summary,{headers:{'Content-Type':'application/octet-stream'}});return new Response('asset',{status:404});}},fetchMock:mock};
  const mf=new Miniflare(options);
  const db=await mf.getD1Database('DB');for(const s of sql.split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  for(const statement of (await readFile('cloudflare/migrations/0002_withdrawal_requests.sql','utf8')).split(';').map(x=>x.trim()).filter(Boolean))await db.prepare(statement).run();

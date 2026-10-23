@@ -1,0 +1,4 @@
+namespace nodostream.transport {
+ table RecordIndex { key: string; root: u32; }
+ table ValueNode { kind: u8; span: u32; key: string?; number: f64?; text: string?; }
+}

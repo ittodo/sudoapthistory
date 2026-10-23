@@ -5,7 +5,8 @@ import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,rmSync,truncateSync,sta
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {publicAsset,runtime,injection,build,sha256,assertPublishableMetadata} from './build-cloudflare-assets.mjs';
+import {closeCacheStores} from './cache-store.mjs';
+import {publicAsset,runtime,injection,build,sha256,assertPublishableMetadata,assetHeaders} from './build-cloudflare-assets.mjs';
 test('current review preview cannot enter a production package',()=>{
  const root=mkdtempSync(join(tmpdir(),'review-package-'));
  try {
@@ -14,7 +15,7 @@ test('current review preview cannot enter a production package',()=>{
   assert.throws(()=>assertPublishableMetadata(root),/Local review candidate/);
   writeFileSync(join(root,'data/housing-v3/index.json'),JSON.stringify({meta:{approvedOnly:true}}));
   assert.doesNotThrow(()=>assertPublishableMetadata(root));
- } finally {rmSync(root,{recursive:true,force:true});}
+ } finally {closeCacheStores();rmSync(root,{recursive:true,force:true});}
 });
 test('one-file-at-a-time packaging preserves bytes and manifest hashes and rejects oversized assets',()=>{
  const root=mkdtempSync(join(tmpdir(),'nodo-assets-stream-'));
@@ -40,7 +41,7 @@ test('one-file-at-a-time packaging preserves bytes and manifest hashes and rejec
   build(root,output,'b'.repeat(40));assert.equal(readFileSync(unchanged,'utf8'),'{}');assert.equal(existsSync(join(output,'stale.json')),false);
   truncateSync(join(root,'data/valid.json'),25*1024*1024+1);
   assert.throws(()=>build(root,output,'a'.repeat(40)),/exceeds 25 MiB/);
- } finally {rmSync(root,{recursive:true,force:true});}
+ } finally {closeCacheStores();rmSync(root,{recursive:true,force:true});}
 });
 test('allowlist preserves public assets but excludes internal files',()=>{
   for(const p of ['apartment/index.html','board/index.html','data/apartments/00.json','data/earnings/000020.json','data/tx/고양시 덕양구.json','data/polygen/index.packed.bin','index.html','js/main-app.js','policy.html'])assert.equal(publicAsset(p),true,p);
@@ -66,5 +67,8 @@ test('runtime versions only same-origin data GETs, preserving init',async()=>{
   await context.window.fetch(request);
   assert.equal(calls[4][0].headers.get('X-Test'),'kept');assert.equal(calls[4][0].credentials,'same-origin');
   assert.equal(new URL(calls[4][0].url).searchParams.get('old'),'1');assert.equal(new URL(request.url).searchParams.has('v'),false);
+  await context.window.fetch('/data/index.json?v='+'b'.repeat(64));assert.equal(new URL(calls[5][0]).searchParams.get('v'),'b'.repeat(64),'preserve a verified content hash across unrelated releases');
+  assert.match(assetHeaders,/\/data\/search\/catalog\/\*\n  Cache-Control: public, max-age=31536000, immutable/);
+  assert.doesNotMatch(assetHeaders,/^\/data\/\*|^\/\*\n  Cache-Control/m,'mutable paths inherit Cloudflare revalidation');
   assert.equal(injection,'<script src="/deployment-version.js"></script>');
 });

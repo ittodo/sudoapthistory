@@ -1,5 +1,6 @@
 import {privateCache} from './private-cache.mjs';
 import {codeDependencyEngine} from './code-dependencies.mjs';
+import {encodeRecords,FORMAT} from '../js/packed-records.mjs';
 import '../js/rental-model.js';
 import '../js/market-rental-model.js';
 import {regionalReader} from './regional-reader.mjs';
@@ -38,11 +39,13 @@ function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
  const M=globalThis.NodoMarketRental,R=globalThis.NodoRental,m=reader.manifest,assets=[],sources={},inputs={},years={},directory=join(root,'cloudflare/dist/rental-market-summary-v2');
  const cache=privateCache(root,'cloudflare/dist/rental-market-summary-v2');
  try {
- const codeHash=codeDependencyEngine(root,{roots:['tools/build-rental-market-cache.mjs']});
+ // Hash the builder directly so transport imports do not enter calculation dependencies.
+ const codeHash=hash(JSON.stringify([hash(readFileSync(join(root,'tools/build-rental-market-cache.mjs'))),codeDependencyEngine(root,{roots:['tools/private-cache.mjs','tools/regional-reader.mjs','tools/housing-regional-reader.mjs','js/rental-model.js','js/market-rental-model.js']})]));
+ const packingHash=codeDependencyEngine(root,{roots:['js/packed-records.mjs']});
  for(const p of [join(root,'cloudflare'),join(root,'cloudflare/dist'),directory])if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Symlink market cache output');mkdirSync(directory,{recursive:true});
  const catalog=reader.catalog.complexes;R.normalizeDistricts(catalog);
  const districts=Object.fromEntries(['11','41','28'].map(r=>[r,[...new Set(catalog.filter(c=>M.codes[c.r]===r).map(c=>c.g))].sort((a,b)=>a.localeCompare(b,'ko'))]));
- const districtRegions=Object.fromEntries(catalog.map(c=>[c.g,M.codes[c.r]]));Object.assign(stats,{reused:0,calculated:0,decoded:0,semanticReused:0});
+ const districtRegions=Object.fromEntries(catalog.map(c=>[c.g,M.codes[c.r]]));Object.assign(stats,{reused:0,calculated:0,decoded:0,semanticReused:0,reusedYears:0,packedYears:0});
  // Summaries use normalized district/province bindings, not names, coordinates
  // or household counts. Keep the compound row key bound to its grouping fields.
  const groupingHash=hash(JSON.stringify(catalog.map(c=>[c.key,c.r,c.g])));
@@ -73,13 +76,18 @@ function summaryAssets(root,reader,{months=reader.manifest.months,stats={}}={}){
    else{bytes=gzipSync(JSON.stringify({schema:2,month,groups:M.summarize(rows,catalog)}),{level:6});cache.write(target,bytes);stats.calculated++;}
    cache.write(stamp,JSON.stringify({schema:3,codeHash,inputHash:proof(counts),counts,semanticHash,hash:hash(bytes)}));
   }
-  const value=JSON.parse(gunzipSync(bytes));value.groups.districtRegions=districtRegions;
-  (years[month.slice(0,4)]??={})[month]=value;
+  (years[month.slice(0,4)]??={})[month]=bytes;
  }
  // Bind every metadata/identity/quarter dependency, even on a reused month.
  Object.assign(inputs,reader.inputs);for(const[p,h]of Object.entries(inputs))reader.physical(p,false);reader.recheck();
- for(const[year,data]of Object.entries(years)){const bytes=gzipSync(JSON.stringify({schema:2,months:data}),{level:6}),path=prefix+year+'-summary.bin';if(bytes.length>25*1024*1024)throw Error('Market summary exceeds 25 MiB');sources[path]=hash(bytes);assets.push({path,bytes});}
+ for(const[year,data]of Object.entries(years)){
+  const path=prefix+year+'-summary.bin',target=join(directory,year+'-summary.bin'),stamp=target+'.json';
+  const dependencyHash=hash(JSON.stringify([FORMAT,packingHash,districtRegions,Object.entries(data).map(([month,b])=>[month,hash(b)])]));let bytes;
+  try{if(process.env.NODO_FULL_VERIFY==='1')throw Error('Full verification requested');const saved=JSON.parse(cache.read(stamp)),old=cache.read(target);if(saved.dependencyHash===dependencyHash&&saved.sha256===hash(old)){bytes=old;stats.reusedYears++;}}catch{}
+  if(!bytes){const entries=Object.entries(data).map(([month,b])=>{const value=JSON.parse(gunzipSync(b));value.groups.districtRegions=districtRegions;return [month,value];});bytes=gzipSync(encodeRecords(entries),{level:6});if(bytes.length>25*1024*1024)throw Error('Market summary exceeds 25 MiB');cache.write(target,bytes);cache.write(stamp,JSON.stringify({dependencyHash,sha256:hash(bytes)}));stats.packedYears++;}
+  sources[path]=hash(bytes);assets.push({path,bytes});
+ }
  const sale=join(root,'data/market.json'),saleStartYear=existsSync(sale)?JSON.parse(readFileSync(sale)).meta.startYear:2006;
- assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:2,sourceVersion:m.version,months,saleStartYear,districts,inputs,sources}))});stats.bytes=assets.reduce((n,a)=>n+a.bytes.length,0);return assets;
+ assets.push({path:prefix+'index.json',bytes:Buffer.from(JSON.stringify({schema:2,format:FORMAT,sourceVersion:m.version,months,saleStartYear,districts,inputs,sources}))});stats.bytes=assets.reduce((n,a)=>n+a.bytes.length,0);return assets;
  } finally { cache.close(); }
 }

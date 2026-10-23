@@ -1,7 +1,7 @@
 # 문서 목록
 
 ## 먼저 읽을 기준
-운영은 [자동 배포](cloudflare-auto-deployment.md) → [배포 실행서](cloudflare-release-runbook.md) → [자료 소유권](site-layout.md) 순서로 읽습니다. 주택 공개 형식은 [생성 프로젝트의 저장 계약](../../15_26/docs/housing-packed-storage.md), 자료 생성·승인은 [부동산 릴리스](../../15_26/docs/site-release-workflow.md)가 기준입니다.
+운영은 [자동 배포](cloudflare-auto-deployment.md) → [배포 실행서](cloudflare-release-runbook.md) → [자료 소유권](site-layout.md) 순서로 읽습니다. 페이지의 탭·모드별 자료 역할과 읽기 범위는 [페이지 기능별 데이터 사용 계약](site-layout.md#페이지-기능별-데이터-사용-계약)이 기준입니다. 주택 공개 형식은 [생성 프로젝트의 저장 계약](../../15_26/docs/housing-packed-storage.md), 자료 생성·승인은 [부동산 릴리스](../../15_26/docs/site-release-workflow.md)가 기준입니다.
 
 현재 지침, 기능·구현 설명, 과거 기록을 구분합니다. 오래된 명령·수치는 현재 실행 지침을 덮어쓰지 않습니다. 사실 충돌이 있으면 코드·검증 기록과 대조하고, 정책·승인 변경은 문서 정리로 대신하지 않습니다. 지침은 앞, 구현과 실제 검증 기록은 뒤에 배치합니다.
 
@@ -9,7 +9,7 @@
 
 - [운영 자동 배포](cloudflare-auto-deployment.md)
 - [Cloudflare 운영 배포 실행서](cloudflare-release-runbook.md)
-- [Site layout and producer contract](site-layout.md)
+- [자료 소유권과 페이지 기능별 데이터 사용 계약](site-layout.md)
 
 ## 주택 화면·자료 읽기
 

@@ -5,6 +5,7 @@ const regionPrices=globalThis.NodoRegionPrices.create();
 let manifest,catalog,rates,summary,initializing,districtNames,regional;const cache=new Map();let serial=0,prefetchSerial=0;
 let activeMapPaths=new Set();
 let mapCache,mapCacheLoading,contractReader;
+function abortLoad(path,entry){entry.controller.abort();if(cache.get(path)===entry)cache.delete(path);regional?.discardPending?.([path]);}
 const mapCachePrefix='data/rental/map-cache/';
 function mapPath(month,region,type){const compact=`${mapCachePrefix}${month}-${region}-${type}.bin`;return mapCache?.sources[compact]?compact:`data/rental/months/${month}-${region}-state.bin`;}
 async function ensureMapCache(){
@@ -34,7 +35,7 @@ function beginView(s){
   // Promote a warmed file before cancelling other obsolete downloads.
   for(const [path,entry]of cache){
     if(wanted.has(path))entry.background=false;
-    else if((path.startsWith('data/rental/months/')||isMapFile(path))&&!entry.settled&&!(entry.background&&warm.has(path))){entry.controller.abort();cache.delete(path);}
+    else if((path.startsWith('data/rental/months/')||isMapFile(path))&&!entry.settled&&!(entry.background&&warm.has(path)))abortLoad(path,entry);
   }
   activeMapPaths=s.map?wanted:new Set();
 }
@@ -42,7 +43,7 @@ let rentalMapModel;
 function mapView(...args){return (rentalMapModel??=globalThis.NodoRentalMapModel.create(catalog)).mapView(...args);}
 function cancelPrefetch(){
   prefetchSerial++;
-  for(const [path,entry]of cache)if(entry.background&&!entry.settled){entry.controller.abort();cache.delete(path);}
+  for(const [path,entry]of cache)if(entry.background&&!entry.settled)abortLoad(path,entry);
 }
 async function prefetch(s,revision){
   if(s?.zoom<16)return {prefetched:0};
@@ -52,13 +53,13 @@ async function prefetch(s,revision){
   if(!s.endMonth||month>s.endMonth)return {prefetched:0};
   const regions=s.region?[s.region]:M.REGIONS,paths=regions.map(region=>mapPath(month,region,s.type)).filter(path=>regional||manifest.sources[path]||mapCache?.sources[path]);
   const wanted=new Set(regions.flatMap(region=>actualPaths(month,region,true,s.type)));
-  for(const [path,entry]of cache)if(entry.background&&!entry.settled&&!wanted.has(path)&&!activeMapPaths.has(path)){entry.controller.abort();cache.delete(path);}
+  for(const [path,entry]of cache)if(entry.background&&!entry.settled&&!wanted.has(path)&&!activeMapPaths.has(path))abortLoad(path,entry);
   const results=await Promise.allSettled(paths.map(path=>load(path,true)));
   return {prefetched:results.filter(r=>r.status==='fulfilled').length,failed:results.filter(r=>r.status==='rejected').length,cancelled:revision!==prefetchSerial};
 }
-const fileCache=globalThis.NodoVerifiedDataCache.create('nodo-rental-map-v1');
+const fileCache=globalThis.NodoVerifiedDataCache.createHousing();
 async function download(path,expected,entry,background){
-  return fileCache.download(path,expected,{signal:entry.controller.signal,background,persist:isMapFile(path),range:manifest?.regional?.stateSections?.[path]});
+  return fileCache.download(path,expected,{signal:entry.controller.signal,background,persist:isMapFile(path)||/^data\/daily\/regions\/\d{5}\/quarters\//.test(path),range:manifest?.regional?.stateSections?.[path]});
 }
 async function physicalLoad(path,background=false){
   if(cache.has(path)){const entry=cache.get(path);if(!background)entry.background=false;cache.delete(path);cache.set(path,entry);return entry.promise;}
@@ -66,7 +67,7 @@ async function physicalLoad(path,background=false){
   const entry={background,controller:new AbortController(),settled:false};
   entry.promise=(async()=>{const bytes=await download(path,expected,entry,background);entry.controller.signal.throwIfAborted();const value=await globalThis.NodoVerifiedDataCache.decode(bytes,path);entry.controller.signal.throwIfAborted();return value;})();
   cache.set(path,entry);const large=isMapFile(path),peers=[...cache.keys()].filter(k=>isMapFile(k)===large);
-  if(peers.length>(large?6:9)){const oldest=peers.find(k=>!activeMapPaths.has(k));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)old.controller.abort();cache.delete(oldest);}}
+  if(peers.length>(large?6:9)){const oldest=peers.find(k=>!activeMapPaths.has(k));if(oldest){const old=cache.get(oldest);if(old.background&&!old.settled)abortLoad(oldest,old);else cache.delete(oldest);}}
   try{return await entry.promise;}catch(e){if(cache.get(path)===entry)cache.delete(path);throw e;}finally{entry.settled=true;}
 }
 physicalLoad.promote=p=>{if(cache.has(p))cache.get(p).background=false;};
@@ -91,7 +92,7 @@ self.onmessage=async({data})=>{if(data.action==='cancel-prefetch'){cancelPrefetc
   const s=M.cleanFilters(data.settings),regions=s.region?[s.region]:M.REGIONS;let raw=[];let coverage=[];
   if(s.map){
     if(s.zoom<16&&!s.regionCacheDisabled&&globalThis.NodoRegionPrices.eligible(s,s.type)){
-      cancelPrefetch();for(const [p,e]of cache)if(isMapFile(p)&&!e.settled){e.controller.abort();cache.delete(p);}
+      cancelPrefetch();for(const [p,e]of cache)if(isMapFile(p)&&!e.settled)abortLoad(p,e);
       const result=await regionPrices.get(s.type,s.day,regions,{rental:manifest.version},s.convert);
       if(revision!==serial){postMessage({id:data.id,stale:true});return;}
       if(result){const b=s.bounds;result.points=result.points.filter(p=>!b||(p.coord[0]>=b.south&&p.coord[0]<=b.north&&p.coord[1]>=b.west&&p.coord[1]<=b.east));postMessage({id:data.id,...result,version:manifest.version});return;}

@@ -48,7 +48,8 @@ test('unlinked homonyms stay separate and only approved rental classification is
 
 test('published inputs retain every sale row and every catalog identity in the common roster',()=>{
  const root=fileURLToPath(new URL('../',import.meta.url)),search=JSON.parse(searchData(root)),assets=homeSearchAssets(root,search);
- const parts=assets.filter(a=>a.path.endsWith('.bin')).map(a=>JSON.parse(gunzipSync(a.bytes))),prices=parts.flatMap(p=>p.prices),apartments=parts.flatMap(p=>p.apartments);
+ const manifest=JSON.parse(assets.find(a=>a.path.endsWith('latest-index.json')).bytes);assert.equal(manifest.format,'gzip-json-records-v1');
+ const parts=assets.filter(a=>a.path.endsWith('.bin')).flatMap(a=>{const raw=gunzipSync(a.bytes);assert.equal(raw.length,manifest.rawBytes[a.path]);return Object.values(JSON.parse(raw));}),prices=parts.flatMap(p=>p.prices),apartments=parts.map(p=>p.apartment);
  const original=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))).d,roster=M.join(original,apartments,prices),byRow=new Map(roster.map(r=>[r.i,r])),ids=new Set(roster.map(r=>r._homeId));
  const identities=JSON.parse(readFileSync(new URL('../data/apartments/index.json',import.meta.url)));
  for(const row of original){const actual=byRow.get(row.i);for(const key of Object.keys(row))if(key!=='si')assert.deepEqual(actual[key],row[key]);}

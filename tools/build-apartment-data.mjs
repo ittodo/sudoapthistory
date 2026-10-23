@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
 import {verifyApartmentSale} from './verify-apartment-sale.mjs';
 import {mapBoundarySources} from './map-boundary-metadata.mjs';
+import {packApartmentShards} from './build-apartment-records.mjs';
 export const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 export function districtFromAddress(address){const parts=String(address||'').trim().split(/\s+/).slice(1);return parts.filter((p,i)=>i<2&&/[시군구]$/.test(p)).join(' ');}
 export function summarize(rows) {
@@ -24,7 +25,7 @@ export function buildApartmentData(root,{verify=false}={}) {
   const index=read('data/index.json'),map=read('data/map/index.json'),housing=read('data/housing-v3/index.json');
   const mode=housingPublicationMode(housing,map);
   if(mode==='current-review'){
-    // The producer refreshes metadata on the existing packed DTOs. Rebuilding
+    // The producer refreshes metadata on the existing shared-detail DTOs. Rebuilding
     // them from the obsolete data/tx layout would discard preserved facts.
     const prepared=JSON.parse(readFileSync(join(root,'data/apartments/index.json')));
     if(prepared.version!==2||!prepared.lookup||!prepared.shards||Object.keys(prepared.shards).length!==512||Object.keys(prepared.sources||{}).some(p=>p.startsWith('data/tx/')))
@@ -33,6 +34,9 @@ export function buildApartmentData(root,{verify=false}={}) {
     if(verify)return {...verifyApartmentSale(root),reused:true};
     return {count:prepared.count,shards:256,aliases:Object.keys(prepared.lookup).length,ambiguous:prepared.ambiguous?.length||0,reused:true,verified:false};
   }
+  const catalogPath=join(root,'data/apartments/index.json');
+  if(!verify&&existsSync(catalogPath)&&JSON.parse(readFileSync(catalogPath)).format!=='packed-records-v1')
+    throw Error('Apartment JSON-to-BIN migration requires the official isolated Rust release candidate');
   const status=existsSync(join(root,'data/building-status.json'))?read('data/building-status.json').sites:{};
   const bySource=new Map(),locations=new Map();
   for(const r of index.d){if(!r.as)throw Error('Missing stable apartment ID');if(!bySource.has(r.as))bySource.set(r.as,[]);bySource.get(r.as).push(r);}
@@ -70,8 +74,8 @@ export function buildApartmentData(root,{verify=false}={}) {
   for(const [key,data] of Object.entries(shards))outputs[`data/apartments/summary/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{id,name:a.name,region:a.region,district:a.areas[0]?.rows[0]?.district||districtFromAddress(a.address),address:a.address,updated:a.updated,rental:a.rental,areas:a.areas.map(x=>({area:x.area,latest:x.latest,lastFive:x.lastFive,recent:x.recent}))}])));
   for(const [key,data] of Object.entries(shards))outputs[`data/apartments/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{...a,areas:a.areas.map(({lastFive,...rest})=>rest)}])));
   const files=Object.fromEntries(Object.entries(outputs).map(([path,data])=>[path,sha(data)]));
-  outputs['data/apartments/index.json']=JSON.stringify({version:1,updated:index.meta.updated,count:entities.length,lookup,legacy,sources:inputHashes,shards:files,ambiguous});
-  for(const [path,data] of Object.entries(outputs)){if(verify){if(!existsSync(join(root,path))||readFileSync(join(root,path),'utf8')!==data)throw Error('Apartment data out of date: '+path);}else{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),data);}}
-  return {count:entities.length,shards:256,aliases:Object.keys(lookup).length,ambiguous:ambiguous.length,bytes:Object.values(outputs).reduce((n,s)=>n+Buffer.byteLength(s),0),verified:verify};
+  const packed=packApartmentShards({version:1,updated:index.meta.updated,propertyUpdated:housing.meta.updated||null,count:entities.length,lookup,legacy,sources:inputHashes,shards:files,ambiguous},path=>Buffer.from(outputs[path]));
+  for(const [path,data] of packed.outputs){if(verify){if(!existsSync(join(root,path))||!readFileSync(join(root,path)).equals(data))throw Error('Apartment data out of date: '+path);}else{mkdirSync(dirname(join(root,path)),{recursive:true});writeFileSync(join(root,path),data);}}
+  return {count:entities.length,shards:256,aliases:Object.keys(lookup).length,ambiguous:ambiguous.length,bytes:[...packed.outputs.values()].reduce((n,b)=>n+b.length,0),verified:verify};
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){const arg=process.argv.indexOf('--root');console.log(JSON.stringify(buildApartmentData(arg<0?resolve(dirname(fileURLToPath(import.meta.url)),'..'):resolve(process.argv[arg+1]),{verify:process.argv.includes('--verify')})));}

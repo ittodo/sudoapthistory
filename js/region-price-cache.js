@@ -1,6 +1,6 @@
 /* Monthly regional frames: absolute daily replacements, never averages of averages. */
 (function(root){
-  const prefix='data/map/price-cache/';
+  const prefix='data/map/price-cache/';let recordsModule;
   function eligible(s,type){
     const keys=type==='sale'?['g','q','searchIds','aL','aH','pL','pH','uL','uH','bL','bH']:['district','q','searchIds','areaMin','areaMax','depositMin','depositMax','rentMin','rentMax'];
     return keys.every(k=>s[k]==null||s[k]===''||(Array.isArray(s[k])&&!s[k].length))&&(!s.contract||s.contract==='all')&&(!s.kind||s.kind==='all');
@@ -14,7 +14,7 @@
   function create(){
     const disk=root.NodoVerifiedDataCache.create('nodo-region-prices-v1',18),files=new Map();let manifestPromise,manifest,revision=0;
     async function index(){
-      if(!manifestPromise)manifestPromise=fetch('/'+prefix+'index.json',{cache:'no-cache'}).then(async r=>{if(!r.ok)return null;const m=await r.json();if(![1,2].includes(m.schema)||!m.versions||!m.sources)return null;
+      if(!manifestPromise)manifestPromise=fetch('/'+prefix+'index.json',{cache:'no-cache'}).then(async r=>{if(!r.ok)return null;const m=await r.json();if(![1,2].includes(m.schema)||!m.versions||!m.sources||m.format&&!['gzip-json','packed-records-v1'].includes(m.format))return null;
         if(Object.entries(m.sources).some(([p,h])=>!/^data\/map\/price-cache\/\d{4}-\d{2}-(41|11|28)-(sale|jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return null;
         if(m.quarterSources&&Object.entries(m.quarterSources).some(([p,h])=>!/^data\/map\/price-cache\/\d{4}-Q[1-4]-(41|11|28)-(sale|jeonse|monthly)\.bin$/.test(p)||!/^[a-f0-9]{64}$/.test(h)))return null;
         return manifest=m;}).catch(()=>null);
@@ -24,7 +24,16 @@
     function load(path,m,background=false){
       if(files.has(path))return files.get(path).promise;
       const entry={controller:new AbortController(),done:false};
-      entry.promise=disk.download(path,m.sources[path]||m.quarterSources?.[path],{signal:entry.controller.signal,background}).then(async bytes=>JSON.parse(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text())).then(value=>{entry.done=true;return value;}).catch(e=>{if(files.get(path)===entry)files.delete(path);throw e;});
+      entry.promise=disk.download(path,m.sources[path]||m.quarterSources?.[path],{signal:entry.controller.signal,background}).then(async bytes=>{
+        const value=await root.NodoVerifiedDataCache.decode(bytes,path);
+        if(ArrayBuffer.isView(value)){
+          const {openRecords}=await(recordsModule??=import('./packed-records.mjs').catch(e=>{recordsModule=null;throw e;})),reader=openRecords(value),months=new Map();
+          // Retain the decompressed file and restore only months requested by the timeline.
+          return {month(key){if(!months.has(key))months.set(key,reader.get(key));return months.get(key);}};
+        }
+        if(m.quarterSources?.[path]&&m.format==='packed-records-v1')throw Error('Invalid packed regional quarter');
+        return {month:key=>value.months?value.months[key]:value};
+      }).then(value=>{entry.done=true;return value;}).catch(e=>{if(files.get(path)===entry)files.delete(path);throw e;});
       files.set(path,entry);return entry.promise;
     }
     function cancel(){revision++;for(const [path,e]of files)if(!e.done){e.controller.abort();files.delete(path);}}
@@ -42,7 +51,7 @@
         if(serial!==revision)return null;
         for(const path of [...files.keys()])if(files.size>6&&!paths.includes(path)&&!warm.includes(path)&&files.get(path).done)files.delete(path);
         const result={regionSummaries:[],points:[],count:0,complexCount:0,stats:{count:0,cancelled:0,unlocated:0},regional:true};
-        for(const file of loaded){const f=frame(file.months?file.months[month]:file,day,converted);result.regionSummaries.push(...f.regionSummaries);result.points.push(...(f.points||[]));result.count+=f.count||0;result.complexCount+=f.complexCount||0;for(const k of Object.keys(result.stats))result.stats[k]+=f.stats?.[k]||0;}
+        for(const file of loaded){const f=frame(file.month(month),day,converted);result.regionSummaries.push(...f.regionSummaries);result.points.push(...(f.points||[]));result.count+=f.count||0;result.complexCount+=f.complexCount||0;for(const k of Object.keys(result.stats))result.stats[k]+=f.stats?.[k]||0;}
         // Warm only the next quarter after the visible frame is ready. Failures never delay it.
         for(const path of warm)load(path,m,true).catch(()=>{});
         return result;

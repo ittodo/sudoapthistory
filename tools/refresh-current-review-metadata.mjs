@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {mapBoundaryReference,mapBoundarySources} from './map-boundary-metadata.mjs';
 import {buildApartmentEntries} from './build-apartment-entries.mjs';
+import {apartmentShard,apartmentShardValues,encodeApartmentShard} from './build-apartment-records.mjs';
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const inside=(root,path)=>{const r=relative(root,path);return r===''||(!r.startsWith('..'+sep)&&r!=='..'&&!isAbsolute(r));};
 function pathAt(root,name){
@@ -23,7 +24,7 @@ export function refreshMetadata(baseline,candidate){
   if(existsSync(pathAt(candidate,'data/apartments/index.json')))throw Error('Metadata candidate already exists');
   const original=read(baseline,'data/apartments/index.json');
   if(original.version!==2)throw Error('Packed apartment version 2 is required to reuse transaction facts');
-  const index=structuredClone(original),publications=new Map(housing.complexes.filter(p=>p.housingFamily==='apartment').map(p=>[p.id,p]));
+  const index={...structuredClone(original),format:'packed-records-v1',propertyUpdated:housing.meta.updated??null,shards:{}},publications=new Map(housing.complexes.filter(p=>p.housingFamily==='apartment').map(p=>[p.id,p]));
   const boundaries=mapBoundarySources(map);
   for(const[name,expected]of Object.entries(boundaries))if(digest(readFileSync(pathAt(candidate,name)))!==expected)throw Error('Candidate map boundary source mismatch: '+name);
   const locations=new Map(map.d.map(p=>[p.publicationId||p.id,p])),remaining=new Map(publications),outputs={};
@@ -74,8 +75,8 @@ export function refreshMetadata(baseline,candidate){
   }
   for(let n=0;n<256;n++){
     const shard=n.toString(16).padStart(2,'0');
-    const files=['data/apartments/'+shard+'.json','data/apartments/summary/'+shard+'.json'];
-    const values=files.map(name=>{const bytes=readFileSync(pathAt(baseline,name));if(digest(bytes)!==original.shards[name])throw Error('Baseline shard changed: '+name);return JSON.parse(bytes);});
+    const files=[false,true].map(summary=>apartmentShard(original,shard,summary));
+    const values=files.map(name=>{const bytes=readFileSync(pathAt(baseline,name));if(digest(bytes)!==original.shards[name])throw Error('Baseline shard changed: '+name);return apartmentShardValues(bytes,name,original);});
     const [details,shorts]=values;
     for(const [id,dto] of Object.entries(details)){
       const p=publications.get(id),location=locations.get(id);details[id]=update(dto,p,location);remaining.delete(id);preserved++;
@@ -88,7 +89,7 @@ export function refreshMetadata(baseline,candidate){
       details[p.id]=dto;shorts[p.id]={id:p.id,name:dto.name,region:dto.region,district:p.gu||'',address:dto.address,updated:dto.updated,rental:dto.rental,areas:[]};
       index.lookup[p.id]=[p.id,shard];remaining.delete(p.id);added++;
     }
-    for(let i=0;i<2;i++)index.shards[files[i]]=write(files[i],values[i]);
+    for(let i=0;i<2;i++){const name=apartmentShard(index,shard,i===1),bytes=encodeApartmentShard(values[i],index),target=pathAt(candidate,name);mkdirSync(dirname(target),{recursive:true});writeFileSync(target,bytes);index.shards[name]=outputs[name]=digest(bytes);}
   }
   if(remaining.size)throw Error('Unresolved output identities');
   index.count=preserved+added;

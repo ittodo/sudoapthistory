@@ -25,7 +25,7 @@ test('packing retains oversize and established partitions; empty kinds have no s
 });
 test('range downloads verify 206 and full 200, isolate cache entries and reject corrupt responses',async()=>{
  const bytes=sample(),bundle=stateBundle(bytes),expected=hash(bytes),saved=new Map(),calls=[];let mode='range';
- const context=vm.createContext({Response,Blob,TextDecoder,Uint8Array,DecompressionStream,crypto:webcrypto,caches:{open:async()=>({match:async p=>saved.get(p)?.clone(),put:async(p,r)=>saved.set(p,r),delete:async p=>saved.delete(p),keys:async()=>[...saved.keys()]})},fetch:async(url,options)=>{
+ const context=vm.createContext({Response,Blob,TextDecoder,Uint8Array,DecompressionStream,AbortController,crypto:webcrypto,caches:{open:async()=>({match:async p=>saved.get(p)?.clone(),put:async(p,r)=>saved.set(p,r),delete:async p=>saved.delete(p),keys:async()=>[...saved.keys()]})},fetch:async(url,options)=>{
   calls.push([url,options]);const [,start,end]=options.headers.Range.match(/bytes=(\d+)-(\d+)/).map(Number);let body=bytes.slice(start,end+1);
   if(mode==='full')return new Response(bytes);if(mode==='bad-full')return new Response(body);
   if(mode==='corrupt')body[body.length-1]^=1;

@@ -144,7 +144,7 @@
   function select(id,area=null,push=true,focus=false) {
     if(timeline?.active()){timeline.select(id);return;}
     const chosen=byId.get(id);
-    if(chosen){save();NodoApartmentLinks.go({id:chosen.publicationId||chosen.id,area:area??model.latestArea(chosen.areas)?.a},!push);if(focus&&document.body.classList.contains('nodo-detail-open'))focusOn(chosen);return;}
+    if(chosen){save();NodoApartmentLinks.go({id:chosen.publicationId||chosen.id,area:area??model.match(chosen,filters)?.area?.a??model.latestArea(chosen.areas)?.a,tenure:'sale'},!push);if(focus&&document.body.classList.contains('nodo-detail-open'))focusOn(chosen);return;}
     const match=matches.get(byId.get(id)?.id||id);
     if(!match) {toast('현재 조건에서 해당 단지를 찾을 수 없습니다.');return;}
     selected=match.complex;

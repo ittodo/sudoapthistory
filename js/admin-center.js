@@ -7,7 +7,7 @@
  const cache=new Map(),view=()=>Object.hasOwn(menus,params.get('view'))?params.get('view'):'overview',days=()=>[1,7,30].includes(Number(params.get('days')))?Number(params.get('days')):7;
  const href=(v,extra={})=>'/admin/?'+new URLSearchParams({view:v,...extra});
  function asset(path){if(!cache.has(path))cache.set(path,fetch(path).then(r=>{if(!r.ok)throw Error('자료를 불러오지 못했습니다.');return r.json();}).catch(e=>{cache.delete(path);throw e;}));return cache.get(path);}
- async function apartment(id){const c=await asset('/data/apartments/index.json'),ref=c.lookup[id];return ref?(await asset('/data/apartments/summary/'+ref[1]+'.json'))[ref[0]]:null;}
+ async function apartment(id){return(await import('./apartment-records.mjs')).apartmentSummary(id);}
  async function context(page,id,parent){
   if(page==='community')return {label:'게시판',url:'/board/?post='+(parent||id)+'&comment='+id};if(page==='div')return {label:'배당·소각',url:'/div/?comment='+id};
   if(page?.startsWith('apt_')){try{const c=await asset('/data/apartments/index.json'),ref=c.legacy[page.slice(4)];if(ref){const a=await apartment(ref[0]);return {label:(a?.name||'아파트')+' · '+ref[1]+'㎡',url:'/apartment/?'+new URLSearchParams({id:ref[0],area:ref[1],tab:'comments',commentSource:page,comment:id})};}}catch{}return {label:'아파트 · 연결 확인 불가'};}

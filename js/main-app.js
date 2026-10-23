@@ -1701,10 +1701,8 @@ async function init(){
     document.head.appendChild(s);
   }, 1000);
 
+  // Annual prices support the return column; detail data is loaded by the shared detail page.
   loadPrices();
-  loadVolumes();
-  loadDetails();
-  loadGeo();
 }
 
 function initReturnYearSelects(){

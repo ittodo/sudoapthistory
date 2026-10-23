@@ -4,6 +4,7 @@ import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import '../js/rental-model.js';
+import {packedAssetSet} from './packed-asset-cache.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 
 // Consume the already generated latest-state snapshot, not the transaction ledger.
@@ -31,15 +32,14 @@ export function homeSearchAssets(root,search){
     const unique=key=>{const values=[...new Set(sources.map(c=>c[key]).filter(v=>Number.isFinite(v)&&v>0))];return values.length===1?values[0]:null;};
     return {...e,units:approved?.units??unique('tu'),built:unique('b'),rental:approved?.tenure==='rental'};
   });
-  let asOf=month+'-01';
+  let asOf=month+'-01';const byId=new Map(common.map(apartment=>[apartment.id,{apartment,prices:[]}]));
   for(const region of ['41','11','28']){
     const shard=regional.read(`data/rental/months/${month}-${region}-state.bin`),prices=latestRent(shard,catalog,identities);
     for(const t of prices)if(t.date>asOf)asOf=t.date;
-    const apartments=common.filter(e=>['41','11','28'][e.r]===region);
-    const bytes=gzipSync(JSON.stringify({schema:1,apartments,prices}),{level:6}),path=`data/search/latest-${region}.bin`;
-    if(bytes.length>25*1024*1024)throw Error('Home search asset exceeds limit');sources[path]=hash(bytes);assets.push({path,bytes});
+    for(const price of prices){const item=byId.get(price.id);if(!item)throw Error('Missing latest price identity: '+price.id);item.prices.push(price);}
   }
+  const packed=packedAssetSet(root,'data/search/latest',byId);assets.push(...packed.assets);
   // Pin catalogs and the original sale row index as well as the current rental snapshot.
   Object.assign(inputs,regional.inputs);for(const [p,h]of Object.entries(inputs))if(hash(read(p))!==h)throw Error('Home search input changed: '+p);
-  assets.push({path:'data/search/latest-index.json',bytes:Buffer.from(JSON.stringify({schema:1,asOf,searchVersion:search.version,rentalVersion:manifest.version,inputs,sources}))});return assets;
+  assets.push({path:'data/search/latest-index.json',bytes:Buffer.from(JSON.stringify({schema:1,asOf,searchVersion:search.version,rentalVersion:manifest.version,inputs,...packed.manifest}))});return assets;
 }

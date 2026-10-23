@@ -15,6 +15,7 @@ export function verifyApartmentSale(root, {verifiedSales} = {}) {
   const housing=JSON.parse(readFileSync(safe('data/housing-v3/index.json'))),map=JSON.parse(readFileSync(safe('data/map/index.json'))),mode=housingPublicationMode(housing,map);
   if(mode==='current-review'&&index.version!==2)throw Error('Current review publication requires packed apartment DTOs');
   if(![1,2].includes(index.version) || !index.sources || !index.shards || Object.keys(index.shards).length!==512)throw Error('Invalid apartment index');
+  if(index.format!==undefined&&index.format!=='packed-records-v1')throw Error('Invalid apartment storage format');
   for(const[path,digest]of Object.entries(mapBoundarySources(map)))if(index.sources[path]!==digest)throw Error('Missing apartment boundary source: '+path);
   const check=(path,hash)=>{if(!/^[a-f0-9]{64}$/.test(hash)||fileHash(safe(path))!==hash)throw Error('Apartment data out of date: '+path);};
   for(const path of ['data/index.json','data/map/index.json','data/housing-v3/index.json'])if(!index.sources[path])throw Error('Missing apartment source: '+path);
@@ -23,7 +24,7 @@ export function verifyApartmentSale(root, {verifiedSales} = {}) {
     check(path,hash);
   }
   for(let i=0;i<256;i++)for(const prefix of ['', 'summary/']){
-    const path=`data/apartments/${prefix}${i.toString(16).padStart(2,'0')}.json`;
+    const path=`data/apartments/${prefix}${i.toString(16).padStart(2,'0')}.${index.format==='packed-records-v1'?'bin':'json'}`;
     check(path,index.shards[path]);
   }
   const shared=index.version===2?(verifiedSales??verifyHousingSales(root)):null;if(index.version===2&&Object.keys(index.sources).some(p=>p.startsWith('data/tx/')))throw Error('Duplicate sale detail source');return {count:index.count,shards:256,verified:true,shared};

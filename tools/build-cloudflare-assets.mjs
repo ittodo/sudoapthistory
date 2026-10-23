@@ -40,8 +40,11 @@ export function publicAsset(path) {
   return /\.(html|css|m?js|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$/i.test(path) || ['ads.txt','robots.txt','sitemap.xml'].includes(path);
 }
 export function runtime(sha) {
-  return `window.__NODESTREAM_RELEASE__=${JSON.stringify(sha)};(()=>{const original=window.fetch;window.fetch=function(input,init){const url=new URL(input instanceof Request?input.url:input,location.href);if(url.origin===location.origin&&url.pathname.startsWith('/data/')&&url.pathname.endsWith('.json')&&((init&&init.method)||(input instanceof Request?input.method:'GET')).toUpperCase()==='GET'){url.searchParams.set('v',window.__NODESTREAM_RELEASE__);input=input instanceof Request?new Request(url,input):url.href;}return original.call(this,input,init);};})();\n`;
+  return `window.__NODESTREAM_RELEASE__=${JSON.stringify(sha)};(()=>{const original=window.fetch;window.fetch=function(input,init){const url=new URL(input instanceof Request?input.url:input,location.href);if(url.origin===location.origin&&url.pathname.startsWith('/data/')&&url.pathname.endsWith('.json')&&((init&&init.method)||(input instanceof Request?input.method:'GET')).toUpperCase()==='GET'){if(!/^[a-f0-9]{64}$/.test(url.searchParams.get('v')||''))url.searchParams.set('v',window.__NODESTREAM_RELEASE__);input=input instanceof Request?new Request(url,input):url.href;}return original.call(this,input,init);};})();\n`;
 }
+// Cloudflare supplies revalidation for mutable paths. Only content-named files
+// override that default; manifests and fixed-path BINs must remain mutable.
+export const assetHeaders='/*\n  X-Content-Type-Options: nosniff\n/data/search/catalog/*\n  Cache-Control: public, max-age=31536000, immutable\n/data/search/latest/*\n  Cache-Control: public, max-age=31536000, immutable\n';
 export function build(root, output, sha) {
   root=resolve(root); output=resolve(output);
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
@@ -81,7 +84,7 @@ export function build(root, output, sha) {
   const generatedSearch=phase('search',()=>searchAssets(root));
   for(const f of generatedSearch)if(f.bytes.length>25*1024*1024)throw Error('Search asset exceeds 25 MiB: '+f.path);
   const catalog=generatedSearch.find(f=>f.path==='data/search/apartments.json');
-  if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).sources)){
+  if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).inputs||JSON.parse(catalog.bytes).sources)){
     if(assets.find(f=>f.path===path)?.sha256!==hash)throw Error('Search source changed during packaging: '+path);
   }
   assets.push(...generatedSearch,...phase('rental-map',()=>rentalMapAssets(root)),...phase('rental-market',()=>rentalMarketAssets(root,{stats:rentalMarketStats})),...phase('region-prices',()=>regionPriceAssets(root,{stats:regionPriceStats})));
@@ -113,7 +116,7 @@ export function build(root, output, sha) {
   }
   emit('deployment-manifest.json',manifest);
   emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
-  emit('_headers','/*\n  Cache-Control: public, max-age=0, must-revalidate\n  X-Content-Type-Options: nosniff\n');
+  emit('_headers',assetHeaders);
   timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
   if(weeklyEngine(root)!==verificationEngine)throw Error('Verification engine changed during build');
   const result={fullVerification,verificationEngine,gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,rentalMarketStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
