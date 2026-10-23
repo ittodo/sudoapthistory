@@ -65,20 +65,25 @@
     render();
   }
   function scheduleRender() {cancelAnimationFrame(renderFrame);renderFrame=requestAnimationFrame(render);}
+  function highlightedComplex() {
+    const id=window.NodoApartmentLinks?.selection()?.id;
+    return matches.get(byId?.get(id)?.id||id)?.complex||selected;
+  }
   function render() {
     if(!map || !markers || !payload) return;
     const wanted=new Set();
     const bounds=map.getBounds().pad(.08), zoom=map.getZoom();
     let visible=0, located=0;
     regionView?.render();
-    parcelView?.render(filtered,selected);
+    const highlighted=highlightedComplex();
+    parcelView?.render(filtered,highlighted);
     for(const match of filtered) {
       const c=match.complex;
       if(!c.coord) continue;
       located++;
       if(!bounds.contains(c.coord)) continue;
       visible++;
-      if(c.id===selected?.id){wanted.add(c.id);addApartment(match,true);}
+      if(c.id===highlighted?.id){wanted.add(c.id);addApartment(match,true);}
       else if(zoom>=16){wanted.add(c.id);addApartment(match);}
     }
     for(const [id,entry]of apartmentMarkers)if(!wanted.has(id)){markers.removeLayer(entry.marker);apartmentMarkers.delete(id);}
@@ -108,9 +113,9 @@
     map.flyToBounds(L.latLngBounds(region.bounds),options);
   }
   function addApartment(match,isSelected=false) {
-    const c=match.complex, a=isSelected?selectedArea:match.area, trade=a?.latest;
+    const c=match.complex, a=isSelected&&selected?.id===c.id&&selectedArea?selectedArea:match.area, trade=a?.latest;
     const stale=trade && Date.now()-new Date(fmtDate(trade[0])).getTime()>365*86400000;
-    const label=timeline?.active()?timeline.label(match):`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
+    const label=timeline?.active()?timeline.label(match,isSelected):`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
     const title=`${c.n} · ${a?fmtArea(a.a):''} · ${timeline?.active()?'선택 시점':'최근 실거래'} ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`;
     const anchor=model.labelPosition(c,map),cached=apartmentMarkers.get(c.id);
     if(cached){cached.marker.setLatLng(anchor);if(cached.label!==label){cached.marker.getElement().innerHTML=label;cached.label=label;}cached.marker.getElement().title=title;cached.marker.setZIndexOffset(isSelected?1000:0);return;}
@@ -272,6 +277,7 @@
     restoring=false;save();
   }
   function bind() {
+    window.addEventListener('nodo:detail-selection',scheduleRender);
     $('closeDetail').onclick=()=>close();$('moreTrades').onclick=()=>{visibleTrades+=30;renderTrades();};
     $('filterToggle').onclick=()=>{const show=$('filters').hidden;$('filters').hidden=!show;$('filterToggle').setAttribute('aria-expanded',String(show));setTimeout(()=>map.invalidateSize(),0);};
     $('filters').onsubmit=applyFilters;$('region').onchange=applyFilters;
@@ -306,7 +312,7 @@
       payload=await window.loadMapIndex();
       if(payload.meta?.version!==1 || !Array.isArray(payload.d))throw new Error('지도 데이터 형식을 확인할 수 없습니다.');
       if(!payload.admin?.regions?.length)throw new Error('지역 경계 데이터가 업데이트 중입니다. 잠시 후 다시 시도해 주세요.');
-      byId=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])]));
+      byId=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.publicationId?[[c.publicationId,c]]:[]),...(c.memberSources||[]).map(s=>[s.id,c])]));
       client=createVerifiedDataClient('../',payload.meta.sources);
       if(!map){
         map=L.map('map',{center:[37.5,127],zoom:9,minZoom:7,maxZoom:19,zoomControl:false,maxBounds:[[32,123],[41,133]],maxBoundsViscosity:.7});
@@ -325,7 +331,7 @@
         choose(group,point){if(group.length>1)showOverlap(group,point);else if(group.length)select(group[0].complex.id,null,true,false);},
         report(status){$('parcelHint').textContent=status==='loading'?'단지 경계를 불러오는 중…':status==='error'?'일부 단지 경계를 불러오지 못했습니다.':'';$('retryParcels').hidden=status!=='error';}
       });
-      $('retryParcels').onclick=()=>parcelView.render(filtered,selected);
+      $('retryParcels').onclick=()=>parcelView.render(filtered,highlightedComplex());
       $('retryRegions').onclick=()=>regionView.render();
       if(!timeline)timeline=NodoMapTimeline.create({map,payload,getFilters:()=>{aptSearch?.checkScope();return {...filters,q:aptSearch?.selected?'':$('search').value.trim(),searchIds:aptSearch?.ids};},
         applyRegional(result){regionalSummary=result;temporal=[];filtered=[];matches.clear();selected=null;selectedArea=null;regionView.setSummaries(result.regionSummaries,filters.r);render();$('mapStatus').textContent='조건 일치 '+result.complexCount.toLocaleString()+'개 단지 · 확대하면 단지별 가격 표시';},

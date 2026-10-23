@@ -80,7 +80,7 @@
       for(const c of groups.values())c.areas.sort((a,b)=>b.latest[0]-a.latest[0]||a.a-b.a||String(a.i).localeCompare(String(b.i),undefined,{numeric:true}));
       return [...groups.values()];
     }
-    async function refresh({keepPlaying=false}={}){
+    async function refresh({keepPlaying=false,preserveDetail=false}={}){
       if(!keepPlaying)stop();const serial=++request;loading=true;el.setAttribute('aria-busy','true');map.closePopup();effects.clear();$('timeRetry').hidden=true;
       if(mode==='current'){
         regionPrices.cancel();regionalFrame=false;
@@ -91,7 +91,7 @@
         catch(e){if(serial!==request)return false;$('timeStatus').textContent=e.message;$('timeRetry').hidden=false;}
         return true;
       }
-      root.NodoApartmentLinks?.close();
+      if(!preserveDetail)root.NodoApartmentLinks?.close();
       // Never leave today's prices behind while a historical request is pending.
       // Keep the last completed frame visible during same-mode date changes.
       document.body.classList.toggle('timeline-loading',renderedMode!==mode);
@@ -162,9 +162,9 @@
       stop();let p=new URLSearchParams(location.hash.slice(1));
       const explicit=['mode','date','start','end','step','speed','fx','a'].some(key=>p.has(key));
       if(!restoredOnce&&!explicit){p=new URLSearchParams(preferences.price||{});p.set('mode',preferences.mode);}
-      restoredOnce=true;mode=['day','price'].includes(p.get('mode'))?'price':'current';applyPreference(p);kind='all';pendingFocus=p.get('a');sync();return refresh();
+      restoredOnce=true;mode=['day','price'].includes(p.get('mode'))?'price':'current';applyPreference(p);kind='all';pendingFocus=p.get('a');sync();return refresh({preserveDetail:true});
     }
-    function label(match){const a=match.area;if(!a)return '';const cls=a.records&1?'daily-high':a.records&4?'daily-down':a.records&2?'daily-low':'';return `<div class="apt-label daily-time ${cls}"><b>${spread(a.min,a.max)}</b><small>${a.a}㎡ · ${mode==='day'?a.latest[4]+'건':M.iso(a.latest[0]).slice(2)}</small></div>`;}
+    function label(match,isSelected=false){const a=match.area;if(!a)return '';const cls=a.records&1?'daily-high':a.records&4?'daily-down':a.records&2?'daily-low':'';return `<div class="apt-label daily-time ${cls} ${isSelected?'selected':''}"><b>${spread(a.min,a.max)}</b><small>${a.a}㎡ · ${mode==='day'?a.latest[4]+'건':M.iso(a.latest[0]).slice(2)}</small></div>`;}
     function select(id){
       if(loading)return;
       stop();const c=complexes.find(c=>c.id===id);if(!c?.coord)return;

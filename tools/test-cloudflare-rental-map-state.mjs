@@ -7,7 +7,7 @@ test('rental date loads retain the completed frame; tenure and filter changes cl
  let shownSummaries;
  const layers=new Set(),status={setAttribute(){}},host={classList:{toggle(){}},append(){}},settings={type:'jeonse',day:'2024-02-01',convert:true,contract:'all'};
  const map={setView(){return this;},getBounds:()=>({contains:()=>true}),getZoom:()=>17,on(){},closePopup(){},removeLayer:m=>layers.delete(m)};
- const context=vm.createContext({window:{},location:{hash:''},URLSearchParams,settings,ResizeObserver:class{observe(){}},
+ const context=vm.createContext({window:{addEventListener(){}},location:{hash:''},URLSearchParams,settings,ResizeObserver:class{observe(){}},
   document:{querySelector:()=>host,createElement:()=>status},fetch:async()=>({ok:true,json:async()=>({d:[],meta:{sources:{}}})}),createVerifiedDataClient:()=>()=>{},NodoRental:{REGIONS:['41','11','28']},
   NodoMapRegions:{create:()=>({render(){},setSummaries(values){shownSummaries=values;}})},
   NodoMapParcels:{create:()=>({render(){}})},

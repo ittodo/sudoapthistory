@@ -10,7 +10,7 @@ const boundary={type:'FeatureCollection',features:[{type:'Feature',properties:{t
 const complex=(id,source)=>({id,publicationId:'public-'+id,n:'단지 '+id,g:'test',coord:[37.5,127.5],displayBounds:[[37,127],[38,128]],pnus:['one','two'],boundaryKey:id,boundarySource:'parcel_union',memberSources:[{id:source}],scope:'current_review'});
 const point=id=>({id,name:id,coord:[37.5,127.5],admin:[],date:'2026-10-01',area:59,deposit:40000,rent:80,value:160});
 
-async function fixture({fail=false}={}){
+async function fixture({fail=false,selectedId=null}={}){
  const markers=new Set(),groups=[],requested=[],opened=[],statuses=[],settings={type:'jeonse',day:'2026-10-01',convert:true,contract:'all'};
  const element=()=>({children:[],classList:{toggle(){}},setAttribute(){},append(child){this.children.push(child);}});
  const host=element(),status=element(),containerEvents=new Map(),windowEvents=new Map();let popup,failRequest=fail,mapOptions,clock=0;
@@ -28,7 +28,7 @@ async function fixture({fail=false}={}){
  const context=vm.createContext({location:{hash:''},URLSearchParams,ResizeObserver:class{observe(){}},document:{querySelector:()=>host,createElement:tag=>tag==='p'?status:element()},L,
   fetch:async()=>({ok:true,json:async()=>({d:[complex('A','rental-A'),complex('B','rental-B')],meta:{sources:{'data/map/boundaries/test.json':'fixture-hash'}}})}),
   createVerifiedDataClient:(_root,sources)=>async path=>{assert.equal(sources[path],'fixture-hash');requested.push(path);if(failRequest)throw Error('offline');return {A:boundary,B:boundary};},
-  NodoApartmentLinks:{open:url=>opened.push(url)},NodoRental:{REGIONS:['41','11','28']},NodoMapRegions:{create:()=>({render(){},setSummaries(){}})},
+  NodoApartmentLinks:{selection:()=>selectedId?{id:selectedId}:null,open(url){opened.push(url);selectedId=new URL(url,'https://example.test').searchParams.get('id');windowEvents.get('nodo:detail-selection')?.();}},NodoRental:{REGIONS:['41','11','28']},NodoMapRegions:{create:()=>({render(){},setSummaries(){}})},
   addEventListener:(name,handler)=>windowEvents.set(name,handler)});
  context.window=context;
  context.loadMapIndex=()=>context.fetch().then(r=>r.json());
@@ -46,7 +46,7 @@ async function fixture({fail=false}={}){
   windowEvents.get('pointerup')({pointerId:1,clientX:100+drag,clientY:100,timeStamp:clock+100});
   path.handlers.click({latlng:{lat:37.5,lng:127.5},originalEvent:{timeStamp:clock+100}});
  }
- return {view,settings,markers,requested,opened,status,map,mapOptions,click,states:statuses,layers:()=>[...groups[0].items],popup:()=>popup,retry(){failRequest=false;}};
+ return {view,settings,markers,requested,opened,status,map,mapOptions,click,states:statuses,layers:()=>[...groups[0].items],popup:()=>popup,retry(){failRequest=false;},select(id){selectedId=id;windowEvents.get('nodo:detail-selection')?.();}};
 }
 
 test('jeonse and monthly maps share union layers, canonical detail selection, filters and cached geometry',async()=>{
@@ -88,4 +88,17 @@ test('rental prices remain usable after a boundary download error and redraw ret
  assert.equal(f.markers.size,1);assert.equal(f.layers().length,0);assert.match(f.status.textContent,/일부 단지 경계 미표시/);
  f.retry();f.view.redraw();await flush();assert.equal(f.layers().length,1);assert.doesNotMatch(f.status.textContent,/미표시/);
  assert.equal(f.requested.length,2);
+});
+
+test('rental boundary and label selection follow restored, changed and closed common detail',async()=>{
+ const f=await fixture({selectedId:'public-A'});
+ f.view.setData([point('rental-A'),point('rental-B')]);await flush();
+ const selected=()=>f.layers().filter(layer=>layer.style.fillOpacity>0).map(layer=>layer.paths[0].element.dataset.complexBoundary);
+ const labels=()=>[...f.markers].map(marker=>marker.getElement().innerHTML.includes('apt-label selected'));
+ assert.deepEqual(selected(),['A']);assert.deepEqual(labels(),[true,false]);
+ f.select('public-B');await flush();assert.deepEqual(selected(),['B']);assert.deepEqual(labels(),[false,true]);
+ f.select(null);await flush();assert.deepEqual(selected(),[]);assert.deepEqual(labels(),[false,false]);
+ f.select('public-A');f.view.setData([point('rental-B')]);await flush();
+ assert.deepEqual(selected(),[]);assert.deepEqual(labels(),[false],'filtered-out selected apartments are not reintroduced');
+ assert.equal(f.requested.length,1,'selection changes reuse loaded geometry');
 });

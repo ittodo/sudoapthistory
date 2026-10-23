@@ -5,19 +5,19 @@ import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../js/apartment-links.js',import.meta.url),'utf8');
 function environment({wide=true,embedded=false,path,trackNavigation=false}={}){
  const origin='https://site.test';let href=origin+(path||(embedded?'/apartment/?id=A&view=panel&panelKey=child':'/?filter=kept'));
- const events={},messages=[],navigations=[],classes=new Set(),stored=new Map();let sequence=0;
+ const events={},messages=[],navigations=[],selectionChanges=[],classes=new Set(),stored=new Map();let sequence=0;
  const entries=[href];let position=0;
  function move(value,push){href=new URL(value,href).href;if(push){entries.splice(++position);entries.push(href);}else entries[position]=href;}
- const classList={add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x)};
+ const classList={add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle(x,on){if(on)classes.add(x);else classes.delete(x);}};
  const location={get href(){return href;},get origin(){return origin;},get pathname(){return new URL(href).pathname;},get search(){return new URL(href).search;},get hash(){return new URL(href).hash;},assign:x=>{navigations.push(x);if(trackNavigation)move(x,true);},replace:x=>{navigations.push(x);if(trackNavigation)move(x,false);}};
  const frame={src:'',getAttribute:()=>frame.src,contentWindow:{location:{replace:x=>{frame.src=x;}},postMessage:()=>{}}};
  const buttons=Object.fromEntries(['#detail-close','#detail-copy','#detail-open-page'].map(x=>[x,{}]));
  const panel={style:{},setAttribute(){},querySelector:s=>s==='iframe'?frame:buttons[s],remove(){}};
  const host={classList};
  const document={readyState:'loading',activeElement:null,body:{classList,append(){}},createElement:()=>panel,querySelector:s=>s==='.nodo-header'?{getBoundingClientRect:()=>({bottom:80})}:host,querySelectorAll:()=>[],addEventListener:(name,fn)=>{events['document:'+name]=fn;}};
- const context={URL,URLSearchParams,Event:class{},document,location,navigator:{clipboard:{writeText:async()=>{}}},sessionStorage:{setItem(k,v){stored.set(k,v);},getItem(k){return stored.get(k)??null;}},crypto:{randomUUID:()=>String(++sequence)},history:{state:null,pushState(_s,_t,u){move(u,true);},replaceState(_s,_t,u){move(u,false);},back(){if(position>0){href=entries[--position];events.popstate?.();}}},matchMedia:()=>({matches:wide,addEventListener(){}}),addEventListener:(name,fn)=>{events[name]=fn;},dispatchEvent(){}};
+ const context={URL,URLSearchParams,Event:class{constructor(type){this.type=type;}},document,location,navigator:{clipboard:{writeText:async()=>{}}},sessionStorage:{setItem(k,v){stored.set(k,v);},getItem(k){return stored.get(k)??null;}},crypto:{randomUUID:()=>String(++sequence)},history:{state:null,pushState(_s,_t,u){move(u,true);},replaceState(_s,_t,u){move(u,false);},back(){if(position>0){href=entries[--position];events.popstate?.();}},forward(){if(position<entries.length-1){href=entries[++position];events.popstate?.();}}},matchMedia:()=>({matches:wide,addEventListener(){}}),addEventListener:(name,fn)=>{events[name]=fn;},dispatchEvent(event){if(event.type==='nodo:detail-selection')selectionChanges.push(context.NodoApartmentLinks.selection()?.id??null);events[event.type]?.(event);}};
  context.window=context;context.parent=embedded?{location:{origin,pathname:'/',search:'?detail=selected',hash:''},postMessage:(d,o)=>messages.push({d,o})}:context;
- vm.createContext(context);vm.runInContext(source,context);return{context,events,messages,navigations,frame,entries,get href(){return href;},hasPanel:()=>classes.has('nodo-detail-open'),key:()=>new URL(frame.src).searchParams.get('panelKey')};
+ vm.createContext(context);vm.runInContext(source,context);return{context,events,messages,navigations,selectionChanges,frame,entries,get href(){return href;},hasPanel:()=>classes.has('nodo-detail-open'),key:()=>new URL(frame.src).searchParams.get('panelKey')};
 }
 test('desktop selections keep the search URL and ignore stale or foreign detail messages',()=>{
  const e=environment();e.context.NodoApartmentLinks.go({id:'A',area:85});assert.equal(e.navigations.length,0);assert.equal(new URL(e.href).searchParams.get('filter'),'kept');const old=e.key();
@@ -48,6 +48,53 @@ test('a detail-to-detail navigation keeps its desktop host',()=>{
  const e=environment();e.context.NodoApartmentLinks.go({id:'A'});
  e.events.message({origin:'https://site.test',source:e.frame.contentWindow,data:{type:'nodo:detail-navigate',key:e.key(),url:'/apartment/?id=B&tab=comments&comment=7'}});
  assert.equal(e.navigations.length,0);assert.equal(new URL(e.frame.src).searchParams.get('id'),'B');
+});
+
+test('shared detail selection follows close, history and authenticated iframe identity changes',()=>{
+ const e=environment({path:'/map/#mode=price&date=2020-01-31'}),links=e.context.NodoApartmentLinks;
+ assert.equal(links.selection(),null);
+ links.go({id:'public-A'});const oldKey=e.key();
+ assert.equal(links.selection().id,'public-A');
+ links.go({id:'public-B'});
+ e.context.history.back();assert.equal(links.selection().id,'public-A');
+ e.context.history.back();assert.equal(links.selection(),null);
+ e.context.history.forward();assert.equal(links.selection().id,'public-A');
+ const state=(key,url)=>e.events.message({origin:'https://site.test',source:e.frame.contentWindow,data:{type:'nodo:detail-state',key,url}});
+ state(oldKey,'/apartment/?id=stale');assert.equal(links.selection().id,'public-A');
+ const count=e.selectionChanges.length;
+ state(e.key(),'/apartment/?id=public-A&tab=trades');assert.equal(e.selectionChanges.length,count,'tab changes do not redraw identity selection');
+ state(e.key(),'/apartment/?id=canonical-A&tab=trades');assert.equal(links.selection().id,'canonical-A');
+ assert.equal(new URL(e.href).searchParams.get('detail'),'/apartment/?id=canonical-A&tab=trades');
+ links.close();assert.equal(links.selection(),null);assert.equal(e.selectionChanges.at(-1),null);
+ assert.equal(new URLSearchParams(new URL(e.href).hash.slice(1)).has('a'),false);
+});
+
+test('direct restored detail selection remains available to map data that loads later',()=>{
+ const e=environment({path:'/map/?detail='+encodeURIComponent('/apartment/?id=public-A&tab=trades')+'#mode=price&date=2020-01-31'});
+ e.events['document:DOMContentLoaded']();assert.equal(e.context.NodoApartmentLinks.selection().id,'public-A');
+ const mapSource=readFileSync(new URL('../js/map-app.js',import.meta.url),'utf8');
+ Object.assign(e.context,{byId:new Map(),matches:new Map(),selected:null});
+ vm.runInContext(mapSource.slice(mapSource.indexOf('  function highlightedComplex()'),mapSource.indexOf('  function render()')),e.context);
+ assert.equal(e.context.highlightedComplex(),null);
+ const current={id:'map-A'},historical={id:'map-A',areas:[{a:60}]};
+ e.context.byId.set('public-A',current);e.context.matches.set('map-A',{complex:historical});
+ assert.equal(e.context.highlightedComplex(),historical,'highlight uses the displayed historical complex through its public ID');
+ e.context.matches.clear();assert.equal(e.context.highlightedComplex(),null,'an excluded complex stays excluded');
+ e.context.matches.set('map-A',{complex:historical});e.context.NodoApartmentLinks.close();assert.equal(e.context.highlightedComplex(),null);
+ assert.equal(e.context.selected,null,'highlight does not populate the old hash selection');
+});
+
+test('historical URL restoration keeps the open detail; a new date refresh closes it',async()=>{
+ const e=environment({path:'/map/?detail='+encodeURIComponent('/apartment/?id=public-A')+'#mode=price&date=2020-01-31'});
+ e.events['document:DOMContentLoaded']();
+ const timeline=readFileSync(new URL('../js/map-timeline.js',import.meta.url),'utf8'),fields=new Map();
+ Object.assign(e.context,{root:e.context,mode:'price',day:'2020-01-31',request:0,restoredOnce:false,preferences:{},renderedMode:'price',renderedDay:'2020-01-31',
+  stop(){},loading:false,el:{setAttribute(){}},map:{closePopup(){}},effects:{clear(){}},applyPreference(){},sync(){},
+  $:id=>{if(!fields.has(id))fields.set(id,{});return fields.get(id);},ensure:async()=>{throw Error('offline fixture');}});
+ vm.runInContext(timeline.slice(timeline.indexOf('    async function refresh('),timeline.indexOf('    function write(p)')),e.context);
+ vm.runInContext(timeline.slice(timeline.indexOf('    function restore()'),timeline.indexOf('    function label(match,')),e.context);
+ await e.context.restore();assert.equal(e.context.NodoApartmentLinks.selection().id,'public-A');
+ await e.context.refresh();assert.equal(e.context.NodoApartmentLinks.selection(),null);
 });
 
 test('a mobile rental map detail keeps its map position, date and filters for return',()=>{
@@ -91,7 +138,7 @@ function historicalMap({wide=true,legacy=false}={}){
    {a:84.96,i:1,latest:[20260930,90000,0,0,1]},
    {a:59.97,i:2,latest:[20260925,70000,0,0,1]}
   ]}],stop:()=>actions.push('stop')});
- vm.runInContext(timeline.slice(timeline.indexOf('    function write(p)'),timeline.indexOf('    function label(match)')),e.context);
+ vm.runInContext(timeline.slice(timeline.indexOf('    function write(p)'),timeline.indexOf('    function label(match,')),e.context);
  vm.runInContext(timeline.slice(timeline.indexOf('    function select(id)'),timeline.indexOf('    async function tick()')),e.context);
  const mapSource=readFileSync(new URL('../js/map-app.js',import.meta.url),'utf8');
  vm.runInContext(mapSource.slice(mapSource.indexOf('  function save(push=false)'),mapSource.indexOf('  function parseState()')),e.context);
