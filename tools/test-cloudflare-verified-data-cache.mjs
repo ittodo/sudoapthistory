@@ -8,11 +8,12 @@ import {gzipSync} from 'node:zlib';
 const source=readFileSync(new URL('../js/verified-data-cache.js',import.meta.url),'utf8');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const path='data/daily/regions/11110/quarters/2026-Q3.bin';
-function backend(){
- const stores=new Map();
- return {stores,caches:{open:async name=>{
+function backend({beforePut,requestKeys=false}={}){
+ const stores=new Map(),stats={matches:0,puts:0};
+ const keyOf=key=>(typeof key==='string'?key:key.url).replace(/^https?:\/\/[^/]+/,'');
+ return {stores,stats,caches:{open:async name=>{
   if(!stores.has(name))stores.set(name,new Map());const values=stores.get(name);
-  return {match:async key=>values.get(key)?.clone(),put:async(key,response)=>{values.set(key,response.clone());},keys:async()=>[...values.keys()],delete:async key=>values.delete(key)};
+  return {match:async key=>{stats.matches++;return values.get(keyOf(key))?.clone();},put:async(key,response)=>{stats.puts++;await beforePut?.();values.set(keyOf(key),response.clone());},keys:async()=>[...values.keys()].map(key=>requestKeys?{url:'https://nodostream.com'+key}:key),delete:async key=>values.delete(keyOf(key))};
  }}};
 }
 function runtime(fetch,storage=backend()){
@@ -20,6 +21,7 @@ function runtime(fetch,storage=backend()){
  vm.runInContext(source,context);return {api:context.NodoVerifiedDataCache,...storage};
 }
 function gate(){let start,release;return {started:new Promise(resolve=>start=resolve),waiting:new Promise(resolve=>release=resolve),start,release};}
+const drain=()=>new Promise(resolve=>setImmediate(resolve));
 
 test('same public file requests share work while each subscriber can cancel independently',async()=>{
  const bytes=Buffer.from('packed-quarter'),expected=hash(bytes),hold=gate();let calls=0,aborted=0;
@@ -45,8 +47,10 @@ test('persistent public bytes are reused across runtimes, hash versions remain s
  const storage=backend(),a=Buffer.from('quarter-a'),b=Buffer.from('quarter-b');let current=a,calls=0;
  const fetch=async()=>{calls++;return new Response(current);};
  await runtime(fetch,storage).api.createHousing().download(path,hash(a));
+ await drain();
  await runtime(fetch,storage).api.createHousing().download(path,hash(a));assert.equal(calls,1);
  current=b;await runtime(fetch,storage).api.createHousing().download(path,hash(b));assert.equal(calls,2);
+ await drain();
  const values=storage.stores.get('nodo-housing-files-v1');assert.equal(values.size,2);
  const key='/'+path+'?v='+hash(b);values.set(key,new Response('corrupt',{headers:{'Content-Length':'7'}}));
  assert.deepEqual(Buffer.from(await runtime(fetch,storage).api.createHousing().download(path,hash(b))),b);assert.equal(calls,3);
@@ -58,10 +62,62 @@ test('byte and entry budgets evict older files; concurrent writers remain bounde
  const {api,stores}=runtime(async url=>new Response(files.get(url.slice(1).split('?')[0])));
  const bytes=api.create('bytes',10,{maxBytes:10});
  for(const p of ['data/cache/0.bin','data/cache/1.bin','data/cache/2.bin'])await bytes.download(p,hash(files.get(p)));
+ await drain();
  const retained=stores.get('bytes');assert.equal(retained.size,2);assert.ok(![...retained.keys()].some(p=>p.includes('/0.bin?')));
  const bounded=api.create('concurrent',2,{maxBytes:10});
  await Promise.all([...files].map(([p,b])=>bounded.download(p,hash(b))));
+ await drain();
  const values=stores.get('concurrent');assert.ok(values.size<=2);assert.ok([...values.values()].reduce((n,r)=>n+Number(r.headers.get('Content-Length')),0)<=10);assert.ok(![...values.keys()].some(p=>p.includes('/large.bin?')));
+});
+
+test('verified bytes return before persistence, and pending storage reuses an immutable private copy',async()=>{
+ const hold=gate(),bytes=Buffer.from('verified-before-storage');let calls=0;
+ const storage=backend({beforePut:async()=>{hold.start();await hold.waiting;}});
+ const {api}=runtime(async()=>{calls++;return new Response(bytes);},storage),disk=api.createHousing();
+ try{
+  const downloading=disk.download(path,hash(bytes));await hold.started;
+  const result=await Promise.race([downloading.then(value=>({value})),drain().then(()=>null)]);
+  assert.ok(result,'a gated cache.put must not block verified bytes');assert.deepEqual(Buffer.from(result.value),bytes);
+  new Uint8Array(result.value).fill(0);
+  assert.deepEqual(Buffer.from(await disk.download(path,hash(bytes))),bytes,'caller mutation cannot corrupt the queued verified copy');
+  assert.equal(calls,1,'a second reader must not refetch while the cache write is queued');
+  assert.equal(storage.stores.get('nodo-housing-files-v1').size,0);
+ }finally{hold.release();await drain();}
+ assert.equal(storage.stores.get('nodo-housing-files-v1').size,1);
+});
+
+test('a blocked store bounds queued bytes and entries without delaying uncached downloads',async()=>{
+ const hold=gate(),files=new Map(Array.from({length:3},(_,i)=>['data/cache/'+i+'.bin',Buffer.alloc(4,i)]));let calls=0;
+ const storage=backend({beforePut:async()=>{hold.start();await hold.waiting;}});
+ const {api}=runtime(async url=>{calls++;return new Response(files.get(url.slice(1).split('?')[0]));},storage),disk=api.create('blocked',2,{maxBytes:8});
+ try{
+  for(const[p,bytes]of files)assert.deepEqual(Buffer.from(await disk.download(p,hash(bytes))),bytes);
+  await hold.started;assert.equal(storage.stats.puts,1,'only the first queued write can start');
+  const first=[...files][0],last=[...files][2];
+  await disk.download(first[0],hash(first[1]));assert.equal(calls,3,'an admitted queued file is reusable');
+  await disk.download(last[0],hash(last[1]));assert.equal(calls,4,'the third file is not retained beyond the queue budget');
+ }finally{hold.release();await drain();}
+ assert.equal(storage.stats.puts,2);assert.equal(storage.stores.get('blocked').size,2);
+});
+
+test('persistent writes read sizes only for unseen keys, including entries from another context',async()=>{
+ const storage=backend({requestKeys:true}),files=new Map(Array.from({length:20},(_,i)=>['data/cache/'+i+'.bin',Buffer.alloc(4,i)]));
+ const {api}=runtime(async url=>new Response(files.get(url.slice(1).split('?')[0])),storage),disk=api.create('sizes',32,{maxBytes:128});
+ for(const[p,bytes]of files){await disk.download(p,hash(bytes));await drain();}
+ assert.equal(storage.stats.matches,20,'initial lookups are needed, but known retained entries need no size reread');
+ storage.stores.get('sizes').set('/data/cache/external.bin?v=other-context',new Response('outside',{headers:{'Content-Length':'7'}}));
+ files.set('data/cache/next.bin',Buffer.from('next'));
+ const before=storage.stats.matches;await disk.download('data/cache/next.bin',hash(files.get('data/cache/next.bin')));await drain();
+ assert.equal(storage.stats.matches-before,2,'only the new download lookup and the unseen external entry are read');
+});
+
+test('persistence failures do not reject verified bytes or leave rejected queue work unhandled',async()=>{
+ const bytes=Buffer.from('quota-independent');let calls=0;
+ const storage=backend({beforePut:async()=>{throw Error('Cache quota unavailable');}});
+ const {api}=runtime(async()=>{calls++;return new Response(bytes);},storage),disk=api.createHousing();
+ assert.deepEqual(Buffer.from(await disk.download(path,hash(bytes))),bytes);await drain();
+ assert.deepEqual(Buffer.from(await disk.download(path,hash(bytes))),bytes);await drain();
+ assert.equal(calls,2);assert.equal(storage.stores.get('nodo-housing-files-v1').size,0);
 });
 
 test('range keys share identical sections and keep different sections separate',async()=>{

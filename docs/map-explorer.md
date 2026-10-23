@@ -21,6 +21,14 @@
 취소·즉시 재조회 검사는 `node --test tools/test-cloudflare-packed-cancel.mjs`로 실행한다.
 분할 파일 검사는 `tools/test-housing-partition.mjs`에 포함한다.
 
+매매 시간지도는 현재 화면에 필요한 파일과 다음 달 선읽기 파일을 구분해 보관한다.
+선읽기 요청을 시작하자마자 메모리 캐시에서 취소하지 않는다. 다음 달로 이동하면
+진행 중인 선읽기를 화면 요청으로 승격한다. 날짜·지역 변경으로 필요 없어진 요청은
+취소한다. 분기와 연도가 바뀌어도 같은 규칙을 적용한다. 관련 검사는
+`node --test tools/test-cloudflare-packed-cancel.mjs`와
+`node tools/test-daily-client.cjs`로 실행한다. 저장 바이트 캐시의 비동기 저장과 상한은
+[공통 읽기 계약](site-layout.md#형식과-공통-읽기-책임)을 따른다.
+
 ## 단지 선택과 지도 복귀
 
 현재 지도와 시간지도에서 단지 가격·경계를 선택하면 통합 단지 상세를 바로 연다.

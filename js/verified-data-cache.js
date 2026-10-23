@@ -1,19 +1,39 @@
 /* Shared immutable data downloads for sale and rental maps. */
 (function(root){
   'use strict';
-  const inFlight=new Map(),writes=new Map(),DEFAULT_BYTES=64*1024*1024;
+  const inFlight=new Map(),writes=new Map(),sizes=new Map(),pendingWrites=new Map(),DEFAULT_BYTES=64*1024*1024;
   function publicPath(path){return typeof path==='string'&&path.startsWith('data/')&&!/[?\\#%\u0000-\u001f]/.test(path)&&path.split('/').every(part=>part&&part!=='.'&&part!=='..');}
   async function writeLocked(name,work){
     const previous=writes.get(name)||Promise.resolve(),next=previous.catch(()=>{}).then(()=>root.navigator?.locks?.request?root.navigator.locks.request('nodo-file-cache:'+name,work):work());
     writes.set(name,next);try{return await next;}finally{if(writes.get(name)===next)writes.delete(name);}
   }
-  async function trim(store,limit,maxBytes){
+  const storageKey=key=>(typeof key==='string'?key:key.url).replace(/^https?:\/\/[^/]+/,'');
+  async function trim(store,name,limit,maxBytes,url,bytes){
+    let known=sizes.get(name);if(!known){known=new Map();sizes.set(name,known);}
+    known.set(storageKey(url),bytes);
+    const keys=await store.keys(),present=new Set(keys.map(storageKey));
+    for(const key of known.keys())if(!present.has(key))known.delete(key);
     let retained=0,count=0;
-    for(const key of (await store.keys()).reverse()){
-      const response=await store.match(key),size=Number(response?.headers.get('Content-Length')??NaN);
-      if(!Number.isSafeInteger(size)||size<0||count>=limit||retained+size>maxBytes)await store.delete(key);
+    for(const key of keys.reverse()){
+      const id=storageKey(key);let size=known.get(id);
+      // Other tabs can add keys under the same lock. Read only unseen sizes.
+      if(size===undefined){const response=await store.match(key);size=Number(response?.headers.get('Content-Length')??NaN);known.set(id,size);}
+      if(!Number.isSafeInteger(size)||size<0||count>=limit||retained+size>maxBytes){await store.delete(key);known.delete(id);}
       else{retained+=size;count++;}
     }
+  }
+  function persist(store,name,limit,maxBytes,url,bytes,signal){
+    if(!store||!limit||bytes.byteLength>maxBytes)return;
+    let queue=pendingWrites.get(name);if(!queue){queue={entries:new Map(),bytes:0};pendingWrites.set(name,queue);}
+    // A slow or blocked cache must not retain an unbounded queue of file buffers.
+    if(queue.entries.has(url)||queue.entries.size>=limit||queue.bytes+bytes.byteLength>maxBytes)return;
+    const copy=new Uint8Array(bytes).slice().buffer;
+    queue.entries.set(url,copy);queue.bytes+=copy.byteLength;
+    const done=()=>{queue.entries.delete(url);queue.bytes-=copy.byteLength;if(!queue.entries.size&&pendingWrites.get(name)===queue)pendingWrites.delete(name);};
+    void writeLocked(name,async()=>{
+      signal.throwIfAborted();await store.put(url,new Response(copy,{headers:{'Content-Length':String(copy.byteLength)}}));
+      await trim(store,name,limit,maxBytes,url,copy.byteLength);
+    }).then(done,done);
   }
   function subscribe(entry,signal){
     return new Promise((resolve,reject)=>{
@@ -41,6 +61,9 @@
     }
     async function read(path,expected,range,entry){
       const {url,controller}=entry,signal=controller.signal,contentHash=range?.sha256||expected;
+      signal.throwIfAborted();
+      const pending=pendingWrites.get(name)?.entries.get(url);
+      if(pending)return pending.slice(0); // Private copy was already hash-verified.
       let store=entry.persist?await storage():null;
       const digest=async bytes=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('');
       signal.throwIfAborted();
@@ -66,10 +89,7 @@
       }
       if(await digest(bytes)!==contentHash)throw Error('자료가 업데이트되었습니다. 새로고침해 주세요.');
       signal.throwIfAborted();
-      if(entry.persist&&!store)store=await storage();
-      if(store&&limit&&bytes.byteLength<=maxBytes)try{await writeLocked(name,async()=>{
-        signal.throwIfAborted();await store.put(url,new Response(bytes,{headers:{'Content-Length':String(bytes.byteLength)}}));await trim(store,limit,maxBytes);
-      });}catch{}
+      persist(store,name,limit,maxBytes,url,bytes,signal);
       signal.throwIfAborted();return bytes;
     }
     async function download(path,expected,{signal,background=false,persist=true,range=null}={}){
