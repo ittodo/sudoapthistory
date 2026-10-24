@@ -2,26 +2,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
+import {loadHousingMetadata} from '../js/housing-metadata.mjs';
+import {gzipSync} from 'node:zlib';
+import {createHash} from 'node:crypto';
 
-const source=readFileSync(new URL('../js/kapt-v2-app.js',import.meta.url),'utf8');
+const source=readFileSync(new URL('../js/kapt-v2-app.js',import.meta.url),'utf8').replace(/^import \{loadHousingMetadata\} from '\.\/housing-metadata\.mjs';\r?\n/,'');
 const item=(id,family='apartment',approved=false)=>({id,name:id,housingFamily:family,region:'서울',gu:'종로구',dong:'동',units:null,parcels:[],registry:[],transactions:[],review:{approved},publicationMode:'metadata_only',tenure:null});
-async function open(data){
+async function open(data,{compressed=false}={}){
   const nodes=new Map(),requests=[],navigation=[];
   const node=selector=>{
     if(!nodes.has(selector))nodes.set(selector,{textContent:'',innerHTML:'',value:'',checked:false,addEventListener(){},querySelectorAll(){return[];},classList:{add(){},remove(){},toggle(){}}});
     return nodes.get(selector);
   };
+  const raw=Buffer.from(JSON.stringify(data)),packed=gzipSync(raw),hash=b=>createHash('sha256').update(b).digest('hex');
+  const manifest={schema:1,format:'gzip-json-v1',source:{path:'data/housing-v3/index.json',sha256:hash(raw),bytes:raw.length},file:{path:`data/housing-v3/index.${hash(raw)}.bin`,sha256:hash(packed),bytes:packed.length}};
+  const fetcher=async path=>{requests.push(path);return path.endsWith('/transport.json')?(compressed?{ok:true,json:async()=>manifest}:{ok:false,status:404}):{ok:true,json:async()=>data};};
   const context=vm.createContext({document:{querySelector:node},window:{addEventListener(){}},performance:{getEntriesByType:()=>[]},
-    fetch:async path=>{requests.push(path);return {ok:true,json:async()=>data};},location:{hash:''},history:{replaceState(){}},URLSearchParams,
+    loadHousingMetadata:()=>loadHousingMetadata({fetcher,download:async(path,digest)=>{assert.equal(path,manifest.file.path);assert.equal(digest,manifest.file.sha256);return packed;}}),location:{hash:''},history:{replaceState(){}},URLSearchParams,
     NodoApartmentSearch:{bind:()=>({restore:async()=>{},checkScope(){},reportCount(){}})},NodoApartmentLinks:{go:(value,replace)=>navigation.push({value,replace})}});
   await vm.runInContext(source,context);
   return {nodes,requests,navigation,context};
 }
 test('current public roster without meta.families renders and does not invent approvals or rentals',async()=>{
   const data={meta:{contract:'current-review-publication-v1',candidateOnly:false,approvedOnly:false,publications:3},complexes:[item('a'),item('b','apartment',true),item('c','rowhouse')]};
-  const view=await open(data);
+  const view=await open(data,{compressed:true});
   assert.equal(view.requests.length,1);
-  assert.match(view.requests[0],/housing-v3\/index\.json/);
+  assert.match(view.requests[0],/housing-v3\/transport\.json/);
   assert.match(view.nodes.get('#summary').textContent,/공개 공동주택 3개 · 아파트 2개 · 연립·다세대 1개 · 개별 검토 승인 1개/);
   assert.doesNotMatch(view.nodes.get('#summary').textContent,/사용자 승인 3/);
   assert.equal(view.nodes.get('#resultCount').textContent,'3개');

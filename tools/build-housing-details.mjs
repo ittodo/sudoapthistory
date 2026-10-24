@@ -4,16 +4,17 @@ import{detailMemo,detailEngine,detailDependencies,detailIdentity}from'./housing-
 import{readFileSync,writeFileSync,mkdirSync,realpathSync}from'node:fs';import{resolve,join,dirname}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
 import{regionalReader}from'./regional-reader.mjs';import{packContractDetails,restoreDetails}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex'),canonical=r=>JSON.stringify(Object.fromEntries(Object.keys(r).sort().map(k=>[k,r[k]])));
-export function retainUnconvertedContracts(previous,manifest,emit){
+export function retainUnconvertedContracts(previous,manifest,emit,converted={}){
  const inputs=new Map(),read=p=>{const b=readFileSync(join(previous,p));inputs.set(p,hash(b));return b;},prior=JSON.parse(read('data/contracts/index.json'));if(![1,2].includes(prior.schema))throw Error('Unsupported previous contract manifest');
- const present=new Set(manifest.partitions.map(p=>p.path));let files=0,bytes=0;
- for(const p of prior.partitions){if(p.service==='apartment-rent'||p.format==='regional-reference'||present.has(p.path))continue;
+ const scope=p=>[p.service,p.lawd,p.month].join('|'),present=new Map(),superseded={},supersededPartitions={};for(const p of manifest.partitions){if(present.has(scope(p)))throw Error('Duplicate generated contract scope');present.set(scope(p),p);}let files=0,bytes=0;
+ for(const p of prior.partitions){if(p.service==='apartment-rent'||p.format==='regional-reference')continue;const replacement=present.get(scope(p));if(replacement?.path===p.path)continue;
   if(!['rowhouse-rent','officetel-sale','officetel-rent'].includes(p.service)||!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month)||p.path!==`${p.service}/${p.lawd}/${p.month}.json`)throw Error('Unsafe retained contract partition');
   const path='data/contracts/'+p.path,b=read(path),value=JSON.parse(b);if((prior.schema===2&&prior.sources[path]!==hash(b))||value.rows.length!==p.count||value.rows.some(r=>r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Retained contract evidence mismatch');
-  emit(path,b);manifest.partitions.push(p);manifest.sources[path]=hash(b);present.add(p.path);files++;bytes+=b.length;
+  if(replacement){if(p.service!=='rowhouse-rent'||replacement.format!=='regional-reference'||replacement.path!==p.path.replace('.json','.bin')||replacement.count!==p.count||converted[path]!==hash(b))throw Error('Contract supersession lacks exact converted source evidence');superseded[path]=hash(b);supersededPartitions[path]=replacement;continue;}
+  emit(path,b);manifest.partitions.push(p);manifest.sources[path]=hash(b);present.set(scope(p),p);files++;bytes+=b.length;
  }
  manifest.partitions.sort((a,b)=>a.path.localeCompare(b.path,'en'));
- return {files,bytes,inputs:Object.fromEntries(inputs),verify(){for(const[p,h]of inputs)if(hash(readFileSync(join(previous,p)))!==h)throw Error('Previous contract input changed');}};
+ return {files,bytes,superseded,supersededPartitions,inputs:Object.fromEntries(inputs),verify(){for(const[p,h]of inputs)if(hash(readFileSync(join(previous,p)))!==h)throw Error('Previous contract input changed');}};
 }
 export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,generationSession=null}={}){
  source=realpathSync(source);packed=realpathSync(packed);if(source===packed)throw Error('Isolated output required');const rental=regionalReader(packed,'rental',{verifyOnce:true});if(rental.manifest.schema!==3)throw Error('Packed facts required');
@@ -50,12 +51,12 @@ export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,g
   manifest.partitions.push({...p,...publicPartition});retired[path]=input.get(path);metrics.oldBytes+=selection.bytes;metrics.matched+=value.matched;metrics.unmatched+=value.unmatchedCount;
  }
  for(const[path,values]of displays){const dictionary=[],refs={},lookup=new Map();for(const[id,meta]of Object.entries(values).sort(([a],[b])=>a.localeCompare(b))){const key=canonical(meta);let n=lookup.get(key);if(n===undefined){n=dictionary.length;dictionary.push(meta);lookup.set(key,n);}refs[id]=n;}emit(path,Buffer.from(JSON.stringify({dictionary,refs})));}
- const retained=previous?retainUnconvertedContracts(realpathSync(previous),manifest,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;}):null;
+ const retained=previous?retainUnconvertedContracts(realpathSync(previous),manifest,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;},retired):null;
  emit('data/contracts/index.json',Buffer.from(JSON.stringify(manifest)));
  const rent=read('data/apartment-rent/index.json');for(const[path,digest]of Object.entries(rent.shards)){const b=readFileSync(join(source,path));if(hash(b)!==digest)throw Error('Rent shard changed');retired[path]=digest;metrics.oldBytes+=b.length;input.set(path,digest);}
  const next={schema:2,unit:rent.unit,total:rent.total,linked:rent.linked,records:Object.fromEntries(Object.entries(rent.records).map(([id,{shard,...r}])=>[id,r])),coverage:rent.coverage,sharedManifest:'data/rental/index.json',rentalVersion:rental.manifest.version,contractsHash:hash(readFileSync(join(packed,'data/contracts/index.json'))),catalogHash:hash(readFileSync(join(packed,'data/apartments/index.json')))};
  emit('data/apartment-rent/index.json',Buffer.from(JSON.stringify(next)));
  for(const[p,h]of input)if(hash(readFileSync(join(source,p)))!==h)throw Error('Contract input changed');
- retained?.verify();rental.recheck();const report={reuse,inputReuse,retainedUnconverted:retained?{files:retained.files,bytes:retained.bytes,inputs:retained.inputs}:null,status:'PASS',metrics,retired,inputs:Object.fromEntries(input)};writeFileSync(join(packed,'housing-details-report.json'),JSON.stringify(report,null,2));return report;
+ retained?.verify();rental.recheck();const report={reuse,inputReuse,retainedUnconverted:retained?{files:retained.files,bytes:retained.bytes,inputs:retained.inputs}:null,superseded:retained?.superseded??{},supersededPartitions:retained?.supersededPartitions??{},status:'PASS',metrics,retired,inputs:Object.fromEntries(input)};writeFileSync(join(packed,'housing-details-report.json'),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)console.log(JSON.stringify(buildHousingDetails(...process.argv.slice(2)).metrics));

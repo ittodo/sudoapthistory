@@ -7,6 +7,21 @@ test('display-only edits do not alter contract fact references or extras',()=>{c
 test('unexpected fields, truncated data and money precision loss fail',()=>{assert.throws(()=>packContractDetails([{...raw,unknown:1}],[f],table,codec));const p=packContractDetails([raw],[f],table,codec);assert.throws(()=>restoreDetails(p.details.slice(0,-1),p.unmatched,p.display,[f],table,codec));});
 
 import{retainUnconvertedContracts}from'./build-housing-details.mjs';import{mkdtempSync,mkdirSync,writeFileSync,rmSync,realpathSync}from'node:fs';import{tmpdir}from'node:os';import{join,dirname,sep}from'node:path';
+import{createHash}from'node:crypto';
+test('rowhouse supersession preserves every duplicate and unmatched row and retains 72 other scopes',()=>{
+ const root=mkdtempSync(join(tmpdir(),'housing-retention-'));try{
+  const hash=b=>createHash('sha256').update(b).digest('hex'),put=(p,v)=>{const b=Buffer.from(JSON.stringify(v));mkdirSync(dirname(join(root,p)),{recursive:true});writeFileSync(join(root,p),b);return hash(b);};
+  const row={...raw,aptSeq:'',entityId:'trh_00000000000000000000000000000001',property:'rowhouse'},rows=[row,row,{...row,deposit:9}],types={complexes:{'11110:0':{id:row.entityId}}},packed=packContractDetails(rows,[f,f],types,codec);
+  const canonical=r=>JSON.stringify(Object.fromEntries(Object.keys(r).sort().map(k=>[k,r[k]])));assert.equal(packed.matched,2);assert.equal(packed.unmatchedCount,1);assert.deepEqual(restoreDetails(packed.details,packed.unmatched,packed.display,[f,f],types,codec).map(canonical).sort(),rows.map(canonical).sort());
+  const old={service:'rowhouse-rent',lawd:'11110',month:'202609',path:'rowhouse-rent/11110/202609.json',count:3},path='data/contracts/'+old.path,digest=put(path,{rows}),converted={...old,path:old.path.replace('.json','.bin'),format:'regional-reference'},prior={schema:2,sources:{[path]:digest},partitions:[old]};
+  for(const lawd of ['28110','28140','28170','28177','28200','28260'])for(let month=1;month<=12;month++){const ym='2025'+String(month).padStart(2,'0'),p={service:'rowhouse-rent',lawd,month:ym,path:`rowhouse-rent/${lawd}/${ym}.json`,count:1};prior.partitions.push(p);prior.sources['data/contracts/'+p.path]=put('data/contracts/'+p.path,{rows:[{...row,date:ym.slice(0,4)+'-'+ym.slice(4)+'-01'}]});}
+  put('data/contracts/index.json',prior);const manifest={sources:{},partitions:[converted]},emitted=new Map(),result=retainUnconvertedContracts(root,manifest,(p,b)=>emitted.set(p,b),{[path]:digest});
+  assert.equal(result.files,72);assert.equal(manifest.partitions.length,73);assert.equal(emitted.has(path),false);assert.deepEqual(result.superseded,{[path]:digest});assert.equal(Object.hasOwn(manifest.sources,path),false);result.verify();
+  for(const change of [{},{[path]:'wrong'}])assert.throws(()=>retainUnconvertedContracts(root,{sources:{},partitions:[converted]},()=>{},change),/exact converted source/);
+  assert.throws(()=>retainUnconvertedContracts(root,{sources:{},partitions:[{...converted,count:2}]},()=>{},{[path]:digest}),/exact converted source/);
+  const last=prior.partitions.at(-1);put('data/contracts/'+last.path,{rows:[{...row,date:'2025-12-01',deposit:1}]});assert.throws(()=>result.verify(),/input changed/);assert.throws(()=>retainUnconvertedContracts(root,{sources:{},partitions:[converted]},()=>{},{[path]:digest}),/evidence mismatch/);
+ }finally{const target=realpathSync(root),parent=realpathSync(tmpdir());if(!target.startsWith(parent+sep)||!target.slice(parent.length+1).startsWith('housing-retention-'))throw Error('Unsafe test cleanup');rmSync(target,{recursive:true,force:true});}
+});
 test('month rollover retains unrelated contracts exactly without recreating apartment raw files',()=>{
  const root=mkdtempSync(join(tmpdir(),'housing-retention-'));try{
   const old={service:'officetel-rent',lawd:'11110',month:'202510',path:'officetel-rent/11110/202510.json',count:1},current={...old,month:'202511',path:'officetel-rent/11110/202511.json'},apt={...old,service:'apartment-rent',path:'apartment-rent/11110/202510.json'};

@@ -1,3 +1,4 @@
+import {loadHousingMetadata} from './housing-metadata.mjs';
 let aptSearch;
 const state={data:null,items:[],region:'',family:'',query:'',linkedOnly:false,sort:'name',selected:''};
 const $=selector=>document.querySelector(selector);
@@ -11,9 +12,7 @@ const rental=item=>item.tenure==='rental';
 const currentPublication=()=>state.data?.meta?.contract==='current-review-publication-v1';
 
 async function loadData(){
-  const response=await fetch('data/housing-v3/index.json?v=20261019-current');
-  if(!response.ok)throw new Error(`데이터 응답 ${response.status}`);
-  const data=await response.json();
+  const data=await loadHousingMetadata();
   if(data.meta?.candidateOnly===true)throw new Error('미리보기 자료는 공개 목록에서 표시하지 않습니다.');
   if(!Array.isArray(data.complexes))throw new Error('공동주택 목록 형식이 올바르지 않습니다.');
   if(data.meta?.contract&&data.meta.contract!=='current-review-publication-v1')throw new Error('지원하지 않는 공동주택 공개 형식입니다.');

@@ -19,6 +19,7 @@ import {regionPriceAssets} from './build-region-price-cache.mjs';
 import {rentalMapAssets} from './build-rental-map-cache.mjs';
 import {rentalMarketAssets} from './build-rental-market-cache.mjs';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
+import {housingMetadataTransport,housingMetadataSource,housingMetadataHeaders} from './housing-metadata-transport.mjs';
 
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const injection = '<script src="/deployment-version.js"></script>';
@@ -50,7 +51,7 @@ export function build(root, output, sha) {
   if (output!==join(root,'cloudflare','dist','public')) throw new Error('Output must be isolated cloudflare/dist/public');
   if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Full Git SHA required');
   assertPublishableMetadata(root);
-  const started=performance.now(),timings={},regionPriceStats={},rentalMarketStats={},verificationEngine=weeklyEngine(root),fullVerification=process.env.NODO_FULL_VERIFY==='1';
+  const started=performance.now(),timings={},regionPriceStats={},rentalMarketStats={},housingMetadataStats={},verificationEngine=weeklyEngine(root),fullVerification=process.env.NODO_FULL_VERIFY==='1';
   const phase=(name,fn)=>{const begin=performance.now();try{return fn();}finally{timings[name]=(performance.now()-begin)/1000;console.error(JSON.stringify({phase:name,seconds:timings[name]}));}};
   if(existsSync(join(root,'js/market-mortgage.js')))phase('mortgage',()=>validateMortgage(JSON.parse(readFileSync(join(root,'data/market-rates/mortgage.json'),'utf8')),new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul'}).format(new Date())));
   const validation=new ValidationSession(root);
@@ -64,12 +65,15 @@ export function build(root, output, sha) {
   validation.flush();
   }
   const paths=[...new Set(execFileSync('git',['-c',`safe.directory=${root.replaceAll('\\','/')}`,'ls-files','--cached','--others','--exclude-standard','-z'],{cwd:root,encoding:'utf8'}).split('\0').filter(p=>p && existsSync(join(root,p))))];
+  const transport=phase('housing-transport',()=>housingMetadataTransport(root,{stats:housingMetadataStats}));
   const assets=[];
   for(const path of paths) {
     if(forbiddenReason(path)) throw new Error(`Forbidden tracked output: ${path}`);
     if(!publicAsset(path)) continue;
     let current=root;
     for(const part of path.split('/')) {current=join(current,part);if(lstatSync(current).isSymbolicLink()) throw new Error(`Symlink: ${path}`);}
+    // Keep the producer JSON for native/Node readers. Publish its exact gzip bytes.
+    if(transport&&path===housingMetadataSource)continue;
     if(lstatSync(current).size>25*1024*1024) throw new Error(`Asset exceeds 25 MiB: ${path}`);
     let bytes=readFileSync(current);
     if(path.endsWith('.html')) {
@@ -80,15 +84,18 @@ export function build(root, output, sha) {
     if(bytes.length>25*1024*1024) throw new Error(`Asset exceeds 25 MiB: ${path}`);
     assets.push({path,source:current,sha256:sha256(bytes),size:bytes.length});
   }
+  if(transport)assets.push(...transport.assets);
   if(existsSync(join(root,'js/admin-center.js'))) assets.push({path:'data/operations-status.json',bytes:Buffer.from(JSON.stringify(operationsMetadata(root)))});
   const generatedSearch=phase('search',()=>searchAssets(root));
   for(const f of generatedSearch)if(f.bytes.length>25*1024*1024)throw Error('Search asset exceeds 25 MiB: '+f.path);
   const catalog=generatedSearch.find(f=>f.path==='data/search/apartments.json');
   if(catalog)for(const [path,hash]of Object.entries(JSON.parse(catalog.bytes).inputs||JSON.parse(catalog.bytes).sources)){
-    if(assets.find(f=>f.path===path)?.sha256!==hash)throw Error('Search source changed during packaging: '+path);
+    const actual=transport&&path===housingMetadataSource?transport.manifest.source.sha256:assets.find(f=>f.path===path)?.sha256;
+    if(actual!==hash)throw Error('Search source changed during packaging: '+path);
   }
   assets.push(...generatedSearch,...phase('rental-map',()=>rentalMapAssets(root)),...phase('rental-market',()=>rentalMarketAssets(root,{stats:rentalMarketStats})),...phase('region-prices',()=>regionPriceAssets(root,{stats:regionPriceStats})));
   const packagingStarted=performance.now();
+  transport?.recheck();
   assets.push({path:'deployment-version.js',bytes:Buffer.from(runtime(sha))});
   if(assets.length+3>20000) throw new Error('Asset count exceeds free tier 20000: '+(assets.length+3));
   assets.sort((a,b)=>a.path.localeCompare(b.path,'en'));
@@ -114,12 +121,13 @@ export function build(root, output, sha) {
     if(f.source && sha256(bytes)!==f.sha256) throw Error('Asset changed during packaging: '+f.path);
     emit(f.path,bytes);
   }
+  transport?.recheck();
   emit('deployment-manifest.json',manifest);
   emit('deployment.json',JSON.stringify({schema:1,gitSha:sha,assetManifestSha256:sha256(manifest)}));
-  emit('_headers',assetHeaders);
+  emit('_headers',assetHeaders+housingMetadataHeaders(transport));
   timings.packaging=(performance.now()-packagingStarted)/1000;timings.total=(performance.now()-started)/1000;
   if(weeklyEngine(root)!==verificationEngine)throw Error('Verification engine changed during build');
-  const result={fullVerification,verificationEngine,gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,rentalMarketStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
+  const result={fullVerification,verificationEngine,gitSha:sha,count:assets.length,assetManifestSha256:sha256(manifest),reused,written,timings,regionPriceStats,rentalMarketStats,housingMetadataStats,producerProof,validation:validation.stats,validationMisses:validation.misses,validationCacheStatus:validation.cacheStatus};
   writeFileSync(join(root,'cloudflare/dist/build-timings.json'),JSON.stringify(result));
   return result;
 }

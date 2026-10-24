@@ -44,6 +44,11 @@ hold only contract fields that the shared facts do not contain.
 This retained path can contain selected apartment and rowhouse sources. Use the
 source property type, not the file path, to identify the transaction type.
 Rental coverage stays separate for `apartment-rent` and `rowhouse-rent`.
+The producer skips an old contract JSON only when a new `regional-reference`
+has the same service, district, month, source SHA, and row count.
+It preserves both detail references and unmatched rows. It validates and keeps
+old JSON that has no replacement. Official retirement requires a separate
+reviewed release manifest.
 The 64 `data/apartments/entry/` files route detail reads to the actual source region.
 The unpublished dong history copies and their producer and reader were removed.
 See the [current detail contract](apartment-and-board.md#공통-거래를-사용하는-단지-상세).
@@ -78,7 +83,7 @@ manifest로 확인한다. 빌드 때 생성하는 캐시는 작업 폴더에 없
 | 8. 주택 가격대 통계 | `/stats/` 매매의 지역·동·가격구간·면적·세대수/시가총액·연도·세금 비교 | `price_bands.json`, `index.json`, `tax_revenue_actuals.json`을 함께 읽는다. 최신 주택 재고와 과거 시점 집계를 표시한다. 단지 목록은 전체 목록에서 조건을 적용하고 최대 300개를 표시한다. |
 | 9. 기간 계약 분포·순위 | `/stats/`, `/ranking/`, `/compare/`의 전세·월세, 날짜·일/주/월·환산·계약 구분·검색·범위 | 공통 rental 앱은 페이지별로 히스토그램·순위·지역 비교·추이 패널을 켠다. 선택 기간 계약을 공통 원문에서 읽고 필터·집계한다. 비교의 추이 패널은 `rental/summary.json`도 읽는다. `/stats/` 임대는 매매 `price_bands.json`이나 시장 요약 캐시를 사용하지 않는다. 표시 목록 50개 제한은 원문 읽기 범위를 줄이지 않는다. |
 | 10. 관심·보관함 | `/library/`의 관심 아파트/저장한 계산, 매매 기본 `/ranking/`의 하트 순위 | 관심 목록은 `/api/me/favorites`, 하트 API, 선택 entry와 `apartments/summary/<묶음>.bin`을 사용한다. Worker의 단지·면적 확인도 같은 요약 reader를 사용한다. 저장 계산은 개인 API의 입력·결과 스냅샷만 읽는다. 로그인하지 않은 보관함은 주택 자료를 읽지 않는다. |
-| 11. 공동주택 정보 | `/kapt-v2.html`의 지역·유형·검색·이전 `#k` 선택 | `housing-v3/index.json`의 공개 항목·연결·단지 메타데이터를 읽는다. 통합 상세로 이어지는 식별자를 사용한다. 공개 목록 수, 검토 승인 수, 건축물 상태를 서로 다른 의미로 유지한다. |
+| 11. 공동주택 정보 | `/kapt-v2.html`의 지역·유형·검색·이전 `#k` 선택 | `housing-v3/transport.json`과 원본 SHA 이름의 gzip JSON BIN으로 공개 목록 전체를 읽는다. 해제 원문 해시를 검증한다. 생성용 `housing-v3/index.json`은 유지하며 transport가 404인 구 배포·로컬에서만 직접 읽는다. 통합 상세 식별자와 공개 목록·검토 승인·건축물 상태의 구분을 보존한다. [전송 계약](apartment-and-board.md#공동주택-정보의-전송-형식) |
 
 현재 경로의 근거는 [홈 자료 결합](../js/home-search-view.js), [공통 검색](apartment-search.md),
 [지도](map-explorer.md), [기간 거래](daily-trades.md), [계약 목록](../js/contracts.js),
@@ -117,6 +122,7 @@ packed 형식도 전체 행을 객체로 펼치면 색인의 이점을 충분히
 | 공통 분기 거래·연간 초기 상태 | `PGHOUSE1`, `PGSTBND1` 안의 `PGSTATE1`, 숫자 열 `PGCOL001` | 이미 실제 packed다. 우선 과제는 기존 위치표와 버퍼를 소비자가 재사용하는 것이다. 새 거래 원문 파일을 만들 이유가 아니다. |
 | 단지 DTO·관심 요약·임대 시장 요약 | gzip 안의 `PGRCD001`, `PGCOL001` 숫자 열·문자열 사전·레코드 색인 | JSON 문자열 본문을 저장하지 않는다. 단지 또는 월 키를 이진 탐색한 뒤 해당 레코드만 복원한다. 기존 공개 JSON/gzip JSON도 읽을 수 있다. |
 | 검색 목록·검색 최신 요약 | 각각 32개 고정 ID 해시 버킷의 gzip JSON `.bin`, `format: gzip-json-records-v1` | 전체 목록을 만드는 현행 경로에서는 generic BIN보다 작고 최초 전체 읽기도 빨랐다. 파싱한 객체를 캐시하고 ID 키로 접근한다. [검색 형식과 측정](apartment-search.md#전송-형식-선택-근거-2026-10-23)이 기준이다. |
+| 공동주택 메타데이터 목록 | 원본 SHA 이름의 gzip JSON `.bin`, `format: gzip-json-v1` | 생성용 JSON을 보존하고 공개 전송만 압축한다. 전체 목록 파싱과 압축 바이트 캐시를 사용한다. [전송 계약](apartment-and-board.md#공동주택-정보의-전송-형식)이 기준이다. |
 | 지도 가격 캐시 | 기존 gzip JSON 분기 `.bin` | 실자료 표본의 BIN 크기·초기 조회가 불리해 기존 형식을 유지한다. 계산 결과와 분기 압축 결과를 재사용한다. [지역 가격](region-price-cache.md)이 기준이다. |
 | 지역 번호표·메타데이터 | 78개 지역별 JSON | 영구 번호와 Rust 이전 자료 판독 계약을 유지한다. 이 변경에서 형식을 바꾸지 않는다. |
 | 지도 목록·대규모 목록 색인 | JSON과 기존 `index.packed.bin` 읽기 경로가 공존 | 기존 packed 열을 재사용할 수 있는 소비자부터 검토한다. 홈의 최신 임대 요약 결합 등 추가 필드도 함께 보존해야 한다. |

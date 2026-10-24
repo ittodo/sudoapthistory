@@ -15,13 +15,19 @@
 
 검색의 `data/search/catalog/`와 `data/search/latest/`는 각각 32개 gzip JSON 버킷이며
 manifest의 `format`은 `gzip-json-records-v1`이다. `.bin` 파일명에는 내용 SHA-256을 넣는다.
-이 두 경로에만 1년 `immutable` 캐시를 적용한다. 작은 JSON manifest와
+이 두 경로와 아래 공동주택 전송 BIN에 1년 `immutable` 캐시를 적용한다. 작은 JSON manifest와
 고정 이름 BIN은 Cloudflare 기본 재검증을 유지한다. 자료 URL에 이미 SHA-256 `v`가
 있으면 `deployment-version.js`가 이를 배포 SHA로 덮지 않는다. 관련 없는 코드 배포로
 검증된 자료의 캐시 키를 바꾸지 않기 위한 규칙이다.
 [형식 선택과 최초 전체 읽기 측정](apartment-search.md#전송-형식-선택-근거-2026-10-23)은 검색 기준 문서에 둔다.
 [Cloudflare 정적 자산 헤더 규칙](https://developers.cloudflare.com/workers/static-assets/headers/)을 따른다.
 파일 수 20,000개와 파일당 25MiB 검사는 그대로 적용한다.
+
+공동주택 목록의 생성용 `data/housing-v3/index.json`은 Git과 공식 후보에 유지한다.
+CI 공개 자산은 `transport.json`과 원본 SHA 이름의 gzip JSON BIN으로 대체한다.
+이번 패키지의 정확한 BIN 경로에만 immutable 헤더를 쓴다. manifest와 다른 경로는
+재검증한다. 원문 해시·압축 해시·해제 길이를 연결한 [공동주택 전송 계약](apartment-and-board.md#공동주택-정보의-전송-형식)을 따른다.
+이 변환을 다른 생산 파일의 공개 해시 검사 생략에 사용하지 않는다.
 
 브라우저의 매매·전월세 공통 Cache Storage는 256파일·압축 바이트 64MiB를 제한으로
 사용한다. 저장 순서에 따라 오래된 항목을 정리한다. 같은 실행환경의 진행 중 요청과
