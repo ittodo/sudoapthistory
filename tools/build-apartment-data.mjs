@@ -55,7 +55,7 @@ export function buildApartmentData(root,{verify=false}={}) {
   const transactions=row=>{const path=`data/tx/${row.g}.json`;if(!txCache.has(path))txCache.set(path,read(path));const data=txCache.get(path);const entry=(data.entries||data)[String(row.i)]||{};
     return Object.entries(entry).flatMap(([year,ts])=>ts.map((t,order)=>({date:Number(year)*10000+t[0]*100+t[1],price:t[2],floor:t[3],flags:t[4]||0,cancelled:t[5]||'',row:row.i,source:row.as,name:row.n,order})));
   };
-  for(const e of entities){const p=e.publication,first=e.rows[0],mapRecord=e.rows.map(r=>locations.get(r.as)).find(Boolean),rental=p?.publicationMode==='metadata_only'||p?.tenure==='rental';
+  for(const e of entities){const p=e.publication,first=e.rows[0],mapRecord=locations.get(e.id)||e.rows.map(r=>locations.get(r.as)).find(Boolean),noTransaction=p?.transactionStatus==='none'||p?.publicationReason==='no_transactions',rental=!noTransaction&&(p?.publicationMode==='metadata_only'||p?.tenure==='rental');
     const groupAreas=new Map();for(const row of e.rows){if(!groupAreas.has(row.a))groupAreas.set(row.a,[]);groupAreas.get(row.a).push(row);}
     const areas=[...groupAreas].sort((a,b)=>a[0]-b[0]).map(([area,rows])=>{
       const trades=rental?[]:rows.flatMap(transactions),summary=summarize(trades);
@@ -65,13 +65,13 @@ export function buildApartmentData(root,{verify=false}={}) {
     const singleSource=new Set(e.rows.map(r=>r.as)).size===1;
     const address=p?.lotAddress||[ ['경기','서울','인천'][first?.r],first?.g,first?.d,first?.j].filter(Boolean).join(' ');
     const road=p?.roadAddress||first?.rd||'';
-    const dto={id:e.id,name:p?.name||first.n,address,road,region:p?.region||['경기','서울','인천'][first?.r],units:p?p.units??null:first?.tu??null,years,parking:singleSource?first?.pk??null:null,far:singleSource?first?.fr??null:null,coord:mapRecord?.coord||null,pnus:p?.parcels||mapRecord?.pnus||[],parcelScope:mapRecord?.scope||null,status:life?.status||mapRecord?.status||'unknown',rental,conflict:!!e.conflict,updated:index.meta.updated,propertyUpdated:housing.meta.updated||null,areas,registry:(p?.registry||[]).map(r=>({name:r.dong_name||r.name,purpose:r.purpose,units:r.units})),sources:e.rows.map(r=>r.as).filter((v,i,a)=>a.indexOf(v)===i)};
+    const dto={id:e.id,name:p?.name||first.n,address,road,region:p?.region||['경기','서울','인천'][first?.r],units:p?p.units??null:first?.tu??null,years,parking:singleSource?first?.pk??null:null,far:singleSource?first?.fr??null:null,coord:mapRecord?.coord||null,pnus:p?.parcels||mapRecord?.pnus||[],parcelScope:mapRecord?.scope||null,status:life?.status||mapRecord?.status||'unknown',rental,...(noTransaction?{transactionStatus:'none'}:{}),conflict:!!e.conflict,updated:index.meta.updated,propertyUpdated:housing.meta.updated||null,areas,registry:(p?.registry||[]).map(r=>({name:r.dong_name||r.name,purpose:r.purpose,units:r.units})),sources:e.rows.map(r=>r.as).filter((v,i,a)=>a.indexOf(v)===i)};
     const shard=sha(e.id).slice(0,2);shards[shard][e.id]=dto;
     for(const id of [e.id,...e.aliases]){if(Object.hasOwn(lookup,id)&&lookup[id][0]!==e.id)throw Error('Conflicting alias: '+id);lookup[id]=[e.id,shard];}
     for(const row of e.rows)legacy[row.i]=[e.id,row.a];
   }
   const outputs={};
-  for(const [key,data] of Object.entries(shards))outputs[`data/apartments/summary/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{id,name:a.name,region:a.region,district:a.areas[0]?.rows[0]?.district||districtFromAddress(a.address),address:a.address,updated:a.updated,rental:a.rental,areas:a.areas.map(x=>({area:x.area,latest:x.latest,lastFive:x.lastFive,recent:x.recent}))}])));
+  for(const [key,data] of Object.entries(shards))outputs[`data/apartments/summary/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{id,name:a.name,region:a.region,district:a.areas[0]?.rows[0]?.district||districtFromAddress(a.address),address:a.address,updated:a.updated,rental:a.rental,...(a.transactionStatus==='none'?{transactionStatus:'none'}:{}),areas:a.areas.map(x=>({area:x.area,latest:x.latest,lastFive:x.lastFive,recent:x.recent}))}])));
   for(const [key,data] of Object.entries(shards))outputs[`data/apartments/${key}.json`]=JSON.stringify(Object.fromEntries(Object.entries(data).map(([id,a])=>[id,{...a,areas:a.areas.map(({lastFive,...rest})=>rest)}])));
   const files=Object.fromEntries(Object.entries(outputs).map(([path,data])=>[path,sha(data)]));
   const packed=packApartmentShards({version:1,updated:index.meta.updated,propertyUpdated:housing.meta.updated||null,count:entities.length,lookup,legacy,sources:inputHashes,shards:files,ambiguous},path=>Buffer.from(outputs[path]));

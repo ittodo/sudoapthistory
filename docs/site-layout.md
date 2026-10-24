@@ -41,6 +41,9 @@ Apartment detail pages read the shared quarterly facts. The files in
 `data/sale-details/` hold sale references and cancellation text, not another full
 transaction history. Rental archive files under `data/contracts/apartment-rent/`
 hold only contract fields that the shared facts do not contain.
+This retained path can contain selected apartment and rowhouse sources. Use the
+source property type, not the file path, to identify the transaction type.
+Rental coverage stays separate for `apartment-rent` and `rowhouse-rent`.
 The 64 `data/apartments/entry/` files route detail reads to the actual source region.
 The unpublished dong history copies and their producer and reader were removed.
 See the [current detail contract](apartment-and-board.md#공통-거래를-사용하는-단지-상세).
@@ -69,8 +72,8 @@ manifest로 확인한다. 빌드 때 생성하는 캐시는 작업 폴더에 없
 | 2. 현재 지도 | `/map/`의 현재 모드, 매매·전세·월세, 지역·면적·가격 조건, 확대 수준 | 매매는 `map/index.json`의 현재 단지·평형 요약과 지도 지리 자료를 사용한다. 임대는 rental manifest·카탈로그·환산율과 지도 상태 경로를 사용한다. 확대 수준과 필터에 따라 지역 요약 또는 단지 상태를 읽는다. 경계·필지는 필요한 지역을 읽는다. |
 | 3. 시간별 가격 지도 | `/map/#mode=price`의 `date/start/end/step/speed/fx`, 매매·전세·월세. 호환 `mode=day`는 당일 거래 | 넓은 지도에서 지원 조건이면 `map/price-cache` 지역 요약을 사용한다. 확대 지도·세부 조건·거래 효과에는 공통 분기 거래의 변화와 연간 초기 상태를 사용한다. 연간 `PGSTBND1`의 거래 종류 구간은 HTTP Range로 읽는다. |
 | 4. 기간별 거래 조회 | `/trades/`, `/trades/daily/`의 매매·전세·월세, 일/주/월·날짜·분류·정렬·검색 | 매매 `/trades/`는 `market/<월>/<페이지>.json`을 읽고 선택 시 월별 통계 등을 읽는다. 매매 기간별 조회는 daily manifest와 공통 분기 거래를 사용한다. 임대는 rental manifest·카탈로그·환산율과 선택 기간 공통 거래를 사용한다. 임대 초기화에는 최신 거래일 계산을 위한 최신월 읽기도 있다. |
-| 5. 계약 상세 조회 | `/trades/contracts.html?property=apartment/rowhouse/officetel&category=jeonse/monthly/all-rent/sale` 및 `lawd/entity`, 화면의 기간·면적·검색. 매매는 오피스텔만 지원 | `contracts/index.json`의 선택 지역·월 partition을 읽는다. schema 2의 아파트 `regional-reference`는 공통 원문과 계약 추가 정보·표시 사전을 결합한다. 연립·오피스텔은 기존 계약 JSON을 유지한다. 단지 상세 연결 확인에는 `apartments/index.json`도 읽는다. |
-| 6. 단지 상세 | `/apartment/?id=…&area=…&tab=overview/trades/rent/investment/facts/location/comments`, 임대 `rentType/rentPeriod/rentArea`, 이전 `row` 링크 | entry manifest와 선택 색인으로 DTO와 실제 원천 지역을 찾는다. DTO는 `apartments/<묶음>.bin`이며 선택 ID만 복원한다. 개요·실거래는 공통 매매 원문과 `sale-details` 참조를 사용한다. 전월세 탭은 공통 임대 원문과 계약 추가 정보를 읽는다. 위치는 경계·지도, 의견은 API를 탭 진입 때 읽는다. |
+| 5. 계약 상세 조회 | `/trades/contracts.html?property=apartment/rowhouse/officetel&category=jeonse/monthly/all-rent/sale` 및 `lawd/entity`, 화면의 기간·면적·검색. 매매는 오피스텔만 지원 | `contracts/index.json`의 선택 지역·월 partition을 읽는다. schema 2의 아파트·연립 임대 `regional-reference`는 공통 원문과 계약 추가 정보·표시 사전을 결합한다. 공통 거래에 포함하지 않은 계약은 별도 BIN 행으로 보존한다. 오피스텔은 기존 계약 JSON을 유지한다. 단지 상세 연결 확인에는 `apartments/index.json`도 읽는다. |
+| 6. 단지 상세 | `/apartment/?id=…&area=…&tab=overview/trades/rent/investment/facts/location/comments`, 임대 `rentType/rentPeriod/rentArea`, 이전 `row` 링크 | entry manifest와 선택 색인으로 DTO와 실제 원천 지역을 찾는다. DTO는 `apartments/<묶음>.bin`이며 선택 ID만 복원한다. 개요·실거래는 공통 매매 원문과 `sale-details` 참조를 사용한다. 전월세 탭은 공통 임대 원문과 계약 추가 정보를 읽고 실제 서비스별 수집 범위를 대조한다. 대장 전용 항목의 `transactionStatus:none`은 거래 자료 없음으로 표시한다. 위치는 경계·지도, 의견은 API를 탭 진입 때 읽는다. |
 | 7. 비교·시장 추이 | `/compare/`의 단지/시구/동, 연/월, 가격/투자 시뮬; `/market/`의 거래 유형·기간·지역·가격구간·기준월 | 매매 비교는 공통 목록 색인과 `prices.json` 등 집계 자료를 사용한다. 매매 시장은 `market.json` 요약과 별도 월별 거래 목록을 읽는다. 임대 시장은 `rental/market-cache/<연도>-summary.bin`을 우선 사용한다. 다중 시군구·단지·금액/면적 범위 또는 계약 목록 요청은 공통 원문 경로로 전환한다. 가격 차트 금리는 `market-rates/mortgage.json`이다. |
 | 8. 주택 가격대 통계 | `/stats/` 매매의 지역·동·가격구간·면적·세대수/시가총액·연도·세금 비교 | `price_bands.json`, `index.json`, `tax_revenue_actuals.json`을 함께 읽는다. 최신 주택 재고와 과거 시점 집계를 표시한다. 단지 목록은 전체 목록에서 조건을 적용하고 최대 300개를 표시한다. |
 | 9. 기간 계약 분포·순위 | `/stats/`, `/ranking/`, `/compare/`의 전세·월세, 날짜·일/주/월·환산·계약 구분·검색·범위 | 공통 rental 앱은 페이지별로 히스토그램·순위·지역 비교·추이 패널을 켠다. 선택 기간 계약을 공통 원문에서 읽고 필터·집계한다. 비교의 추이 패널은 `rental/summary.json`도 읽는다. `/stats/` 임대는 매매 `price_bands.json`이나 시장 요약 캐시를 사용하지 않는다. 표시 목록 50개 제한은 원문 읽기 범위를 줄이지 않는다. |

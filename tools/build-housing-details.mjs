@@ -7,7 +7,7 @@ const hash=b=>createHash('sha256').update(b).digest('hex'),canonical=r=>JSON.str
 export function retainUnconvertedContracts(previous,manifest,emit){
  const inputs=new Map(),read=p=>{const b=readFileSync(join(previous,p));inputs.set(p,hash(b));return b;},prior=JSON.parse(read('data/contracts/index.json'));if(![1,2].includes(prior.schema))throw Error('Unsupported previous contract manifest');
  const present=new Set(manifest.partitions.map(p=>p.path));let files=0,bytes=0;
- for(const p of prior.partitions){if(p.service==='apartment-rent'||present.has(p.path))continue;
+ for(const p of prior.partitions){if(p.service==='apartment-rent'||p.format==='regional-reference'||present.has(p.path))continue;
   if(!['rowhouse-rent','officetel-sale','officetel-rent'].includes(p.service)||!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month)||p.path!==`${p.service}/${p.lawd}/${p.month}.json`)throw Error('Unsafe retained contract partition');
   const path='data/contracts/'+p.path,b=read(path),value=JSON.parse(b);if((prior.schema===2&&prior.sources[path]!==hash(b))||value.rows.length!==p.count||value.rows.some(r=>r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Retained contract evidence mismatch');
   emit(path,b);manifest.partitions.push(p);manifest.sources[path]=hash(b);present.add(p.path);files++;bytes+=b.length;
@@ -21,27 +21,27 @@ export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,g
  const displays=new Map(),engine=detailEngine('build-housing-details.mjs'),reuse={months:0,builtMonths:0},inputReuse={partitions:0,parsed:0};
  const manifest={...old,schema:2,rentalVersion:rental.manifest.version,sources:{},partitions:[]},retired={},metrics={matched:0,unmatched:0,oldBytes:0,newBytes:0};
  function emit(p,b){const file=join(packed,p);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,b);manifest.sources[p]=hash(b);metrics.newBytes+=b.length;}
- for(const privatePartition of old.partitions){const {sourceHash,...p}=privatePartition;const path='data/contracts/'+p.path;if(p.service!=='apartment-rent'){const b=readFileSync(join(source,path));input.set(path,hash(b));manifest.sources[path]=hash(b);manifest.partitions.push(p);continue;}
-  if(!/^apartment-rent\/\d{5}\/\d{6}\.json$/.test(p.path))throw Error('Unsafe source partition');const batchScope='rental/'+p.lawd+'/'+p.month,oldScope=generationSession?.peek(batchScope),month=p.month.slice(0,4)+'-'+p.month.slice(4);
+ for(const privatePartition of old.partitions){const {sourceHash,...p}=privatePartition;const path='data/contracts/'+p.path;if(!['apartment-rent','rowhouse-rent'].includes(p.service)){const b=readFileSync(join(source,path));input.set(path,hash(b));manifest.sources[path]=hash(b);manifest.partitions.push(p);continue;}
+  if(!/^(apartment-rent|rowhouse-rent)\/\d{5}\/\d{6}\.json$/.test(p.path))throw Error('Unsafe source partition');const batchScope='rental/'+p.service+'/'+p.lawd+'/'+p.month,oldScope=generationSession?.peek(batchScope),month=p.month.slice(0,4)+'-'+p.month.slice(4);
   if(oldScope&&typeof sourceHash==='string'){
    const entities=oldScope.result.entities,regionCodes=[...new Set(entities.map(id=>rental.table.source.get(id)?.split(':')[0]).filter(Boolean))].sort(),dependencies=Object.assign({},...regionCodes.map(code=>detailDependencies(rental,code,[month]))),mapping=entities.map(id=>[id,rental.table.source.get(id)||null]);
    const key=[engine,p.service,p.lawd,p.month,p.count,p.rejectedCount||0,sourceHash,dependencies,mapping];
-   const hit=generationSession.load(batchScope,key,detailIdentity(rental.table,regionCodes),name=>name==='data/contracts/apartment-rent/'+p.lawd+'/'+p.month+'-details.bin'||name==='data/contracts/apartment-rent/'+p.lawd+'/'+p.month+'-unmatched.bin',emit);
+   const hit=generationSession.load(batchScope,key,detailIdentity(rental.table,regionCodes),name=>name==='data/contracts/'+p.service+'/'+p.lawd+'/'+p.month+'-details.bin'||name==='data/contracts/'+p.service+'/'+p.lawd+'/'+p.month+'-unmatched.bin',emit);
    if(hit){manifest.partitions.push({...p,...hit.partition});retired[path]=sourceHash;metrics.oldBytes+=hit.inputBytes;metrics.matched+=hit.matched;metrics.unmatched+=hit.unmatchedCount;reuse.months++;generationSession.metrics.rawInputsSkipped++;
     if(hit.partition.display){if(!displays.has(hit.partition.display))displays.set(hit.partition.display,{});const refs=displays.get(hit.partition.display);for(const[id,meta]of Object.entries(hit.display)){if(refs[id]&&canonical(refs[id])!==canonical(meta))throw Error('Conflicting contract display identity');refs[id]=meta;}}continue;
    }
   }
   const sourceBytes=readFileSync(join(source,path)),selection=contractInput(cacheDir,engine,p,sourceBytes);input.set(path,selection.digest);const regionCodes=[...new Set(selection.entities.map(id=>rental.table.source.get(id)?.split(':')[0]).filter(Boolean))].sort();
   const dependencies=Object.assign({},...regionCodes.map(code=>detailDependencies(rental,code,[month]))),mapping=selection.entities.map(id=>[id,rental.table.source.get(id)||null]);
-  const cached=detailMemo(cacheDir,[engine,'rental',p,input.get(path),month,dependencies,mapping],detailIdentity(rental.table,regionCodes),name=>name===`data/contracts/apartment-rent/${p.lawd}/${p.month}-details.bin`||name===`data/contracts/apartment-rent/${p.lawd}/${p.month}-unmatched.bin`,()=>{
+  const cached=detailMemo(cacheDir,[engine,'rental',p,input.get(path),month,dependencies,mapping],detailIdentity(rental.table,regionCodes),name=>name===`data/contracts/${p.service}/${p.lawd}/${p.month}-details.bin`||name===`data/contracts/${p.service}/${p.lawd}/${p.month}-unmatched.bin`,()=>{
   const raw=selection.rows(),facts=regionCodes.flatMap(code=>rental.regionMonth(code,month,false).rows);
   const value=packContractDetails(raw,facts,rental.table,codec);assert.deepEqual(restoreDetails(value.details,value.unmatched,value.display,facts,rental.table,codec).map(canonical).sort(),raw.map(canonical).sort());
-  const prefix=`data/contracts/apartment-rent/${p.lawd}/${p.month}`,files=new Map();
+  const prefix=`data/contracts/${p.service}/${p.lawd}/${p.month}`,files=new Map();
   if(value.matched)files.set(prefix+'-details.bin',gzipSync(value.details,{level:6}));if(value.unmatchedCount)files.set(prefix+'-unmatched.bin',gzipSync(value.unmatched,{level:6}));
   return{result:{matched:value.matched,unmatchedCount:value.unmatchedCount,display:value.display},files};
   });
   if(selection.reused)inputReuse.partitions++;if(selection.parsed)inputReuse.parsed++;if(cached.reused)reuse.months++;else reuse.builtMonths++;const value=cached.result;
-  const prefix=`data/contracts/apartment-rent/${p.lawd}/${p.month}`,details=value.matched?prefix+'-details.bin':null,unmatched=value.unmatchedCount?prefix+'-unmatched.bin':null,display=value.matched?`data/contracts/apartment-rent/${p.lawd}/display.json`:null;
+  const prefix=`data/contracts/${p.service}/${p.lawd}/${p.month}`,details=value.matched?prefix+'-details.bin':null,unmatched=value.unmatchedCount?prefix+'-unmatched.bin':null,display=value.matched?`data/contracts/${p.service}/${p.lawd}/display.json`:null;
   for(const[p,b]of cached.files)emit(p,b);
   // Deduplicate display text outside transaction files. Exceptions retain original source wording.
   if(display){if(!displays.has(display))displays.set(display,{});const refs=displays.get(display);for(const[id,meta]of Object.entries(value.display)){if(refs[id]&&canonical(refs[id])!==canonical(meta))throw Error('Conflicting contract display identity');refs[id]=meta;}}
