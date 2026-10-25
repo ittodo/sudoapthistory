@@ -6,6 +6,15 @@ import {verifyProduction} from './verify-cloudflare-production.mjs';
 const source=JSON.parse(readFileSync(new URL('../wrangler.jsonc',import.meta.url),'utf8'));
 const contract={schema:1,provider:'cloudflare',productionOrigin:'https://nodostream.com'};
 const env={GITHUB_REF:'refs/heads/main',CLOUDFLARE_PRODUCTION_ENABLED:'true',NODESTREAM_DEPLOYMENT_PROVIDER:'cloudflare',CLOUDFLARE_ACCOUNT_ID:'90ef0cc5b9fc89e9005b5ca905ae2b6e',CLOUDFLARE_PRODUCTION_D1_ID:'11111111-2222-4333-8444-555555555555',CLOUDFLARE_WORKERS_PLAN:'free'};
+test('production builds reuse caches without consulting weekly completion records',()=>{
+ const workflow=readFileSync(new URL('../.github/workflows/cloudflare-production.yml',import.meta.url),'utf8');
+ assert.match(workflow,/NODO_FULL_VERIFY:\s*'0'/);
+ assert.doesNotMatch(workflow,/weekly-verification\.mjs (?:select|record)|path: cloudflare\/dist\/weekly-verification-v1/);
+ assert.match(workflow,/path: cloudflare\/dist\/housing-cache\.sqlite/);
+ assert.match(workflow,/run: npm run build/);
+ assert.match(workflow,/node tools\/verify-cloudflare-deployment\.mjs/);
+ assert.match(workflow,/node tools\/verify-cloudflare-auth-start\.mjs --production/);
+});
 function fixture(){const c=structuredClone(source);delete c.env.production.limits;c.env.production.vars.AUTH_ENABLED='false';c.env.production.vars.MAINTENANCE='true';c.env.production.d1_databases[0].database_id=env.CLOUDFLARE_PRODUCTION_D1_ID;return c;}
 test('committed production settings preserve approved live free service',()=>{
  assert.equal(source.env.production.preview_urls,false);
