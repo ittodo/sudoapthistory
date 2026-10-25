@@ -19,11 +19,17 @@ test('oversized producer metadata is preserved and only exact compressed transpo
   process.env.NODO_CACHE_DB=join(root,'cloudflare/dist/housing-cache.sqlite');
   execFileSync('git',['init'],{cwd:root,stdio:'pipe'});writeFileSync(join(root,'.gitignore'),'cloudflare/dist/\n');
   mkdirSync(join(root,'data/housing-v3'),{recursive:true});writeFileSync(join(root,'index.html'),'<html><head></head><body></body></html>');
-  const source=join(root,'data/housing-v3/index.json'),raw=Buffer.from(JSON.stringify({meta:{approvedOnly:true},complexes:[],padding:'a'.repeat(25*1024*1024)}));writeFileSync(source,raw);
+  const source=join(root,'data/housing-v3/index.json'),raw=Buffer.from(JSON.stringify({meta:{approvedOnly:true},complexes:[
+   {id:'rental-one',housingFamily:'apartment',tenure:'rental'},
+   {id:'no-sale-facts',housingFamily:'apartment',tenure:null,transactionStatus:'none'},
+   {id:'private-with-rent',housingFamily:'apartment',tenure:'private',rentalIds:['rent-source']},
+   {id:'other-family',housingFamily:'officetel',tenure:'rental'}
+  ],padding:'a'.repeat(25*1024*1024)}));writeFileSync(source,raw);
   const output=join(root,'cloudflare/dist/public'),first=build(root,output,'a'.repeat(40)),manifest=JSON.parse(readFileSync(join(output,'data/housing-v3/transport.json'))),published=JSON.parse(readFileSync(join(output,'deployment-manifest.json')));
   assert.equal(publicAsset('data/housing-v3/index.json'),true,'raw JSON remains available to local preview');
   assert.ok(raw.length>25*1024*1024);assert.deepEqual(readFileSync(source),raw);assert.equal(existsSync(join(output,'data/housing-v3/index.json')),false);
   assert.equal(manifest.format,'gzip-json-v1');assert.equal(manifest.source.sha256,hash(raw));assert.equal(manifest.source.bytes,raw.length);
+  assert.deepEqual(manifest.rentalComplexIds,['rental-one'],'only the current apartment tenure classification supplies rental labels');
   const packed=readFileSync(join(output,manifest.file.path));assert.deepEqual(gunzipSync(packed),raw);assert.equal(hash(packed),manifest.file.sha256);assert.ok(packed.length<25*1024*1024);
   assert.equal(published.files.filter(f=>f.path.startsWith('data/housing-v3/')).length,2);
   for(const entry of published.files){const b=readFileSync(join(output,entry.path));assert.equal(entry.sha256,hash(b));assert.equal(entry.bytes,b.length);}

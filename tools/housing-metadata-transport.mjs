@@ -21,7 +21,8 @@ export function housingMetadataTransport(root,{stats={}}={}){
   if(bytes)stats.reused++;else{bytes=gzipSync(raw,{level:6});cache.write(key,bytes);cache.write(receipt,JSON.stringify({fingerprint,sha256:hash(bytes)}));stats.encoded++;}
  }finally{cache.close();}
  if(bytes.length>25*1024*1024)throw Error('Housing metadata transport exceeds 25 MiB');
- const manifest={schema:1,format:'gzip-json-v1',source:{path:housingMetadataSource,sha256:digest,bytes:raw.length},file:{path:`data/housing-v3/index.${digest}.bin`,sha256:hash(bytes),bytes:bytes.length}};
+ const rentalComplexIds=[...new Set((JSON.parse(raw).complexes||[]).filter(p=>p.housingFamily==='apartment'&&p.tenure==='rental').map(p=>p.id))].sort();
+ const manifest={schema:1,format:'gzip-json-v1',source:{path:housingMetadataSource,sha256:digest,bytes:raw.length},file:{path:`data/housing-v3/index.${digest}.bin`,sha256:hash(bytes),bytes:bytes.length},rentalComplexIds};
  stats.bytes=bytes.length;
  return {manifest,assets:[{path:manifest.file.path,bytes},{path:housingMetadataManifest,bytes:Buffer.from(JSON.stringify(manifest))}],
   recheck(){if(hash(readFileSync(sourceFile))!==digest)throw Error('Housing metadata source changed during packaging');}};

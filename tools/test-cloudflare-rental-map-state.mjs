@@ -57,6 +57,25 @@ test('sale and rental map readers share one in-flight index and retry failed dow
  assert.equal(await read(),payload);assert.equal(requests,2);
 });
 
+test('map rental labels use matching metadata and canonical IDs without loading apartment shards',async()=>{
+ const expected='a'.repeat(64),requests=[];let stale=true;
+ const payload={meta:{sources:{'data/housing-v3/index.json':expected}},d:[
+  {id:'map-one',publicationId:'rental-one'},
+  {id:'no-sale-facts',areas:[],memberSources:[{id:'rental-one'}]},
+  {id:'rental-direct'},
+  {id:'private',rental:true}
+ ]};
+ const context=vm.createContext({window:{},fetch:async path=>{
+  requests.push(path);return {ok:true,json:async()=>path==='/data/map/index.json'?structuredClone(payload):
+   {schema:1,source:{sha256:stale?'b'.repeat(64):expected},rentalComplexIds:['rental-one','rental-direct']}};
+ }});
+ vm.runInContext(readFileSync(new URL('../js/data-loader.js',import.meta.url),'utf8'),context);
+ const read=context.window.loadMapIndex;await assert.rejects(read(),/업데이트/);
+ stale=false;const [sale,rent]=await Promise.all([read(),read()]);assert.equal(sale,rent);
+ assert.deepEqual(sale.d.map(c=>c.rental),[true,false,true,false]);
+ await read();assert.deepEqual(requests,['/data/map/index.json','/data/housing-v3/transport.json','/data/map/index.json','/data/housing-v3/transport.json']);
+});
+
 test('a superseded request cannot paint after asynchronous map initialization',async()=>{
  const source=readFileSync(new URL('../js/rental-app.js',import.meta.url),'utf8');
  const render=source.slice(source.indexOf(' async function renderMap('),source.indexOf(' function drawMap()'));

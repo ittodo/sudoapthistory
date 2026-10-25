@@ -8,6 +8,7 @@
   const regions = ['경기','서울','인천'];
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money = value => value == null ? '거래 자료 없음' : (value / 10000).toLocaleString('ko-KR',{maximumFractionDigits:4})+'억';
+  const priceLabel = (complex,value) => complex.rental ? '임대 단지' : money(value);
   let map, markers, chart, payload, client, byId, regionView, parcelView, tap, navigationDone, filtered=[], matches=new Map();
   let selected=null, selectedArea=null, filters={}, restoring=false, detailToken=0, boundaryToken=0;
   let transactionRows=[], visibleTrades=30, searchTimer, toastTimer, renderFrame, tileFailed=false;
@@ -115,8 +116,8 @@
   function addApartment(match,isSelected=false) {
     const c=match.complex, a=isSelected&&selected?.id===c.id&&selectedArea?selectedArea:match.area, trade=a?.latest;
     const stale=trade && Date.now()-new Date(fmtDate(trade[0])).getTime()>365*86400000;
-    const label=timeline?.active()?timeline.label(match,isSelected):`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
-    const title=`${c.n} · ${a?fmtArea(a.a):''} · ${timeline?.active()?'선택 시점':'최근 실거래'} ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`;
+    const label=c.rental?`<div class="apt-label ${isSelected?'selected':''}"><b>임대 단지</b></div>`:timeline?.active()?timeline.label(match,isSelected):`<div class="apt-label ${isSelected?'selected':''} ${stale?'stale':''}"><b>${money(trade?.[1])}</b><small>${a?esc(a.a)+'㎡':''}${stale?' · 1년 전':''}${trade?.[3]&1?' · 직거래':''}</small></div>`;
+    const title=c.rental?`${c.n} · 임대 단지`:`${c.n} · ${a?fmtArea(a.a):''} · ${timeline?.active()?'선택 시점':'최근 실거래'} ${money(trade?.[1])}${trade?' · '+fmtDate(trade[0]):''}`;
     const anchor=model.labelPosition(c,map),cached=apartmentMarkers.get(c.id);
     if(cached){cached.marker.setLatLng(anchor);if(cached.label!==label){cached.marker.getElement().innerHTML=label;cached.label=label;}cached.marker.getElement().title=title;cached.marker.setZIndexOffset(isSelected?1000:0);return;}
     const marker=L.marker(anchor,{icon:L.divIcon({className:'apt-marker',html:label,iconSize:[98,46],iconAnchor:[49,23]}),zIndexOffset:isSelected?1000:0,title}).addTo(markers);
@@ -138,7 +139,7 @@
   }
   function showOverlap(group,center) {
     const el=document.createElement('div');el.className='overlap-list';
-    group.forEach(m=>{const b=document.createElement('button');b.innerHTML=`${esc(m.complex.n)}<small>${esc(address(m.complex))} · ${money(m.area?.latest?.[1])}</small>`;b.onclick=()=>{map.closePopup();select(m.complex.id,null,true,false);};el.append(b);});
+    group.forEach(m=>{const b=document.createElement('button');b.innerHTML=`${esc(m.complex.n)}<small>${esc(address(m.complex))} · ${priceLabel(m.complex,m.area?.latest?.[1])}</small>`;b.onclick=()=>{map.closePopup();select(m.complex.id,null,true,false);};el.append(b);});
     L.popup().setLatLng(center).setContent(el).openOn(map);
   }
   function focusOn(c) {

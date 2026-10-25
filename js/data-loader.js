@@ -9,6 +9,17 @@
     if(!mapIndex)mapIndex=fetch('/data/map/index.json',{cache:'no-cache'}).then(r=>{
       if(!r.ok)throw Error('지도 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
       return r.json();
+    }).then(async payload=>{
+      const expected=payload.meta?.sources?.['data/housing-v3/index.json'];
+      if(expected){
+        const response=await fetch('/data/housing-v3/transport.json',{cache:'no-cache'});
+        if(!response.ok)throw Error('단지 구분을 불러오지 못했습니다. 다시 시도해 주세요.');
+        const metadata=await response.json();
+        if(metadata.schema!==1||metadata.source?.sha256!==expected||!Array.isArray(metadata.rentalComplexIds)||metadata.rentalComplexIds.some(id=>typeof id!=='string'))throw Error('단지 구분 자료가 업데이트되었습니다. 새로고침해 주세요.');
+        const rentalIds=new Set(metadata.rentalComplexIds);
+        for(const complex of payload.d)complex.rental=rentalIds.has(complex.publicationId||complex.id);
+      }
+      return payload;
     }).catch(error=>{mapIndex=null;throw error;});
     return mapIndex;
   };
