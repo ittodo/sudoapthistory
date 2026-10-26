@@ -72,7 +72,21 @@
     }
     return map.containerPointToLatLng([center.x,y]);
   }
-  const api = {...pricing, regionLevel, regionClickable, geometryContains, bindMapTap, createTapGuard, labelPosition};
+  // Boundaries use current metadata, independently of the available historical prices.
+  // Strip current prices so they cannot enter an old frame or its regional average.
+  function historicalBoundaries(complexes, filters, dailyModel) {
+    if(filters.pL!=null || filters.pH!=null)return [];
+    const result=[];
+    for(const c of complexes){
+      const sources=[c,...(c.memberSources||[]).map(s=>({...c,id:s.id,n:s.n}))];
+      const matches=a=>sources.some(source=>dailyModel.match({a,p:0,c:source},filters));
+      const areas=c.areas.filter(a=>matches(a.a)).map(a=>({i:a.i,a:a.a,latest:null}));
+      if(!areas.length && (c.areas.length || !matches(undefined)))continue;
+      result.push({...c,areas,historicalNoPrice:true});
+    }
+    return result;
+  }
+  const api = {...pricing, regionLevel, regionClickable, geometryContains, bindMapTap, createTapGuard, labelPosition, historicalBoundaries};
   root.NodoMapModel = api;
   if (typeof module !== "undefined") module.exports = api;
 })(globalThis);

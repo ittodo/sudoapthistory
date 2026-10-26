@@ -68,7 +68,7 @@
         const active=members.some(m=>m.complex.id===selected?.id);
         const corrected=corrections.has(pnu)||boundaries.get(pnu)?.source==='review_display_correction';
         if(entry.active!==active){entry.layer.setStyle({color:'#0f766e',weight:active?3:2,opacity:active?1:.9,fillColor:'#14b8a6',fillOpacity:active?.2:0,dashArray:corrected?'6 4':null});entry.active=active;}
-        const title=members.map(m=>escape(m.complex.n)+(corrected?' · 검토 보정 경계':boundaries.has(pnu)?' · 단지 외곽선':m.complex.scope.startsWith('representative')?' · 대표 필지':'')).join('<br>');
+        const title=members.map(m=>escape(m.complex.n)+(m.complex.historicalNoPrice?' · 해당 시점 매매 자료 없음':'')+(corrected?' · 검토 보정 경계':boundaries.has(pnu)?' · 단지 외곽선':m.complex.scope.startsWith('representative')?' · 대표 필지':'')).join('<br>');
         if(entry.title!==title){entry.layer.unbindTooltip();entry.layer.bindTooltip(title,{sticky:true});entry.title=title;}
       }
       for(const [pnu,entry] of layers)if(!drawn.has(pnu)){group.removeLayer(entry.layer);layers.delete(pnu);}

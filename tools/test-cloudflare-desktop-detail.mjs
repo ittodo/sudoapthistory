@@ -73,14 +73,14 @@ test('direct restored detail selection remains available to map data that loads 
  const e=environment({path:'/map/?detail='+encodeURIComponent('/apartment/?id=public-A&tab=trades')+'#mode=price&date=2020-01-31'});
  e.events['document:DOMContentLoaded']();assert.equal(e.context.NodoApartmentLinks.selection().id,'public-A');
  const mapSource=readFileSync(new URL('../js/map-app.js',import.meta.url),'utf8');
- Object.assign(e.context,{byId:new Map(),matches:new Map(),selected:null});
+ Object.assign(e.context,{byId:new Map(),boundaryMatches:new Map(),selected:null});
  vm.runInContext(mapSource.slice(mapSource.indexOf('  function highlightedComplex()'),mapSource.indexOf('  function render()')),e.context);
  assert.equal(e.context.highlightedComplex(),null);
  const current={id:'map-A'},historical={id:'map-A',areas:[{a:60}]};
- e.context.byId.set('public-A',current);e.context.matches.set('map-A',{complex:historical});
+ e.context.byId.set('public-A',current);e.context.boundaryMatches.set('map-A',{complex:historical});
  assert.equal(e.context.highlightedComplex(),historical,'highlight uses the displayed historical complex through its public ID');
- e.context.matches.clear();assert.equal(e.context.highlightedComplex(),null,'an excluded complex stays excluded');
- e.context.matches.set('map-A',{complex:historical});e.context.NodoApartmentLinks.close();assert.equal(e.context.highlightedComplex(),null);
+ e.context.boundaryMatches.clear();assert.equal(e.context.highlightedComplex(),null,'an excluded complex stays excluded');
+ e.context.boundaryMatches.set('map-A',{complex:historical});e.context.NodoApartmentLinks.close();assert.equal(e.context.highlightedComplex(),null);
  assert.equal(e.context.selected,null,'highlight does not populate the old hash selection');
 });
 
@@ -130,7 +130,7 @@ function historicalMap({wide=true,legacy=false}={}){
  vm.runInContext(readFileSync(new URL('../js/daily-model.js',import.meta.url),'utf8'),e.context);
  const actions=[];
  Object.assign(e.context,{root:e.context,M:e.context.NodoDailyModel,loading:false,currentFilters:{aH:60},filters:{aH:60},
-  mode:'price',day:'2026-09-30',start:'2026-09-01',end:'2026-09-30',step:'month',speed:4,kind:'all',district:'',
+  mode:'price',day:'2026-09-30',start:'2026-09-01',end:'2026-09-30',step:'month',speed:4,kind:'all',district:'',regionalFrame:false,boundaryComplexes:[],
   restoring:false,restoredOnce:false,preferences:{mode:'price'},pendingFocus:null,payload:{},selected:null,selectedArea:null,
   storageKey:'map-test',localStorage:{setItem(){}},remember(){},sync(){},applyPreference(){},
   $:()=>({value:'',checked:true}),map:{getCenter:()=>({lat:37.54,lng:127.01}),getZoom:()=>18,setView(){}},
@@ -157,11 +157,12 @@ for(const [exact,display] of [[59.97,60],[104.5,104],[105.5,106]])test(`a histor
  assert.deepEqual(e.actions,['stop','save']);
  assert.equal(detail.searchParams.get('id'),'public-A');assert.equal(detail.searchParams.get('area'),String(display));
  assert.equal(detail.searchParams.get('tab'),'trades');assert.equal(detail.searchParams.get('tenure'),'sale');
+ assert.equal(detail.searchParams.has('mapNoSaleAt'),false,'a priced selection has no missing-sale notice');
  const hash=new URLSearchParams(new URL(e.href).hash.slice(1));
  assert.equal(hash.get('date'),'2026-09-30');assert.equal(hash.get('step'),'month');assert.equal(hash.get('speed'),'4');
  const apartmentSource=readFileSync(new URL('../js/apartment-app.js',import.meta.url),'utf8');
  const selection=apartmentSource.slice(apartmentSource.indexOf('  function selection()'),apartmentSource.indexOf('  function header()'));
- const detailContext={URLSearchParams,location:{search:detail.search},tabs:{trades:true},area:null,tab:null,apartment:{areas:[{area:display,latest:{date:20260925}},{area:85,latest:{date:20260930}},{area:105,latest:{date:20260929}}]}};
+ const detailContext={URLSearchParams,location:{search:detail.search},tabs:{trades:true},area:null,tab:null,fullApartment:null,apartment:{areas:[{area:display,latest:{date:20260925}},{area:85,latest:{date:20260930}},{area:105,latest:{date:20260929}}]}};
  vm.runInNewContext(selection+';selection();',detailContext);assert.equal(detailContext.area.area,display);
  e.context.loading=true;e.context.select('map-A');assert.deepEqual(e.actions,['stop','save']);
 });
@@ -178,4 +179,53 @@ for(const wide of [true,false])for(const legacy of [false,true])test(`${wide?'de
  const hash=new URLSearchParams(new URL(e.href).hash.slice(1));
  for(const [key,value]of Object.entries({lat:'37.54000',lng:'127.01000',z:'18',date:'2026-09-30',step:'month',speed:'4',aH:'60'}))assert.equal(hash.get(key),value,key);
  if(!wide)assert.equal(e.navigations.length,1);
+});
+
+for(const wide of [true,false])test(`${wide?'desktop':'mobile'} unpriced boundary opens detail with the selected map date`,()=>{
+ const e=historicalMap({wide});
+ e.context.day='2018-05-31';e.context.complexes=[];
+ e.context.boundaryComplexes=[{id:'map-A',publicationId:'public-A',coord:[37.46,126.82],historicalNoPrice:true,areas:[{a:59.97,i:1,latest:null}]}];
+ e.context.select('map-A');
+ const detail=new URL(wide?e.frame.src:e.navigations[0],'https://site.test');
+ assert.equal(detail.searchParams.get('id'),'public-A');
+ assert.equal(detail.searchParams.get('mapNoSaleAt'),'2018-05-31');
+ assert.equal(detail.searchParams.get('tab'),'trades');
+ assert.equal(detail.searchParams.has('area'),false,'no future price area is selected by the map');
+ assert.deepEqual(e.actions,['stop','save']);
+ const child=environment({embedded:true,path:detail.pathname+detail.search});
+ Object.assign(child.context,{apartment:{id:'public-A'},tab:'facts',area:{area:60}});
+ const source=readFileSync(new URL('../js/apartment-app.js',import.meta.url),'utf8');
+ vm.runInContext(source.slice(source.indexOf('  function save('),source.indexOf('  function selection()')),child.context);
+ child.context.save();
+ assert.equal(new URL(child.href).searchParams.get('mapNoSaleAt'),'2018-05-31','changing detail tabs retains the map notice date');
+ assert.equal(new URL(child.href).searchParams.get('tab'),'facts');
+});
+
+test('selecting a boundary from regional cache resolves its prices before opening detail',()=>{
+ const e=historicalMap();let refreshed=0;
+ e.context.regionalFrame=true;e.context.refresh=()=>{refreshed++;};
+ e.context.select('map-A');
+ assert.equal(refreshed,1);assert.equal(e.context.pendingFocus,'map-A');
+ assert.equal(e.hasPanel(),false,'a summary-only frame must not claim missing sale data');
+});
+
+test('regional summaries keep boundaries without claiming per-complex price availability',async()=>{
+ const e=historicalMap(),c=e.context,frames=[];
+ const cached={complexCount:1,regionSummaries:[]};
+ Object.assign(c,{request:0,renderedMode:'price',renderedDay:'2019-05-01',boundarySignature:'',boundaryComplexes:[],regionalBoundaries:null,
+  day:'2019-05-01',start:'2019-05-01',end:'2019-06-30',getFilters:()=>({}),settings:()=>({}),
+  payload:{meta:{sourceVersion:'map'},d:[{id:'map-A',scope:'current_review',areas:[{i:1,a:60,latest:[20260930,90000]}]}]},
+  el:{setAttribute(){},dataset:{}},effects:{clear(){}},
+  ensure:async()=>{},client:{index:{minDate:'2006-01-01',maxDate:'2026-09-30',version:'sale'},cancelPrices(){}},
+  NodoRegionPrices:{eligible:()=>true},regionPrices:{get:async()=>cached},
+  map:{closePopup(){},getZoom:()=>15},applyRegional:(summary,boundaries)=>frames.push({summary,boundaries}),
+  $:()=>({checked:false}),sync(){},save(){}});
+ const source=readFileSync(new URL('../js/map-timeline.js',import.meta.url),'utf8');
+ vm.runInContext(source.slice(source.indexOf('    async function refresh('),source.indexOf('    function write(p)')),c);
+ assert.equal(await c.refresh(),true);
+ assert.equal(frames[0].summary,cached);
+ assert.equal(frames[0].boundaries[0].historicalNoPrice,false,'a regional summary cannot establish that a complex has no trades');
+ assert.equal(frames[0].boundaries[0].areas[0].latest,null,'current prices are absent even in the regional boundary list');
+ c.day='2019-06-01';assert.equal(await c.refresh(),true);
+ assert.equal(frames[1].boundaries,frames[0].boundaries,'date changes reuse boundary metadata');
 });

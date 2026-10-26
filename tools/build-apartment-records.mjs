@@ -11,7 +11,7 @@ const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const engine=()=>hash(['./build-apartment-records.mjs','./private-cache.mjs','./cache-store.mjs','./cache-blob-store.mjs','../js/apartment-records.mjs','../js/packed-records.mjs','../js/generated/transport-columns.mjs','../schemas/transport.poly'].map(path=>hash(readFileSync(new URL(path,import.meta.url)))).join('|'));
 export function apartmentShard(index,key,summary=false){return 'data/apartments/'+(summary?'summary/':'')+key+(index.format===APARTMENT_FORMAT?'.bin':'.json');}
 export function apartmentShardValues(bytes,path,metadata){
- if(path.endsWith('.json'))return JSON.parse(bytes);
+ if(path.endsWith('.json'))return Object.fromEntries(Object.entries(JSON.parse(bytes)).map(([id,value])=>[id,restoreApartmentRecord(value,metadata)]));
  const records=openRecords(gunzipSync(bytes));return Object.fromEntries(records.keys().map(id=>[id,restoreApartmentRecord(records.get(id),metadata)]));
 }
 // Match the old producer's omitted undefined fields before encoding typed nodes.

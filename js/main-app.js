@@ -1763,7 +1763,8 @@ function buildMerged(){
   grouped.forEach((siblings, key)=>{
     if(siblings.length===1){
       // 단일 평형: 원본 그대로 사용
-      DM.push(siblings[0]);
+      const row=siblings[0];
+      DM.push(row._publicationGroup?{...row,n:row._groupName,u:row._groupUnits,tu:row._groupUnits}:row);
       return;
     }
     // 상태가 다른 형제 행은 합치지 않아 비활성 단지의 거래·세대가 현행 단지에 섞이지 않게 한다.
@@ -1791,7 +1792,7 @@ function buildMerged(){
       _merged:true,
       _homeId:rep._homeId,_detailId:rep._detailId,_rents:rep._rents,
       i:rep.i, // 대표 인덱스
-      n:rep.n, r:rep.r, g:rep.g, d:rep.d, b:rep.b,
+      n:rep._publicationGroup?rep._groupName:rep.n, r:rep.r, g:rep.g, d:rep.d, b:rep.b,
       a:aMin===aMax?aMin:(aMin+'~'+aMax),
       _aNum:aMax, // 정렬용
       c:mc!==null?parseFloat(mc.toFixed(1)):null,
@@ -1813,8 +1814,8 @@ function buildMerged(){
       pa:rep.pa, // 대지면적 (같은 지번이므로 대표값 사용)
       fr:rep.fr, // 용적률
       pk:rep.pk, // 총 주차대수
-      u:siblings.reduce((s,x)=>s+(x.u||0),0) || null, // 총 세대수
-      tu:siblings[0].tu||null, // 단지 전체 세대수
+      u:rep._publicationGroup?rep._groupUnits:(siblings.reduce((s,x)=>s+(x.u||0),0) || null),
+      tu:rep._publicationGroup?rep._groupUnits:(rep.tu||null),
       up:Boolean(siblings[0].up), // 면적별 세대수는 대표 필지 범위
       ls:(()=>{
         const lsVals=siblings.map(x=>x.ls).filter(v=>v);

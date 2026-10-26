@@ -52,7 +52,10 @@ export function createCurrentReviewPreview({baseline=sourceRoot,candidate}={}){
   baseline=checkedRoot(baseline);candidate=checkedRoot(candidate);
   if(!candidate.split(sep).some(p=>p==='_ops')||same(baseline,candidate)||inside(baseline,candidate)||inside(candidate,baseline))throw Error('Candidate must be separate and inside an _ops directory');
   const manifestPath=fileAt(candidate,'manifest.json');
-  if(!manifestPath||JSON.parse(readFileSync(manifestPath,'utf8')).candidateOnly!==true)throw Error('An explicit candidateOnly manifest is required');
+  const manifest=manifestPath&&JSON.parse(readFileSync(manifestPath,'utf8'));
+  // Formal generation output is also inspectable here. This loopback server
+  // never runs release, authentication, or write APIs.
+  if(!manifest||(manifest.candidateOnly!==true&&!(manifest.candidateOnly===false&&manifest.contract==='current-review-publication-v1')))throw Error('An explicit candidateOnly manifest or current publication export is required');
   function locate(name){
     if(!allowed(name))return null;
     // Current source controls the UI. Candidate files may override public data only.

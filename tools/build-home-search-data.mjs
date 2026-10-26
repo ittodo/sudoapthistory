@@ -30,7 +30,7 @@ export function homeSearchAssets(root,search){
   const common=search.apartments.map(e=>{
     const approved=metadata.get(e.id),sources=e.rentalIds.map(id=>rentalById.get(id)).filter(Boolean);
     const unique=key=>{const values=[...new Set(sources.map(c=>c[key]).filter(v=>Number.isFinite(v)&&v>0))];return values.length===1?values[0]:null;};
-    return {...e,units:approved?.units??unique('tu'),built:unique('b'),rental:approved?.tenure==='rental'};
+    return {...e,units:approved?.displayGroup?(approved.units??null):(approved?.units??unique('tu')),built:unique('b'),rental:approved?.tenure==='rental',...(approved?.displayGroup?{publicationGroup:true}:{})};
   });
   let asOf=month+'-01';const byId=new Map(common.map(apartment=>[apartment.id,{apartment,prices:[]}]));
   for(const region of ['41','11','28']){

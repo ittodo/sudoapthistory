@@ -22,7 +22,7 @@
     function applyPreference(p){day=p.get('date')||'';start=p.get('start')||'';end=p.get('end')||'';district=M.filters(p).g||'';step=['week','month'].includes(p.get('step'))?p.get('step'):'day';speed=[1,2,4].includes(Number(p.get('speed')))?Number(p.get('speed')):1;$('timeEffects').checked=p.get('fx')!=='0';}
     const original=new Map(payload.d.flatMap(c=>[[c.id,c],...(c.memberSources||[]).map(s=>[s.id,c])]));
     const effects=NodoMapEffects.create(map),regionPrices=globalThis.NodoRegionPrices.create();
-    let regionalFrame=false;
+    let regionalFrame=false,boundarySignature='',boundaryComplexes=[],regionalBoundaries=null;
     map.on('zoomend',()=>{if(mode==='price'&&regionalFrame!==(map.getZoom()<16))refresh();});
     let renderedMode='current',renderedDay='',priceAreaOwners=new Map(),districtRegion;
     function stop(){playing=false;clearTimeout(timer);timer=null;$('timePlay').textContent='▶ 재생';$('timePlay').setAttribute('aria-pressed','false');}
@@ -85,7 +85,7 @@
       if(mode==='current'){
         regionPrices.cancel();regionalFrame=false;
         client?.cancelPrices();
-        loading=false;el.setAttribute('aria-busy','false');complexes=[];renderedMode='current';priceAreaOwners=new Map();priceGrouping=null;document.body.classList.remove('timeline-loading');apply(null);sync();save();
+        loading=false;el.setAttribute('aria-busy','false');complexes=[];boundaryComplexes=[];regionalBoundaries=null;boundarySignature='';renderedMode='current';priceAreaOwners=new Map();priceGrouping=null;document.body.classList.remove('timeline-loading');apply(null);sync();save();
         $('timeStatus').textContent='현재 지도 · 조회 월을 고르면 해당 월말 가격으로 이동합니다.';
         try{await ensure();if(serial!==request)return false;sync();$('timeStatus').textContent='오늘 '+today()+' 기준 현재 지도 · 거래 자료는 '+client.index.maxDate+'까지 · 조회 월 선택 시 해당 월말 가격으로 이동합니다.';}
         catch(e){if(serial!==request)return false;$('timeStatus').textContent=e.message;$('timeRetry').hidden=false;}
@@ -103,13 +103,18 @@
         end=M.valid(end)?end:M.periodRange(day,'month').end;end=end>client.index.maxDate?client.index.maxDate:end;
         if(start>end){start=day;end=day;}if(day<start)start=day;if(day>end)end=day;
         sync();currentFilters=settings();
+        const signature=JSON.stringify(currentFilters);
+        if(signature!==boundarySignature){boundaryComplexes=NodoMapModel.historicalBoundaries(payload.d,currentFilters,M);regionalBoundaries=null;boundarySignature=signature;}
         let entries,status,priceFrame,fromDate=keepPlaying&&renderedMode==='price'&&renderedDay<day?renderedDay:null;
         if(mode==='price'&&!pendingFocus&&map.getZoom()<16&&NodoRegionPrices.eligible(currentFilters,'sale')){
           const regions=currentFilters.r==null?['41','11','28']:[['41','11','28'][currentFilters.r]];
           const cached=await regionPrices.get('sale',day,regions,{sale:client.index.version,map:payload.meta.sourceVersion});
           if(serial!==request)return false;
           if(cached){
-            regionalFrame=true;priceGrouping=null;applyRegional(cached);
+            regionalFrame=true;priceGrouping=null;complexes=[];
+            // A regional summary cannot tell whether an individual complex has prices.
+            regionalBoundaries??=boundaryComplexes.map(c=>({...c,historicalNoPrice:false}));
+            applyRegional(cached,regionalBoundaries);
             loading=false;el.setAttribute('aria-busy','false');document.body.classList.remove('timeline-loading');
             renderedMode=mode;renderedDay=day;sync();save();
             $('timeStatus').textContent=day+'까지의 마지막 거래 · 지역별 대표가격 · '+cached.complexCount.toLocaleString()+'개 단지 · 현재 유효 이력으로 재구성';
@@ -138,7 +143,7 @@
           status=`${day}까지의 마지막 거래 · 직거래 제외 · 가격 범위는 마지막 계약일 최저~최고`;
         }
         const renderStarted=performance.now();
-        if(priceFrame){const result=updatePriceGroups(priceFrame,currentFilters);complexes=result.complexes;apply(complexes,result.changed);}
+        if(priceFrame){const result=updatePriceGroups(priceFrame,currentFilters);complexes=result.complexes;apply(complexes,result.changed,boundaryComplexes);}
         else{complexes=buildComplexes(entries);apply(complexes);}
         loading=false;el.setAttribute('aria-busy','false');document.body.classList.remove('timeline-loading');sync();save();
         el.dataset.renderMs=String(Math.round(performance.now()-renderStarted));
@@ -153,7 +158,7 @@
         renderedMode=mode;renderedDay=day;
         $('timeStatus').textContent=status+' · 현재 유효 이력으로 재구성 · 단지/경계는 현재 정보';
         client.prefetch(day,currentFilters,mode==='price');
-        if(pendingFocus){const c=complexes.find(c=>c.id===pendingFocus||c.memberSources?.some(s=>s.id===pendingFocus));if(c?.coord){map.setView(c.coord,Math.max(16,map.getZoom()),{animate:false});select(c.id);}pendingFocus=null;}
+        if(pendingFocus){const c=[...complexes,...boundaryComplexes].find(c=>c.id===pendingFocus||c.memberSources?.some(s=>s.id===pendingFocus));if(c?.coord){map.setView(c.coord,Math.max(16,map.getZoom()),{animate:false});select(c.id);}pendingFocus=null;}
         return true;
       }catch(e){if(serial!==request)return false;stop();el.setAttribute('aria-busy','false');$('timeStatus').textContent=e.message+(renderedDay&&renderedMode===mode?' · 지도는 '+renderedDay+' 기준 유지':'');$('timeRetry').hidden=false;return false;}
     }
@@ -167,11 +172,14 @@
     function label(match,isSelected=false){const a=match.area;if(!a)return '';const cls=a.records&1?'daily-high':a.records&4?'daily-down':a.records&2?'daily-low':'';return `<div class="apt-label daily-time ${cls} ${isSelected?'selected':''}"><b>${spread(a.min,a.max)}</b><small>${a.a}㎡ · ${mode==='day'?a.latest[4]+'건':M.iso(a.latest[0]).slice(2)}</small></div>`;}
     function select(id){
       if(loading)return;
-      stop();const c=complexes.find(c=>c.id===id);if(!c?.coord)return;
+      stop();
+      // A regional price cache has no per-complex state. Resolve it before selection.
+      if(regionalFrame){pendingFocus=id;return refresh();}
+      const c=complexes.find(c=>c.id===id)||boundaryComplexes.find(c=>c.id===id);if(!c)return;
       // The detail URL owns selection. Do not reopen it when returning to the map.
       save();
       const area=root.NodoMapModel.match(c,currentFilters)?.area||root.NodoMapModel.latestArea(c.areas);
-      root.NodoApartmentLinks.go({id:c.publicationId||c.publicId||c.id,area:area?M.detailArea(area.a):undefined,tab:'trades',tenure:'sale'});
+      root.NodoApartmentLinks.go({id:c.publicationId||c.publicId||c.id,area:area?M.detailArea(area.a):undefined,tab:'trades',tenure:'sale',mapNoSaleAt:area?undefined:day});
     }
     async function tick(){if(!playing)return;const next=M.shift(day,1,step);if(day>=end){stop();return;}day=next>end?end:next;const ok=await refresh({keepPlaying:true});if(ok&&playing){if(day>=end)stop();else timer=setTimeout(tick,1000/speed);}}
     $('timePlay').onclick=()=>{if(playing){stop();return;}if(!client)return;playing=true;$('timePlay').textContent='❚❚ 일시정지';$('timePlay').setAttribute('aria-pressed','true');if(day>=end)day=start;refresh({keepPlaying:true}).then(ok=>{if(ok&&playing)timer=setTimeout(tick,1000/speed);});};

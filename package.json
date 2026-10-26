@@ -11,7 +11,7 @@
     "test:daily": "npm run test:regional && npm run test:native && node tools/test-daily-model.cjs && node tools/test-daily-client.cjs && node tools/test-map-effects.cjs",
     "build:daily": "cargo run --locked --manifest-path tools/native-projection/Cargo.toml -- daily-build",
     "build:apartments": "node tools/build-apartment-data.mjs",
-    "test:site": "node --test tools/test-apartment-data.mjs tools/test-apartment-entries.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs",
+    "test:site": "node --test tools/test-apartment-data.mjs tools/test-apartment-groups.mjs tools/test-group-sale-completion.mjs tools/test-apartment-entries.mjs tools/test-cloudflare-*.mjs tools/test-site-layout.mjs",
     "preview": "node tools/preview-site.mjs",
     "build": "node tools/build-cloudflare-assets.mjs",
     "build:holding-tax": "node tools/build-holding-tax.mjs",

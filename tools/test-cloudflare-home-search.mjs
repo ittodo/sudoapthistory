@@ -25,6 +25,15 @@ test('shared roster keeps IDs and sale metrics, adds rental-only areas and leave
  assert.equal(M.fallback(catalog[1]).rental,false);assert.equal(M.fallback(catalog[1]).id,'r2');assert.equal(rows.find(r=>r._homeId==='rental:r2').lp,null);
 });
 
+test('reviewed groups use one display name and deduplicated household count in merged search',()=>{
+ const original=[{i:1,as:'A',n:'원천A',a:60,u:100,t:2},{i:2,as:'B',n:'원천B',a:60,u:100,t:3}],group={...entity('A',[1,2]),name:'통합 단지',units:100,publicationGroup:true};
+ const rows=M.join(original,[group],[]),context=vm.createContext({D:rows,DI:Object.fromEntries(rows.map(r=>[r.i,r])),DM:[],console:{log(){}}});
+ const code=readFileSync(new URL('../js/main-app.js',import.meta.url),'utf8');vm.runInContext(code.slice(code.indexOf('function buildMerged(){'),code.indexOf('function toggleMerged(){'))+'\nbuildMerged();',context);
+ assert.equal(context.DM.length,1);assert.equal(context.DM[0].n,'통합 단지');assert.equal(context.DM[0].u,100);assert.equal(context.DM[0].tu,100);
+ assert.deepEqual(rows.map(r=>r.n),['원천A','원천B']);assert.deepEqual(rows.map(r=>r.i),[1,2]);assert.equal(original[0].u,100);
+ group.units=null;assert.equal(M.join(original,[group],[])[0]._groupUnits,null);
+});
+
 test('latest search download is shared across concurrent tab switches and rejects corrupt inputs',async()=>{
  let fetches=0,downloads=0,broken=false;
  const digest='a'.repeat(64),sources=Object.fromEntries(['41','11','28'].map(r=>['data/search/latest-'+r+'.bin',digest]));

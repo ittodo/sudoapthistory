@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {summarize,districtFromAddress} from './build-apartment-data.mjs';
 import {readFileSync} from 'node:fs';
+import {resolve,join} from 'node:path';
 import vm from 'node:vm';
 import {housingPublicationMode} from './housing-publication-contract.mjs';
 import {apartmentShard,apartmentShardValues} from './build-apartment-records.mjs';
@@ -42,8 +43,18 @@ function assertGeneratedScope({index,rows,publications,current,areaUnits=null,re
    assert.equal(apt.units,publication?publication.units??null:current?null:first?.tu??null,`${id}: whole-complex households`);
    for(const area of apt.areas){
     areas++;
-    assert.equal(area.units,current?null:area.rows.length===1?byRow.get(area.rows[0].i)?.u??null:null,`${id}/${area.area}: area households`);
+    const scope=publication?.displayGroup?.householdScope;
+    const expectedAreaUnits=current?(scope?.status==='available'?(scope.roundedAreas[String(area.area)]??null):null):area.rows.length===1?byRow.get(area.rows[0].i)?.u??null:null;
+    assert.equal(area.units,expectedAreaUnits,`${id}/${area.area}: area households`);
     for(const row of area.rows){
+     if(row.sharedFacts===true){
+      assert.ok(publication?.displayGroup?.members.some(m=>m.key===row.source),`${id}: shared source must be a reviewed member`);
+      assert.deepEqual(owners.get(row.source),[id],`${id}: shared source has one owner`);
+      assert.equal(index.lookup[row.source]?.[0],id,`${id}: shared source alias`);
+      assert.ok(!Object.hasOwn(row,'i')&&!Object.hasOwn(row,'commentId'),`${id}: shared source must not invent legacy IDs`);
+      assert.ok(!rows.some(r=>r.as===row.source&&r.a===area.area),`${id}: shared area must not duplicate a legacy row`);
+      assert.equal(row.units,null);continue;
+     }
      const source=byRow.get(row.i);
      assert.ok(source,`${id}: unknown source row ${row.i}`);
      assert.ok(!seen.has(row.i),`Source row ${row.i} cannot belong to two DTOs`);seen.add(row.i);
@@ -100,12 +111,13 @@ test('detail links preserve source IDs and zero-valued legacy row IDs',()=>{
  assert.equal(context.window.NodoApartmentLinks.url({id:'41281-3250',area:85}),'/apartment/?id=41281-3250&area=85&tab=overview');
 });
 test('generated representative and canonical identities preserve household scope and legacy comments',t=>{
- const base=new URL('../data/apartments/',import.meta.url),index=JSON.parse(readFileSync(new URL('index.json',base)));
- const readShard=shard=>{const path=apartmentShard(index,shard);return apartmentShardValues(readFileSync(new URL('../'+path,import.meta.url)),path,index);};
+ const root=process.env.NODO_TEST_DATA_ROOT?resolve(process.env.NODO_TEST_DATA_ROOT):new URL('../',import.meta.url);
+ const file=path=>root instanceof URL?new URL(path,root):join(root,path),index=JSON.parse(readFileSync(file('data/apartments/index.json')));
+ const readShard=shard=>{const path=apartmentShard(index,shard);return apartmentShardValues(readFileSync(file(path)),path,index);};
  const read=id=>{const [canonical,shard]=index.lookup[id];return readShard(shard)[canonical];};
- const stock=JSON.parse(readFileSync(new URL('../data/index.json',import.meta.url))),rows=stock.d;
- const housing=JSON.parse(readFileSync(new URL('../data/housing-v3/index.json',import.meta.url)));
- const map=JSON.parse(readFileSync(new URL('../data/map/index.json',import.meta.url)));
+ const stock=JSON.parse(readFileSync(file('data/index.json'))),rows=stock.d;
+ const housing=JSON.parse(readFileSync(file('data/housing-v3/index.json')));
+ const map=JSON.parse(readFileSync(file('data/map/index.json')));
  const current=housingPublicationMode(housing,map)==='current-review';
  const areaUnits=current?stock.meta.reviewCandidate?.areaUnits:null;
  if(current)assert.deepEqual(areaUnits,housing.meta.areaUnits,'Public household metadata must share its current source');

@@ -110,6 +110,17 @@ test('candidate marker and isolated _ops path are required at startup',()=>{
   }finally{f.close();}
 });
 
+test('formal isolated publication output stays read-only in local preview',async()=>{
+  const f=fixture();let server;
+  try{
+    f.put(f.candidate,'manifest.json',JSON.stringify({candidateOnly:false,contract:'current-review-publication-v1'}));
+    server=await startCurrentReviewPreview({...f,port:0});
+    assert.equal((await get(server,'/data/index.json')).status,200);
+    assert.equal((await get(server,'/api/posts','POST')).status,405);
+    assert.equal((await get(server,'/manifest.json')).status,404);
+  }finally{if(server)await close(server);f.close();}
+});
+
 test('asset directory symlinks and linked candidate roots are rejected',async t=>{
   const f=fixture();let server;
   try{

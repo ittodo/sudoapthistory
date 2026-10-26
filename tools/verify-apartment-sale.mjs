@@ -13,6 +13,7 @@ export function verifyApartmentSale(root, {verifiedSales} = {}) {
   const safe=path=>{let current=root;for(const part of path.split('/')){if(!part||part==='.'||part==='..'||/[\\:]/.test(part))throw Error('Unsafe apartment path');current=join(current,part);if(lstatSync(current).isSymbolicLink())throw Error('Unsafe apartment link');}return current;};
   const index=JSON.parse(readFileSync(safe('data/apartments/index.json'),'utf8'));
   const housing=JSON.parse(readFileSync(safe('data/housing-v3/index.json'))),map=JSON.parse(readFileSync(safe('data/map/index.json'))),mode=housingPublicationMode(housing,map);
+  let daily=null;
   if(mode==='current-review'&&index.version!==2)throw Error('Current review publication requires packed apartment DTOs');
   if(![1,2].includes(index.version) || !index.sources || !index.shards || Object.keys(index.shards).length!==512)throw Error('Invalid apartment index');
   if(index.format!==undefined&&index.format!=='packed-records-v1')throw Error('Invalid apartment storage format');
@@ -20,7 +21,9 @@ export function verifyApartmentSale(root, {verifiedSales} = {}) {
   const check=(path,hash)=>{if(!/^[a-f0-9]{64}$/.test(hash)||fileHash(safe(path))!==hash)throw Error('Apartment data out of date: '+path);};
   for(const path of ['data/index.json','data/map/index.json','data/housing-v3/index.json'])if(!index.sources[path])throw Error('Missing apartment source: '+path);
   for(const [path,hash] of Object.entries(index.sources)){
-    if(!/^data\/(?:index|map\/index|map\/boundaries\/[^/\\:]+|housing-v3\/index|building-status|sale-details\/index|tx\/[^/\\:]+)\.json$/.test(path))throw Error('Invalid apartment source path');
+    const groupFact=/^data\/daily\/regions\/\d{5}\/(?:identities\.json|quarters\/\d{4}-Q[1-4](?:\.bin|\.parts\.json|-(?:order|p[01]{1,32})\.bin))$/.test(path);
+    if(groupFact){if(index.version!==2)throw Error('Shared apartment facts require version 2');daily??=JSON.parse(readFileSync(safe('data/daily/index.json')));if(daily.sources[path]!==hash)throw Error('Apartment/shared fact binding mismatch');}
+    else if(!/^data\/(?:index|map\/index|map\/boundaries\/[^/\\:]+|housing-v3\/index|building-status|sale-details\/index|tx\/[^/\\:]+)\.json$/.test(path))throw Error('Invalid apartment source path');
     check(path,hash);
   }
   for(let i=0;i<256;i++)for(const prefix of ['', 'summary/']){
