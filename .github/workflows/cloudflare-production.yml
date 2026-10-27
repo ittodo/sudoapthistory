@@ -105,6 +105,8 @@ jobs:
         run: node tools/verify-cloudflare-deployment.mjs https://nodostream.com "$GITHUB_SHA" cloudflare/dist/public/deployment-manifest.json > cloudflare/dist/verified-release.json
       - name: Verify production authentication remains available
         run: node tools/verify-cloudflare-auth-start.mjs --production
+      - name: Remove unused private price cache after verified deployment
+        run: node tools/prune-region-price-cache.mjs --apply > cloudflare/dist/price-cache-cleanup.json
       - uses: actions/upload-artifact@v4
         with:
           name: cloudflare-production-${{ github.sha }}
@@ -113,3 +115,4 @@ jobs:
             cloudflare/dist/public/deployment-manifest.json
             cloudflare/dist/verified-release.json
             cloudflare/dist/build-timings.json
+            cloudflare/dist/price-cache-cleanup.json

@@ -1,6 +1,7 @@
 import {DatabaseSync} from 'node:sqlite';
 import test from 'node:test';import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,copyFileSync,writeFileSync,readFileSync,rmSync,realpathSync} from 'node:fs';import{tmpdir}from'node:os';import{join,sep}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';
+import {mkdtempSync,mkdirSync,copyFileSync,writeFileSync,readFileSync,rmSync,realpathSync,readdirSync} from 'node:fs';import{tmpdir}from'node:os';import{join,sep}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';
+import {packStateTimeline,encodeStateFile} from '../js/housing-state-timeline.mjs';
 import*as codec from'../js/generated/housing-columns.mjs';import{packQuarter,encodeQuarter}from'../js/housing-quarter.mjs';import{regionPriceAssets}from'./build-region-price-cache.mjs';import{regionalReader}from'./regional-data.mjs';
 test('schema 3 monthly evidence survives new identities, repairs outputs and invalidates only changed prices',()=>{
  const root=mkdtempSync(join(tmpdir(),'price-group-cache-')),repository=new URL('../',import.meta.url).pathname.replace(/^\/(\w:)/,'$1'),sources={},code='11110',base='data/daily/regions/'+code,q=base+'/quarters/2026-Q3.bin';
@@ -13,7 +14,8 @@ test('schema 3 monthly evidence survives new identities, repairs outputs and inv
  const run=()=>{const stats={},assets=regionPriceAssets(root,{stats});return{stats,hashes:assets.filter(a=>a.path.endsWith('.bin')).map(a=>[a.path,a.sha256])};};
  try{
   for(const path of files){mkdirSync(join(root,path,'..'),{recursive:true});copyFileSync(join(repository,path),join(root,path));}
-  flush();const first=run(),warm=run();assert.equal(first.stats.rentalStateParses,3);assert.equal(warm.stats.rentalStateParses,3);assert.deepEqual(warm.hashes,first.hashes);assert.equal(warm.stats.computedGroups,0);
+  flush();const first=run(),warm=run();assert.equal(first.stats.rentalStateParses,3);assert.equal(warm.stats.rentalStateParses,0);assert.deepEqual(warm.hashes,first.hashes);assert.equal(warm.stats.computedGroups,0);
+  for(const key of ['saleStateParses','latestRowsReads','bindingsDecoded','monthPayloadReads','groupPayloadReads','assembledMonths'])assert.equal(warm.stats[key],0,key+' is skipped for unchanged inputs');assert.equal(warm.stats.quarterPayloadReads,9);assert.equal(warm.stats.receiptReads,19);assert.ok(warm.stats.phaseTimings.finalInputCheck>=0);
   const packingProof=()=>{const db=new DatabaseSync(join(root,'cloudflare/dist/housing-cache.sqlite'),{readOnly:true});try{return JSON.parse(Buffer.from(db.prepare('SELECT payload FROM calculation_cache WHERE scope=? AND key=?').get('cloudflare/dist/region-price-cache-v2','2026-Q3-11-sale.bin.json').payload)).dependencyHash;}finally{db.close();}};
   for(const p of ['js/packed-records.mjs','js/generated/transport-columns.mjs']){const previous=packingProof();writeFileSync(join(root,p),readFileSync(join(root,p),'utf8')+'\n// unrelated BIN codec revision');const transport=run();assert.equal(transport.stats.computedGroups,0);assert.equal(transport.stats.reusedMonths,9);assert.deepEqual(transport.hashes,first.hashes);assert.equal(packingProof(),previous,'unrelated BIN codec must not invalidate JSON quarter packing');}
   {const previous=packingProof(),path=join(root,'tools/region-price-quarter.mjs');writeFileSync(path,readFileSync(path,'utf8')+'\n// JSON serializer revision');const serializer=run();assert.equal(serializer.stats.computedGroups,0);assert.equal(serializer.stats.reusedMonths,9);assert.deepEqual(serializer.hashes,first.hashes);assert.notEqual(packingProof(),previous,'JSON serializer changes must refresh quarter receipts only');}
@@ -24,10 +26,55 @@ test('schema 3 monthly evidence survives new identities, repairs outputs and inv
   identity.complexes.push('new');identity.areas.push([1,'72.00001']);metadata.complexes.push({id:'new',r:1});flush();const added=run();assert.equal(added.stats.computedGroups,0);assert.deepEqual(added.hashes,first.hashes);
   metadata.complexes[0].n='rename';metadata.complexes[0].coord=[38,128];payload.d[0].n='rename';payload.d[0].tu=999;flush();assert.equal(run().stats.computedGroups,0);
   months['2026-09'].daily.rows[0][2]=200;months['2026-09'].daily.updates[0]=[code+':0',20260901,200,200,200,1];flush();const corrected=run();assert.equal(corrected.stats.computedGroups,1);assert.notDeepEqual(corrected.hashes,first.hashes);assert.equal(corrected.stats.invalidationReasons.inputs,1);
-  const target=join(root,'cloudflare/dist/region-price-cache-v2/2026-09-11-sale.bin');writeFileSync(target,'corrupt');const repaired=run();assert.deepEqual(repaired.hashes,corrected.hashes);assert.equal(repaired.stats.computedGroups,0);assert.notEqual(readFileSync(target,'utf8'),'corrupt');
+  const target=join(root,'cloudflare/dist/region-price-cache-v2/2026-Q3-11-sale.bin');writeFileSync(target,'corrupt');const repaired=run();assert.deepEqual(repaired.hashes,corrected.hashes);assert.equal(repaired.stats.computedGroups,0);assert.notEqual(readFileSync(target,'utf8'),'corrupt');
   writeFileSync(join(root,'tools/region-price-groups.mjs'),readFileSync(join(root,'tools/region-price-groups.mjs'),'utf8')+'\n// changed audit engine');assert.ok(run().stats.invalidationReasons.engine>0);
-  const groups=join(root,'cloudflare/dist/region-price-cache-v2/2026-09-11-sale.bin.groups.bin');const cacheDb=new DatabaseSync(join(root,'cloudflare/dist/housing-cache.sqlite'));cacheDb.prepare("UPDATE calculation_cache SET payload=? WHERE key IN (?,?)").run(Buffer.from('corrupt'),'2026-09-11-sale.bin.groups.bin','2026-09-11-sale.bin');cacheDb.close();const rebuilt=run();assert.equal(rebuilt.stats.invalidReceipts,1);assert.deepEqual(rebuilt.hashes,corrected.hashes);
+  const cacheDb=new DatabaseSync(join(root,'cloudflare/dist/housing-cache.sqlite'));cacheDb.prepare("UPDATE calculation_cache SET payload=? WHERE key IN (?,?)").run(Buffer.from('corrupt'),'2026-09-11-sale.bin.groups.bin','2026-09-11-sale.bin');cacheDb.close();const unused=run();assert.equal(unused.stats.invalidReceipts,0);assert.equal(unused.stats.monthPayloadReads,0,'unused monthly data is not scanned when the public quarter is valid');assert.deepEqual(unused.hashes,corrected.hashes);
+  const brokenQuarter=new DatabaseSync(join(root,'cloudflare/dist/housing-cache.sqlite'));brokenQuarter.prepare('UPDATE calculation_cache SET payload=? WHERE key=?').run(Buffer.from('corrupt'),'2026-Q3-11-sale.bin');brokenQuarter.close();const rebuilt=run();assert.equal(rebuilt.stats.invalidReceipts,1);assert.equal(rebuilt.stats.repairedMonths,1);assert.deepEqual(rebuilt.hashes,corrected.hashes);
   const previousFull=process.env.NODO_FULL_VERIFY;try{process.env.NODO_FULL_VERIFY='1';assert.ok(run().stats.computedGroups>0);}finally{if(previousFull===undefined)delete process.env.NODO_FULL_VERIFY;else process.env.NODO_FULL_VERIFY=previousFull;}
+  const packedRent=regionalReader(root,'rental'),legacyPaths=['data/rental/catalog.bin','data/rental/months/2026-09-11.bin','data/rental/months/2026-09-11-state.bin'];
+  for(const path of legacyPaths){const value=path.endsWith('catalog.bin')?{complexes:packedRent.catalog.complexes}:Object.fromEntries(Object.entries(packedRent.read(path)).map(([field,rows])=>[field,rows.map(row=>[packedRent.catalog.complexes.findIndex(c=>c.key===row[0]),...row.slice(1)])]));emit(path,Buffer.from(JSON.stringify(value)),true);}
+  emit('data/rental/index.json',{schema:1,version:'legacy',months:['2026-09'],sources:Object.fromEntries(legacyPaths.map(path=>[path,sources[path]]))});
+  const mixed=run();assert.deepEqual(run().hashes,mixed.hashes);const mixedDb=new DatabaseSync(join(root,'cloudflare/dist/housing-cache.sqlite')),wrong=Buffer.from('wrong monthly bytes');mixedDb.prepare('UPDATE calculation_cache SET payload=?,sha256=? WHERE key=?').run(wrong,createHash('sha256').update(wrong).digest('hex'),'2026-09-11-sale.bin');mixedDb.close();assert.deepEqual(run().hashes,mixed.hashes,'published legacy monthly bytes must match their receipt and be repaired');
   const reader=regionalReader(root,'daily',{verifyOnce:true});reader.physical(q,false);writeFileSync(join(root,q),'damaged');assert.throws(()=>reader.physical(q,false),/changed during build/);assert.throws(()=>reader.recheck(),/changed during build/);
  }finally{const target=realpathSync(root),parent=realpathSync(tmpdir());if(!target.startsWith(parent+sep)||!target.slice(parent.length+1).startsWith('price-group-cache-'))throw Error('Unsafe cleanup');rmSync(target,{recursive:true});}
+});
+
+test('shared year and quarter changes skip unchanged monthly assembly and retain reference bytes',()=>{
+ const root=mkdtempSync(join(tmpdir(),'price-month-scope-')),repository=new URL('../',import.meta.url).pathname.replace(/^\/(\w:)/,'$1'),hash=b=>createHash('sha256').update(b).digest('hex');
+ const months=['2026-06','2026-07','2026-08','2026-09'],codes=['11110','41110'],regions={},payload={meta:{sourceVersion:'fixture'},d:[]};
+ const write=(path,bytes)=>{mkdirSync(join(root,path,'..'),{recursive:true});writeFileSync(join(root,path),bytes);return hash(bytes);};
+ for(const[ci,code]of codes.entries()){
+  const id='source-'+code,r=ci?0:1,identity={complexes:[id],areas:[[0,'59.1234']]},metadata={complexes:[{id,r,coord:[37,127],admin:[code.slice(0,2),code,code+'101'],n:id}],areas:[]},data={};
+  payload.d.push({id,r,admin:[code.slice(0,2),code,code+'101']});
+  for(const month of months){const date=Number(month.replace('-','')+'02'),sale=[code+':0',date,100.25,2,0,null,null,null,null,0,hash(code+month).slice(0,20),null],rent=[code+':0','59.1234',date,10000.25,10.25,1,3,0,null,null,null,null,null,150.25,0,'2026-05',6,hash('rent'+code+month).slice(0,20)];data[month]={daily:{rows:[sale,sale],updates:[[code+':0',date,100.25,100.25,100.25,2]],opening:[[code+':0',20260501,80.25,80.25,80.25,2]]},rental:{rows:[rent,rent],updates:[rent,rent],opening:[{...rent}].map(()=>[...rent.slice(0,2),20260501,...rent.slice(3)])}};}
+  regions[code]={identity,metadata,data};
+ }
+ function flush(){
+  const sources={},descriptor={schema:3,regions:{}},quarters={},states={daily:{},rental:{}};
+  for(const[code,{identity,metadata,data}]of Object.entries(regions)){
+   const base='data/daily/regions/'+code,entry={identities:base+'/identities.json',metadata:base+'/metadata.json'};descriptor.regions[code]=entry;
+   sources[entry.identities]=write(entry.identities,Buffer.from(JSON.stringify(identity)));sources[entry.metadata]=write(entry.metadata,Buffer.from(JSON.stringify(metadata)));quarters[code]={};
+   for(const quarter of ['2026-Q2','2026-Q3']){const selected=Object.fromEntries(months.filter(m=>Math.ceil(Number(m.slice(5))/3)===Number(quarter.at(-1))).map(m=>[m,data[m]])),path=base+'/quarters/'+quarter+'.bin';sources[path]=write(path,gzipSync(encodeQuarter(packQuarter(code,quarter,selected,identity,codec))));for(const m of Object.keys(selected))quarters[code][m]=path;}
+   for(const kind of ['daily','rental']){const path=base+'/states/'+kind+'/2026.bin';sources[path]=write(path,gzipSync(encodeStateFile(packStateTimeline(code,kind,Object.fromEntries(months.map(m=>[m,data[m][kind].opening])),codec))));states[kind][code]=Object.fromEntries(months.map(m=>[m,path]));}
+  }
+  sources['data/daily/regions/index.json']=write('data/daily/regions/index.json',Buffer.from(JSON.stringify(descriptor)));
+  for(const kind of ['daily','rental'])write('data/'+kind+'/index.json',Buffer.from(JSON.stringify({schema:3,version:'fixture',months,sources:Object.fromEntries(Object.entries(sources).filter(([p])=>!p.includes('/states/')||p.includes('/states/'+kind+'/'))),regional:{format:'packed-region',kind,authority:'data/daily/regions/index.json',quarters,states:states[kind]}})));
+  write('data/map/index.json',Buffer.from(JSON.stringify(payload)));
+ }
+ const run=(reference=false)=>{const stats={},assets=regionPriceAssets(root,{stats,reference});return{stats,hashes:assets.filter(a=>a.path.endsWith('.bin')).map(a=>[a.path,a.sha256]),maxDate:JSON.parse(assets.at(-1).bytes).rentalMaxDate};};
+ const compare=value=>{const expected=run(true);assert.deepEqual(value.hashes,expected.hashes,'all public quarter bytes equal original models');assert.equal(value.maxDate,expected.maxDate);};
+ try{
+  for(const directory of ['tools','js','js/generated']){mkdirSync(join(root,directory),{recursive:true});for(const file of readdirSync(join(repository,directory),{withFileTypes:true}))if(file.isFile()&&/\.m?js$/.test(file.name)&&!file.name.startsWith('test-'))copyFileSync(join(repository,directory,file.name),join(root,directory,file.name));}
+  flush();const first=run();compare(first);const warm=run();assert.equal(warm.stats.assembledMonths,0);assert.equal(warm.stats.monthPayloadReads,0);assert.equal(warm.stats.groupPayloadReads,0);assert.equal(warm.stats.latestRowsReads,0);
+  regions['11110'].data['2026-09'].daily.opening[0][2]=99.5;flush();const year=run();assert.equal(year.stats.assembledMonths,1);assert.equal(year.stats.groupPayloadReads,1);assert.ok(year.stats.semanticReusedMonths>=3);compare(year);
+  const rent=regions['11110'].data['2026-09'].rental;for(const row of new Set([...rent.rows,...rent.updates]))row[13]=175.5;flush();const quarter=run();assert.equal(quarter.stats.assembledMonths,1);assert.equal(quarter.stats.groupPayloadReads,1);assert.equal(quarter.stats.computedGroups,1);assert.equal(quarter.stats.monthPayloadReads,3,'only the changed public quarter loads its three month results');compare(quarter);
+  const newDay=[...rent.updates[0]];newDay[2]=20260927;newDay[17]='03'.repeat(10);rent.updates.push(newDay);rent.rows.push(newDay);flush();const extraDay=run();assert.equal(extraDay.maxDate,'2026-09-27');assert.equal(extraDay.stats.assembledMonths,2,'the other rental view also gains the empty update day');compare(extraDay);
+  payload.d[0].admin=['11','changed-district','changed-dong'];flush();const linked=run();assert.equal(linked.stats.computedGroups,4);assert.equal(linked.stats.assembledMonths,4);compare(linked);
+  const stable=run();assert.equal(stable.stats.assembledMonths,0);assert.equal(stable.stats.bindingsDecoded,0);assert.equal(stable.stats.monthPayloadReads,0);
+  for(const seconds of Object.values(stable.stats.phaseTimings))assert.ok(Number.isFinite(seconds)&&seconds>=0);
+  payload.d[0].r=0;payload.d[0].admin=['41','41110','41110101'];flush();const moved=run();assert.equal(moved.stats.assembledMonths,8,'both sending and receiving provinces must refresh');
+  const previousFull=process.env.NODO_FULL_VERIFY;try{process.env.NODO_FULL_VERIFY='1';assert.deepEqual(moved.hashes,run().hashes,'province moves match uncached group calculation');}finally{if(previousFull===undefined)delete process.env.NODO_FULL_VERIFY;else process.env.NODO_FULL_VERIFY=previousFull;}
+  payload.d[0].r=1;payload.d[0].admin=['11','changed-district','changed-dong'];flush();const restored=run();assert.equal(restored.stats.assembledMonths,8);compare(restored);
+  writeFileSync(join(root,'data/daily/regions/11110/quarters/2026-Q3.bin'),'corrupt current input');assert.throws(()=>run(),/source mismatch|changed during build/);
+ }finally{const path=realpathSync(root),parent=realpathSync(tmpdir());if(!path.startsWith(parent+sep)||!path.slice(parent.length+1).startsWith('price-month-scope-'))throw Error('Unsafe cleanup');rmSync(path,{recursive:true});}
 });

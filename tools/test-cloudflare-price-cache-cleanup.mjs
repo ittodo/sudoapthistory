@@ -1,0 +1,20 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {DatabaseSync} from 'node:sqlite';import {createHash} from 'node:crypto';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,existsSync,realpathSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,dirname,sep} from 'node:path';
+import {pruneRegionPriceCache} from './prune-region-price-cache.mjs';
+test('price cleanup preserves current and unrelated scopes; incomplete builds cannot delete',()=>{
+ const root=mkdtempSync(join(tmpdir(),'price-cleanup-')),scope='cloudflare/dist/region-price-cache-v2',file=join(root,'cloudflare/dist/housing-cache.sqlite'),sha=b=>createHash('sha256').update(b).digest('hex'),emit=(p,v)=>{mkdirSync(dirname(join(root,p)),{recursive:true});writeFileSync(join(root,p),typeof v==='string'?v:JSON.stringify(v));};
+ const previous=process.env.NODO_CACHE_DB,gitSha=process.env.GITHUB_SHA;delete process.env.NODO_CACHE_DB;delete process.env.GITHUB_SHA;
+ try{
+  for(const kind of ['daily','rental'])emit('data/'+kind+'/index.json',{schema:3,months:['2026-09']});emit('cloudflare/dist/build-timings.json',{fullVerification:false,regionPriceStats:{phaseTimings:{total:1}}});
+  const db=new DatabaseSync(file);db.exec('CREATE TABLE calculation_cache(scope TEXT,key TEXT,payload BLOB,sha256 TEXT,PRIMARY KEY(scope,key))');const put=(s,k,v)=>{const b=Buffer.from(typeof v==='string'?v:JSON.stringify(v));db.prepare('INSERT INTO calculation_cache VALUES(?,?,?,?)').run(s,k,b,sha(b));};
+  put(scope,'latest-rental.json',{});const quarterSources={};
+  for(const type of ['sale','jeonse','monthly'])for(const region of ['41','11','28']){const month='2026-09-'+region+'-'+type+'.bin',quarter='2026-Q3-'+region+'-'+type+'.bin';for(const suffix of ['','.json','.bindings.bin','.groups.bin','.groups.bin.json'])put(scope,month+suffix,suffix==='.json'?{schema:3,engine:'a'.repeat(64)}:{});put(scope,quarter,'quarter');put(scope,quarter+'.json',{sha256:sha('quarter')});quarterSources['data/map/price-cache/'+quarter]=sha('quarter');emit(scope+'/'+quarter,'quarter');emit(scope+'/'+month,'unused output');}
+  emit('cloudflare/dist/public/data/map/price-cache/index.json',{schema:2,quarterSources});put(scope,'2025-01-11-sale.bin','old');put('cloudflare/dist/region-price-reference-v1','2026-09-11-sale.bin','reference');put('other-active-scope','keep','unrelated');db.close();
+  const quarterPath=join(root,scope,'2026-Q3-11-sale.bin'),quarter=readFileSync(quarterPath),before=readFileSync(file),plan=pruneRegionPriceCache(root);assert.equal(plan.removedEntries,2);assert.equal(plan.removedFiles,9);assert.deepEqual(readFileSync(file),before,'planning does not write the DB');
+  emit(scope+'/unrecognized.txt','preserve');assert.throws(()=>pruneRegionPriceCache(root,{apply:true}),/Unexpected cache entry/);assert.deepEqual(readFileSync(file),before);rmSync(join(root,scope,'unrecognized.txt'));
+  const result=pruneRegionPriceCache(root,{apply:true});assert.equal(result.removedEntries,2);assert.equal(result.removedFiles,9);assert.deepEqual(readFileSync(quarterPath),quarter);assert.ok(!existsSync(join(root,scope,'2026-09-11-sale.bin')));
+  const remaining=new DatabaseSync(file);assert.equal(remaining.prepare('SELECT count(*) AS n FROM calculation_cache WHERE scope=?').get('other-active-scope').n,1);remaining.prepare('DELETE FROM calculation_cache WHERE scope=? AND key=?').run(scope,'2026-09-11-sale.bin.json');remaining.close();assert.throws(()=>pruneRegionPriceCache(root,{apply:true}),/Incomplete current cache/);
+  process.env.NODO_CACHE_DB=join(root,'source.sqlite');assert.throws(()=>pruneRegionPriceCache(root,{apply:true}),/site-local CI cache/);
+ }finally{if(previous===undefined)delete process.env.NODO_CACHE_DB;else process.env.NODO_CACHE_DB=previous;if(gitSha===undefined)delete process.env.GITHUB_SHA;else process.env.GITHUB_SHA=gitSha;const path=realpathSync(root),parent=realpathSync(tmpdir());if(!path.startsWith(parent+sep)||!path.slice(parent.length+1).startsWith('price-cleanup-'))throw Error('Unsafe cleanup');rmSync(path,{recursive:true});}
+});

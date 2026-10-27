@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {directSaleRows} from '../js/housing-sale-detail.mjs';
+import {directSaleRows} from '../js/housing-sale-direct.mjs';
 import {createSaleReader} from '../js/housing-sales.mjs';
 import {mergeSaleSummaries,addGroupSaleAreas} from './complete-group-sale-areas.mjs';
 import {summarize} from './build-apartment-data.mjs';

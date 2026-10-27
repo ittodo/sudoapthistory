@@ -14,6 +14,7 @@ test('production builds reuse caches without consulting weekly completion record
  assert.match(workflow,/run: npm run build/);
  assert.match(workflow,/node tools\/verify-cloudflare-deployment\.mjs/);
  assert.match(workflow,/node tools\/verify-cloudflare-auth-start\.mjs --production/);
+ assert.ok(workflow.indexOf('node tools/prune-region-price-cache.mjs --apply')>workflow.indexOf('node tools/verify-cloudflare-auth-start.mjs --production'));
 });
 function fixture(){const c=structuredClone(source);delete c.env.production.limits;c.env.production.vars.AUTH_ENABLED='false';c.env.production.vars.MAINTENANCE='true';c.env.production.d1_databases[0].database_id=env.CLOUDFLARE_PRODUCTION_D1_ID;return c;}
 test('committed production settings preserve approved live free service',()=>{

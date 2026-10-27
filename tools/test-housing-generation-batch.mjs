@@ -12,8 +12,10 @@ test('real dependency graph isolates stages and retains checks across whole-run 
   const initial=generationScopeProducers(root),edit=p=>writeFileSync(join(root,p),readFileSync(join(root,p),'utf8')+'\n// changed\n');
   edit('js/market-rental-model.js');assert.deepEqual(generationScopeProducers(root),initial,'statistics code is not a packing dependency');
   edit('tools/build-housing-from-native.mjs');assert.deepEqual(generationScopeProducers(root),initial,'orchestration is not a byte producer');
+  edit('js/housing-sale-direct.mjs');assert.deepEqual(generationScopeProducers(root),initial,'supplement lookup is not a detail encoding dependency');
+  edit('js/housing-sale-detail.mjs');const sale=generationScopeProducers(root);assert.notEqual(sale.sale,initial.sale,'shared sale encoding remains a producer dependency');for(const k of ['region','rental','contract-archive'])assert.equal(sale[k],initial[k],k);
   edit('tools/build-contract-archive.mjs');const archive=generationScopeProducers(root);
-  assert.notEqual(archive['contract-archive'],initial['contract-archive']);for(const k of ['region','sale','rental'])assert.equal(archive[k],initial[k],k);
+  assert.notEqual(archive['contract-archive'],sale['contract-archive']);for(const k of ['region','sale','rental'])assert.equal(archive[k],sale[k],k);
   edit('tools/housing-native-readers.mjs');const native=generationScopeProducers(root);assert.notEqual(native.region,archive.region);assert.equal(native.sale,archive.sale);assert.equal(native.rental,archive.rental);assert.equal(native['contract-archive'],archive['contract-archive']);
   const path='data/contracts/apartment-rent/11110/archive-details.bin',identity={11110:{complexes:['A'],areas:[[0,'59.1']]}};
   mkdirSync(join(output,path,'..'),{recursive:true});mkdirSync(other);writeFileSync(join(output,path),'same contract bytes');

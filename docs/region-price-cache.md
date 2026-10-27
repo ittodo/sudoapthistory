@@ -50,9 +50,12 @@ files remain shared with the existing map; this cache does not replace them.
 The private SQLite cache is outside tracked data at
 `cloudflare/dist/housing-cache.sqlite`. The price scope stores calculation results.
 `cloudflare/dist/region-price-cache-v2` contains output files for packaging.
-Each entry checks input and calculation
-hashes plus output integrity before reuse. CI restores the private cache database.
-Changed or corrupted entries are rebuilt. The generated manifest pins the sale, rental
+Small month receipts bind input and calculation hashes to result hashes.
+The builder checks the current quarter payload before reuse. It reads monthly
+payloads only when a quarter needs packing. Schema-3 monthly files stay in the
+private database. Required missing or damaged entries are rebuilt.
+See the [cache reuse and measurement rules](cloudflare-auto-deployment.md).
+CI restores the private cache database. The generated manifest pins the sale, rental
 and map source versions. Python and operational database writes are not involved.
 
 Quarter packing has a separate receipt. It includes the JSON serializer code

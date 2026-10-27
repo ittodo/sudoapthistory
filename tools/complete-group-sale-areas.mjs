@@ -5,13 +5,14 @@ import {createHash} from 'node:crypto';
 import {regionalReader} from './regional-reader.mjs';
 import {apartmentShardValues,apartmentShard} from './build-apartment-records.mjs';
 import {compactApartmentRecord} from '../js/apartment-records.mjs';
-import {directSaleRows,displayArea} from '../js/housing-sale-detail.mjs';
+import {displayArea} from '../js/housing-sale-detail.mjs';
+import {directSaleRows} from '../js/housing-sale-direct.mjs';
 import {summarize} from './build-apartment-data.mjs';
 import {privateCache} from './private-cache.mjs';
 import * as cacheStore from './cache-store.mjs';
 import {partitionDependencies} from '../js/housing-partition.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
-const code=hash(['./complete-group-sale-areas.mjs','./build-apartment-data.mjs','./regional-reader.mjs','./housing-regional-reader.mjs','../js/housing-sale-detail.mjs','../js/regional-data.js','../js/housing-quarter.mjs','../js/housing-partition.mjs','../js/housing-validation.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
+const code=hash(['./complete-group-sale-areas.mjs','./build-apartment-data.mjs','./regional-reader.mjs','./housing-regional-reader.mjs','../js/housing-sale-detail.mjs','../js/housing-sale-direct.mjs','../js/regional-data.js','../js/housing-quarter.mjs','../js/housing-partition.mjs','../js/housing-validation.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
 const order=(a,b)=>b.date-a.date||(a.row??Number.MAX_SAFE_INTEGER)-(b.row??Number.MAX_SAFE_INTEGER)||String(a.source||'').localeCompare(String(b.source||''))||a.order-b.order;
 export function mergeSaleSummaries(a,b){
  const stats=kind=>{const out={};for(const key of new Set([...Object.keys(a[kind]||{}),...Object.keys(b[kind]||{})])){const x=a[kind]?.[key],y=b[kind]?.[key];out[key]=!x?y:!y?x:{average:(x.average*x.count+y.average*y.count)/(x.count+y.count),min:Math.min(x.min,y.min),max:Math.max(x.max,y.max),count:x.count+y.count};}return out;};
