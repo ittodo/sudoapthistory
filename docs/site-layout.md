@@ -7,8 +7,16 @@
 Company data is owned by `companysearch`; apartment data is owned by `15_26`.
 This repository contains public artifacts and their consumers, not a second company generator.
 
-Company earnings tables show a dash for an unavailable operating profit. Charts omit
-the point and break the line across missing periods. A reported zero remains a valid value.
+Company earnings tables show a dash for an unavailable amount. Charts omit missing
+revenue bars and operating profit points. The profit line breaks across missing periods.
+A reported zero remains a valid value.
+The producer orders earnings rows from newest to oldest. Tables select the first rows.
+Charts select the same recent rows and reverse them to display time from left to right.
+Chart labels show the actual period end month. Tables keep the producer period labels.
+For a non-December year end, the label includes the actual end month and fiscal quarter.
+FY is the calendar year in which the fiscal year ends.
+Earnings amounts use KRW 100 million units. The detail table keeps that unit.
+The modal can show KRW trillion units by dividing the value by 10,000.
 
 Run `node tools/verify-site-layout.mjs` before deployment. It checks the working tree,
 including ignored retired company folders. `--staged` checks the Git index;
