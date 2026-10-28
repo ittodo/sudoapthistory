@@ -17,6 +17,11 @@ For a non-December year end, the label includes the actual end month and fiscal 
 FY is the calendar year in which the fiscal year ends.
 Earnings amounts use KRW 100 million units. The detail table keeps that unit.
 The modal can show KRW trillion units by dividing the value by 10,000.
+The optional `warnings` array distinguishes an unknown fiscal period or missing prior
+cumulative value (`ambiguous_fiscal_period`) from an official filing conflict
+(`source_conflict`). Both views show these known reasons next to the earnings.
+Conflicted or unconfirmed amounts remain null. A conflict can link to an HTTPS KRX
+filing under `kind.krx.co.kr/external/`. Unknown warning codes are not displayed.
 
 Run `node tools/verify-site-layout.mjs` before deployment. It checks the working tree,
 including ignored retired company folders. `--staged` checks the Git index;

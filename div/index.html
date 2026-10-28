@@ -1168,9 +1168,26 @@ function fmtRate(v){
   return`<br><span class="${cls}">${v>0?'+':''}${v.toFixed(1)}%</span>`;
 }
 
+function earningsWarningHtml(warnings){
+  const messages={ambiguous_fiscal_period:'회계기간 또는 이전 누적 실적을 확인할 수 없어 금액을 표시하지 않습니다.',source_conflict:'원천 값이 공식 공시와 달라 금액을 표시하지 않습니다.'};
+  return (Array.isArray(warnings)?warnings:[]).flatMap(w=>{
+    if(!w||!Object.hasOwn(messages,w.reason))return[];
+    const periods=(Array.isArray(w.periods)?w.periods:[]).filter(p=>typeof p==='string'&&/^\d{4}(0[1-9]|1[0-2])$/.test(p)).map(p=>p.slice(0,4)+'.'+p.slice(4));
+    let source='';
+    if(w.reason==='source_conflict'&&typeof w.source_url==='string'){
+      try{
+        const url=new URL(w.source_url);
+        if(url.origin==='https://kind.krx.co.kr'&&!url.username&&!url.password&&url.pathname.startsWith('/external/'))source=' <a href="'+esc(url.href).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener noreferrer">공식 공시</a>';
+      }catch{}
+    }
+    return['<p style="font-size:11px;color:var(--muted);">'+(periods.length?periods.join(', ')+': ':'')+messages[w.reason]+source+'</p>'];
+  }).join('');
+}
+
 function renderEarnings(d){
   const el=document.getElementById('detailEarnings');
-  let html='';
+  const warnings=earningsWarningHtml(d.warnings);
+  let html=warnings?'<div class="detail-section">'+warnings+'</div>':'';
 
   // 주요 비율 카드
   if(d.ratios){

@@ -136,6 +136,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
 <!-- Earnings Section -->
 <div class="section" id="sectionEarnings" style="display:none;">
   <div class="section-title">실적</div>
+  <div id="earningsWarnings"></div>
   <!-- 투자 지표 카드 -->
   <div id="earningsRatios" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
   <!-- 분기별 실적 -->
@@ -504,8 +505,25 @@ async function submitTag() {
 }
 
 // ── 실적 렌더 ──────────────────────────────────────────────────────
+function earningsWarningHtml(warnings){
+  const messages={ambiguous_fiscal_period:'회계기간 또는 이전 누적 실적을 확인할 수 없어 금액을 표시하지 않습니다.',source_conflict:'원천 값이 공식 공시와 달라 금액을 표시하지 않습니다.'};
+  return (Array.isArray(warnings)?warnings:[]).flatMap(w=>{
+    if(!w||!Object.hasOwn(messages,w.reason))return[];
+    const periods=(Array.isArray(w.periods)?w.periods:[]).filter(p=>typeof p==='string'&&/^\d{4}(0[1-9]|1[0-2])$/.test(p)).map(p=>p.slice(0,4)+'.'+p.slice(4));
+    let source='';
+    if(w.reason==='source_conflict'&&typeof w.source_url==='string'){
+      try{
+        const url=new URL(w.source_url);
+        if(url.origin==='https://kind.krx.co.kr'&&!url.username&&!url.password&&url.pathname.startsWith('/external/'))source=' <a href="'+escHtml(url.href).replace(/"/g,'&quot;')+'" target="_blank" rel="noopener noreferrer">공식 공시</a>';
+      }catch{}
+    }
+    return['<p style="font-size:11px;color:var(--muted);">'+(periods.length?periods.join(', ')+': ':'')+messages[w.reason]+source+'</p>'];
+  }).join('');
+}
+
 function renderEarnings(data) {
   document.getElementById('sectionEarnings').style.display = 'block';
+  document.getElementById('earningsWarnings').innerHTML = earningsWarningHtml(data.warnings);
 
   const fmtAmt = v => v == null ? '—' : Number(v).toLocaleString('ko-KR', {maximumFractionDigits: 2});
   const fmtPct = v => v == null ? '—' : `${Number(v).toFixed(1)}%`;
