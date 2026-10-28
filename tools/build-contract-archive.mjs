@@ -60,13 +60,19 @@ export function buildContractArchive({packed,database,generationSession=null}){
    const selected=new Set(ids),affected=changes.filter(p=>!Array.isArray(p.sources)||p.sources.some(s=>selected.has(s))),old=generationSession?.peek(scope);
    const dirty=!old||affected.length>0;
    const token=dirty?generationSession?.batch?.seq??0:old.result.token;
-   const services=ids.map(id=>archive.sourceServices[id]??'apartment-rent'),key=[3,ids,services,dependencies,reader.manifest.regional.quarters?.[code]??null,token],identity={[code]:{complexes:ids,areas:region.identity.areas}};
+   const services=ids.map(id=>archive.sourceServices[id]??'apartment-rent');
+   // Rental batch metadata currently tracks apartment contracts only. For a
+   // region with rowhouse sources, bind reuse to the actual source snapshot.
+   let baseline=services.includes('rowhouse-rent')?sourceRows(ids):null;
+   const sourceSnapshot=baseline?[...baseline].sort(([a],[b])=>a.localeCompare(b)).map(([month,records])=>[month,rawDigest(records)]):null;
+   const key=[3,ids,services,dependencies,reader.manifest.regional.quarters?.[code]??null,token,...(sourceSnapshot?[sourceSnapshot]:[])],identity={[code]:{complexes:ids,areas:region.identity.areas}};
    const hit=generationSession?.load(scope,key,identity,p=>p===path,emit);
    if(hit){archive.regions[code]=path;Object.assign(archive.districts,hit.districts);archive.rows+=hit.rows;stats.reused++;stats.monthsReused+=Object.keys(hit.months).length;continue;}
-   // The first build reads each source once. Later builds query changed months only.
+   // Apartment-only regions query changed months after their first build.
    // Private month files never enter the public manifest or move the consumer cursor.
    const sourceKey=hash(JSON.stringify([ids,services])),previous=old?.result.sourceKey===sourceKey?old.result.months:null;
-   const baseline=previous?null:sourceRows(ids),changedMonths=new Set(affected.map(p=>monthName(p.month)));
+   if(!previous&&!baseline)baseline=sourceRows(ids);
+   const changedMonths=new Set(affected.map(p=>monthName(p.month)));
    const months=[...new Set([...Object.keys(previous??{}),...(baseline?.keys()??[]),...changedMonths])].sort();
    const rows=[],districts={},monthResults={},monthIdentity=detailIdentity(reader.table,[code]);
    for(const month of months){
@@ -78,7 +84,7 @@ export function buildContractArchive({packed,database,generationSession=null}){
     const loadRecords=()=>records??=sourceRows(ids,month,old.result.districts,affected).get(month)??[];
     // A missing/incomplete accepted chain can repeat a sequence number. Bind
     // its baseline to current raw content, not just that sequence and facts.
-    const rawHash=prior&&!changedMonths.has(month)?prior.rawHash:rawDigest(loadRecords());
+    const rawHash=baseline?rawDigest(loadRecords()):prior&&!changedMonths.has(month)?prior.rawHash:rawDigest(loadRecords());
     const cached=detailMemo(cache,[3,engine,'contract-archive',code,month,ids,services,monthToken,factHash,rawHash],monthIdentity,p=>p==='month.bin',()=>{
      const currentFacts=loadFacts();if(hash(JSON.stringify(currentFacts))!==factHash)throw Error('Contract archive month facts changed');
      const currentRecords=loadRecords(),monthDistricts={};if(rawDigest(currentRecords)!==rawHash)throw Error('Contract archive month source changed without a batch');
