@@ -7,6 +7,9 @@
 Company data is owned by `companysearch`; apartment data is owned by `15_26`.
 This repository contains public artifacts and their consumers, not a second company generator.
 
+Company earnings tables show a dash for an unavailable operating profit. Charts omit
+the point and break the line across missing periods. A reported zero remains a valid value.
+
 Run `node tools/verify-site-layout.mjs` before deployment. It checks the working tree,
 including ignored retired company folders. `--staged` checks the Git index;
 `--ref HEAD` checks a committed tree; `--source DIRECTORY` checks a prepared output
