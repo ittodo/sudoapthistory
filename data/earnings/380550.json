@@ -3,12 +3,42 @@
   "name": "뉴로핏",
   "quarterly": [
     {
+      "period": "2026Q2",
+      "stac_yymm": "202606",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 2,
+      "revenue": 8,
+      "operating_profit": -52,
+      "net_income": -57,
+      "op_margin": -650,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": 60,
+      "qoq_op": 10.344827586206897
+    },
+    {
+      "period": "2026Q1",
+      "stac_yymm": "202603",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 1,
+      "revenue": 5,
+      "operating_profit": -58,
+      "net_income": -57,
+      "op_margin": -1160,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -80.76923076923077,
+      "qoq_op": 64.84848484848484
+    },
+    {
       "period": "2025Q4",
       "stac_yymm": "202512",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 4,
       "revenue": 26,
-      "operating_profit": -224,
+      "operating_profit": -165,
       "net_income": -224,
-      "op_margin": -861.5384615384615,
+      "op_margin": -634.6153846153845,
       "yoy_revenue": null,
       "yoy_op": null,
       "qoq_revenue": null,
@@ -17,6 +47,8 @@
     {
       "period": "2025Q3",
       "stac_yymm": "202509",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 3,
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -29,6 +61,8 @@
     {
       "period": "2025Q2",
       "stac_yymm": "202506",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 2,
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -41,6 +75,8 @@
     {
       "period": "2025Q1",
       "stac_yymm": "202503",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 1,
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -53,9 +89,11 @@
     {
       "period": "2024Q4",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "fiscal_year_end": "202412",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -65,9 +103,11 @@
     {
       "period": "2023Q4",
       "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "fiscal_year_end": "202312",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -75,11 +115,11 @@
       "qoq_op": null
     },
     {
-      "period": "2022Q4",
+      "period": "2022.12 (회계기간 미확인)",
       "stac_yymm": "202212",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -90,13 +130,15 @@
   "annual": [
     {
       "year": "2025",
+      "stac_yymm": "202512",
       "revenue": 26,
-      "operating_profit": -224,
+      "operating_profit": -165,
       "net_income": -224,
-      "op_margin": -861.5384615384615
+      "op_margin": -634.6153846153845
     },
     {
       "year": "2024",
+      "stac_yymm": "202412",
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -104,6 +146,7 @@
     },
     {
       "year": "2023",
+      "stac_yymm": "202312",
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -111,15 +154,27 @@
     },
     {
       "year": "2022",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null
     }
   ],
   "ratios": {
-    "eps": -2162,
-    "bps": 1672,
-    "debt_ratio": 38.21
-  }
+    "eps": -924,
+    "bps": 2737,
+    "debt_ratio": 41.93
+  },
+  "warnings": [
+    {
+      "ticker": "380550",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202212",
+        "202312",
+        "202412"
+      ]
+    }
+  ]
 }

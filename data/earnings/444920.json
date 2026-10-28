@@ -3,23 +3,23 @@
   "name": "유안타제11호스팩",
   "quarterly": [
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 3,
-      "net_income": 3,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
-      "yoy_op": 200,
+      "yoy_op": null,
       "qoq_revenue": null,
-      "qoq_op": 200
+      "qoq_op": null
     },
     {
-      "period": "2023Q4",
+      "period": "2023.12 (회계기간 미확인)",
       "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 1,
-      "net_income": 1,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -27,11 +27,11 @@
       "qoq_op": null
     },
     {
-      "period": "2022Q4",
+      "period": "2022.12 (회계기간 미확인)",
       "stac_yymm": "202212",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -39,33 +39,22 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "revenue": 0,
-      "operating_profit": 3,
-      "net_income": 3,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "revenue": 0,
-      "operating_profit": 1,
-      "net_income": 1,
-      "op_margin": null
-    },
-    {
-      "year": "2022",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    }
-  ],
+  "annual": null,
   "ratios": {
     "roe": 2.41,
     "eps": 49,
     "bps": 2037,
     "debt_ratio": 15.1
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "444920",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202212",
+        "202312",
+        "202412"
+      ]
+    }
+  ]
 }

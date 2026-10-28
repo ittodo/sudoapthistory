@@ -3,11 +3,11 @@
   "name": "교보16호스팩",
   "quarterly": [
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -18,9 +18,10 @@
   "annual": [
     {
       "year": "2024",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null
     }
   ],
@@ -28,5 +29,14 @@
     "eps": 7,
     "bps": 1999,
     "debt_ratio": 22.21
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "482520",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202412"
+      ]
+    }
+  ]
 }

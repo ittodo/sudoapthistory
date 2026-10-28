@@ -1,0 +1,93 @@
+{
+  "ticker": "483350",
+  "name": "딜리셔스",
+  "quarterly": [
+    {
+      "period": "2026Q2",
+      "stac_yymm": "202606",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 2,
+      "revenue": 97,
+      "operating_profit": 26,
+      "net_income": 27,
+      "op_margin": 26.804123711340207,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": 22.78481012658228,
+      "qoq_op": 333.33333333333337
+    },
+    {
+      "period": "2026Q1",
+      "stac_yymm": "202603",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 1,
+      "revenue": 79,
+      "operating_profit": 6,
+      "net_income": -12,
+      "op_margin": 7.59493670886076,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2024.12 (회계기간 미확인)",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 307,
+      "operating_profit": 16,
+      "net_income": 36,
+      "op_margin": 5.211726384364821
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
+  "ratios": {
+    "eps": 76,
+    "bps": 1142,
+    "debt_ratio": 55.89
+  },
+  "warnings": [
+    {
+      "ticker": "483350",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202412",
+        "202512"
+      ]
+    }
+  ]
+}

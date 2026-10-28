@@ -1,0 +1,130 @@
+{
+  "ticker": "439960",
+  "name": "코스모로보틱스",
+  "quarterly": [
+    {
+      "period": "2026Q2",
+      "stac_yymm": "202606",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 2,
+      "revenue": 12,
+      "operating_profit": -33,
+      "net_income": -72,
+      "op_margin": -275,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -7.6923076923076925,
+      "qoq_op": -22.22222222222222
+    },
+    {
+      "period": "2026Q1",
+      "stac_yymm": "202603",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 1,
+      "revenue": 13,
+      "operating_profit": -27,
+      "net_income": -30,
+      "op_margin": -207.6923076923077,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -23.52941176470588,
+      "qoq_op": -28.57142857142857
+    },
+    {
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 4,
+      "revenue": 17,
+      "operating_profit": -21,
+      "net_income": 6,
+      "op_margin": -123.52941176470588,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2025Q3",
+      "stac_yymm": "202509",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 3,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "fiscal_year_end": "202412",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2023.12 (회계기간 미확인)",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 89,
+      "operating_profit": -82,
+      "net_income": -221,
+      "op_margin": -92.13483146067416
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 70,
+      "operating_profit": -89,
+      "net_income": -120,
+      "op_margin": -127.14285714285714
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
+  "ratios": {
+    "eps": -343,
+    "bps": 1075,
+    "debt_ratio": 14.52
+  },
+  "warnings": [
+    {
+      "ticker": "439960",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202312",
+        "202412",
+        "202509"
+      ]
+    }
+  ]
+}

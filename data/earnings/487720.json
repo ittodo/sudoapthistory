@@ -1,13 +1,27 @@
 {
   "ticker": "487720",
   "name": "키움제10호스팩",
-  "quarterly": null,
+  "quarterly": [
+    {
+      "period": "2024.12 (회계기간 미확인)",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
   "annual": [
     {
       "year": "2024",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null
     }
   ],
@@ -15,5 +29,14 @@
     "eps": -60,
     "bps": 1935,
     "debt_ratio": 20.3
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "487720",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202412"
+      ]
+    }
+  ]
 }

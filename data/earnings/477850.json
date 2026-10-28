@@ -1,0 +1,116 @@
+{
+  "ticker": "477850",
+  "name": "마키나락스",
+  "quarterly": [
+    {
+      "period": "2026Q2",
+      "stac_yymm": "202606",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 2,
+      "revenue": 40,
+      "operating_profit": -18,
+      "net_income": -15,
+      "op_margin": -45,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": 33.33333333333333,
+      "qoq_op": 25
+    },
+    {
+      "period": "2026Q1",
+      "stac_yymm": "202603",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 1,
+      "revenue": 30,
+      "operating_profit": -24,
+      "net_income": -24,
+      "op_margin": -80,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "fiscal_year_end": "202412",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2023.12 (회계기간 미확인)",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 115,
+      "operating_profit": -80,
+      "net_income": -138,
+      "op_margin": -69.56521739130434
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 83,
+      "operating_profit": -109,
+      "net_income": -61,
+      "op_margin": -131.32530120481925
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
+  "ratios": {
+    "eps": -251,
+    "bps": 2896,
+    "debt_ratio": 11.98
+  },
+  "warnings": [
+    {
+      "ticker": "477850",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202312",
+        "202412",
+        "202512"
+      ]
+    }
+  ]
+}

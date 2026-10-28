@@ -3,23 +3,23 @@
   "name": "대신밸런스제16호스팩",
   "quarterly": [
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 3,
-      "net_income": 2,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
-      "yoy_op": 200,
+      "yoy_op": null,
       "qoq_revenue": null,
-      "qoq_op": 200
+      "qoq_op": null
     },
     {
-      "period": "2023Q4",
+      "period": "2023.12 (회계기간 미확인)",
       "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 1,
-      "net_income": 1,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -27,26 +27,21 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "revenue": 0,
-      "operating_profit": 3,
-      "net_income": 2,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "revenue": 0,
-      "operating_profit": 1,
-      "net_income": 1,
-      "op_margin": null
-    }
-  ],
+  "annual": null,
   "ratios": {
     "roe": 1.64,
     "eps": 32,
     "bps": 1948,
     "debt_ratio": 8.21
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "457630",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202312",
+        "202412"
+      ]
+    }
+  ]
 }

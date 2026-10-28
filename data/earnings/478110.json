@@ -3,11 +3,11 @@
   "name": "이베스트스팩6호",
   "quarterly": [
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 1,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -15,10 +15,28 @@
       "qoq_op": null
     }
   ],
-  "annual": null,
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "ratios": {
     "eps": 16,
     "bps": 1802,
     "debt_ratio": 9.82
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "478110",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202412"
+      ]
+    }
+  ]
 }

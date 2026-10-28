@@ -5,6 +5,8 @@
     {
       "period": "2025Q3",
       "stac_yymm": "202509",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 3,
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -17,6 +19,8 @@
     {
       "period": "2025Q2",
       "stac_yymm": "202506",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 2,
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -29,6 +33,8 @@
     {
       "period": "2025Q1",
       "stac_yymm": "202503",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 1,
       "revenue": 0,
       "operating_profit": 0,
       "net_income": 0,
@@ -39,11 +45,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -51,11 +57,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q3",
+      "period": "2024.09 (회계기간 미확인)",
       "stac_yymm": "202409",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -63,11 +69,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q2",
+      "period": "2024.06 (회계기간 미확인)",
       "stac_yymm": "202406",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -78,10 +84,22 @@
   "annual": [
     {
       "year": "2024",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null
+    }
+  ],
+  "warnings": [
+    {
+      "ticker": "477760",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202406",
+        "202409",
+        "202412"
+      ]
     }
   ]
 }

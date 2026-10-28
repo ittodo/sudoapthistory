@@ -1,0 +1,93 @@
+{
+  "ticker": "387690",
+  "name": "레메디",
+  "quarterly": [
+    {
+      "period": "2026Q2",
+      "stac_yymm": "202606",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 2,
+      "revenue": 62,
+      "operating_profit": 29,
+      "net_income": 19,
+      "op_margin": 46.774193548387096,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": -34.04255319148936,
+      "qoq_op": -12.121212121212121
+    },
+    {
+      "period": "2026Q1",
+      "stac_yymm": "202603",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 1,
+      "revenue": 94,
+      "operating_profit": 33,
+      "net_income": 30,
+      "op_margin": 35.1063829787234,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2024.12 (회계기간 미확인)",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 146,
+      "operating_profit": 28,
+      "net_income": 51,
+      "op_margin": 19.17808219178082
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
+  "ratios": {
+    "eps": 731,
+    "bps": 2462,
+    "debt_ratio": 103.02
+  },
+  "warnings": [
+    {
+      "ticker": "387690",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202412",
+        "202512"
+      ]
+    }
+  ]
+}

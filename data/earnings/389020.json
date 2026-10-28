@@ -1,56 +1,160 @@
 {
   "ticker": "389020",
   "name": "자람테크놀로지",
-  "quarterly": null,
+  "quarterly": [
+    {
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "fiscal_year_end": "202412",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2023Q4",
+      "stac_yymm": "202312",
+      "fiscal_year_end": "202312",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2022Q4",
+      "stac_yymm": "202212",
+      "fiscal_year_end": "202212",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2021Q4",
+      "stac_yymm": "202112",
+      "fiscal_year_end": "202112",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2020Q4",
+      "stac_yymm": "202012",
+      "fiscal_year_end": "202012",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2019Q4",
+      "stac_yymm": "201912",
+      "fiscal_year_end": "201912",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2018.12 (회계기간 미확인)",
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
   "annual": [
     {
       "year": "2024",
+      "stac_yymm": "202412",
       "revenue": 222,
-      "operating_profit": 23,
+      "operating_profit": 4,
       "net_income": 20,
-      "op_margin": 10.36036036036036
+      "op_margin": 1.8018018018018018
     },
     {
       "year": "2023",
+      "stac_yymm": "202312",
       "revenue": 116,
-      "operating_profit": -20,
+      "operating_profit": -21,
       "net_income": -13,
-      "op_margin": -17.24137931034483
+      "op_margin": -18.103448275862068
     },
     {
       "year": "2022",
+      "stac_yymm": "202212",
       "revenue": 161,
-      "operating_profit": 4,
+      "operating_profit": 2,
       "net_income": 6,
-      "op_margin": 2.484472049689441
+      "op_margin": 1.2422360248447204
     },
     {
       "year": "2021",
+      "stac_yymm": "202112",
       "revenue": 143,
-      "operating_profit": 11,
+      "operating_profit": 3,
       "net_income": 12,
-      "op_margin": 7.6923076923076925
+      "op_margin": 2.097902097902098
     },
     {
       "year": "2020",
+      "stac_yymm": "202012",
       "revenue": 116,
-      "operating_profit": 3,
+      "operating_profit": 5,
       "net_income": 3,
-      "op_margin": 2.586206896551724
+      "op_margin": 4.310344827586207
     },
     {
       "year": "2019",
+      "stac_yymm": "201912",
       "revenue": 167,
-      "operating_profit": 19,
+      "operating_profit": 18,
       "net_income": 19,
-      "op_margin": 11.377245508982035
+      "op_margin": 10.778443113772456
     },
     {
       "year": "2018",
-      "revenue": 119,
-      "operating_profit": 7,
-      "net_income": 7,
-      "op_margin": 5.88235294117647
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
     }
   ],
   "ratios": {
@@ -58,5 +162,20 @@
     "eps": 320,
     "bps": 6860,
     "debt_ratio": 84.49
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "389020",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "201812",
+        "201912",
+        "202012",
+        "202112",
+        "202212",
+        "202312",
+        "202412"
+      ]
+    }
+  ]
 }

@@ -3,11 +3,11 @@
   "name": "에스케이증권제10호스팩",
   "quarterly": [
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 1,
-      "net_income": 1,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -15,11 +15,11 @@
       "qoq_op": null
     },
     {
-      "period": "2023Q4",
+      "period": "2023.12 (회계기간 미확인)",
       "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -27,5 +27,15 @@
       "qoq_op": null
     }
   ],
-  "annual": null
+  "annual": null,
+  "warnings": [
+    {
+      "ticker": "457940",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202312",
+        "202412"
+      ]
+    }
+  ]
 }

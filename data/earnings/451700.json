@@ -3,11 +3,11 @@
   "name": "엔에이치스팩29호",
   "quarterly": [
     {
-      "period": "2025Q3",
+      "period": "2025.09 (회계기간 미확인)",
       "stac_yymm": "202509",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -15,11 +15,11 @@
       "qoq_op": null
     },
     {
-      "period": "2025Q2",
+      "period": "2025.06 (회계기간 미확인)",
       "stac_yymm": "202506",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -27,11 +27,11 @@
       "qoq_op": null
     },
     {
-      "period": "2025Q1",
+      "period": "2025.03 (회계기간 미확인)",
       "stac_yymm": "202503",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -39,11 +39,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q4",
+      "period": "2024.12 (회계기간 미확인)",
       "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -51,11 +51,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q3",
+      "period": "2024.09 (회계기간 미확인)",
       "stac_yymm": "202409",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -63,11 +63,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q2",
+      "period": "2024.06 (회계기간 미확인)",
       "stac_yymm": "202406",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -75,11 +75,11 @@
       "qoq_op": null
     },
     {
-      "period": "2024Q1",
+      "period": "2024.03 (회계기간 미확인)",
       "stac_yymm": "202403",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -87,11 +87,11 @@
       "qoq_op": null
     },
     {
-      "period": "2023Q4",
+      "period": "2023.12 (회계기간 미확인)",
       "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -99,11 +99,11 @@
       "qoq_op": null
     },
     {
-      "period": "2023Q3",
+      "period": "2023.09 (회계기간 미확인)",
       "stac_yymm": "202309",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -111,11 +111,11 @@
       "qoq_op": null
     },
     {
-      "period": "2023Q2",
+      "period": "2023.06 (회계기간 미확인)",
       "stac_yymm": "202306",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null,
       "yoy_revenue": null,
       "yoy_op": null,
@@ -123,20 +123,23 @@
       "qoq_op": null
     }
   ],
-  "annual": [
+  "annual": null,
+  "warnings": [
     {
-      "year": "2024",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
+      "ticker": "451700",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202306",
+        "202309",
+        "202312",
+        "202403",
+        "202406",
+        "202409",
+        "202412",
+        "202503",
+        "202506",
+        "202509"
+      ]
     }
   ]
 }

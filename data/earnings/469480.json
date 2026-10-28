@@ -1,20 +1,49 @@
 {
   "ticker": "469480",
   "name": "IBKS제24호스팩",
-  "quarterly": null,
+  "quarterly": [
+    {
+      "period": "2024Q4",
+      "stac_yymm": "202412",
+      "fiscal_year_end": "202412",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2023.12 (회계기간 미확인)",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
   "annual": [
     {
       "year": "2024",
+      "stac_yymm": "202412",
       "revenue": 0,
-      "operating_profit": 1,
+      "operating_profit": 0,
       "net_income": 1,
       "op_margin": null
     },
     {
       "year": "2023",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
       "op_margin": null
     }
   ],
@@ -23,5 +52,15 @@
     "eps": 33,
     "bps": 2014,
     "debt_ratio": 17.72
-  }
+  },
+  "warnings": [
+    {
+      "ticker": "469480",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202312",
+        "202412"
+      ]
+    }
+  ]
 }
