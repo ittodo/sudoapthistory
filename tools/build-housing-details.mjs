@@ -1,8 +1,8 @@
 import{contractInput}from'./housing-contract-input.mjs';
 import{detailMemo,detailEngine,detailDependencies,detailIdentity}from'./housing-detail-cache.mjs';
 // Read-only migration of published apartment contracts into references + sparse extras.
-import{readFileSync,writeFileSync,mkdirSync,realpathSync}from'node:fs';import{resolve,join,dirname}from'node:path';import{gzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
-import{regionalReader}from'./regional-reader.mjs';import{packContractDetails,restoreDetails}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
+import{readFileSync,writeFileSync,mkdirSync,realpathSync,lstatSync}from'node:fs';import{resolve,join,dirname,sep}from'node:path';import{gzipSync,gunzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
+import{regionalReader}from'./regional-reader.mjs';import{packContractDetails,restoreDetails,contractDisplay}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex'),canonical=r=>JSON.stringify(Object.fromEntries(Object.keys(r).sort().map(k=>[k,r[k]])));
 export function retainUnconvertedContracts(previous,manifest,emit,converted={}){
  const inputs=new Map(),read=p=>{const b=readFileSync(join(previous,p));inputs.set(p,hash(b));return b;},prior=JSON.parse(read('data/contracts/index.json'));if(![1,2].includes(prior.schema))throw Error('Unsupported previous contract manifest');
@@ -15,6 +15,63 @@ export function retainUnconvertedContracts(previous,manifest,emit,converted={}){
  }
  manifest.partitions.sort((a,b)=>a.path.localeCompare(b.path,'en'));
  return {files,bytes,superseded,supersededPartitions,inputs:Object.fromEntries(inputs),verify(){for(const[p,h]of inputs)if(hash(readFileSync(join(previous,p)))!==h)throw Error('Previous contract input changed');}};
+}
+// A query window is not a retention policy. Keep only expired published scopes;
+// current-window omissions remain omissions and must pass the existing checks.
+export function retainHistoricalContracts(previous,manifest,rental,displays,emit){
+ previous=realpathSync(previous);
+ const inputs=new Map();
+ const read=path=>{
+  let file=previous;
+  for(const part of path.split('/')){
+   if(!part||part==='.'||part==='..'||/[\\:]/.test(part))throw Error('Unsafe historical contract path');
+   file=join(file,part);if(lstatSync(file).isSymbolicLink())throw Error('Historical contract symlink');
+  }
+  if(!realpathSync(file).startsWith(previous+sep))throw Error('Historical contract input escapes root');
+  const bytes=readFileSync(file);inputs.set(path,hash(bytes));return bytes;
+ };
+ const prior=JSON.parse(read('data/contracts/index.json'));
+ if(![1,2].includes(prior.schema)||!Array.isArray(prior.partitions))throw Error('Unsupported previous contract manifest');
+ const scope=p=>[p.service,p.lawd,p.month].join('|'),present=new Set(),seen=new Set();
+ for(const p of manifest.partitions){if(present.has(scope(p)))throw Error('Duplicate generated contract scope');present.add(scope(p));}
+ for(const p of prior.partitions){if(seen.has(scope(p)))throw Error('Duplicate previous contract scope');seen.add(scope(p));}
+ const references=prior.partitions.filter(p=>p.format==='regional-reference');
+ if(references.length&&manifest.queryStartMonth!==null&&(!/^\d{4}(0[1-9]|1[0-2])$/.test(manifest.queryStartMonth)||typeof manifest.queryStartMonth!=='string'))throw Error('Historical contract queryStartMonth required');
+ const expired=typeof manifest.queryStartMonth==='string'?references.filter(p=>p.month<manifest.queryStartMonth&&!present.has(scope(p))):[];
+ let reader=null,files=0,bytes=0,matched=0,unmatched=0;
+ if(expired.length){
+  const priorRental=JSON.parse(read('data/rental/index.json'));
+  reader=regionalReader(previous,'rental',{verifyOnce:true});
+  if(prior.schema!==2||prior.rentalVersion!==priorRental.version||reader.manifest.version!==priorRental.version)throw Error('Historical contract rental binding mismatch');
+ }
+ const owned=path=>{const value=read(path);if(prior.sources?.[path]!==hash(value))throw Error('Historical contract evidence mismatch: '+path);return value;};
+ for(const p of expired){
+  const prefix=`data/contracts/${p.service}/${p.lawd}/${p.month}`;
+  if(!['apartment-rent','rowhouse-rent'].includes(p.service)||!/^\d{5}$/.test(p.lawd)||!/^\d{4}(0[1-9]|1[0-2])$/.test(p.month)||p.path!==`${p.service}/${p.lawd}/${p.month}.bin`||!Number.isSafeInteger(p.count)||p.count<0||!Array.isArray(p.regionCodes)||p.regionCodes.some(code=>!/^\d{5}$/.test(code))||new Set(p.regionCodes).size!==p.regionCodes.length||(p.details!==null&&p.details!==prefix+'-details.bin')||(p.unmatched!==null&&p.unmatched!==prefix+'-unmatched.bin')||(p.display!==null&&p.display!==`data/contracts/${p.service}/${p.lawd}/display.json`)||((p.details===null)!==(p.display===null)))throw Error('Invalid historical contract scope');
+  const stored=new Map();
+  const decode=(path,schema)=>{if(!path)return codec.encodeColumns(schema,[]);const value=owned(path);stored.set(path,value);return new Uint8Array(gunzipSync(value));};
+  const details=decode(p.details,codec.schemas.ContractDetail),extra=decode(p.unmatched,codec.schemas.ContractUnmatched);
+  const display=p.display?contractDisplay(details,JSON.parse(owned(p.display)),codec):{};
+  const month=p.month.slice(0,4)+'-'+p.month.slice(4);
+  const before=p.regionCodes.flatMap(code=>reader.regionMonth(code,month,false).rows),after=p.regionCodes.flatMap(code=>rental.regionMonth(code,month,false).rows);
+  const oldRows=restoreDetails(details,extra,display,before,reader.table,codec),newRows=restoreDetails(details,extra,display,after,rental.table,codec);
+  if(oldRows.length!==p.count||oldRows.some(row=>row.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Historical contract count/month mismatch');
+  if(JSON.stringify(oldRows.map(canonical).sort())!==JSON.stringify(newRows.map(canonical).sort()))throw Error('Historical contract facts changed: '+scope(p));
+  if(p.display){
+   if(!displays.has(p.display))displays.set(p.display,{});
+   const values=displays.get(p.display);
+   for(const[id,meta]of Object.entries(display)){if(values[id]&&canonical(values[id])!==canonical(meta))throw Error('Conflicting historical contract display identity');values[id]=meta;}
+  }
+  for(const[path,value]of stored){emit(path,value);files++;bytes+=value.length;manifest.sources[path]=hash(value);}
+  manifest.partitions.push({...p});present.add(scope(p));
+  matched+=codec.openColumns(codec.schemas.ContractDetail,details).rowCount;
+  unmatched+=codec.openColumns(codec.schemas.ContractUnmatched,extra).rowCount;
+ }
+ manifest.partitions.sort((a,b)=>a.path.localeCompare(b.path,'en'));
+ return {partitions:expired.length,files,bytes,matched,unmatched,inputs:Object.fromEntries(inputs),verify(){
+  for(const[path,digest]of inputs)if(hash(read(path))!==digest)throw Error('Previous historical contract input changed');
+  reader?.recheck();
+ }};
 }
 export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,generationSession=null}={}){
  source=realpathSync(source);packed=realpathSync(packed);if(source===packed)throw Error('Isolated output required');const rental=regionalReader(packed,'rental',{verifyOnce:true});if(rental.manifest.schema!==3)throw Error('Packed facts required');
@@ -50,6 +107,7 @@ export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,g
   if(typeof sourceHash==='string'){if(sourceHash!==selection.digest)throw Error('Generated contract source hash mismatch');generationSession?.save(batchScope,[engine,p.service,p.lawd,p.month,p.count,p.rejectedCount||0,sourceHash,dependencies,mapping],detailIdentity(rental.table,regionCodes),{partition:publicPartition,entities:selection.entities,inputBytes:selection.bytes,matched:value.matched,unmatchedCount:value.unmatchedCount,display:value.display},[details,unmatched].filter(Boolean));}
   manifest.partitions.push({...p,...publicPartition});retired[path]=input.get(path);metrics.oldBytes+=selection.bytes;metrics.matched+=value.matched;metrics.unmatched+=value.unmatchedCount;
  }
+ const historical=previous?retainHistoricalContracts(previous,manifest,rental,displays,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;}):null;
  for(const[path,values]of displays){const dictionary=[],refs={},lookup=new Map();for(const[id,meta]of Object.entries(values).sort(([a],[b])=>a.localeCompare(b))){const key=canonical(meta);let n=lookup.get(key);if(n===undefined){n=dictionary.length;dictionary.push(meta);lookup.set(key,n);}refs[id]=n;}emit(path,Buffer.from(JSON.stringify({dictionary,refs})));}
  const retained=previous?retainUnconvertedContracts(realpathSync(previous),manifest,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;},retired):null;
  emit('data/contracts/index.json',Buffer.from(JSON.stringify(manifest)));
@@ -57,6 +115,6 @@ export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,g
  const next={schema:2,unit:rent.unit,total:rent.total,linked:rent.linked,records:Object.fromEntries(Object.entries(rent.records).map(([id,{shard,...r}])=>[id,r])),coverage:rent.coverage,sharedManifest:'data/rental/index.json',rentalVersion:rental.manifest.version,contractsHash:hash(readFileSync(join(packed,'data/contracts/index.json'))),catalogHash:hash(readFileSync(join(packed,'data/apartments/index.json')))};
  emit('data/apartment-rent/index.json',Buffer.from(JSON.stringify(next)));
  for(const[p,h]of input)if(hash(readFileSync(join(source,p)))!==h)throw Error('Contract input changed');
- retained?.verify();rental.recheck();const report={reuse,inputReuse,retainedUnconverted:retained?{files:retained.files,bytes:retained.bytes,inputs:retained.inputs}:null,superseded:retained?.superseded??{},supersededPartitions:retained?.supersededPartitions??{},status:'PASS',metrics,retired,inputs:Object.fromEntries(input)};writeFileSync(join(packed,'housing-details-report.json'),JSON.stringify(report,null,2));return report;
+ retained?.verify();historical?.verify();rental.recheck();const report={reuse,inputReuse,retainedHistorical:historical?{partitions:historical.partitions,files:historical.files,bytes:historical.bytes,matched:historical.matched,unmatched:historical.unmatched,inputs:historical.inputs}:null,retainedUnconverted:retained?{files:retained.files,bytes:retained.bytes,inputs:retained.inputs}:null,superseded:retained?.superseded??{},supersededPartitions:retained?.supersededPartitions??{},status:'PASS',metrics,retired,inputs:Object.fromEntries(input)};writeFileSync(join(packed,'housing-details-report.json'),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)console.log(JSON.stringify(buildHousingDetails(...process.argv.slice(2)).metrics));

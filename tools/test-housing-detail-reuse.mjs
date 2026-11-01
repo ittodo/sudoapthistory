@@ -99,3 +99,101 @@ test('apartment and rowhouse partitions in the same district and month keep sepa
  }finally{const target=fsRealpath(base),parent=fsRealpath(tmpdir());if(!target.startsWith(parent+pathSep)||!target.slice(parent.length+1).startsWith('detail-typed-scopes-'))throw Error('Unsafe test cleanup');rmSync(target,{recursive:true});}
 });
 import{realpathSync as fsRealpath}from'node:fs';import{sep as pathSep}from'node:path';
+
+test('contract month rollover retains historical references and browser history without reviving recent omissions',async()=>{
+ const {regionalReader}=await import('./regional-reader.mjs');
+ const {createContractReader}=await import('../js/housing-contracts.mjs');
+ const {gunzipSync}=await import('node:zlib');
+ const base=mkdtempSync(join(tmpdir(),'detail-rollover-'));
+ try{
+  const fixture=detailFixture(base);
+  fixture.rows['2025-09'].push({...fixture.rows['2025-09'][0],deposit:9999});fixture.partitions[0].count=3;
+  fixture.put('data/contracts/apartment-rent/11110/202509.json',{rows:fixture.rows['2025-09']});
+  fixture.put('data/contracts/index.json',{schema:1,queryStartMonth:'202509',partitions:fixture.partitions});
+  const first=fixture.run();
+  const before=JSON.parse(readFileSync(join(first.out,'data/contracts/index.json')));
+  const old=before.partitions.find(p=>p.month==='202509'),recent=before.partitions.find(p=>p.month==='202609');
+  assert.ok(old?.details&&old?.unmatched&&recent?.details);
+  const oldBytes=readFileSync(join(first.out,old.details)),unmatchedBytes=readFileSync(join(first.out,old.unmatched));
+  function next(previous,cutoff,partitions,name){
+   fixture.put('data/contracts/index.json',{schema:1,queryStartMonth:cutoff,partitions});
+   const out=join(base,name);cpSync(fixture.seed,out,{recursive:true});
+   buildHousingSales(fixture.source,out,[],{cacheDir:fixture.cache});
+   const result=buildHousingDetails(fixture.source,out,previous,{cacheDir:fixture.cache});
+   return {out,result,index:JSON.parse(readFileSync(join(out,'data/contracts/index.json')))};
+  }
+  const second=next(first.out,'202609',[fixture.partitions[1]],'rollover-second');
+  assert.equal(second.result.retainedHistorical.partitions,1);
+  assert.deepEqual(readFileSync(join(second.out,old.details)),oldBytes);
+  assert.deepEqual(readFileSync(join(second.out,old.unmatched)),unmatchedBytes);
+  assert.equal(second.index.sources[old.details],hash(oldBytes));assert.equal(second.index.sources[old.unmatched],hash(unmatchedBytes));
+  assert.ok(second.index.partitions.some(p=>p.month==='202509'));
+  assert.ok(second.index.partitions.some(p=>p.month==='202609'));
+  assert.equal(existsSync(join(second.out,'data/contracts/apartment-rent/11110/202509.json')),false);
+  const third=next(second.out,'202610',[],'rollover-third');
+  assert.equal(third.result.retainedHistorical.partitions,2);
+  assert.deepEqual(readFileSync(join(third.out,old.details)),oldBytes);
+  assert.deepEqual(third.index.partitions.map(p=>p.month).sort(),['202509','202609']);
+  const input=regionalReader(third.out,'rental'),complexes=[{id:'A',lawd:'11110'}];
+  Object.assign(complexes,input.table.complexes);
+  const regional={...input.table,complexes,source:input.table.source,version:input.manifest.version,regionMonth:async(...args)=>input.regionMonth(...args)};
+  const load=async p=>{const b=readFileSync(join(third.out,p));return p.endsWith('.bin')?new Uint8Array(gunzipSync(b)):JSON.parse(b);};
+  const reader=createContractReader(third.index,regional,load);
+  const rows=await reader.history(['A'],2025);
+  assert.equal(rows.length,3);
+  assert.ok(rows.every(r=>r.entityId==='A'&&r.date==='2025-09-01'));
+  assert.equal(rows.filter(r=>r.deposit===9999).length,1);
+  assert.equal(new Set(rows.filter(r=>r.recordOccurrence!==undefined).map(r=>r.recordOccurrence)).size,2);
+  const laterRows=await reader.history(['A'],2026);assert.equal(laterRows.length,2);
+  const shared=JSON.parse(readFileSync(join(third.out,old.display)));assert.equal(Object.keys(shared.refs).length,4);assert.equal(shared.dictionary.length,1);
+  const omitted=next(first.out,'202609',[],'rollover-recent-omitted');
+  assert.deepEqual(omitted.index.partitions.map(p=>p.month),['202509']);
+  assert.equal(existsSync(join(omitted.out,recent.details)),false);
+ }finally{
+  const target=fsRealpath(base),parent=fsRealpath(tmpdir());
+  if(!target.startsWith(parent+pathSep)||!target.slice(parent.length+1).startsWith('detail-rollover-'))throw Error('Unsafe test cleanup');
+  rmSync(target,{recursive:true});
+ }
+});
+
+test('historical contract retention rejects changed references, display conflicts and tampering while permitting appended facts',async()=>{
+ const {retainHistoricalContracts}=await import('./build-housing-details.mjs');
+ const {regionalReader}=await import('./regional-reader.mjs');
+ const base=mkdtempSync(join(tmpdir(),'detail-history-proof-'));
+ try{
+  const fixture=detailFixture(base);
+  fixture.put('data/contracts/index.json',{schema:1,queryStartMonth:'202509',partitions:fixture.partitions});
+  const first=fixture.run(),prior=JSON.parse(readFileSync(join(first.out,'data/contracts/index.json')));
+  const part=prior.partitions.find(p=>p.month==='202509');
+  const original=readFileSync(join(first.out,part.details));
+  const current=regionalReader(first.out,'rental');
+  const manifest=()=>({schema:2,queryStartMonth:'202609',sources:{},partitions:[]});
+  const retain=(reader=current,m=manifest(),displays=new Map())=>retainHistoricalContracts(first.out,m,reader,displays,()=>{});
+  const accepted=retain();assert.equal(accepted.partitions,1);accepted.verify();
+  const originalMeta=JSON.parse(readFileSync(join(first.out,part.display))),firstKey=Object.keys(originalMeta.refs)[0];
+  const conflicts=new Map([[part.display,{[firstKey]:{name:'different'}}]]);
+  assert.throws(()=>retain(current,manifest(),conflicts));
+  const noCutoff=manifest();delete noCutoff.queryStartMonth;
+  assert.throws(()=>retain(current,noCutoff));
+  assert.equal(retain(current,{...manifest(),queryStartMonth:null}).partitions,0);
+  const changed={...current,regionMonth(code,month,...rest){const value=current.regionMonth(code,month,...rest);if(month==='2025-09'){const rows=value.rows.map(x=>[...x]);rows[0][3]+=1;return {...value,rows};}return value;}};
+  assert.throws(()=>retain(changed));
+  const wrongTable={...current.table,complexes:{...current.table.complexes}};
+  wrongTable.complexes['11110:0']={...wrongTable.complexes['11110:0'],id:'different-source'};
+  assert.throws(()=>retain({...current,table:wrongTable}));
+  const appended={...current,regionMonth(code,month,...rest){const value=current.regionMonth(code,month,...rest);if(month==='2025-09'){const extra=[...value.rows[0]];extra[17]='ff'.repeat(10);return {...value,rows:[...value.rows,extra]};}return value;}};
+  assert.equal(retain(appended).partitions,1);
+  const priorIndexPath=join(first.out,'data/contracts/index.json'),priorIndexBytes=readFileSync(priorIndexPath);
+  const changedCount=JSON.parse(priorIndexBytes);changedCount.partitions.find(p=>p.month==='202509').count++;writeFileSync(priorIndexPath,JSON.stringify(changedCount));assert.throws(()=>retain());
+  const unsafePath=JSON.parse(priorIndexBytes);unsafePath.partitions.find(p=>p.month==='202509').details='data/contracts/rowhouse-rent/11110/202509-details.bin';writeFileSync(priorIndexPath,JSON.stringify(unsafePath));assert.throws(()=>retain());
+  writeFileSync(priorIndexPath,priorIndexBytes);
+  writeFileSync(join(first.out,part.details),Buffer.from('corrupt'));
+  assert.throws(()=>retain());
+  assert.throws(()=>accepted.verify());
+  writeFileSync(join(first.out,part.details),original);
+ }finally{
+  const target=fsRealpath(base),parent=fsRealpath(tmpdir());
+  if(!target.startsWith(parent+pathSep)||!target.slice(parent.length+1).startsWith('detail-history-proof-'))throw Error('Unsafe test cleanup');
+  rmSync(target,{recursive:true});
+ }
+});
