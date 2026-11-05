@@ -1,0 +1,80 @@
+{
+  "ticker": "495910",
+  "name": "이에스티",
+  "quarterly": [
+    {
+      "period": "2026Q2",
+      "stac_yymm": "202606",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 2,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2025Q4",
+      "stac_yymm": "202512",
+      "fiscal_year_end": "202512",
+      "fiscal_quarter": 4,
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
+      "period": "2024.12 (회계기간 미확인)",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    }
+  ],
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 354,
+      "operating_profit": -1,
+      "net_income": 20,
+      "op_margin": -0.2824858757062147
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
+  "ratios": {
+    "eps": -237,
+    "bps": 4175,
+    "debt_ratio": 45.97
+  },
+  "warnings": [
+    {
+      "ticker": "495910",
+      "reason": "ambiguous_fiscal_period",
+      "periods": [
+        "202412",
+        "202512",
+        "202606"
+      ]
+    }
+  ]
+}
