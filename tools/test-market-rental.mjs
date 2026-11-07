@@ -10,7 +10,25 @@ import * as codec from '../js/generated/housing-columns.mjs';
 import {packQuarter,encodeQuarter} from '../js/housing-quarter.mjs';
 import {encodeRecords,openRecords,FORMAT} from '../js/packed-records.mjs';
 import {openColumns,schemas} from '../js/generated/transport-columns.mjs';
-import {compactMarketShard,rentalMarketAssets} from './build-rental-market-cache.mjs';
+import {privateCache} from './private-cache.mjs';
+import {partitionHousing} from './housing-partition.mjs';
+// Observe the real decode cache without adding a production option or relying
+// on the builder's own month counter. Data URL modules also work on Node 22.
+const decoderUrl=new URL('./housing-regional-reader.mjs',import.meta.url).href;
+const observerUrl='data:text/javascript,'+encodeURIComponent(`
+ import {createHousingDecodeCache as createCache} from ${JSON.stringify(decoderUrl)};
+ export * from ${JSON.stringify(decoderUrl)};
+ let observed;
+ export function captureDecodeStats(value){observed=value;}
+ export function createHousingDecodeCache(...args){const cache=createCache(...args);observed?.push(cache.stats);return cache;}
+`);
+const {captureDecodeStats}=await import(observerUrl),builderUrl=new URL('./build-rental-market-cache.mjs',import.meta.url);let wrappedFactory=false;
+const observedBuilder=readFileSync(builderUrl,'utf8').replace(/((?:from|import)\s*)(['"])(\.{1,2}\/[^'"]+)\2/g,(_,prefix,quote,specifier)=>{
+ const url=new URL(specifier,builderUrl).href;if(url===decoderUrl)wrappedFactory=true;
+ return prefix+JSON.stringify(url===decoderUrl?observerUrl:url);
+});
+assert.ok(wrappedFactory,'the production builder must use the observed decode cache factory');
+const {compactMarketShard,rentalMarketAssets}=await import('data:text/javascript,'+encodeURIComponent(observedBuilder+'\n//# sourceURL='+builderUrl.href+'?decode-stats-test'));
 const root=resolve(import.meta.dirname,'..');
 const ctx=vm.createContext({URLSearchParams});vm.runInContext(readFileSync(join(root,'js/market-rental-model.js'),'utf8'),ctx);const M=ctx.NodoMarketRental;
 const cat=[{id:'a',publicId:'p',r:1,g:'종로구',n:'테스트',d:'창신동'},{id:'b',r:0,g:'수원시',n:'다른 단지',d:'매탄동'}];
@@ -200,29 +218,59 @@ test('packed summaries reuse display edits but invalidate grouping and transacti
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
-test('packed month cache ignores appended sale identities and recalculates only changed rental statistics',()=>{
+test('packed month cache scopes grouping to used complexes and preserves identity and transaction checks',()=>{
  const dir=mkdtempSync(join(tmpdir(),'nodo-market-scope-'));try{
   copySummaryEngine(dir);
   const sources={},code='11110',base='data/daily/regions/'+code,identity={complexes:['source'],areas:[[0,'33.05785']]},months=['2026-07','2026-08','2026-09'];
   const emit=(p,v,binary=false)=>{const b=binary?gzipSync(v):Buffer.from(JSON.stringify(v));mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),b);sources[p]=hash(b);};
   const values=Object.fromEntries(months.map((m,i)=>{const rent=sourceRow(row(10000,50));rent[0]=code+':0';rent[1]='33.05785';rent[2]=Number(m.replace('-','')+'01');rent[17]=String(i+1).padStart(2,'0').repeat(10);return [m,{daily:{rows:[],opening:[],updates:[]},rental:{rows:[rent],opening:[],updates:[]}}];}));
-  const q=base+'/quarters/2026-Q3.bin',metadata=base+'/metadata.json';
-  const write=()=>{emit(q,encodeQuarter(packQuarter(code,'2026-Q3',values,identity,codec)),true);emit(base+'/identities.json',identity);emit(metadata,{complexes:[{id:'source',r:1,g:'종로구'}],areas:[]});emit('data/daily/regions/index.json',{schema:3,regions:{[code]:{identities:base+'/identities.json',metadata}}});mkdirSync(join(dir,'data/rental'),{recursive:true});writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({schema:3,version:'test',months,sources,regional:{format:'packed-region',kind:'rental',authority:'data/daily/regions/index.json',quarters:{[code]:Object.fromEntries(months.map(m=>[m,q]))},states:{[code]:Object.fromEntries(months.map(m=>[m,null]))}}}));};
-  const run=()=>{const stats={},assets=rentalMarketAssets(dir,{stats});return {stats,bytes:assets[0].bytes};};
-  write();const first=run();assert.equal(first.stats.calculated,3);
+  const q=base+'/quarters/2026-Q3.bin',metadata=base+'/metadata.json',grouping=['종로구','종로구'],provinces=[1,1];let extraRegion=false;
+  const write=()=>{emit(q,encodeQuarter(packQuarter(code,'2026-Q3',values,identity,codec)),true);emit(base+'/identities.json',identity);emit(metadata,{complexes:identity.complexes.map((id,i)=>({id,r:provinces[i],g:grouping[i]})),areas:[]});const regions={[code]:{identities:base+'/identities.json',metadata}};
+   if(extraRegion){const other='data/daily/regions/41610';emit(other+'/identities.json',{complexes:['unrelated-region'],areas:[[0,'84']]});emit(other+'/metadata.json',{complexes:[{id:'unrelated-region',r:0,g:'광주시'}],areas:[]});regions['41610']={identities:other+'/identities.json',metadata:other+'/metadata.json'};}
+   emit('data/daily/regions/index.json',{schema:3,regions});mkdirSync(join(dir,'data/rental'),{recursive:true});writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify({schema:3,version:'test',months,sources,regional:{format:'packed-region',kind:'rental',authority:'data/daily/regions/index.json',quarters:{[code]:Object.fromEntries(months.map(m=>[m,q]))},states:{[code]:Object.fromEntries(months.map(m=>[m,null]))}}}));};
+  const run=()=>{const captured=[];captureDecodeStats(captured);try{const stats={},assets=rentalMarketAssets(dir,{stats});assert.equal(captured.length,1,'observe the actual per-run cache');const {misses,hits}=captured[0];return {stats,decode:{misses,hits},bytes:assets[0].bytes,index:JSON.parse(assets.find(a=>a.path.endsWith('index.json')).bytes)};}finally{captureDecodeStats(null);}};
+  const editStamp=edit=>{const scope='cloudflare/dist/rental-market-summary-v2',cache=privateCache(dir,scope),path=join(dir,scope,'2026-09.bin.json');try{const stamp=JSON.parse(cache.read(path));edit(stamp);cache.write(path,JSON.stringify(stamp));}finally{cache.close();}};
+  write();const first=run();assert.equal(first.stats.calculated,3);assert.deepEqual(first.decode,{misses:1,hits:2},'one quarter decode serves three months');
   identity.areas.push([0,'84.999']);write();const append=run();assert.equal(append.stats.decoded,0);assert.equal(append.stats.reused,3);assert.deepEqual(append.bytes,first.bytes);
-  const rent=values['2026-09'].rental.rows[0];rent[3]=20000;write();const change=run();assert.equal(change.stats.calculated,1);assert.equal(change.stats.semanticReused,2);
+  // No month uses the new catalog key. Its addition and grouping edits must not
+  // read monthly rows or recompute their semantic hashes.
+  identity.complexes.push('unrelated');identity.areas.push([1,'33.05785']);write();const added=run();assert.equal(added.stats.decoded,0);assert.equal(added.stats.semanticReused,0);assert.equal(added.stats.reused,3);assert.deepEqual(added.bytes,first.bytes);
+  grouping[1]='중구';write();const unrelated=run();assert.equal(unrelated.stats.decoded,0);assert.equal(unrelated.stats.reused,3);assert.ok(unrelated.index.districts['11'].includes('중구'));assert.equal(unrelated.index.inputs[metadata],sources[metadata]);
+  provinces[1]=0;write();const unrelatedProvince=run();assert.equal(unrelatedProvince.stats.decoded,0);assert.equal(unrelatedProvince.stats.reused,3);assert.ok(unrelatedProvince.index.districts['41'].includes('중구'));
+  const previousFull=process.env.NODO_FULL_VERIFY;try{process.env.NODO_FULL_VERIFY='1';const full=run();assert.equal(full.stats.decoded,3);assert.deepEqual(full.decode,{misses:1,hits:2},'mixed provinces still select each quarter once per month');assert.deepEqual(full.bytes,unrelatedProvince.bytes);assert.equal(summaryAt(full.bytes,'2026-09').groups['monthly:all'].total.count,1);}finally{if(previousFull===undefined)delete process.env.NODO_FULL_VERIFY;else process.env.NODO_FULL_VERIFY=previousFull;}
+  extraRegion=true;write();const newRegion=run();assert.equal(newRegion.stats.decoded,0);assert.equal(newRegion.stats.reused,3);assert.ok(newRegion.index.districts['41'].includes('광주시'));
+  for(const[label,value]of Object.entries({append,added,unrelated,unrelatedProvince,newRegion}))assert.deepEqual(value.decode,{misses:0,hits:0},label+' must not open a quarter, even as a cache hit');
+  // A new used key is discovered from changed quarter bytes. Later grouping
+  // edits invalidate only the month that actually uses that key.
+  const rent=values['2026-09'].rental.rows[0];rent[0]=code+':1';write();const used=run();assert.equal(used.stats.decoded,3);assert.equal(used.stats.calculated,1);assert.equal(used.stats.semanticReused,2);
+  grouping[1]='용산구';write();const group=run();assert.equal(group.stats.decoded,1);assert.equal(group.stats.calculated,1);assert.equal(group.stats.reused,2);assert.equal(group.stats.semanticReused,0);assert.equal(summaryAt(group.bytes,'2026-09').groups['monthly:all'].districts['용산구'].count,1);
+  provinces[1]=2;write();const province=run();assert.equal(province.stats.decoded,1);assert.equal(province.stats.calculated,1);assert.equal(province.stats.reused,2);assert.equal(summaryAt(province.bytes,'2026-09').groups['monthly:all'].regions['28'].count,1);
+  for(const value of [group,province])assert.deepEqual(value.decode,{misses:1,hits:0},'only the affected month opens its quarter');
+  rent[3]=20000;write();const change=run();assert.equal(change.stats.calculated,1);assert.equal(change.stats.semanticReused,2);
   assert.equal(summaryAt(change.bytes,'2026-09').groups['monthly:all'].total.monthly.avg,150);
   // A floor edit changes transport bytes, but none of the displayed statistics.
   rent[6]=20;write();const floor=run();assert.equal(floor.stats.calculated,0);assert.equal(floor.stats.reused,3);assert.deepEqual(floor.bytes,change.bytes);
   // Used identity changes must decode again and change per-area statistics.
-  identity.areas[0][1]='40';rent[1]='40';for(const m of months)values[m].rental.rows[0][1]='40';write();const area=run();assert.equal(area.stats.calculated,3);assert.notDeepEqual(area.bytes,floor.bytes);
+  identity.areas[0][1]='40';identity.areas[2][1]='40';for(const m of months)values[m].rental.rows[0][1]='40';write();const area=run();assert.equal(area.stats.calculated,3);assert.notDeepEqual(area.bytes,floor.bytes);
   rent[7]=1;write();const cancelled=run();assert.equal(cancelled.stats.calculated,1);assert.equal(summaryAt(cancelled.bytes,'2026-09').groups['monthly:all'].total.count,0);
   rent[7]=0;values['2026-09'].rental.rows.push([...rent]);write();const duplicates=run();assert.equal(duplicates.stats.calculated,1);assert.equal(summaryAt(duplicates.bytes,'2026-09').groups['monthly:all'].total.count,2);
+  const sameDate=[...rent];sameDate[0]=code+':0';sameDate[3]=10000;values['2026-09'].rental.rows.push(sameDate);write();const mixed=run();assert.equal(mixed.stats.calculated,1);
+  const expected=M.summarize(compactMarketShard({rows:[sameDate,rent,rent]}).rows,{[code+':0']:{r:1,g:grouping[0]},[code+':1']:{r:2,g:grouping[1]}})['monthly:all'];assert.deepEqual(summaryAt(mixed.bytes,'2026-09').groups['monthly:all'],plain(expected));assert.equal(expected.total.count,3);
+  provinces[1]=null;write();assert.throws(run,/Unsupported record value/,'unsupported province bindings still fail public packaging');provinces[1]=2;
   values['2026-09'].rental.rows=[];write();const removed=run();assert.equal(removed.stats.calculated,1);assert.equal(summaryAt(removed.bytes,'2026-09').groups['monthly:all'].total.count,0);
-  const warm=run();assert.equal(warm.stats.decoded,0);assert.equal(warm.stats.reused,3);
+  grouping[1]='서대문구';write();const empty=run();assert.equal(empty.stats.decoded,0);assert.equal(empty.stats.reused,3);assert.equal(summaryAt(empty.bytes,'2026-09').groups['monthly:all'].total.count,0);
+  // Keep the complete old prefix for the month's quarter region, even when
+  // that month has no rental rows. A prefix change still requires decoding.
+  identity.complexes[0]='renamed-source';write();const prefix=run();assert.equal(prefix.stats.decoded,3);assert.equal(prefix.stats.semanticReused,3);assert.equal(prefix.stats.calculated,0);
+  for(const edit of [stamp=>{delete stamp.usedKeys;},stamp=>{stamp.usedKeys=[{}];},stamp=>{delete stamp.counts[code];},stamp=>{stamp.counts[code]=[-1,0];},stamp=>{stamp.counts[code]=[identity.complexes.length+1,0];}]){editStamp(edit);const invalid=run();assert.equal(invalid.stats.decoded,1);assert.equal(invalid.stats.reused,3);}
+  editStamp(stamp=>{stamp.schema=3;});const oldStamp=run();assert.equal(oldStamp.stats.decoded,1);assert.equal(oldStamp.stats.calculated,1);assert.equal(oldStamp.stats.reused,2);
+  const warm=run();assert.equal(warm.stats.decoded,0);assert.equal(warm.stats.reused,3);assert.deepEqual(warm.decode,{misses:0,hits:0});
   const old=process.env.NODO_FULL_VERIFY;try{process.env.NODO_FULL_VERIFY='1';const full=run();assert.equal(full.stats.calculated,3);assert.deepEqual(full.bytes,warm.bytes);}finally{if(old===undefined)delete process.env.NODO_FULL_VERIFY;else process.env.NODO_FULL_VERIFY=old;}
-  writeFileSync(join(dir,q),'corrupt');assert.throws(run,/source mismatch/i);
+  // Partition roots, leaf hashes and the order file stay in the monthly proof.
+  const repartition=()=>{const parts=partitionHousing({code,scope:'2026-Q3',kind:'quarter',months:values,identity,codec,path:q,previous:{leaves:[{prefix:'0'},{prefix:'1'}]},emit:(p,b)=>{writeFileSync(join(dir,p),b);sources[p]=hash(b);}});delete sources[q];const manifest=JSON.parse(readFileSync(join(dir,'data/rental/index.json')));manifest.sources=sources;manifest.regional.quarters[code]=Object.fromEntries(months.map(m=>[m,parts.path]));writeFileSync(join(dir,'data/rental/index.json'),JSON.stringify(manifest));return parts;};
+  const parts=repartition(),partitioned=run();assert.equal(partitioned.stats.decoded,3);assert.deepEqual(partitioned.decode,{misses:1,hits:2});assert.equal(partitioned.stats.semanticReused,3);assert.deepEqual(partitioned.bytes,warm.bytes);const partitionWarm=run();assert.equal(partitionWarm.stats.decoded,0);assert.deepEqual(partitionWarm.decode,{misses:0,hits:0});
+  const descriptorHash=sources[parts.path],orderHash=sources[parts.descriptor.order];values['2026-07'].rental.rows[0][3]+=10000;repartition();assert.equal(sources[parts.path],descriptorHash);assert.equal(sources[parts.descriptor.order],orderHash);const leafChange=run();assert.equal(leafChange.stats.decoded,3);assert.equal(leafChange.stats.calculated,1);assert.equal(leafChange.stats.semanticReused,2);
+  writeFileSync(join(dir,parts.descriptor.leaves[0].path),'corrupt');assert.throws(run,/source mismatch/i);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
