@@ -13,7 +13,7 @@ export function validationEngine(root,{roots=validationRoots}={}) {return codeDe
 export class ValidationSession {
  constructor(root,{directory=process.env.NODO_VALIDATION_CACHE_DIR??join(root,'cloudflare/dist/validation-cache-v1'),full=process.env.NODO_FULL_VERIFY==='1',engine,roots}={}) {
   this.root=resolve(root);this.directory=resolve(directory);this.full=full;this.engine=engine??validationEngine(this.root,roots?{roots}:{});this.records={};this.stats={checked:0,reused:0};this.misses={full:0,missing:0,inputs:0,invalid:0};this.cacheStatus='missing';
-  let current=this.directory;for(;;){if(existsSync(current)&&lstatSync(current).isSymbolicLink())throw Error('Validation cache symlink');const parent=resolve(current,'..');if(parent===current)break;current=parent;}
+  let current=this.directory;for(;;){if(existsSync(current)&&lstatSync(current).isSymbolicLink())throw Error('Validation cache symlink');const parent=dirname(current);if(parent===current)break;current=parent;}
   this.file=join(this.directory,roots?'receipts-'+this.engine+'.json':'receipts.json');
   try {const stored=JSON.parse(readFileSync(this.file));this.cacheStatus=stored.engine!==this.engine?'engine':stored.schema!==1||digest(JSON.stringify(stored.records))!==stored.digest?'invalid':'ready';if(this.cacheStatus==='ready')this.records=stored.records;}catch{if(existsSync(this.file))this.cacheStatus='invalid';}
  }

@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,symlinkSync,renameSync} from 'node:fs';
-import {join} from 'node:path';
+import {join,dirname,resolve,toNamespacedPath} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {ValidationSession,manifestDependencies} from './validation-session.mjs';
 import {closeCacheStores,readFileSync as readCache,writeFileSync as writeCache} from './cache-store.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex');
-function fixture(fn){const root=mkdtempSync(join(tmpdir(),'nodo-validation-'));try{return fn(root);}finally{closeCacheStores();rmSync(root,{recursive:true,force:true});}}
+function fixture(fn){const root=mkdtempSync(join(tmpdir(),'nodo-validation-'));try{return fn(root);}finally{closeCacheStores();assert.equal(dirname(resolve(root)),resolve(tmpdir()));rmSync(root,{recursive:true,force:true});}}
 test('successful scopes survive restart; changed scope, engine and full mode require fresh checks',()=>fixture(root=>{
  let calls=0;const verify=()=>{calls++;return {status:'PASS',rows:2};};
  let s=new ValidationSession(root,{engine:'a'});s.check('region/11',{q:'one'},verify);s.check('region/41',{q:'two'},verify);s.flush();
@@ -124,4 +124,26 @@ test('actual detail producers exclude checker orchestration but include fact res
  copy('tools/build-housing-sales.mjs');copy('tools/build-housing-details.mjs');
  for(const name of ['build-housing-sales.mjs','build-housing-details.mjs']){const options={roots:['tools/'+name]},first=validationEngine(root,options);assert.notEqual(first,fullValidationEngine(root));writeFileSync(join(root,'tools/validation-session.mjs'),'changed checker orchestration');assert.equal(validationEngine(root,options),first);}
  const options={roots:['tools/build-housing-sales.mjs']},first=validationEngine(root,options);writeFileSync(join(root,'js/housing-sale-detail.mjs'),'changed actual fact restoration');assert.notEqual(validationEngine(root,options),first);
+}));
+
+
+test('Windows namespaced validation directories flush and reuse disk and SQLite receipts',{skip:process.platform!=='win32'},()=>fixture(root=>{
+ const site=toNamespacedPath(root),result={status:'PASS',rows:2};
+ for(const relative of ['disk-validation',join('long-path','a'.repeat(100),'b'.repeat(100),'c'.repeat(100)),'cloudflare/dist/validation-cache-v1','_ops/validation-cache-v1']){
+  const options={directory:toNamespacedPath(join(root,relative)),engine:'windows-root'};
+  const first=new ValidationSession(site,options);assert.equal(first.cacheStatus,'missing');
+  first.check('scope',{source:'one'},()=>result);first.flush();
+  const receipt=readCache(first.file),next=new ValidationSession(site,options);assert.equal(next.cacheStatus,'ready');
+  assert.deepEqual(next.check('scope',{source:'one'},()=>{throw Error('Expected unchanged receipt reuse');}),result);
+  assert.deepEqual(next.stats,{checked:0,reused:1});next.flush();assert.deepEqual(readCache(next.file),receipt);
+ }
+}));
+
+test('validation output and ancestor directory links remain blocked',()=>fixture(root=>{
+ const target=join(root,'target'),link=join(root,'link');mkdirSync(target);
+ symlinkSync(target,link,process.platform==='win32'?'junction':'dir');
+ const variants=process.platform==='win32'?[p=>p,toNamespacedPath]:[p=>p];
+ for(const variant of variants)for(const directory of [link,join(link,'nested/cache'),join(link,'cloudflare/dist/validation-cache-v1'),join(link,'_ops/validation-cache-v1')]){
+  assert.throws(()=>new ValidationSession(variant(root),{directory:variant(directory),engine:'link-check'}),/Validation cache symlink|Private cache database link/);
+ }
 }));
