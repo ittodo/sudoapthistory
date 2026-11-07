@@ -1,5 +1,5 @@
 import test from'node:test';import assert from'node:assert/strict';
-import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,cpSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';
+import{mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,cpSync,existsSync}from'node:fs';import{join}from'node:path';import{tmpdir}from'node:os';import{createHash}from'node:crypto';
 import{GenerationFileSession,compactGenerationScopes,generationScopeProducers}from'./housing-generation-batch.mjs';
 import {fileURLToPath} from 'node:url';
 import{buildHousingRegions}from'./build-housing-regions.mjs';import*as codec from'../js/generated/housing-columns.mjs';
@@ -30,6 +30,25 @@ test('real dependency graph isolates stages and retains checks across whole-run 
   const before= generationScopeProducers(root);edit('js/generated/housing-columns.mjs');const shared=generationScopeProducers(root);for(const k of Object.keys(before))assert.notEqual(shared[k],before[k],k+' codec dependency');
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+test('delta retains all changes, excludes anchor, binds checkpoint bytes and rejects broken chains',()=>{
+ const root=mkdtempSync(join(tmpdir(),'generation-delta-')),cache=join(root,'cache'),output=join(root,'out'),checkpoint=join(cache,'generation-consumer.json');mkdirSync(cache);mkdirSync(output);
+ const rows=Array.from({length:12},(_,i)=>{const seq=i+1,payload=' '+JSON.stringify({schema:1,previousRevision:'r'+i,revision:'r'+seq,complete:true})+' ';return{seq,payload,digest:hash(payload)};});
+ const body={schema:1,producerContract:2,status:'CANDIDATE_VERIFIED',checkpoint,output,seq:2,revision:'r2',scopes:{}};
+ const save=b=>{const bytes=JSON.stringify({body:b,sha256:hash(JSON.stringify(b))});writeFileSync(checkpoint,bytes);return bytes;};
+ const bytes=save(body),delta={schema:2,checkpointSha256:hash(bytes),startSeq:2,startRevision:'r2',anchor:rows[1],seq:12,revision:'r12',batches:rows.slice(2)};
+ const session=batch=>new GenerationFileSession({site:root,output,cache,batch,engine:'e'});
+ try{
+  assert.equal(session(delta).metrics.batchesConsumed,10);assert.equal(session({...delta,seq:2,revision:'r2',batches:[]}).metrics.batchesConsumed,0);
+  assert.equal(session({schema:1,seq:12,revision:'r12',batches:rows}).metrics.batchesConsumed,10,'schema1 remains supported');
+  for(const mutate of [b=>b.batches.pop(),b=>b.batches.splice(3,1),b=>b.anchor=null,b=>b.anchor.digest='bad',b=>b.anchor.seq=1,b=>b.startSeq=13,b=>b.startRevision='wrong',b=>b.revision='wrong',b=>b.batches[4].digest='bad']){const b=structuredClone(delta);mutate(b);assert.throws(()=>session(b));}
+  const incomplete=structuredClone(delta);incomplete.batches[5].payload=JSON.stringify({...JSON.parse(incomplete.batches[5].payload),complete:false});incomplete.batches[5].digest=hash(incomplete.batches[5].payload);assert.equal(session(incomplete).metrics.mode,'INCOMPLETE_BASELINE');
+  writeFileSync(checkpoint,bytes+'\n');assert.throws(()=>session(delta),/changed after snapshot/);save(body);
+  const mismatch={...body,revision:'wrong'};const mismatchBytes=save(mismatch);assert.throws(()=>session({...delta,checkpointSha256:hash(mismatchBytes)}),/cursor mismatch/);
+  writeFileSync(checkpoint,'broken');assert.throws(()=>session(delta));rmSync(checkpoint);assert.throws(()=>session(delta),/checkpoint missing/);assert.equal(session({schema:1,seq:12,revision:'r12',batches:rows}).metrics.mode,'BASELINE');
+  const zero={...body,seq:0,revision:'r0'},zeroBytes=save(zero);assert.equal(session({...delta,checkpointSha256:hash(zeroBytes),startSeq:0,startRevision:'r0',anchor:null,batches:rows}).metrics.batchesConsumed,12);
+ }finally{rmSync(root,{recursive:true,force:true});}
+});
+
 test('retained DB chain, current revision, cache corruption and identity movement cannot silently reuse',()=>{
  const root=mkdtempSync(join(tmpdir(),'generation-chain-')),cache=join(root,'cache'),output=join(root,'out'),path='data/daily/regions/11110/quarters/2026-Q4.bin';
  mkdirSync(join(output,path,'..'),{recursive:true});writeFileSync(join(output,path),'verified');
@@ -59,7 +78,9 @@ test('accepted no-change retains quarter/state proofs; correction, changed openi
  const readers={regionFingerprint:()=>JSON.stringify([price,state,Object.keys(readers.daily.manifest.regional.bases[code])]),periodFingerprint:(c,ms)=>JSON.stringify(ms.map(m=>[m,price[m],state[m]])),stateFingerprint:(c,ms)=>JSON.stringify(ms.map(m=>[m,state[m]])),verify:()=>{}};
  const rows=(kind,month,opening=false)=>{const date=Number(month.replace('-','')+'01'),p=100+(opening?state[month]:price[month]);return kind==='daily'?(opening?[[code+':0',date,p,p,p,1]]:[[code+':0',date,p,2,0,null,null,null,null,0,'01'.repeat(10),null]]):[[code+':0','59.1',date,p,2,0,3,0,null,null,null,null,null,101,0,null,null,'02'.repeat(10)]];};
  let n=0;const batch=revision=>{if(revision==='before')return{schema:1,seq:0,revision,batches:[]};const payload=JSON.stringify({schema:1,previousRevision:'before',revision,complete:true});return{schema:1,seq:1,revision,batches:[{seq:1,payload,digest:hash(payload)}]};};
- const build=(revision,accept=false,full=false)=>{const output=join(base,'out'+n++),session=full?null:new GenerationFileSession({site,output,cache,batch:batch(revision),engine:'test-engine'});
+ const build=(revision,accept=false,full=false)=>{const output=join(base,'out'+n++);let input=batch(revision);const checkpoint=join(cache,'generation-consumer.json');
+  if(!full&&existsSync(checkpoint)){const bytes=readFileSync(checkpoint),body=JSON.parse(bytes).body;input={...input,schema:2,checkpointSha256:hash(bytes),startSeq:body.seq,startRevision:body.revision,anchor:input.batches.find(b=>b.seq===body.seq)??null,batches:input.batches.filter(b=>b.seq>body.seq)};}
+  const session=full?null:new GenerationFileSession({site,output,cache,batch:input,engine:'test-engine'});
   const result=buildHousingRegions(site,output,codec,{readers,cacheDir:full?null:cache,generationSession:session});const consumption=session?.finish();if(accept)cpSync(consumption.pending,join(cache,'generation-consumer.json'));
   return{output,result,consumption};};
  const equal=(a,b)=>{for(const kind of ['daily','rental'])assert.equal(hash(readFileSync(join(a.output,'data/'+kind+'/index.json'))),hash(readFileSync(join(b.output,'data/'+kind+'/index.json'))),kind+' exact manifest bytes');};

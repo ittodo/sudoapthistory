@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,cpSync,rmSync,realpathSync,readdirSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,cpSync,rmSync,realpathSync,readdirSync,existsSync} from 'node:fs';
 import {join,sep} from 'node:path';
 import {tmpdir} from 'node:os';
 import {DatabaseSync} from 'node:sqlite';
@@ -34,7 +34,11 @@ test('archive month reuse preserves exact output across corrections, shared quar
    readers[kind]={manifest,table:{regions},inputs:{},regionMonth(code,m){return {rows:ids.flatMap((id,i)=>{const identity=hash(m+id).slice(0,20),date=Number(m.replace('-','')+'01'),row=kind==='daily'?[code+':'+i,date,60000,2,0,null,null,null,null,0,identity,null]:[code+':'+i,(59.001+i*.001).toString(),date,deposits[m]??10000.25,100.25,2,-1,0,null,null,null,null,null,101,0,null,null,identity];return Array.from({length:counts.get(id+'|'+m)??2},()=>row);}),opening:[],updates:[]};}};
   }
   buildHousingRegions(source,seed,codec,{readers});let sequence=0;const batch={schema:1,revision:'first',seq:0,batches:[]};
-  function run(accept=false,full=false){const out=join(root,'out'+sequence++);cpSync(seed,out,{recursive:true});writeFileSync(join(out,'data/apartment-rent.json'),'{}');mkdirSync(join(out,'data/apartment-rent'),{recursive:true});writeFileSync(join(out,'data/apartment-rent/index.json'),JSON.stringify({schema:2}));const session=full?null:new GenerationFileSession({site:source,output:out,cache,batch,engine:'fixture'}),report=buildContractArchive({packed:out,database,generationSession:session}),consumption=session?.finish();if(accept)writeFileSync(join(cache,'generation-consumer.json'),readFileSync(consumption.pending));return {out,report};}
+  function run(accept=false,full=false,changedProducer=false){const out=join(root,'out'+sequence++);cpSync(seed,out,{recursive:true});writeFileSync(join(out,'data/apartment-rent.json'),'{}');mkdirSync(join(out,'data/apartment-rent'),{recursive:true});writeFileSync(join(out,'data/apartment-rent/index.json'),JSON.stringify({schema:2}));
+   let input=batch;const checkpoint=join(cache,'generation-consumer.json');
+   if(!full&&process.env.NODO_FULL_VERIFY!=='1'&&existsSync(checkpoint)){const bytes=readFileSync(checkpoint),body=JSON.parse(bytes).body;input={...batch,schema:2,checkpointSha256:hash(bytes),startSeq:body.seq,startRevision:body.revision,anchor:batch.batches.find(b=>b.seq===body.seq)??null,batches:batch.batches.filter(b=>b.seq>body.seq)};}
+   const session=full?null:new GenerationFileSession({site:source,output:out,cache,batch:input,engine:'fixture'});if(changedProducer)session.producers['contract-archive']='changed-producer';
+   const report=buildContractArchive({packed:out,database,generationSession:session}),consumption=session?.finish();if(accept)writeFileSync(checkpoint,readFileSync(consumption.pending));return {out,report,consumption};}
   const compare=(a,b)=>{const index='data/apartment-rent/index.json';assert.deepEqual(readFileSync(join(a.out,index)),readFileSync(join(b.out,index)),'public index bytes');for(const p of Object.keys(JSON.parse(readFileSync(join(a.out,index))).contractArchive.sources))assert.deepEqual(readFileSync(join(a.out,p)),readFileSync(join(b.out,p)),p);};
   const advance=partitions=>{const seq=batch.seq+1,revision='revision-'+seq,payload=JSON.stringify({schema:1,previousRevision:batch.revision,revision,complete:true,saleSources:[],rentalPartitions:partitions});batch.batches.push({seq,payload,digest:hash(payload)});Object.assign(batch,{revision,seq});};
   const refresh=()=>buildHousingRegions(source,seed,codec,{readers});
@@ -77,5 +81,14 @@ test('archive month reuse preserves exact output across corrections, shared quar
   // A separate full-build fixture has no rowhouse membership or prior cache.
   ids.splice(1);region.identity.areas.splice(1);region.metadata.complexes.splice(1);refresh();events.length=0;const apartmentOnly=run(false,true);
   assert.equal(events[0].event,'contract_archive_region_start');assert.equal(events[0].sourceMode,'first-baseline');assert.equal(apartmentOnly.report.regionMetrics[0].sourceMode,'first-baseline');assert.equal(apartmentOnly.report.sourceQueries,1);
+  // Apartment-only reuse depends on every unconsumed payload, unlike the rowhouse snapshot above.
+  run(true);const apartmentWarm=run();assert.equal(apartmentWarm.consumption.batchesConsumed,0);assert.equal(apartmentWarm.report.sourceRowsRead,0);
+  const suffixDb=new DatabaseSync(database);for(const row of suffixDb.prepare("SELECT rowid,payload FROM contract_record WHERE service='apartment-rent' AND entity_id=? AND month='202509'").all(ids[0])){const raw=JSON.parse(row.payload);raw.renewalRight='delta correction';suffixDb.prepare('UPDATE contract_record SET payload=? WHERE rowid=?').run(JSON.stringify(raw),row.rowid);}suffixDb.exec("DELETE FROM contract_record WHERE service='apartment-rent' AND month='202608';DELETE FROM contract_partition WHERE service='apartment-rent' AND month='202608'");suffixDb.close();
+  for(const kind of ['daily','rental'])delete readers[kind].manifest.regional.bases['11110']['2026-08'];refresh();
+  advance([{lawd:'11110',month:'202509',sources:[ids[0]]}]);advance([]);advance([{lawd:'11110',month:'202608',sources:[ids[0]]}]);
+  const suffix=run(true);assert.equal(suffix.consumption.batchesConsumed,3);assert.equal(suffix.report.regionMetrics[0].sourceMode,'batch-months');compare(suffix,run(false,true));
+  const producerBaseline=run(false,false,true);assert.equal(producerBaseline.report.regionMetrics[0].sourceMode,'first-baseline');compare(producerBaseline,run(false,true));
+  const incompletePayload=JSON.stringify({schema:1,previousRevision:batch.revision,revision:'delta-incomplete',complete:false,rentalPartitions:[]});batch.batches.push({seq:batch.seq+1,payload:incompletePayload,digest:hash(incompletePayload)});Object.assign(batch,{seq:batch.seq+1,revision:'delta-incomplete'});
+  const incompleteBaseline=run();assert.equal(incompleteBaseline.consumption.mode,'INCOMPLETE_BASELINE');assert.equal(incompleteBaseline.report.regionMetrics[0].sourceMode,'first-baseline');compare(incompleteBaseline,run(false,true));
  }finally{console.error=oldError;if(old===undefined)delete process.env.NODO_FULL_VERIFY;else process.env.NODO_FULL_VERIFY=old;const resolved=realpathSync(root),base=realpathSync(tmpdir());if(!resolved.startsWith(base+sep)||!resolved.slice(base.length+1).startsWith('contract-archive-'))throw Error('Unsafe test cleanup');rmSync(resolved,{recursive:true,force:true});}
 });

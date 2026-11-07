@@ -1,6 +1,6 @@
 // Private candidate consumption, bound to DB batches and current producer manifests.
 // No public schema change and no DB writes. Checkpoint is accepted by outer Rust prepare.
-import{readFileSync,writeFileSync,mkdirSync,existsSync,realpathSync,lstatSync}from'./cache-store.mjs';
+import{readFileSync,writeFileSync,mkdirSync,realpathSync,lstatSync}from'./cache-store.mjs';
 import{join,resolve,dirname,sep}from'node:path';import{createHash}from'node:crypto';
 import{codeDependencyEngine as validationEngine}from'./code-dependencies.mjs';
 const hash=x=>createHash('sha256').update(x).digest('hex'),eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
@@ -78,21 +78,32 @@ export class GenerationFileSession{
   this.output=resolve(output);this.checkpoint=cache?join(resolve(cache),'generation-consumer.json'):null;this.batch=batch;this.old=null;this.scopes={};this.metrics={mode:'BASELINE',scopesReused:0,scopesBuilt:0,rawInputsSkipped:0,bytesReused:0,batchesConsumed:0};
   this.engine=engine??validationEngine(site,{roots:['tools/build-housing-from-native.mjs']});this.producers=generationScopeProducers(site);this.pending=null;this.identityPool=new Map();this.childrenByRegion=new Map();
   if(batch==null)return;
-  if(batch.schema!==1||!Number.isSafeInteger(batch.seq)||batch.seq<0||typeof batch.revision!=='string'||!Array.isArray(batch.batches))throw Error('Invalid generation file snapshot');
+  if(![1,2].includes(batch.schema)||!Number.isSafeInteger(batch.seq)||batch.seq<0||typeof batch.revision!=='string'||!Array.isArray(batch.batches))throw Error('Invalid generation file snapshot');
+  const delta=batch.schema===2;
   let seq=0,revision=null;
+  if(delta){
+   if(!Number.isSafeInteger(batch.startSeq)||batch.startSeq<0||batch.startSeq>batch.seq||typeof batch.startRevision!=='string'||typeof batch.checkpointSha256!=='string'||!/^[a-f0-9]{64}$/.test(batch.checkpointSha256))throw Error('Invalid generation file delta');
+   seq=batch.startSeq;revision=batch.startRevision;
+   if(seq===0){if(batch.anchor!==null)throw Error('Generation checkpoint anchor');}
+   else{const b=batch.anchor;if(!b||b.seq!==seq||typeof b.payload!=='string'||hash(b.payload)!==b.digest)throw Error('Generation checkpoint anchor digest');const v=JSON.parse(b.payload);if(v.schema!==1||v.revision!==revision)throw Error('Generation checkpoint cursor mismatch');}
+  }
   for(const b of batch.batches){if(!Number.isSafeInteger(b.seq)||b.seq!==seq+1||hash(b.payload)!==b.digest)throw Error('Generation file batch chain/digest');const v=JSON.parse(b.payload);if(v.schema!==1||(revision!==null&&v.previousRevision!==revision))throw Error('Generation file batch revision');seq=b.seq;revision=v.revision;}
-  if(seq!==batch.seq||(seq>0&&revision!==batch.revision))throw Error('Generation file batches not current');
-  if(!this.checkpoint||!existsSync(this.checkpoint)||process.env.NODO_FULL_VERIFY==='1')return;
+  if(seq!==batch.seq||((delta||seq>0)&&revision!==batch.revision))throw Error('Generation file batches not current');
+  if(!this.checkpoint||process.env.NODO_FULL_VERIFY==='1'){if(delta)throw Error('Generation delta requires checkpoint');return;}
+  let checkpointBytes;
+  try{checkpointBytes=readFileSync(this.checkpoint);}catch(e){if(e.code!=='ENOENT')throw e;if(delta)throw Error('Generation delta checkpoint missing');return;}
   if(lstatSync(this.checkpoint).isSymbolicLink())throw Error('Generation checkpoint link');
-  const v=JSON.parse(readFileSync(this.checkpoint)),body=v.body;
-  if(v.sha256!==hash(JSON.stringify(body))||body.schema!==1||body.status!=='CANDIDATE_VERIFIED'||!Number.isSafeInteger(body.seq)||body.seq<0||typeof body.revision!=='string'||!body.scopes||typeof body.scopes!=='object'||Array.isArray(body.scopes)||resolve(body.checkpoint)!==this.checkpoint)throw Error('Generation checkpoint corrupt');
-  if(body.producerContract!==2){this.metrics.mode='PRODUCER_BASELINE';return;}
+  if(delta&&hash(checkpointBytes)!==batch.checkpointSha256)throw Error('Generation checkpoint changed after snapshot');
+  const v=JSON.parse(checkpointBytes),body=v.body;
+  if(!body||v.sha256!==hash(JSON.stringify(body))||body.schema!==1||body.status!=='CANDIDATE_VERIFIED'||!Number.isSafeInteger(body.seq)||body.seq<0||typeof body.revision!=='string'||!body.scopes||typeof body.scopes!=='object'||Array.isArray(body.scopes)||typeof body.checkpoint!=='string'||resolve(body.checkpoint)!==this.checkpoint)throw Error('Generation checkpoint corrupt');
+  if(body.producerContract!==2){if(delta)throw Error('Generation delta producer contract');this.metrics.mode='PRODUCER_BASELINE';return;}
+  if(delta&&(body.seq!==batch.startSeq||body.revision!==batch.startRevision))throw Error('Generation checkpoint cursor mismatch');
   if(body.seq>batch.seq)throw Error('Generation checkpoint ahead of operating DB');
   const after=batch.batches.filter(b=>b.seq>body.seq);let previous=body.revision,expected=body.seq;
   for(const b of after){const v=JSON.parse(b.payload);if(b.seq!==++expected||v.previousRevision!==previous)throw Error('Generation consumption gap');if(v.complete!==true){this.metrics.mode='INCOMPLETE_BASELINE';return;}previous=v.revision;}
   if(previous!==batch.revision)throw Error('Generation consumption revision missing');
   // The stored cursor itself must remain in the retained DB chain.
-  if(body.seq>0&&JSON.parse(batch.batches.find(b=>b.seq===body.seq)?.payload??'null')?.revision!==body.revision)throw Error('Generation checkpoint cursor mismatch');
+  if(body.seq>0&&JSON.parse((delta?batch.anchor:batch.batches.find(b=>b.seq===body.seq))?.payload??'null')?.revision!==body.revision)throw Error('Generation checkpoint cursor mismatch');
   this.old={...body,scopes:expandGenerationScopes(body,v=>this.internIdentity(v))};
   for(const[name,scope]of Object.entries(this.old.scopes)){const [kind,code]=name.split('/');if(['year','quarter','state-year'].includes(kind)){if(!this.childrenByRegion.has(code))this.childrenByRegion.set(code,[]);this.childrenByRegion.get(code).push([name,scope]);}}
   this.metrics.mode='INCREMENTAL';this.metrics.batchesConsumed=after.length;
