@@ -8,6 +8,8 @@ import {artifactSchema,ensureArtifactSchema,putArtifact,readArtifact} from './ca
 import {Readable} from 'node:stream';
 const databases=new Map();
 function pathName(p){return p instanceof URL?fileURLToPath(p):String(p);}
+// Node 26 cannot lstat a namespaced drive root. Keep all other long paths intact.
+function diskLstatSync(p,options){const path=process.platform==='win32'&&typeof p==='string'&&/^\\\\\?\\[a-z]:\\$/i.test(p)?p.slice(4):p;return disk.lstatSync(path,options);}
 function address(p){
  const raw=pathName(p);
  const path=resolve(raw),s=path.replaceAll('\\','/'),local=/^(.*)\/_ops\/(regional-transaction-cache|validation-cache-v1|daily-rust-cache|rental-rust-cache|rental-catalog-metadata-v1|generation-cache)(?:\/(.*))?$/.exec(s),ci=/^(.*)\/cloudflare\/dist\/(validation-cache-v1)(?:\/(.*))?$/.exec(s),match=local||ci;
@@ -17,7 +19,7 @@ function address(p){
 }
 function db(a){
  let c=databases.get(a.database);if(c)return c;
- for(let p=a.database;;p=dirname(p)){if(disk.existsSync(p)&&disk.lstatSync(p).isSymbolicLink())throw Error('Private cache database link');if(dirname(p)===p)break;}
+ for(let p=a.database;;p=dirname(p)){if(disk.existsSync(p)&&diskLstatSync(p).isSymbolicLink())throw Error('Private cache database link');if(dirname(p)===p)break;}
  disk.mkdirSync(dirname(a.database),{recursive:true});c=new DatabaseSync(a.database);c.exec('PRAGMA busy_timeout=30000');
  if(c.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name IN ('transactions','hub_entity','link','review') LIMIT 1").get()){c.close();throw Error('Refusing source or review database as cache');}
  try{ensureArtifactSchema(c);c.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');}catch(e){c.close();throw e;}databases.set(a.database,c);return c;
@@ -28,7 +30,7 @@ export function isCachedPath(p){return !!address(p);}
 export function readFileSync(p,options){const a=address(p);if(!a)return disk.readFileSync(p,options);const bytes=readArtifact(db(a),a.scope,a.key);if(!bytes)fail(p);const encoding=typeof options==='string'?options:options?.encoding;return encoding?bytes.toString(encoding):bytes;}
 export function writeFileSync(p,data,options){const a=address(p);if(!a)return disk.writeFileSync(p,data,options);if(options?.flag?.includes('x')&&existsSync(p))fail(p,'EEXIST');put(a,0,typeof data==='string'?Buffer.from(data,typeof options==='string'?options:options?.encoding):data);}
 export function mkdirSync(p,options){const a=address(p);if(!a)return disk.mkdirSync(p,options);const segments=a.key.split('/').filter(Boolean);for(let n=0;n<=segments.length;n++){const key=segments.slice(0,n).join('/'),prior=db(a).prepare('SELECT kind FROM cache_artifact WHERE scope=? AND key=?').get(a.scope,key);if(prior&&prior.kind!==1)fail(p,'ENOTDIR');if(!prior)put({...a,key},1,Buffer.alloc(0));}}
-export function lstatSync(p,options){const a=address(p);if(!a)return disk.lstatSync(p,options);const stmt=db(a).prepare('SELECT rowid,kind,byte_length size,modified_ns FROM cache_artifact WHERE scope=? AND key=?');stmt.setReadBigInts(true);const r=stmt.get(a.scope,a.key);if(!r)fail(p);const ms=Number(r.modified_ns)/1e6,n=x=>options?.bigint?x:Number(x);return{dev:n(0n),ino:n(r.rowid),mode:n(r.kind===0n?32768n:16384n),size:n(r.size),mtimeMs:ms,ctimeMs:ms,birthtimeMs:ms,mtimeNs:r.modified_ns,ctimeNs:r.modified_ns,mtime:new Date(ms),ctime:new Date(ms),birthtime:new Date(ms),isFile:()=>r.kind===0n,isDirectory:()=>r.kind===1n,isSymbolicLink:()=>false};}
+export function lstatSync(p,options){const a=address(p);if(!a)return diskLstatSync(p,options);const stmt=db(a).prepare('SELECT rowid,kind,byte_length size,modified_ns FROM cache_artifact WHERE scope=? AND key=?');stmt.setReadBigInts(true);const r=stmt.get(a.scope,a.key);if(!r)fail(p);const ms=Number(r.modified_ns)/1e6,n=x=>options?.bigint?x:Number(x);return{dev:n(0n),ino:n(r.rowid),mode:n(r.kind===0n?32768n:16384n),size:n(r.size),mtimeMs:ms,ctimeMs:ms,birthtimeMs:ms,mtimeNs:r.modified_ns,ctimeNs:r.modified_ns,mtime:new Date(ms),ctime:new Date(ms),birthtime:new Date(ms),isFile:()=>r.kind===0n,isDirectory:()=>r.kind===1n,isSymbolicLink:()=>false};}
 export function statSync(p,options){return address(p)?lstatSync(p,options):disk.statSync(p,options);}
 export function existsSync(p){try{lstatSync(p);return true;}catch(e){if(e.code==='ENOENT'||e.code==='ENOTDIR')return false;throw e;}}
 export function realpathSync(p,options){const a=address(p);if(!a)return disk.realpathSync(p,options);lstatSync(p);const root=disk.realpathSync(a.root),path=join(root,relative(a.root,a.base),a.key);return options==='buffer'||options?.encoding==='buffer'?Buffer.from(path):path;}

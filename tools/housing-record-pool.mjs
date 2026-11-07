@@ -1,6 +1,6 @@
 // Reuse region-local identifier pools only after checking current input and output bytes.
 import {readFileSync,writeFileSync,mkdirSync,existsSync,renameSync,lstatSync} from './cache-store.mjs';
-import {join,resolve} from 'node:path';
+import {join,resolve,dirname} from 'node:path';
 import {gzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
@@ -10,7 +10,8 @@ import {verifyPoolFiles} from './housing-pool-verifier.mjs';
 import {partitionDependencies} from '../js/housing-partition.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 function write(path,bytes){if(existsSync(path)&&lstatSync(path).isSymbolicLink())throw Error('Pool output link');if(existsSync(path)&&readFileSync(path).equals(Buffer.from(bytes)))return;const temp=path+'.'+process.pid+'.tmp';writeFileSync(temp,bytes);renameSync(temp,path);}
-function safeDirectory(path){for(let p=resolve(path);;){if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Pool directory link');const parent=resolve(p,'..');if(parent===p)break;p=parent;}mkdirSync(path,{recursive:true});}
+// dirname preserves the root separator of Windows namespaced drive paths.
+function safeDirectory(path){for(let p=resolve(path);;){if(existsSync(p)&&lstatSync(p).isSymbolicLink())throw Error('Pool directory link');const parent=dirname(p);if(parent===p)break;p=parent;}mkdirSync(path,{recursive:true});}
 export function rebuildRecordPools(site,output,{codes=null,full=process.env.NODO_FULL_VERIFY==='1',readers=null,outputChecks=null,onProgress=null}={}){
  const started=performance.now(),d=readers?.daily??regionalReader(site,'daily'),r=readers?.rental??regionalReader(site,'rental');
  if(d.manifest.schema!==3||r.manifest.schema!==3)throw Error('Packed source required');

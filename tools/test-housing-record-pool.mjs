@@ -1,11 +1,12 @@
 import test from 'node:test';
 import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
-import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,readFileSync,writeFileSync,rmSync,mkdirSync,symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,dirname,resolve,toNamespacedPath} from 'node:path';
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
+import {closeCacheStores,readFileSync as readCacheFileSync} from './cache-store.mjs';
 import {rebuildRecordPools,rebuildRecordPoolsFast} from './housing-record-pool.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 async function fixture(fn){const output=mkdtempSync(join(tmpdir(),'record-pool-'));try{
@@ -19,7 +20,7 @@ async function fixture(fn){const output=mkdtempSync(join(tmpdir(),'record-pool-'
  }
  const update=p=>{bytes[p]+='changed';for(const r of Object.values(readers)){r.manifest.sources[p]=hash(bytes[p]);delete r.inputs[p];}};
  await fn({output,readers,calls,bytes,data,update,run:options=>rebuildRecordPools('unused',output,{readers,...options})});
-}finally{rmSync(output,{recursive:true,force:true});}}
+}finally{closeCacheStores();assert.equal(dirname(resolve(output)),resolve(tmpdir()));rmSync(output,{recursive:true,force:true});}}
 test('unrelated region, metadata and global version leave old regional pool hashes stable',()=>fixture(({output,readers,calls,run,update})=>{
  const first=run();assert.equal(first.rebuiltRegions,2);assert.equal(calls.length,8);const old=readFileSync(join(output,'11110/index.json'));
  calls.length=0;for(const r of Object.values(readers)){r.manifest.version='new version';r.metadata='changed';}
@@ -65,4 +66,26 @@ test('changed bytes in an already completed region fail final verification',()=>
  run();await assert.rejects(rebuildRecordPoolsFast('unused',output,{readers,onProgress:metric=>{
   if(metric.code==='28185')writeFileSync(join(output,'11110/2026-09-daily.bin'),'damaged after use');
  }}),/Pool output changed/);
+}));
+
+test('Windows namespaced output roots build and reuse disk and SQLite pools',{skip:process.platform!=='win32'},()=>fixture(async({output,readers})=>{
+ for(const relative of ['disk-pool',join('long-path','a'.repeat(100),'b'.repeat(100),'c'.repeat(100)),'_ops/regional-transaction-cache/pool']){
+  const directory=toNamespacedPath(join(output,relative));
+  const first=rebuildRecordPools('unused',directory,{readers});assert.equal(first.rebuiltRegions,2);
+  const before=readCacheFileSync(join(directory,'11110/index.json'));
+  const reused=await rebuildRecordPoolsFast('unused',directory,{readers});assert.equal(reused.reusedRegions,2);
+  assert.deepEqual(readCacheFileSync(join(directory,'11110/index.json')),before);
+  assert.equal(reused.parallelOutputChecks.files,8);assert.equal(reused.parallelOutputChecks.finalFiles,0);
+ }
+}));
+
+test('pool output and ancestor directory links remain blocked',()=>fixture(async({output,readers})=>{
+ const target=join(output,'target'),link=join(output,'link');mkdirSync(target);
+ symlinkSync(target,link,process.platform==='win32'?'junction':'dir');
+ const variants=process.platform==='win32'?[p=>p,toNamespacedPath]:[p=>p];
+ for(const variant of variants)for(const path of [link,join(link,'nested/pool'),join(link,'_ops/regional-transaction-cache/pool')]){
+  const directory=variant(path);
+  assert.throws(()=>rebuildRecordPools('unused',directory,{readers}),/(?:Pool directory|Private cache database) link/);
+  await assert.rejects(rebuildRecordPoolsFast('unused',directory,{readers}),/(?:Pool directory|Private cache database) link/);
+ }
 }));
