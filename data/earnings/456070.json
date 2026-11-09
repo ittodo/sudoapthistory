@@ -1,5 +1,46 @@
 {
-  "ticker": "456070",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 72,
+      "operating_profit": -157,
+      "net_income": -152,
+      "op_margin": -218.05555555555554
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 105,
+      "operating_profit": -118,
+      "net_income": -51,
+      "op_margin": -112.38095238095238
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 74,
+      "operating_profit": -93,
+      "net_income": -456,
+      "op_margin": -125.67567567567568
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 39,
+      "operating_profit": -25,
+      "net_income": -66,
+      "op_margin": -64.1025641025641
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "이엔셀",
   "quarterly": [
     {
@@ -71,54 +112,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 72,
-      "operating_profit": -157,
-      "net_income": -152,
-      "op_margin": -218.05555555555554
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 105,
-      "operating_profit": -118,
-      "net_income": -51,
-      "op_margin": -112.38095238095238
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 74,
-      "operating_profit": -93,
-      "net_income": -456,
-      "op_margin": -125.67567567567568
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 39,
-      "operating_profit": -25,
-      "net_income": -66,
-      "op_margin": -64.1025641025641
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -35.3,
     "eps": -1598,
     "bps": 4474,
     "debt_ratio": 15.73
   },
+  "ticker": "456070",
   "warnings": [
     {
       "ticker": "456070",

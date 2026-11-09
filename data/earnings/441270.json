@@ -1,5 +1,38 @@
 {
-  "ticker": "441270",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 2391,
+      "operating_profit": 19,
+      "net_income": -154,
+      "op_margin": 0.794646591384358
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 3822,
+      "operating_profit": -79,
+      "net_income": -158,
+      "op_margin": -2.0669806384092095
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 3800,
+      "operating_profit": 203,
+      "net_income": 108,
+      "op_margin": 5.342105263157895
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "파인엠텍",
   "quarterly": [
     {
@@ -223,46 +256,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 2391,
-      "operating_profit": 19,
-      "net_income": -154,
-      "op_margin": 0.794646591384358
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 3822,
-      "operating_profit": -79,
-      "net_income": -158,
-      "op_margin": -2.0669806384092095
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 3800,
-      "operating_profit": 203,
-      "net_income": 108,
-      "op_margin": 5.342105263157895
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -6.46,
     "eps": -110,
     "bps": 4842,
     "debt_ratio": 113.96
   },
+  "ticker": "441270",
   "warnings": [
     {
       "ticker": "441270",

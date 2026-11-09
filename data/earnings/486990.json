@@ -1,5 +1,30 @@
 {
-  "ticker": "486990",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 131,
+      "operating_profit": -153,
+      "net_income": -166,
+      "op_margin": -116.79389312977099
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 84,
+      "operating_profit": -120,
+      "net_income": -249,
+      "op_margin": -142.85714285714286
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "노타",
   "quarterly": [
     {
@@ -127,38 +152,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 131,
-      "operating_profit": -153,
-      "net_income": -166,
-      "op_margin": -116.79389312977099
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 84,
-      "operating_profit": -120,
-      "net_income": -249,
-      "op_margin": -142.85714285714286
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -132.79,
     "eps": -478,
     "bps": 850,
     "debt_ratio": 87.82
   },
+  "ticker": "486990",
   "warnings": [
     {
       "ticker": "486990",

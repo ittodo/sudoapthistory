@@ -1,5 +1,30 @@
 {
-  "ticker": "394420",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 88,
+      "operating_profit": -106,
+      "net_income": -191,
+      "op_margin": -120.45454545454545
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 63,
+      "operating_profit": -142,
+      "net_income": -78,
+      "op_margin": -225.3968253968254
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "리센스메디컬",
   "quarterly": [
     {
@@ -85,37 +110,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 88,
-      "operating_profit": -106,
-      "net_income": -191,
-      "op_margin": -120.45454545454545
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 63,
-      "operating_profit": -142,
-      "net_income": -78,
-      "op_margin": -225.3968253968254
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -456,
     "bps": 1805,
     "debt_ratio": 49.9
   },
+  "ticker": "394420",
   "warnings": [
     {
       "ticker": "394420",

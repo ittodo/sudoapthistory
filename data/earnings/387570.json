@@ -1,5 +1,62 @@
 {
-  "ticker": "387570",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 95,
+      "operating_profit": -26,
+      "net_income": -19,
+      "op_margin": -27.368421052631582
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 100,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": 0
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 102,
+      "operating_profit": 9,
+      "net_income": 12,
+      "op_margin": 8.823529411764707
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 81,
+      "operating_profit": -7,
+      "net_income": 2,
+      "op_margin": -8.641975308641975
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 73,
+      "operating_profit": -23,
+      "net_income": -15,
+      "op_margin": -31.506849315068493
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 79,
+      "operating_profit": -3,
+      "net_income": -11,
+      "op_margin": -3.79746835443038
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "파인메딕스",
   "quarterly": [
     {
@@ -239,70 +296,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 95,
-      "operating_profit": -26,
-      "net_income": -19,
-      "op_margin": -27.368421052631582
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 100,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": 0
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 102,
-      "operating_profit": 9,
-      "net_income": 12,
-      "op_margin": 8.823529411764707
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 81,
-      "operating_profit": -7,
-      "net_income": 2,
-      "op_margin": -8.641975308641975
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 73,
-      "operating_profit": -23,
-      "net_income": -15,
-      "op_margin": -31.506849315068493
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 79,
-      "operating_profit": -3,
-      "net_income": -11,
-      "op_margin": -3.79746835443038
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -3.12,
     "eps": 4,
     "bps": 3523,
     "debt_ratio": 26.24
   },
+  "ticker": "387570",
   "warnings": [
     {
       "ticker": "387570",

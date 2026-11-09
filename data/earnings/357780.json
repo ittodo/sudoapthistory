@@ -1,5 +1,54 @@
 {
-  "ticker": "357780",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 9234,
+      "operating_profit": 1336,
+      "net_income": 840,
+      "op_margin": 14.468269439029674
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 8634,
+      "operating_profit": 1679,
+      "net_income": 1196,
+      "op_margin": 19.44637479731295
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 8440,
+      "operating_profit": 1335,
+      "net_income": 1310,
+      "op_margin": 15.817535545023699
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 10909,
+      "operating_profit": 2071,
+      "net_income": 1677,
+      "op_margin": 18.98432486937391
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 10239,
+      "operating_profit": 1888,
+      "net_income": 1522,
+      "op_margin": 18.43930071296025
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "솔브레인",
   "quarterly": [
     {
@@ -335,62 +384,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 9234,
-      "operating_profit": 1336,
-      "net_income": 840,
-      "op_margin": 14.468269439029674
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 8634,
-      "operating_profit": 1679,
-      "net_income": 1196,
-      "op_margin": 19.44637479731295
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 8440,
-      "operating_profit": 1335,
-      "net_income": 1310,
-      "op_margin": 15.817535545023699
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 10909,
-      "operating_profit": 2071,
-      "net_income": 1677,
-      "op_margin": 18.98432486937391
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 10239,
-      "operating_profit": 1888,
-      "net_income": 1522,
-      "op_margin": 18.43930071296025
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 11.81,
     "eps": 11693,
     "bps": 150072,
     "debt_ratio": 21.99
   },
+  "ticker": "357780",
   "warnings": [
     {
       "ticker": "357780",

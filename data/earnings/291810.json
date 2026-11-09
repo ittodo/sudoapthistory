@@ -1,5 +1,54 @@
 {
-  "ticker": "291810",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 106,
+      "operating_profit": -15,
+      "net_income": 1,
+      "op_margin": -14.150943396226415
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 128,
+      "operating_profit": -27,
+      "net_income": -13,
+      "op_margin": -21.09375
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 88,
+      "operating_profit": -37,
+      "net_income": -38,
+      "op_margin": -42.04545454545455
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 82,
+      "operating_profit": -9,
+      "net_income": -24,
+      "op_margin": -10.975609756097562
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 49,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": 0
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "핀텔",
   "quarterly": [
     {
@@ -85,62 +134,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 106,
-      "operating_profit": -15,
-      "net_income": 1,
-      "op_margin": -14.150943396226415
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 128,
-      "operating_profit": -27,
-      "net_income": -13,
-      "op_margin": -21.09375
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 88,
-      "operating_profit": -37,
-      "net_income": -38,
-      "op_margin": -42.04545454545455
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 82,
-      "operating_profit": -9,
-      "net_income": -24,
-      "op_margin": -10.975609756097562
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 49,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": 0
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 0.32,
     "eps": 6,
     "bps": 1840,
     "debt_ratio": 9.97
   },
+  "ticker": "291810",
   "warnings": [
     {
       "ticker": "291810",

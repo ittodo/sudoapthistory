@@ -1,5 +1,22 @@
 {
-  "ticker": "487580",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 799,
+      "operating_profit": 104,
+      "net_income": 84,
+      "op_margin": 13.016270337922403
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "폴레드",
   "quarterly": [
     {
@@ -99,30 +116,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 799,
-      "operating_profit": 104,
-      "net_income": 84,
-      "op_margin": 13.016270337922403
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 23.83,
     "eps": 295,
     "bps": 2076,
     "debt_ratio": 41.86
   },
+  "ticker": "487580",
   "warnings": [
     {
       "ticker": "487580",

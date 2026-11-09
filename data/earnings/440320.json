@@ -1,5 +1,54 @@
 {
-  "ticker": "440320",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 883,
+      "operating_profit": -28,
+      "net_income": -64,
+      "op_margin": -3.1710079275198186
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 508,
+      "operating_profit": 1,
+      "net_income": 16,
+      "op_margin": 0.19685039370078738
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 251,
+      "operating_profit": 13,
+      "net_income": 14,
+      "op_margin": 5.179282868525896
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 163,
+      "operating_profit": 7,
+      "net_income": -6,
+      "op_margin": 4.294478527607362
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 109,
+      "operating_profit": 2,
+      "net_income": 0,
+      "op_margin": 1.834862385321101
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "오픈놀",
   "quarterly": [
     {
@@ -253,62 +302,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 883,
-      "operating_profit": -28,
-      "net_income": -64,
-      "op_margin": -3.1710079275198186
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 508,
-      "operating_profit": 1,
-      "net_income": 16,
-      "op_margin": 0.19685039370078738
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 251,
-      "operating_profit": 13,
-      "net_income": 14,
-      "op_margin": 5.179282868525896
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 163,
-      "operating_profit": 7,
-      "net_income": -6,
-      "op_margin": 4.294478527607362
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 109,
-      "operating_profit": 2,
-      "net_income": 0,
-      "op_margin": 1.834862385321101
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -16.2,
     "eps": -86,
     "bps": 3561,
     "debt_ratio": 117.75
   },
+  "ticker": "440320",
   "warnings": [
     {
       "ticker": "440320",

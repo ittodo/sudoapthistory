@@ -1,5 +1,30 @@
 {
-  "ticker": "388610",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 168,
+      "operating_profit": 17,
+      "net_income": -59,
+      "op_margin": 10.119047619047619
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 154,
+      "operating_profit": 7,
+      "net_income": 21,
+      "op_margin": 4.545454545454546
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "지에프씨생명과학",
   "quarterly": [
     {
@@ -43,38 +68,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 168,
-      "operating_profit": 17,
-      "net_income": -59,
-      "op_margin": 10.119047619047619
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 154,
-      "operating_profit": 7,
-      "net_income": 21,
-      "op_margin": 4.545454545454546
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -122.16,
     "eps": -1417,
     "bps": 2521,
     "debt_ratio": 83.99
   },
+  "ticker": "388610",
   "warnings": [
     {
       "ticker": "388610",

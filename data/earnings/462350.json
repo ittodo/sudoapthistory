@@ -1,5 +1,46 @@
 {
-  "ticker": "462350",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 27,
+      "operating_profit": -722,
+      "net_income": -751,
+      "op_margin": -2674.074074074074
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": -329,
+      "net_income": -333,
+      "op_margin": null
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 2,
+      "operating_profit": -159,
+      "net_income": -832,
+      "op_margin": -7950
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 2,
+      "operating_profit": -243,
+      "net_income": -243,
+      "op_margin": -12150
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "이노스페이스",
   "quarterly": [
     {
@@ -211,54 +252,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 27,
-      "operating_profit": -722,
-      "net_income": -751,
-      "op_margin": -2674.074074074074
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": -329,
-      "net_income": -333,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 2,
-      "operating_profit": -159,
-      "net_income": -832,
-      "op_margin": -7950
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 2,
-      "operating_profit": -243,
-      "net_income": -243,
-      "op_margin": -12150
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -95.34,
     "eps": -945,
     "bps": 2954,
     "debt_ratio": 17.66
   },
+  "ticker": "462350",
   "warnings": [
     {
       "ticker": "462350",

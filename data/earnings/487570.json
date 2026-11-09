@@ -1,5 +1,22 @@
 {
-  "ticker": "487570",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 14099,
+      "operating_profit": 464,
+      "net_income": 201,
+      "op_margin": 3.2910135470600754
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "HS효성",
   "quarterly": [
     {
@@ -111,30 +128,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 14099,
-      "operating_profit": 464,
-      "net_income": 201,
-      "op_margin": 3.2910135470600754
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 8.83,
     "eps": 9294,
     "bps": 155701,
     "debt_ratio": 83.42
   },
+  "ticker": "487570",
   "warnings": [
     {
       "ticker": "487570",

@@ -1,5 +1,38 @@
 {
-  "ticker": "475400",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 131,
+      "operating_profit": -184,
+      "net_income": -168,
+      "op_margin": -140.45801526717557
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 69,
+      "operating_profit": -143,
+      "net_income": -135,
+      "op_margin": -207.2463768115942
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 76,
+      "operating_profit": -100,
+      "net_income": -157,
+      "op_margin": -131.57894736842107
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "씨메스로보틱스",
   "quarterly": [
     {
@@ -183,46 +216,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 131,
-      "operating_profit": -184,
-      "net_income": -168,
-      "op_margin": -140.45801526717557
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 69,
-      "operating_profit": -143,
-      "net_income": -135,
-      "op_margin": -207.2463768115942
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 76,
-      "operating_profit": -100,
-      "net_income": -157,
-      "op_margin": -131.57894736842107
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -29.93,
     "eps": -772,
     "bps": 4310,
     "debt_ratio": 23.04
   },
+  "ticker": "475400",
   "warnings": [
     {
       "ticker": "475400",

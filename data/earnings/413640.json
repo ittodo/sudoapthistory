@@ -1,5 +1,62 @@
 {
-  "ticker": "413640",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 314,
+      "operating_profit": 9,
+      "net_income": 24,
+      "op_margin": 2.8662420382165608
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 309,
+      "operating_profit": 20,
+      "net_income": 37,
+      "op_margin": 6.472491909385113
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 259,
+      "operating_profit": -27,
+      "net_income": -18,
+      "op_margin": -10.424710424710424
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 277,
+      "operating_profit": 46,
+      "net_income": 32,
+      "op_margin": 16.60649819494585
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 209,
+      "operating_profit": 28,
+      "net_income": 24,
+      "op_margin": 13.397129186602871
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 176,
+      "operating_profit": 4,
+      "net_income": 9,
+      "op_margin": 2.272727272727273
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "비아이매트릭스",
   "quarterly": [
     {
@@ -127,69 +184,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 314,
-      "operating_profit": 9,
-      "net_income": 24,
-      "op_margin": 2.8662420382165608
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 309,
-      "operating_profit": 20,
-      "net_income": 37,
-      "op_margin": 6.472491909385113
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 259,
-      "operating_profit": -27,
-      "net_income": -18,
-      "op_margin": -10.424710424710424
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 277,
-      "operating_profit": 46,
-      "net_income": 32,
-      "op_margin": 16.60649819494585
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 209,
-      "operating_profit": 28,
-      "net_income": 24,
-      "op_margin": 13.397129186602871
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 176,
-      "operating_profit": 4,
-      "net_income": 9,
-      "op_margin": 2.272727272727273
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -91,
     "bps": 4451,
     "debt_ratio": 52.95
   },
+  "ticker": "413640",
   "warnings": [
     {
       "ticker": "413640",

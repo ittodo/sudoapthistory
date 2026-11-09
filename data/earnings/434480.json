@@ -1,5 +1,54 @@
 {
-  "ticker": "434480",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 192,
+      "operating_profit": 9,
+      "net_income": 7,
+      "op_margin": 4.6875
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 149,
+      "operating_profit": -6,
+      "net_income": 21,
+      "op_margin": -4.026845637583892
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 142,
+      "operating_profit": 0,
+      "net_income": -14,
+      "op_margin": 0
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 141,
+      "operating_profit": 11,
+      "net_income": 7,
+      "op_margin": 7.801418439716312
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 121,
+      "operating_profit": 18,
+      "net_income": 22,
+      "op_margin": 14.87603305785124
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "모니터랩",
   "quarterly": [
     {
@@ -267,62 +316,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 192,
-      "operating_profit": 9,
-      "net_income": 7,
-      "op_margin": 4.6875
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 149,
-      "operating_profit": -6,
-      "net_income": 21,
-      "op_margin": -4.026845637583892
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 142,
-      "operating_profit": 0,
-      "net_income": -14,
-      "op_margin": 0
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 141,
-      "operating_profit": 11,
-      "net_income": 7,
-      "op_margin": 7.801418439716312
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 121,
-      "operating_profit": 18,
-      "net_income": 22,
-      "op_margin": 14.87603305785124
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 5.3,
     "eps": 39,
     "bps": 3197,
     "debt_ratio": 22.82
   },
+  "ticker": "434480",
   "warnings": [
     {
       "ticker": "434480",

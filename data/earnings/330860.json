@@ -1,5 +1,54 @@
 {
-  "ticker": "330860",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 1193,
+      "operating_profit": -26,
+      "net_income": -287,
+      "op_margin": -2.179379715004191
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 1229,
+      "operating_profit": 7,
+      "net_income": -303,
+      "op_margin": 0.5695687550854354
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 1539,
+      "operating_profit": 225,
+      "net_income": 257,
+      "op_margin": 14.619883040935672
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 1142,
+      "operating_profit": 269,
+      "net_income": 246,
+      "op_margin": 23.555166374781088
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 678,
+      "operating_profit": 87,
+      "net_income": -351,
+      "op_margin": 12.831858407079647
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "네패스아크",
   "quarterly": [
     {
@@ -85,62 +134,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 1193,
-      "operating_profit": -26,
-      "net_income": -287,
-      "op_margin": -2.179379715004191
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 1229,
-      "operating_profit": 7,
-      "net_income": -303,
-      "op_margin": 0.5695687550854354
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 1539,
-      "operating_profit": 225,
-      "net_income": 257,
-      "op_margin": 14.619883040935672
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 1142,
-      "operating_profit": 269,
-      "net_income": 246,
-      "op_margin": 23.555166374781088
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 678,
-      "operating_profit": 87,
-      "net_income": -351,
-      "op_margin": 12.831858407079647
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -14.67,
     "eps": -2354,
     "bps": 13574,
     "debt_ratio": 88.8
   },
+  "ticker": "330860",
   "warnings": [
     {
       "ticker": "330860",

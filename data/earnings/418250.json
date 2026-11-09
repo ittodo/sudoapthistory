@@ -1,5 +1,46 @@
 {
-  "ticker": "418250",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 14,
+      "operating_profit": -73,
+      "net_income": -94,
+      "op_margin": -521.4285714285714
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 22,
+      "operating_profit": -59,
+      "net_income": -58,
+      "op_margin": -268.1818181818182
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 25,
+      "operating_profit": -58,
+      "net_income": -57,
+      "op_margin": -231.99999999999997
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 19,
+      "operating_profit": -32,
+      "net_income": -47,
+      "op_margin": -168.42105263157893
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "시큐레터",
   "quarterly": [
     {
@@ -71,54 +112,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 14,
-      "operating_profit": -73,
-      "net_income": -94,
-      "op_margin": -521.4285714285714
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 22,
-      "operating_profit": -59,
-      "net_income": -58,
-      "op_margin": -268.1818181818182
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 25,
-      "operating_profit": -58,
-      "net_income": -57,
-      "op_margin": -231.99999999999997
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 19,
-      "operating_profit": -32,
-      "net_income": -47,
-      "op_margin": -168.42105263157893
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -82.1,
     "eps": -1360,
     "bps": 993,
     "debt_ratio": 58.39
   },
+  "ticker": "418250",
   "warnings": [
     {
       "ticker": "418250",

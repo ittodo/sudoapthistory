@@ -1,5 +1,46 @@
 {
-  "ticker": "473980",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 757,
+      "operating_profit": 123,
+      "net_income": 148,
+      "op_margin": 16.248348745046233
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 689,
+      "operating_profit": 82,
+      "net_income": 99,
+      "op_margin": 11.901306240928882
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 423,
+      "operating_profit": -2,
+      "net_income": -313,
+      "op_margin": -0.4728132387706856
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "노머스",
   "quarterly": [
     {
@@ -197,54 +238,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 757,
-      "operating_profit": 123,
-      "net_income": 148,
-      "op_margin": 16.248348745046233
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 689,
-      "operating_profit": 82,
-      "net_income": 99,
-      "op_margin": 11.901306240928882
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 423,
-      "operating_profit": -2,
-      "net_income": -313,
-      "op_margin": -0.4728132387706856
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 15.34,
     "eps": 783,
     "bps": 10149,
     "debt_ratio": 13.82
   },
+  "ticker": "473980",
   "warnings": [
     {
       "ticker": "473980",

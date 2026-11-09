@@ -1,5 +1,46 @@
 {
-  "ticker": "455900",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 42,
+      "operating_profit": -108,
+      "net_income": -100,
+      "op_margin": -257.14285714285717
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 51,
+      "operating_profit": -65,
+      "net_income": -92,
+      "op_margin": -127.45098039215685
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 22,
+      "operating_profit": -71,
+      "net_income": -68,
+      "op_margin": -322.7272727272727
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 8,
+      "operating_profit": -48,
+      "net_income": -241,
+      "op_margin": -600
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "엔젤로보틱스",
   "quarterly": [
     {
@@ -71,54 +112,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 42,
-      "operating_profit": -108,
-      "net_income": -100,
-      "op_margin": -257.14285714285717
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 51,
-      "operating_profit": -65,
-      "net_income": -92,
-      "op_margin": -127.45098039215685
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 22,
-      "operating_profit": -71,
-      "net_income": -68,
-      "op_margin": -322.7272727272727
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 8,
-      "operating_profit": -48,
-      "net_income": -241,
-      "op_margin": -600
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -40.84,
     "eps": -686,
     "bps": 2690,
     "debt_ratio": 8.8
   },
+  "ticker": "455900",
   "warnings": [
     {
       "ticker": "455900",

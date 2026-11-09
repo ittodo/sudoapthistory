@@ -1,5 +1,38 @@
 {
-  "ticker": "489500",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 202,
+      "operating_profit": 46,
+      "net_income": 43,
+      "op_margin": 22.772277227722775
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 250,
+      "operating_profit": 101,
+      "net_income": 68,
+      "op_margin": 40.400000000000006
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 160,
+      "operating_profit": 56,
+      "net_income": 34,
+      "op_margin": 35
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "엘케이켐",
   "quarterly": [
     {
@@ -183,46 +216,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 202,
-      "operating_profit": 46,
-      "net_income": 43,
-      "op_margin": 22.772277227722775
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 250,
-      "operating_profit": 101,
-      "net_income": 68,
-      "op_margin": 40.400000000000006
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 160,
-      "operating_profit": 56,
-      "net_income": 34,
-      "op_margin": 35
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 10.09,
     "eps": 507,
     "bps": 10002,
     "debt_ratio": 10.11
   },
+  "ticker": "489500",
   "warnings": [
     {
       "ticker": "489500",

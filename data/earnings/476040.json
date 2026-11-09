@@ -1,5 +1,46 @@
 {
-  "ticker": "476040",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 24,
+      "operating_profit": -162,
+      "net_income": -157,
+      "op_margin": -675
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 20,
+      "operating_profit": -122,
+      "net_income": -115,
+      "op_margin": -610
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 16,
+      "operating_profit": -98,
+      "net_income": -389,
+      "op_margin": -612.5
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 4,
+      "operating_profit": -106,
+      "net_income": -241,
+      "op_margin": -2650
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "오가노이드사이언스",
   "quarterly": [
     {
@@ -169,54 +210,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 24,
-      "operating_profit": -162,
-      "net_income": -157,
-      "op_margin": -675
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 20,
-      "operating_profit": -122,
-      "net_income": -115,
-      "op_margin": -610
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 16,
-      "operating_profit": -98,
-      "net_income": -389,
-      "op_margin": -612.5
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 4,
-      "operating_profit": -106,
-      "net_income": -241,
-      "op_margin": -2650
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -61.46,
     "eps": -1671,
     "bps": 4125,
     "debt_ratio": 105.1
   },
+  "ticker": "476040",
   "warnings": [
     {
       "ticker": "476040",

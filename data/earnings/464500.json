@@ -1,5 +1,46 @@
 {
-  "ticker": "464500",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 101,
+      "operating_profit": -56,
+      "net_income": -45,
+      "op_margin": -55.44554455445545
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 84,
+      "operating_profit": -49,
+      "net_income": -42,
+      "op_margin": -58.333333333333336
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 62,
+      "operating_profit": -35,
+      "net_income": -39,
+      "op_margin": -56.451612903225815
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 54,
+      "operating_profit": -15,
+      "net_income": -33,
+      "op_margin": -27.77777777777778
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "아이언디바이스",
   "quarterly": [
     {
@@ -225,54 +266,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 101,
-      "operating_profit": -56,
-      "net_income": -45,
-      "op_margin": -55.44554455445545
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 84,
-      "operating_profit": -49,
-      "net_income": -42,
-      "op_margin": -58.333333333333336
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 62,
-      "operating_profit": -35,
-      "net_income": -39,
-      "op_margin": -56.451612903225815
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 54,
-      "operating_profit": -15,
-      "net_income": -33,
-      "op_margin": -27.77777777777778
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -13.78,
     "eps": -120,
     "bps": 1796,
     "debt_ratio": 77.49
   },
+  "ticker": "464500",
   "warnings": [
     {
       "ticker": "464500",

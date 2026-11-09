@@ -1,5 +1,22 @@
 {
-  "ticker": "288180",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 539,
+      "operating_profit": 26,
+      "net_income": 16,
+      "op_margin": 4.823747680890538
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "케이피항공산업",
   "quarterly": [
     {
@@ -135,30 +152,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 539,
-      "operating_profit": 26,
-      "net_income": 16,
-      "op_margin": 4.823747680890538
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -50.42,
     "eps": -1791,
     "bps": 4879,
     "debt_ratio": 189.84
   },
+  "ticker": "288180",
   "warnings": [
     {
       "ticker": "288180",

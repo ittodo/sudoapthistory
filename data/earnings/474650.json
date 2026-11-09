@@ -1,5 +1,30 @@
 {
-  "ticker": "474650",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 112,
+      "operating_profit": -40,
+      "net_income": -25,
+      "op_margin": -35.714285714285715
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 74,
+      "operating_profit": 8,
+      "net_income": -122,
+      "op_margin": 10.81081081081081
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "링크솔루션",
   "quarterly": [
     {
@@ -123,37 +148,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 112,
-      "operating_profit": -40,
-      "net_income": -25,
-      "op_margin": -35.714285714285715
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 74,
-      "operating_profit": 8,
-      "net_income": -122,
-      "op_margin": 10.81081081081081
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -616,
     "bps": 6035,
     "debt_ratio": 96.71
   },
+  "ticker": "474650",
   "warnings": [
     {
       "ticker": "474650",

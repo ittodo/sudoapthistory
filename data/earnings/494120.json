@@ -1,5 +1,38 @@
 {
-  "ticker": "494120",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 73,
+      "operating_profit": -75,
+      "net_income": -79,
+      "op_margin": -102.73972602739727
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 54,
+      "operating_profit": -62,
+      "net_income": -48,
+      "op_margin": -114.81481481481481
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 32,
+      "operating_profit": -66,
+      "net_income": -100,
+      "op_margin": -206.25
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "큐리오시스",
   "quarterly": [
     {
@@ -169,46 +202,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 73,
-      "operating_profit": -75,
-      "net_income": -79,
-      "op_margin": -102.73972602739727
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 54,
-      "operating_profit": -62,
-      "net_income": -48,
-      "op_margin": -114.81481481481481
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 32,
-      "operating_profit": -66,
-      "net_income": -100,
-      "op_margin": -206.25
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -50.35,
     "eps": -233,
     "bps": 1620,
     "debt_ratio": 29.21
   },
+  "ticker": "494120",
   "warnings": [
     {
       "ticker": "494120",

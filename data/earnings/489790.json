@@ -1,5 +1,22 @@
 {
-  "ticker": "489790",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 17909,
+      "operating_profit": 1623,
+      "net_income": 426,
+      "op_margin": 9.062482550672845
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "한화비전",
   "quarterly": [
     {
@@ -111,30 +128,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 17909,
-      "operating_profit": 1623,
-      "net_income": 426,
-      "op_margin": 9.062482550672845
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 13.63,
     "eps": 1215,
     "bps": 18819,
     "debt_ratio": 136.84
   },
+  "ticker": "489790",
   "warnings": [
     {
       "ticker": "489790",

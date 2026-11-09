@@ -1,5 +1,46 @@
 {
-  "ticker": "489460",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 285,
+      "operating_profit": 42,
+      "net_income": 42,
+      "op_margin": 14.736842105263156
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 296,
+      "operating_profit": 92,
+      "net_income": 72,
+      "op_margin": 31.08108108108108
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "바이오비쥬",
   "quarterly": [
     {
@@ -155,54 +196,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 285,
-      "operating_profit": 42,
-      "net_income": 42,
-      "op_margin": 14.736842105263156
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 296,
-      "operating_profit": 92,
-      "net_income": 72,
-      "op_margin": 31.08108108108108
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 10.42,
     "eps": 362,
     "bps": 4334,
     "debt_ratio": 5.49
   },
+  "ticker": "489460",
   "warnings": [
     {
       "ticker": "489460",

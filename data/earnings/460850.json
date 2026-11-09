@@ -1,5 +1,30 @@
 {
-  "ticker": "460850",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 27687,
+      "operating_profit": -388,
+      "net_income": -699,
+      "op_margin": -1.4013797088886482
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "동국씨엠",
   "quarterly": [
     {
@@ -179,38 +204,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 27687,
-      "operating_profit": -388,
-      "net_income": -699,
-      "op_margin": -1.4013797088886482
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -0.8,
     "eps": 388,
     "bps": 33066,
     "debt_ratio": 166.14
   },
+  "ticker": "460850",
   "warnings": [
     {
       "ticker": "460850",

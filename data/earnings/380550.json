@@ -1,5 +1,38 @@
 {
-  "ticker": "380550",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 26,
+      "operating_profit": -165,
+      "net_income": -224,
+      "op_margin": -634.6153846153845
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "뉴로핏",
   "quarterly": [
     {
@@ -127,45 +160,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 26,
-      "operating_profit": -165,
-      "net_income": -224,
-      "op_margin": -634.6153846153845
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -924,
     "bps": 2737,
     "debt_ratio": 41.93
   },
+  "ticker": "380550",
   "warnings": [
     {
       "ticker": "380550",

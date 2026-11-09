@@ -1,5 +1,70 @@
 {
-  "ticker": "354200",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 212,
+      "operating_profit": -83,
+      "net_income": -68,
+      "op_margin": -39.15094339622642
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 56,
+      "operating_profit": -126,
+      "net_income": -143,
+      "op_margin": -225
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 44,
+      "operating_profit": -134,
+      "net_income": -129,
+      "op_margin": -304.54545454545456
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 110,
+      "operating_profit": -86,
+      "net_income": -98,
+      "op_margin": -78.18181818181819
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 72,
+      "operating_profit": -87,
+      "net_income": -84,
+      "op_margin": -120.83333333333333
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "엔젠바이오",
   "quarterly": [
     {
@@ -365,78 +430,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 212,
-      "operating_profit": -83,
-      "net_income": -68,
-      "op_margin": -39.15094339622642
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 56,
-      "operating_profit": -126,
-      "net_income": -143,
-      "op_margin": -225
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 44,
-      "operating_profit": -134,
-      "net_income": -129,
-      "op_margin": -304.54545454545456
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 110,
-      "operating_profit": -86,
-      "net_income": -98,
-      "op_margin": -78.18181818181819
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 72,
-      "operating_profit": -87,
-      "net_income": -84,
-      "op_margin": -120.83333333333333
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -27.27,
     "eps": -729,
     "bps": 1804,
     "debt_ratio": 277.94
   },
+  "ticker": "354200",
   "warnings": [
     {
       "ticker": "354200",

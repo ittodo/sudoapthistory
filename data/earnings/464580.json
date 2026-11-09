@@ -1,5 +1,46 @@
 {
-  "ticker": "464580",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 236,
+      "operating_profit": 10,
+      "net_income": 10,
+      "op_margin": 4.23728813559322
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 188,
+      "operating_profit": 8,
+      "net_income": -12,
+      "op_margin": 4.25531914893617
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 106,
+      "operating_profit": -25,
+      "net_income": -19,
+      "op_margin": -23.58490566037736
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 94,
+      "operating_profit": 9,
+      "net_income": 2,
+      "op_margin": 9.574468085106384
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "닷밀",
   "quarterly": [
     {
@@ -99,54 +140,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 236,
-      "operating_profit": 10,
-      "net_income": 10,
-      "op_margin": 4.23728813559322
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 188,
-      "operating_profit": 8,
-      "net_income": -12,
-      "op_margin": 4.25531914893617
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 106,
-      "operating_profit": -25,
-      "net_income": -19,
-      "op_margin": -23.58490566037736
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 94,
-      "operating_profit": 9,
-      "net_income": 2,
-      "op_margin": 9.574468085106384
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 5.66,
     "eps": 63,
     "bps": 1818,
     "debt_ratio": 38.02
   },
+  "ticker": "464580",
   "warnings": [
     {
       "ticker": "464580",

@@ -1,5 +1,46 @@
 {
-  "ticker": "331740",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 255,
+      "operating_profit": -135,
+      "net_income": -125,
+      "op_margin": -52.94117647058824
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 233,
+      "operating_profit": -180,
+      "net_income": -493,
+      "op_margin": -77.25321888412017
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 220,
+      "operating_profit": -245,
+      "net_income": -366,
+      "op_margin": -111.36363636363636
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 130,
+      "operating_profit": -185,
+      "net_income": -197,
+      "op_margin": -142.30769230769232
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "아우토크립트",
   "quarterly": [
     {
@@ -183,54 +224,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 255,
-      "operating_profit": -135,
-      "net_income": -125,
-      "op_margin": -52.94117647058824
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 233,
-      "operating_profit": -180,
-      "net_income": -493,
-      "op_margin": -77.25321888412017
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 220,
-      "operating_profit": -245,
-      "net_income": -366,
-      "op_margin": -111.36363636363636
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 130,
-      "operating_profit": -185,
-      "net_income": -197,
-      "op_margin": -142.30769230769232
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -59.17,
     "eps": -517,
     "bps": 2696,
     "debt_ratio": 146.91
   },
+  "ticker": "331740",
   "warnings": [
     {
       "ticker": "331740",

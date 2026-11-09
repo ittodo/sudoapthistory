@@ -1,5 +1,22 @@
 {
-  "ticker": "495910",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 354,
+      "operating_profit": -1,
+      "net_income": 20,
+      "op_margin": -0.2824858757062147
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "이에스티",
   "quarterly": [
     {
@@ -43,29 +60,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 354,
-      "operating_profit": -1,
-      "net_income": 20,
-      "op_margin": -0.2824858757062147
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -237,
     "bps": 4175,
     "debt_ratio": 45.97
   },
+  "ticker": "495910",
   "warnings": [
     {
       "ticker": "495910",

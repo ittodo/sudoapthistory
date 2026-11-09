@@ -1,5 +1,94 @@
 {
-  "ticker": "246250",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 84,
+      "operating_profit": 3,
+      "net_income": 3,
+      "op_margin": 3.571428571428571
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 90,
+      "operating_profit": 10,
+      "net_income": 14,
+      "op_margin": 11.11111111111111
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 108,
+      "operating_profit": 24,
+      "net_income": 28,
+      "op_margin": 22.22222222222222
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 82,
+      "operating_profit": 4,
+      "net_income": 1,
+      "op_margin": 4.878048780487805
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 87,
+      "operating_profit": -7,
+      "net_income": -7,
+      "op_margin": -8.045977011494253
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 74,
+      "operating_profit": 11,
+      "net_income": 6,
+      "op_margin": 14.864864864864865
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": 64,
+      "operating_profit": 5,
+      "net_income": -29,
+      "op_margin": 7.8125
+    },
+    {
+      "year": "2017",
+      "stac_yymm": "201712",
+      "revenue": 61,
+      "operating_profit": 14,
+      "net_income": -6,
+      "op_margin": 22.950819672131146
+    },
+    {
+      "year": "2016",
+      "stac_yymm": "201612",
+      "revenue": 81,
+      "operating_profit": 12,
+      "net_income": -26,
+      "op_margin": 14.814814814814813
+    },
+    {
+      "year": "2015",
+      "stac_yymm": "201512",
+      "revenue": 62,
+      "operating_profit": 5,
+      "net_income": 2,
+      "op_margin": 8.064516129032258
+    },
+    {
+      "year": "2014",
+      "stac_yymm": "201412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "에스엘에스바이오",
   "quarterly": [
     {
@@ -155,102 +244,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 84,
-      "operating_profit": 3,
-      "net_income": 3,
-      "op_margin": 3.571428571428571
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 90,
-      "operating_profit": 10,
-      "net_income": 14,
-      "op_margin": 11.11111111111111
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 108,
-      "operating_profit": 24,
-      "net_income": 28,
-      "op_margin": 22.22222222222222
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 82,
-      "operating_profit": 4,
-      "net_income": 1,
-      "op_margin": 4.878048780487805
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 87,
-      "operating_profit": -7,
-      "net_income": -7,
-      "op_margin": -8.045977011494253
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 74,
-      "operating_profit": 11,
-      "net_income": 6,
-      "op_margin": 14.864864864864865
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": 64,
-      "operating_profit": 5,
-      "net_income": -29,
-      "op_margin": 7.8125
-    },
-    {
-      "year": "2017",
-      "stac_yymm": "201712",
-      "revenue": 61,
-      "operating_profit": 14,
-      "net_income": -6,
-      "op_margin": 22.950819672131146
-    },
-    {
-      "year": "2016",
-      "stac_yymm": "201612",
-      "revenue": 81,
-      "operating_profit": 12,
-      "net_income": -26,
-      "op_margin": 14.814814814814813
-    },
-    {
-      "year": "2015",
-      "stac_yymm": "201512",
-      "revenue": 62,
-      "operating_profit": 5,
-      "net_income": 2,
-      "op_margin": 8.064516129032258
-    },
-    {
-      "year": "2014",
-      "stac_yymm": "201412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 2.58,
     "eps": 22,
     "bps": 874,
     "debt_ratio": 30.73
   },
+  "ticker": "246250",
   "warnings": [
     {
       "ticker": "246250",

@@ -1,5 +1,70 @@
 {
-  "ticker": "352770",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 20,
+      "operating_profit": -78,
+      "net_income": -118,
+      "op_margin": -390
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 85,
+      "operating_profit": -287,
+      "net_income": -471,
+      "op_margin": -337.6470588235294
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 114,
+      "operating_profit": -346,
+      "net_income": -424,
+      "op_margin": -303.50877192982455
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 231,
+      "operating_profit": -108,
+      "net_income": -102,
+      "op_margin": -46.75324675324675
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 554,
+      "operating_profit": 229,
+      "net_income": 159,
+      "op_margin": 41.335740072202164
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 98,
+      "operating_profit": -123,
+      "net_income": -131,
+      "op_margin": -125.51020408163265
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 41,
+      "operating_profit": -45,
+      "net_income": -58,
+      "op_margin": -109.75609756097562
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "셀레스트라",
   "quarterly": [
     {
@@ -407,76 +472,11 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 20,
-      "operating_profit": -78,
-      "net_income": -118,
-      "op_margin": -390
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 85,
-      "operating_profit": -287,
-      "net_income": -471,
-      "op_margin": -337.6470588235294
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 114,
-      "operating_profit": -346,
-      "net_income": -424,
-      "op_margin": -303.50877192982455
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 231,
-      "operating_profit": -108,
-      "net_income": -102,
-      "op_margin": -46.75324675324675
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 554,
-      "operating_profit": 229,
-      "net_income": 159,
-      "op_margin": 41.335740072202164
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 98,
-      "operating_profit": -123,
-      "net_income": -131,
-      "op_margin": -125.51020408163265
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 41,
-      "operating_profit": -45,
-      "net_income": -58,
-      "op_margin": -109.75609756097562
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -206,
     "bps": -2610
   },
+  "ticker": "352770",
   "warnings": [
     {
       "ticker": "352770",

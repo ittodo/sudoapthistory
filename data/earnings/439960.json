@@ -1,5 +1,30 @@
 {
-  "ticker": "439960",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 89,
+      "operating_profit": -82,
+      "net_income": -221,
+      "op_margin": -92.13483146067416
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 70,
+      "operating_profit": -89,
+      "net_income": -120,
+      "op_margin": -127.14285714285714
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "코스모로보틱스",
   "quarterly": [
     {
@@ -85,37 +110,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 89,
-      "operating_profit": -82,
-      "net_income": -221,
-      "op_margin": -92.13483146067416
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 70,
-      "operating_profit": -89,
-      "net_income": -120,
-      "op_margin": -127.14285714285714
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -343,
     "bps": 1075,
     "debt_ratio": 14.52
   },
+  "ticker": "439960",
   "warnings": [
     {
       "ticker": "439960",

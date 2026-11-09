@@ -1,5 +1,38 @@
 {
-  "ticker": "282620",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 3466,
+      "operating_profit": 322,
+      "net_income": 353,
+      "op_margin": 9.290248124639353
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 2721,
+      "operating_profit": 258,
+      "net_income": 249,
+      "op_margin": 9.481808158765158
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 2256,
+      "operating_profit": 213,
+      "net_income": 197,
+      "op_margin": 9.441489361702128
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "기도산업",
   "quarterly": [
     {
@@ -85,45 +118,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 3466,
-      "operating_profit": 322,
-      "net_income": 353,
-      "op_margin": 9.290248124639353
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 2721,
-      "operating_profit": 258,
-      "net_income": 249,
-      "op_margin": 9.481808158765158
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 2256,
-      "operating_profit": 213,
-      "net_income": 197,
-      "op_margin": 9.441489361702128
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": 235,
     "bps": 32494,
     "debt_ratio": 93.23
   },
+  "ticker": "282620",
   "warnings": [
     {
       "ticker": "282620",

@@ -1,5 +1,54 @@
 {
-  "ticker": "439580",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 1859,
+      "operating_profit": -20,
+      "net_income": -45,
+      "op_margin": -1.0758472296933834
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 1333,
+      "operating_profit": -69,
+      "net_income": -48,
+      "op_margin": -5.176294073518379
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 1139,
+      "operating_profit": 13,
+      "net_income": -23,
+      "op_margin": 1.141352063213345
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 771,
+      "operating_profit": 9,
+      "net_income": -143,
+      "op_margin": 1.1673151750972763
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 519,
+      "operating_profit": -27,
+      "net_income": -77,
+      "op_margin": -5.202312138728324
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "블루엠텍",
   "quarterly": [
     {
@@ -211,62 +260,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 1859,
-      "operating_profit": -20,
-      "net_income": -45,
-      "op_margin": -1.0758472296933834
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 1333,
-      "operating_profit": -69,
-      "net_income": -48,
-      "op_margin": -5.176294073518379
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 1139,
-      "operating_profit": 13,
-      "net_income": -23,
-      "op_margin": 1.141352063213345
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 771,
-      "operating_profit": 9,
-      "net_income": -143,
-      "op_margin": 1.1673151750972763
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 519,
-      "operating_profit": -27,
-      "net_income": -77,
-      "op_margin": -5.202312138728324
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 9.17,
     "eps": 136,
     "bps": 1456,
     "debt_ratio": 131.14
   },
+  "ticker": "439580",
   "warnings": [
     {
       "ticker": "439580",

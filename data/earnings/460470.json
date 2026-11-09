@@ -1,5 +1,38 @@
 {
-  "ticker": "460470",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 36,
+      "operating_profit": -43,
+      "net_income": -40,
+      "op_margin": -119.44444444444444
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 45,
+      "operating_profit": -29,
+      "net_income": -50,
+      "op_margin": -64.44444444444444
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 13,
+      "operating_profit": -33,
+      "net_income": -97,
+      "op_margin": -253.84615384615384
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "아이빔테크놀로지",
   "quarterly": [
     {
@@ -57,46 +90,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 36,
-      "operating_profit": -43,
-      "net_income": -40,
-      "op_margin": -119.44444444444444
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 45,
-      "operating_profit": -29,
-      "net_income": -50,
-      "op_margin": -64.44444444444444
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 13,
-      "operating_profit": -33,
-      "net_income": -97,
-      "op_margin": -253.84615384615384
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -18.16,
     "eps": -293,
     "bps": 2073,
     "debt_ratio": 11.55
   },
+  "ticker": "460470",
   "warnings": [
     {
       "ticker": "460470",

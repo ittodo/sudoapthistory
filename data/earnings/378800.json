@@ -1,5 +1,70 @@
 {
-  "ticker": "378800",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 2,
+      "operating_profit": -158,
+      "net_income": -155,
+      "op_margin": -7900
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": -151,
+      "net_income": -149,
+      "op_margin": null
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 2,
+      "operating_profit": -132,
+      "net_income": -124,
+      "op_margin": -6600
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 20,
+      "operating_profit": -110,
+      "net_income": -107,
+      "op_margin": -550
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 5,
+      "operating_profit": -105,
+      "net_income": -238,
+      "op_margin": -2100
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 0,
+      "operating_profit": -68,
+      "net_income": -265,
+      "op_margin": null
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 0,
+      "operating_profit": -49,
+      "net_income": -131,
+      "op_margin": null
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "샤페론",
   "quarterly": [
     {
@@ -281,78 +346,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 2,
-      "operating_profit": -158,
-      "net_income": -155,
-      "op_margin": -7900
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": -151,
-      "net_income": -149,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 2,
-      "operating_profit": -132,
-      "net_income": -124,
-      "op_margin": -6600
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 20,
-      "operating_profit": -110,
-      "net_income": -107,
-      "op_margin": -550
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 5,
-      "operating_profit": -105,
-      "net_income": -238,
-      "op_margin": -2100
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 0,
-      "operating_profit": -68,
-      "net_income": -265,
-      "op_margin": null
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 0,
-      "operating_profit": -49,
-      "net_income": -131,
-      "op_margin": null
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -113.28,
     "eps": -783,
     "bps": 2057,
     "debt_ratio": 53.35
   },
+  "ticker": "378800",
   "warnings": [
     {
       "ticker": "378800",

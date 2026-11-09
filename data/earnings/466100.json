@@ -1,5 +1,38 @@
 {
-  "ticker": "466100",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 414,
+      "operating_profit": -32,
+      "net_income": -22,
+      "op_margin": -7.729468599033816
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 334,
+      "operating_profit": -75,
+      "net_income": -67,
+      "op_margin": -22.45508982035928
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 242,
+      "operating_profit": -58,
+      "net_income": -224,
+      "op_margin": -23.96694214876033
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "클로봇",
   "quarterly": [
     {
@@ -183,46 +216,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 414,
-      "operating_profit": -32,
-      "net_income": -22,
-      "op_margin": -7.729468599033816
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 334,
-      "operating_profit": -75,
-      "net_income": -67,
-      "op_margin": -22.45508982035928
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 242,
-      "operating_profit": -58,
-      "net_income": -224,
-      "op_margin": -23.96694214876033
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -4.55,
     "eps": -182,
     "bps": 2140,
     "debt_ratio": 24.14
   },
+  "ticker": "466100",
   "warnings": [
     {
       "ticker": "466100",

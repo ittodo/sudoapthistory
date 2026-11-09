@@ -1,5 +1,38 @@
 {
-  "ticker": "452200",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 209,
+      "operating_profit": -110,
+      "net_income": -145,
+      "op_margin": -52.63157894736842
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 175,
+      "operating_profit": -66,
+      "net_income": -85,
+      "op_margin": -37.714285714285715
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 119,
+      "operating_profit": -28,
+      "net_income": -71,
+      "op_margin": -23.52941176470588
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "민테크",
   "quarterly": [
     {
@@ -69,45 +102,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 209,
-      "operating_profit": -110,
-      "net_income": -145,
-      "op_margin": -52.63157894736842
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 175,
-      "operating_profit": -66,
-      "net_income": -85,
-      "op_margin": -37.714285714285715
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 119,
-      "operating_profit": -28,
-      "net_income": -71,
-      "op_margin": -23.52941176470588
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -203,
     "bps": 1137,
     "debt_ratio": 70.72
   },
+  "ticker": "452200",
   "warnings": [
     {
       "ticker": "452200",

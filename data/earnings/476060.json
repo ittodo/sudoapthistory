@@ -1,5 +1,38 @@
 {
-  "ticker": "476060",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 148,
+      "operating_profit": -48,
+      "net_income": -81,
+      "op_margin": -32.432432432432435
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 211,
+      "operating_profit": 22,
+      "net_income": 17,
+      "op_margin": 10.42654028436019
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 1,
+      "operating_profit": -148,
+      "net_income": -144,
+      "op_margin": -14800
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "온코닉테라퓨틱스",
   "quarterly": [
     {
@@ -57,46 +90,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 148,
-      "operating_profit": -48,
-      "net_income": -81,
-      "op_margin": -32.432432432432435
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 211,
-      "operating_profit": 22,
-      "net_income": 17,
-      "op_margin": 10.42654028436019
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 1,
-      "operating_profit": -148,
-      "net_income": -144,
-      "op_margin": -14800
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -44.55,
     "eps": -244,
     "bps": 1296,
     "debt_ratio": 8.74
   },
+  "ticker": "476060",
   "warnings": [
     {
       "ticker": "476060",

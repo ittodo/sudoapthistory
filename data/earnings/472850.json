@@ -1,5 +1,30 @@
 {
-  "ticker": "472850",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 4856,
+      "operating_profit": 574,
+      "net_income": 442,
+      "op_margin": 11.820428336079077
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 3687,
+      "operating_profit": 413,
+      "net_income": 272,
+      "op_margin": 11.201518850013562
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "폰드그룹",
   "quarterly": [
     {
@@ -155,38 +180,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 4856,
-      "operating_profit": 574,
-      "net_income": 442,
-      "op_margin": 11.820428336079077
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 3687,
-      "operating_profit": 413,
-      "net_income": 272,
-      "op_margin": 11.201518850013562
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 17.19,
     "eps": 393,
     "bps": 4166,
     "debt_ratio": 78.62
   },
+  "ticker": "472850",
   "warnings": [
     {
       "ticker": "472850",

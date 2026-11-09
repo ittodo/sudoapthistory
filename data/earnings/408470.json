@@ -1,5 +1,22 @@
 {
-  "ticker": "408470",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 664,
+      "operating_profit": 82,
+      "net_income": 66,
+      "op_margin": 12.349397590361445
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "한패스",
   "quarterly": [
     {
@@ -71,29 +88,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 664,
-      "operating_profit": 82,
-      "net_income": 66,
-      "op_margin": 12.349397590361445
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -419,
     "bps": 5476,
     "debt_ratio": 146.62
   },
+  "ticker": "408470",
   "warnings": [
     {
       "ticker": "408470",

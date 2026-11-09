@@ -1,5 +1,22 @@
 {
-  "ticker": "474490",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 2,
+      "op_margin": null
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "유안타제16호스팩",
   "quarterly": [
     {
@@ -29,30 +46,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 2,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 2.92,
     "eps": 44,
     "bps": 1986,
     "debt_ratio": 15.16
   },
+  "ticker": "474490",
   "warnings": [
     {
       "ticker": "474490",

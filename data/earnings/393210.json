@@ -1,5 +1,62 @@
 {
-  "ticker": "393210",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 273,
+      "operating_profit": -24,
+      "net_income": -28,
+      "op_margin": -8.791208791208792
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 216,
+      "operating_profit": -34,
+      "net_income": -18,
+      "op_margin": -15.74074074074074
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 266,
+      "operating_profit": 28,
+      "net_income": 33,
+      "op_margin": 10.526315789473683
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 271,
+      "operating_profit": 75,
+      "net_income": 46,
+      "op_margin": 27.67527675276753
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 229,
+      "operating_profit": 15,
+      "net_income": 13,
+      "op_margin": 6.550218340611353
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 189,
+      "operating_profit": 4,
+      "net_income": -10,
+      "op_margin": 2.1164021164021163
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "토마토시스템",
   "quarterly": [
     {
@@ -239,70 +296,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 273,
-      "operating_profit": -24,
-      "net_income": -28,
-      "op_margin": -8.791208791208792
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 216,
-      "operating_profit": -34,
-      "net_income": -18,
-      "op_margin": -15.74074074074074
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 266,
-      "operating_profit": 28,
-      "net_income": 33,
-      "op_margin": 10.526315789473683
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 271,
-      "operating_profit": 75,
-      "net_income": 46,
-      "op_margin": 27.67527675276753
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 229,
-      "operating_profit": 15,
-      "net_income": 13,
-      "op_margin": 6.550218340611353
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 189,
-      "operating_profit": 4,
-      "net_income": -10,
-      "op_margin": 2.1164021164021163
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 0.92,
     "eps": 78,
     "bps": 1760,
     "debt_ratio": 127.4
   },
+  "ticker": "393210",
   "warnings": [
     {
       "ticker": "393210",

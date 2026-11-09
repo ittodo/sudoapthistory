@@ -1,5 +1,30 @@
 {
-  "ticker": "456040",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 20094,
+      "operating_profit": 4,
+      "net_income": -685,
+      "op_margin": 0.01990643973325371
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 22153,
+      "operating_profit": 1105,
+      "net_income": 897,
+      "op_margin": 4.988037737552476
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "OCI",
   "quarterly": [
     {
@@ -179,38 +204,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 20094,
-      "operating_profit": 4,
-      "net_income": -685,
-      "op_margin": 0.01990643973325371
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 22153,
-      "operating_profit": 1105,
-      "net_income": 897,
-      "op_margin": 4.988037737552476
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 0.74,
     "eps": 6119,
     "bps": 133258,
     "debt_ratio": 97.5
   },
+  "ticker": "456040",
   "warnings": [
     {
       "ticker": "456040",

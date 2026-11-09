@@ -1,5 +1,38 @@
 {
-  "ticker": "464080",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 49,
+      "operating_profit": -128,
+      "net_income": -120,
+      "op_margin": -261.2244897959184
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 41,
+      "operating_profit": -83,
+      "net_income": 60,
+      "op_margin": -202.4390243902439
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 23,
+      "operating_profit": -96,
+      "net_income": -203,
+      "op_margin": -417.39130434782606
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "에스오에스랩",
   "quarterly": [
     {
@@ -57,46 +90,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 49,
-      "operating_profit": -128,
-      "net_income": -120,
-      "op_margin": -261.2244897959184
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 41,
-      "operating_profit": -83,
-      "net_income": 60,
-      "op_margin": -202.4390243902439
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 23,
-      "operating_profit": -96,
-      "net_income": -203,
-      "op_margin": -417.39130434782606
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -46.12,
     "eps": -720,
     "bps": 1808,
     "debt_ratio": 22.19
   },
+  "ticker": "464080",
   "warnings": [
     {
       "ticker": "464080",

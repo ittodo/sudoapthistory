@@ -1,5 +1,54 @@
 {
-  "ticker": "405000",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 85,
+      "operating_profit": -76,
+      "net_income": -66,
+      "op_margin": -89.41176470588236
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 101,
+      "operating_profit": -177,
+      "net_income": -208,
+      "op_margin": -175.24752475247524
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 129,
+      "operating_profit": -206,
+      "net_income": -188,
+      "op_margin": -159.68992248062014
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 133,
+      "operating_profit": -174,
+      "net_income": -177,
+      "op_margin": -130.82706766917295
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 63,
+      "operating_profit": -106,
+      "net_income": -217,
+      "op_margin": -168.25396825396825
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "플라즈맵",
   "quarterly": [
     {
@@ -281,62 +330,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 85,
-      "operating_profit": -76,
-      "net_income": -66,
-      "op_margin": -89.41176470588236
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 101,
-      "operating_profit": -177,
-      "net_income": -208,
-      "op_margin": -175.24752475247524
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 129,
-      "operating_profit": -206,
-      "net_income": -188,
-      "op_margin": -159.68992248062014
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 133,
-      "operating_profit": -174,
-      "net_income": -177,
-      "op_margin": -130.82706766917295
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 63,
-      "operating_profit": -106,
-      "net_income": -217,
-      "op_margin": -168.25396825396825
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -154.6,
     "eps": -1209,
     "bps": 343,
     "debt_ratio": 1367.44
   },
+  "ticker": "405000",
   "warnings": [
     {
       "ticker": "405000",

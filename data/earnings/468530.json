@@ -1,5 +1,38 @@
 {
-  "ticker": "468530",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 23,
+      "operating_profit": -91,
+      "net_income": -57,
+      "op_margin": -395.65217391304344
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 6,
+      "operating_profit": -73,
+      "net_income": -228,
+      "op_margin": -1216.6666666666665
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 5,
+      "operating_profit": -54,
+      "net_income": -114,
+      "op_margin": -1080
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "프로티나",
   "quarterly": [
     {
@@ -57,45 +90,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 23,
-      "operating_profit": -91,
-      "net_income": -57,
-      "op_margin": -395.65217391304344
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 6,
-      "operating_profit": -73,
-      "net_income": -228,
-      "op_margin": -1216.6666666666665
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 5,
-      "operating_profit": -54,
-      "net_income": -114,
-      "op_margin": -1080
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -912,
     "bps": 1706,
     "debt_ratio": 14.04
   },
+  "ticker": "468530",
   "warnings": [
     {
       "ticker": "468530",

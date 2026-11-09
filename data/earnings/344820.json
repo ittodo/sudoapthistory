@@ -1,5 +1,54 @@
 {
-  "ticker": "344820",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 19006,
+      "operating_profit": -752,
+      "net_income": -836,
+      "op_margin": -3.956645269914764
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 19033,
+      "operating_profit": 572,
+      "net_income": 370,
+      "op_margin": 3.00530657279462
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 16801,
+      "operating_profit": 950,
+      "net_income": 817,
+      "op_margin": 5.654425331825486
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 14437,
+      "operating_profit": 1192,
+      "net_income": 940,
+      "op_margin": 8.25656299785274
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 11757,
+      "operating_profit": 1605,
+      "net_income": 1172,
+      "op_margin": 13.651441694309774
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "KCC글라스",
   "quarterly": [
     {
@@ -359,62 +408,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 19006,
-      "operating_profit": -752,
-      "net_income": -836,
-      "op_margin": -3.956645269914764
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 19033,
-      "operating_profit": 572,
-      "net_income": 370,
-      "op_margin": 3.00530657279462
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 16801,
-      "operating_profit": 950,
-      "net_income": 817,
-      "op_margin": 5.654425331825486
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 14437,
-      "operating_profit": 1192,
-      "net_income": 940,
-      "op_margin": 8.25656299785274
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 11757,
-      "operating_profit": 1605,
-      "net_income": 1172,
-      "op_margin": 13.651441694309774
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -4.05,
     "eps": -1184,
     "bps": 84341,
     "debt_ratio": 78.1
   },
+  "ticker": "344820",
   "warnings": [
     {
       "ticker": "344820",

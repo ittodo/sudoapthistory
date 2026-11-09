@@ -1,5 +1,86 @@
 {
-  "ticker": "240810",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 9098,
+      "operating_profit": 738,
+      "net_income": 840,
+      "op_margin": 8.111672895141789
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 7482,
+      "operating_profit": 106,
+      "net_income": 207,
+      "op_margin": 1.4167334937182572
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 6903,
+      "operating_profit": -181,
+      "net_income": -135,
+      "op_margin": -2.622048384760249
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 10115,
+      "operating_profit": 976,
+      "net_income": 894,
+      "op_margin": 9.649036085022244
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 12323,
+      "operating_profit": 1641,
+      "net_income": 1451,
+      "op_margin": 13.316562525359085
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 10909,
+      "operating_profit": 1406,
+      "net_income": 978,
+      "op_margin": 12.88844073700614
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 6692,
+      "operating_profit": 411,
+      "net_income": 429,
+      "op_margin": 6.141661685594739
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": 6493,
+      "operating_profit": 1059,
+      "net_income": 869,
+      "op_margin": 16.309872170029262
+    },
+    {
+      "year": "2017",
+      "stac_yymm": "201712",
+      "revenue": 6309,
+      "operating_profit": 1223,
+      "net_income": 954,
+      "op_margin": 19.385005547630367
+    },
+    {
+      "year": "2016",
+      "stac_yymm": "201612",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "원익IPS",
   "quarterly": [
     {
@@ -451,94 +532,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 9098,
-      "operating_profit": 738,
-      "net_income": 840,
-      "op_margin": 8.111672895141789
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 7482,
-      "operating_profit": 106,
-      "net_income": 207,
-      "op_margin": 1.4167334937182572
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 6903,
-      "operating_profit": -181,
-      "net_income": -135,
-      "op_margin": -2.622048384760249
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 10115,
-      "operating_profit": 976,
-      "net_income": 894,
-      "op_margin": 9.649036085022244
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 12323,
-      "operating_profit": 1641,
-      "net_income": 1451,
-      "op_margin": 13.316562525359085
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 10909,
-      "operating_profit": 1406,
-      "net_income": 978,
-      "op_margin": 12.88844073700614
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 6692,
-      "operating_profit": 411,
-      "net_income": 429,
-      "op_margin": 6.141661685594739
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": 6493,
-      "operating_profit": 1059,
-      "net_income": 869,
-      "op_margin": 16.309872170029262
-    },
-    {
-      "year": "2017",
-      "stac_yymm": "201712",
-      "revenue": 6309,
-      "operating_profit": 1223,
-      "net_income": 954,
-      "op_margin": 19.385005547630367
-    },
-    {
-      "year": "2016",
-      "stac_yymm": "201612",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 17.5,
     "eps": 2282,
     "bps": 22064,
     "debt_ratio": 39.12
   },
+  "ticker": "240810",
   "warnings": [
     {
       "ticker": "240810",

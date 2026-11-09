@@ -1,5 +1,38 @@
 {
-  "ticker": "469610",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 757,
+      "operating_profit": 86,
+      "net_income": 85,
+      "op_margin": 11.360634081902246
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 612,
+      "operating_profit": 57,
+      "net_income": 54,
+      "op_margin": 9.313725490196079
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 518,
+      "operating_profit": 46,
+      "net_income": 7,
+      "op_margin": 8.880308880308881
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "이노테크",
   "quarterly": [
     {
@@ -141,46 +174,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 757,
-      "operating_profit": 86,
-      "net_income": 85,
-      "op_margin": 11.360634081902246
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 612,
-      "operating_profit": 57,
-      "net_income": 54,
-      "op_margin": 9.313725490196079
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 518,
-      "operating_profit": 46,
-      "net_income": 7,
-      "op_margin": 8.880308880308881
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 16.39,
     "eps": 781,
     "bps": 7717,
     "debt_ratio": 55.58
   },
+  "ticker": "469610",
   "warnings": [
     {
       "ticker": "469610",

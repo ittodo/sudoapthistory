@@ -1,5 +1,54 @@
 {
-  "ticker": "318060",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 205,
+      "operating_profit": -111,
+      "net_income": -117,
+      "op_margin": -54.146341463414636
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 161,
+      "operating_profit": -92,
+      "net_income": -327,
+      "op_margin": -57.14285714285714
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 104,
+      "operating_profit": -70,
+      "net_income": -54,
+      "op_margin": -67.3076923076923
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 43,
+      "operating_profit": -75,
+      "net_income": -177,
+      "op_margin": -174.41860465116278
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "그래피",
   "quarterly": [
     {
@@ -197,62 +246,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 205,
-      "operating_profit": -111,
-      "net_income": -117,
-      "op_margin": -54.146341463414636
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 161,
-      "operating_profit": -92,
-      "net_income": -327,
-      "op_margin": -57.14285714285714
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 104,
-      "operating_profit": -70,
-      "net_income": -54,
-      "op_margin": -67.3076923076923
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 43,
-      "operating_profit": -75,
-      "net_income": -177,
-      "op_margin": -174.41860465116278
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -182.49,
     "eps": -573,
     "bps": 1351,
     "debt_ratio": 107.11
   },
+  "ticker": "318060",
   "warnings": [
     {
       "ticker": "318060",

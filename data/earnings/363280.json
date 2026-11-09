@@ -1,5 +1,54 @@
 {
-  "ticker": "363280",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 792,
+      "operating_profit": -346,
+      "net_income": -928,
+      "op_margin": -43.686868686868685
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 794,
+      "operating_profit": -809,
+      "net_income": -1181,
+      "op_margin": -101.88916876574308
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 814,
+      "operating_profit": -3438,
+      "net_income": -5918,
+      "op_margin": -422.3587223587224
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 3326,
+      "operating_profit": 168,
+      "net_income": 949,
+      "op_margin": 5.051112447384246
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 2952,
+      "operating_profit": 112,
+      "net_income": 1586,
+      "op_margin": 3.7940379403794036
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "티와이홀딩스",
   "quarterly": [
     {
@@ -335,62 +384,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 792,
-      "operating_profit": -346,
-      "net_income": -928,
-      "op_margin": -43.686868686868685
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 794,
-      "operating_profit": -809,
-      "net_income": -1181,
-      "op_margin": -101.88916876574308
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 814,
-      "operating_profit": -3438,
-      "net_income": -5918,
-      "op_margin": -422.3587223587224
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 3326,
-      "operating_profit": 168,
-      "net_income": 949,
-      "op_margin": 5.051112447384246
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 2952,
-      "operating_profit": 112,
-      "net_income": 1586,
-      "op_margin": 3.7940379403794036
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -9.48,
     "eps": -359,
     "bps": 18886,
     "debt_ratio": 87.74
   },
+  "ticker": "363280",
   "warnings": [
     {
       "ticker": "363280",

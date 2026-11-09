@@ -1,5 +1,30 @@
 {
-  "ticker": "457190",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 4115,
+      "operating_profit": 16,
+      "net_income": 8,
+      "op_margin": 0.3888213851761847
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 0,
+      "operating_profit": 0,
+      "net_income": 0,
+      "op_margin": null
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "이수스페셜티케미컬",
   "quarterly": [
     {
@@ -179,37 +204,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 4115,
-      "operating_profit": 16,
-      "net_income": 8,
-      "op_margin": 0.3888213851761847
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 0,
-      "operating_profit": 0,
-      "net_income": 0,
-      "op_margin": null
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": 182,
     "bps": 4583,
     "debt_ratio": 201.07
   },
+  "ticker": "457190",
   "warnings": [
     {
       "ticker": "457190",

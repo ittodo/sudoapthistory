@@ -1,5 +1,46 @@
 {
-  "ticker": "456160",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 8,
+      "operating_profit": -108,
+      "net_income": -833,
+      "op_margin": -1350
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 7,
+      "operating_profit": -131,
+      "net_income": -105,
+      "op_margin": -1871.4285714285716
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 2,
+      "operating_profit": -113,
+      "net_income": 151,
+      "op_margin": -5650
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 0,
+      "operating_profit": -73,
+      "net_income": -311,
+      "op_margin": null
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "지투지바이오",
   "quarterly": [
     {
@@ -71,52 +112,11 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 8,
-      "operating_profit": -108,
-      "net_income": -833,
-      "op_margin": -1350
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 7,
-      "operating_profit": -131,
-      "net_income": -105,
-      "op_margin": -1871.4285714285716
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 2,
-      "operating_profit": -113,
-      "net_income": 151,
-      "op_margin": -5650
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 0,
-      "operating_profit": -73,
-      "net_income": -311,
-      "op_margin": null
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -14150,
     "bps": -19236
   },
+  "ticker": "456160",
   "warnings": [
     {
       "ticker": "456160",

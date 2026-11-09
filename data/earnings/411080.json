@@ -1,5 +1,54 @@
 {
-  "ticker": "411080",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 116,
+      "operating_profit": -18,
+      "net_income": -5,
+      "op_margin": -15.517241379310345
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 83,
+      "operating_profit": -37,
+      "net_income": -23,
+      "op_margin": -44.57831325301205
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 117,
+      "operating_profit": -9,
+      "net_income": 4,
+      "op_margin": -7.6923076923076925
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 93,
+      "operating_profit": 21,
+      "net_income": 22,
+      "op_margin": 22.58064516129032
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 54,
+      "operating_profit": 5,
+      "net_income": 7,
+      "op_margin": 9.25925925925926
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "샌즈랩",
   "quarterly": [
     {
@@ -197,62 +246,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 116,
-      "operating_profit": -18,
-      "net_income": -5,
-      "op_margin": -15.517241379310345
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 83,
-      "operating_profit": -37,
-      "net_income": -23,
-      "op_margin": -44.57831325301205
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 117,
-      "operating_profit": -9,
-      "net_income": 4,
-      "op_margin": -7.6923076923076925
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 93,
-      "operating_profit": 21,
-      "net_income": 22,
-      "op_margin": 22.58064516129032
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 54,
-      "operating_profit": 5,
-      "net_income": 7,
-      "op_margin": 9.25925925925926
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -3.67,
     "eps": -161,
     "bps": 3227,
     "debt_ratio": 7.44
   },
+  "ticker": "411080",
   "warnings": [
     {
       "ticker": "411080",

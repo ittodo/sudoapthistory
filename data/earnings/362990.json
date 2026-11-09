@@ -1,5 +1,62 @@
 {
-  "ticker": "362990",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 200,
+      "operating_profit": -12,
+      "net_income": -4,
+      "op_margin": -6
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 181,
+      "operating_profit": 19,
+      "net_income": 9,
+      "op_margin": 10.497237569060774
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 174,
+      "operating_profit": 41,
+      "net_income": 40,
+      "op_margin": 23.563218390804597
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 151,
+      "operating_profit": 35,
+      "net_income": 35,
+      "op_margin": 23.178807947019866
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 122,
+      "operating_profit": 36,
+      "net_income": 33,
+      "op_margin": 29.508196721311474
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 92,
+      "operating_profit": 14,
+      "net_income": 16,
+      "op_margin": 15.217391304347828
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "드림인사이트",
   "quarterly": [
     {
@@ -239,70 +296,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 200,
-      "operating_profit": -12,
-      "net_income": -4,
-      "op_margin": -6
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 181,
-      "operating_profit": 19,
-      "net_income": 9,
-      "op_margin": 10.497237569060774
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 174,
-      "operating_profit": 41,
-      "net_income": 40,
-      "op_margin": 23.563218390804597
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 151,
-      "operating_profit": 35,
-      "net_income": 35,
-      "op_margin": 23.178807947019866
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 122,
-      "operating_profit": 36,
-      "net_income": 33,
-      "op_margin": 29.508196721311474
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 92,
-      "operating_profit": 14,
-      "net_income": 16,
-      "op_margin": 15.217391304347828
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -0.72,
     "eps": -20,
     "bps": 1994,
     "debt_ratio": 50.78
   },
+  "ticker": "362990",
   "warnings": [
     {
       "ticker": "362990",

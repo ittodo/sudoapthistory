@@ -1,5 +1,62 @@
 {
-  "ticker": "389650",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 95,
+      "operating_profit": -36,
+      "net_income": 29,
+      "op_margin": -37.89473684210527
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 49,
+      "operating_profit": -52,
+      "net_income": -75,
+      "op_margin": -106.12244897959184
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 28,
+      "operating_profit": -58,
+      "net_income": -57,
+      "op_margin": -207.14285714285717
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 23,
+      "operating_profit": -70,
+      "net_income": -166,
+      "op_margin": -304.34782608695656
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 23,
+      "operating_profit": -50,
+      "net_income": -245,
+      "op_margin": -217.39130434782606
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 8,
+      "operating_profit": -35,
+      "net_income": -38,
+      "op_margin": -437.5
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "넥스트바이오메디컬",
   "quarterly": [
     {
@@ -99,70 +156,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 95,
-      "operating_profit": -36,
-      "net_income": 29,
-      "op_margin": -37.89473684210527
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 49,
-      "operating_profit": -52,
-      "net_income": -75,
-      "op_margin": -106.12244897959184
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 28,
-      "operating_profit": -58,
-      "net_income": -57,
-      "op_margin": -207.14285714285717
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 23,
-      "operating_profit": -70,
-      "net_income": -166,
-      "op_margin": -304.34782608695656
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 23,
-      "operating_profit": -50,
-      "net_income": -245,
-      "op_margin": -217.39130434782606
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 8,
-      "operating_profit": -35,
-      "net_income": -38,
-      "op_margin": -437.5
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 14.56,
     "eps": 387,
     "bps": 5588,
     "debt_ratio": 30.21
   },
+  "ticker": "389650",
   "warnings": [
     {
       "ticker": "389650",

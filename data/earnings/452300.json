@@ -1,5 +1,38 @@
 {
-  "ticker": "452300",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 97,
+      "operating_profit": 22,
+      "net_income": 18,
+      "op_margin": 22.68041237113402
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 95,
+      "operating_profit": -24,
+      "net_income": -43,
+      "op_margin": -25.263157894736842
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 122,
+      "operating_profit": 71,
+      "net_income": 61,
+      "op_margin": 58.19672131147541
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "캡스톤파트너스",
   "quarterly": [
     {
@@ -57,46 +90,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 97,
-      "operating_profit": 22,
-      "net_income": 18,
-      "op_margin": 22.68041237113402
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 95,
-      "operating_profit": -24,
-      "net_income": -43,
-      "op_margin": -25.263157894736842
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 122,
-      "operating_profit": 71,
-      "net_income": 61,
-      "op_margin": 58.19672131147541
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 5.78,
     "eps": 130,
     "bps": 2297,
     "debt_ratio": 14.82
   },
+  "ticker": "452300",
   "warnings": [
     {
       "ticker": "452300",

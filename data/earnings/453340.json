@@ -1,5 +1,30 @@
 {
-  "ticker": "453340",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 23296,
+      "operating_profit": 1068,
+      "net_income": 877,
+      "op_margin": 4.584478021978022
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 22704,
+      "operating_profit": 967,
+      "net_income": 745,
+      "op_margin": 4.259161381254405
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "현대그린푸드",
   "quarterly": [
     {
@@ -191,38 +216,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 23296,
-      "operating_profit": 1068,
-      "net_income": 877,
-      "op_margin": 4.584478021978022
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 22704,
-      "operating_profit": 967,
-      "net_income": 745,
-      "op_margin": 4.259161381254405
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 14.13,
     "eps": 2051,
     "bps": 24341,
     "debt_ratio": 36.39
   },
+  "ticker": "453340",
   "warnings": [
     {
       "ticker": "453340",

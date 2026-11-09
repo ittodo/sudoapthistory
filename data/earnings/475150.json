@@ -1,5 +1,22 @@
 {
-  "ticker": "475150",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 3856,
+      "operating_profit": 530,
+      "net_income": 307,
+      "op_margin": 13.7448132780083
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "SK이터닉스",
   "quarterly": [
     {
@@ -135,30 +152,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 3856,
-      "operating_profit": 530,
-      "net_income": 307,
-      "op_margin": 13.7448132780083
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 2.83,
     "eps": -236,
     "bps": 7888,
     "debt_ratio": 363.27
   },
+  "ticker": "475150",
   "warnings": [
     {
       "ticker": "475150",

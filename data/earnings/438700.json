@@ -1,5 +1,54 @@
 {
-  "ticker": "438700",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 31,
+      "operating_profit": -85,
+      "net_income": -50,
+      "op_margin": -274.19354838709677
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 46,
+      "operating_profit": -127,
+      "net_income": -126,
+      "op_margin": -276.0869565217391
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 65,
+      "operating_profit": -113,
+      "net_income": -104,
+      "op_margin": -173.84615384615384
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 51,
+      "operating_profit": -141,
+      "net_income": -85,
+      "op_margin": -276.4705882352941
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 36,
+      "operating_profit": -47,
+      "net_income": -90,
+      "op_margin": -130.55555555555557
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "버넥트",
   "quarterly": [
     {
@@ -267,62 +316,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 31,
-      "operating_profit": -85,
-      "net_income": -50,
-      "op_margin": -274.19354838709677
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 46,
-      "operating_profit": -127,
-      "net_income": -126,
-      "op_margin": -276.0869565217391
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 65,
-      "operating_profit": -113,
-      "net_income": -104,
-      "op_margin": -173.84615384615384
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 51,
-      "operating_profit": -141,
-      "net_income": -85,
-      "op_margin": -276.4705882352941
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 36,
-      "operating_profit": -47,
-      "net_income": -90,
-      "op_margin": -130.55555555555557
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -15.28,
     "eps": -341,
     "bps": 2379,
     "debt_ratio": 67.03
   },
+  "ticker": "438700",
   "warnings": [
     {
       "ticker": "438700",

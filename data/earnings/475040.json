@@ -1,5 +1,38 @@
 {
-  "ticker": "475040",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 181,
+      "operating_profit": -586,
+      "net_income": -622,
+      "op_margin": -323.75690607734805
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 115,
+      "operating_profit": -639,
+      "net_income": -655,
+      "op_margin": -555.6521739130435
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 72,
+      "operating_profit": -649,
+      "net_income": -544,
+      "op_margin": -901.3888888888889
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "스트라드비젼",
   "quarterly": [
     {
@@ -127,46 +160,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 181,
-      "operating_profit": -586,
-      "net_income": -622,
-      "op_margin": -323.75690607734805
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 115,
-      "operating_profit": -639,
-      "net_income": -655,
-      "op_margin": -555.6521739130435
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 72,
-      "operating_profit": -649,
-      "net_income": -544,
-      "op_margin": -901.3888888888889
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 55.63,
     "eps": -524,
     "bps": 1604,
     "debt_ratio": 49.29
   },
+  "ticker": "475040",
   "warnings": [
     {
       "ticker": "475040",

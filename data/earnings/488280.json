@@ -1,5 +1,38 @@
 {
-  "ticker": "488280",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 101,
+      "operating_profit": -56,
+      "net_income": -53,
+      "op_margin": -55.44554455445545
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 96,
+      "operating_profit": -45,
+      "net_income": -141,
+      "op_margin": -46.875
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 63,
+      "operating_profit": -57,
+      "net_income": -126,
+      "op_margin": -90.47619047619048
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "에스투더블유",
   "quarterly": [
     {
@@ -169,46 +202,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 101,
-      "operating_profit": -56,
-      "net_income": -53,
-      "op_margin": -55.44554455445545
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 96,
-      "operating_profit": -45,
-      "net_income": -141,
-      "op_margin": -46.875
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 63,
-      "operating_profit": -57,
-      "net_income": -126,
-      "op_margin": -90.47619047619048
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -63.62,
     "eps": -467,
     "bps": 1726,
     "debt_ratio": 69.75
   },
+  "ticker": "488280",
   "warnings": [
     {
       "ticker": "488280",

@@ -1,5 +1,30 @@
 {
-  "ticker": "477850",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 115,
+      "operating_profit": -80,
+      "net_income": -138,
+      "op_margin": -69.56521739130434
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 83,
+      "operating_profit": -109,
+      "net_income": -61,
+      "op_margin": -131.32530120481925
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "마키나락스",
   "quarterly": [
     {
@@ -71,37 +96,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 115,
-      "operating_profit": -80,
-      "net_income": -138,
-      "op_margin": -69.56521739130434
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 83,
-      "operating_profit": -109,
-      "net_income": -61,
-      "op_margin": -131.32530120481925
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -251,
     "bps": 2896,
     "debt_ratio": 11.98
   },
+  "ticker": "477850",
   "warnings": [
     {
       "ticker": "477850",

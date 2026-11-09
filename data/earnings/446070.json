@@ -1,5 +1,30 @@
 {
-  "ticker": "446070",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 1949,
+      "operating_profit": 31,
+      "net_income": 64,
+      "op_margin": 1.5905592611595691
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 1688,
+      "operating_profit": -41,
+      "net_income": 9,
+      "op_margin": -2.4289099526066353
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "유니드비티플러스",
   "quarterly": [
     {
@@ -57,38 +82,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 1949,
-      "operating_profit": 31,
-      "net_income": 64,
-      "op_margin": 1.5905592611595691
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 1688,
-      "operating_profit": -41,
-      "net_income": 9,
-      "op_margin": -2.4289099526066353
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 3.31,
     "eps": 603,
     "bps": 18517,
     "debt_ratio": 20.87
   },
+  "ticker": "446070",
   "warnings": [
     {
       "ticker": "446070",

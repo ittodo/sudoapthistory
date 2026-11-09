@@ -1,5 +1,22 @@
 {
-  "ticker": "483350",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 307,
+      "operating_profit": 16,
+      "net_income": 36,
+      "op_margin": 5.211726384364821
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "딜리셔스",
   "quarterly": [
     {
@@ -57,29 +74,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 307,
-      "operating_profit": 16,
-      "net_income": 36,
-      "op_margin": 5.211726384364821
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": 76,
     "bps": 1142,
     "debt_ratio": 55.89
   },
+  "ticker": "483350",
   "warnings": [
     {
       "ticker": "483350",

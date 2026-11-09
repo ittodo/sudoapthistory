@@ -1,5 +1,38 @@
 {
-  "ticker": "431190",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 166,
+      "operating_profit": -35,
+      "net_income": -43,
+      "op_margin": -21.084337349397593
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 139,
+      "operating_profit": -37,
+      "net_income": -30,
+      "op_margin": -26.618705035971225
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 131,
+      "operating_profit": 11,
+      "net_income": 12,
+      "op_margin": 8.396946564885496
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "케이쓰리아이",
   "quarterly": [
     {
@@ -169,46 +202,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 166,
-      "operating_profit": -35,
-      "net_income": -43,
-      "op_margin": -21.084337349397593
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 139,
-      "operating_profit": -37,
-      "net_income": -30,
-      "op_margin": -26.618705035971225
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 131,
-      "operating_profit": 11,
-      "net_income": 12,
-      "op_margin": 8.396946564885496
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -12.98,
     "eps": -301,
     "bps": 3773,
     "debt_ratio": 33.87
   },
+  "ticker": "431190",
   "warnings": [
     {
       "ticker": "431190",

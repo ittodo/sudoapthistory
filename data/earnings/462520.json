@@ -1,5 +1,30 @@
 {
-  "ticker": "462520",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 5320,
+      "operating_profit": 239,
+      "net_income": 31,
+      "op_margin": 4.492481203007519
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 5006,
+      "operating_profit": 200,
+      "net_income": 13,
+      "op_margin": 3.9952057530962843
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "조선내화",
   "quarterly": [
     {
@@ -167,38 +192,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 5320,
-      "operating_profit": 239,
-      "net_income": 31,
-      "op_margin": 4.492481203007519
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 5006,
-      "operating_profit": 200,
-      "net_income": 13,
-      "op_margin": 3.9952057530962843
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 0.98,
     "eps": 213,
     "bps": 18244,
     "debt_ratio": 123.71
   },
+  "ticker": "462520",
   "warnings": [
     {
       "ticker": "462520",

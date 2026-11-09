@@ -1,5 +1,46 @@
 {
-  "ticker": "417200",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 1536,
+      "operating_profit": -1,
+      "net_income": -10,
+      "op_margin": -0.06510416666666666
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 1421,
+      "operating_profit": 62,
+      "net_income": 57,
+      "op_margin": 4.363124560168895
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 1369,
+      "operating_profit": 136,
+      "net_income": 122,
+      "op_margin": 9.934258582907232
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 1620,
+      "operating_profit": 145,
+      "net_income": 84,
+      "op_margin": 8.950617283950617
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "LS머트리얼즈",
   "quarterly": [
     {
@@ -253,54 +294,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 1536,
-      "operating_profit": -1,
-      "net_income": -10,
-      "op_margin": -0.06510416666666666
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 1421,
-      "operating_profit": 62,
-      "net_income": 57,
-      "op_margin": 4.363124560168895
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 1369,
-      "operating_profit": 136,
-      "net_income": 122,
-      "op_margin": 9.934258582907232
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 1620,
-      "operating_profit": 145,
-      "net_income": 84,
-      "op_margin": 8.950617283950617
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 0.65,
     "eps": -1,
     "bps": 2724,
     "debt_ratio": 47.75
   },
+  "ticker": "417200",
   "warnings": [
     {
       "ticker": "417200",

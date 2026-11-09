@@ -1,5 +1,102 @@
 {
-  "ticker": "238120",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 160,
+      "operating_profit": 24,
+      "net_income": 29,
+      "op_margin": 15
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 158,
+      "operating_profit": 28,
+      "net_income": 41,
+      "op_margin": 17.72151898734177
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 152,
+      "operating_profit": 33,
+      "net_income": 32,
+      "op_margin": 21.710526315789476
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 138,
+      "operating_profit": 28,
+      "net_income": 23,
+      "op_margin": 20.28985507246377
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 118,
+      "operating_profit": 22,
+      "net_income": 55,
+      "op_margin": 18.64406779661017
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 80,
+      "operating_profit": -3,
+      "net_income": 5,
+      "op_margin": -3.75
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 78,
+      "operating_profit": -4,
+      "net_income": 1,
+      "op_margin": -5.128205128205128
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": 57,
+      "operating_profit": -19,
+      "net_income": -16,
+      "op_margin": -33.33333333333333
+    },
+    {
+      "year": "2017",
+      "stac_yymm": "201712",
+      "revenue": 56,
+      "operating_profit": -15,
+      "net_income": -18,
+      "op_margin": -26.785714285714285
+    },
+    {
+      "year": "2016",
+      "stac_yymm": "201612",
+      "revenue": 47,
+      "operating_profit": -16,
+      "net_income": -16,
+      "op_margin": -34.04255319148936
+    },
+    {
+      "year": "2015",
+      "stac_yymm": "201512",
+      "revenue": 41,
+      "operating_profit": -4,
+      "net_income": -3,
+      "op_margin": -9.75609756097561
+    },
+    {
+      "year": "2014",
+      "stac_yymm": "201412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "얼라인드",
   "quarterly": [
     {
@@ -451,110 +548,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 160,
-      "operating_profit": 24,
-      "net_income": 29,
-      "op_margin": 15
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 158,
-      "operating_profit": 28,
-      "net_income": 41,
-      "op_margin": 17.72151898734177
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 152,
-      "operating_profit": 33,
-      "net_income": 32,
-      "op_margin": 21.710526315789476
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 138,
-      "operating_profit": 28,
-      "net_income": 23,
-      "op_margin": 20.28985507246377
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 118,
-      "operating_profit": 22,
-      "net_income": 55,
-      "op_margin": 18.64406779661017
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 80,
-      "operating_profit": -3,
-      "net_income": 5,
-      "op_margin": -3.75
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 78,
-      "operating_profit": -4,
-      "net_income": 1,
-      "op_margin": -5.128205128205128
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": 57,
-      "operating_profit": -19,
-      "net_income": -16,
-      "op_margin": -33.33333333333333
-    },
-    {
-      "year": "2017",
-      "stac_yymm": "201712",
-      "revenue": 56,
-      "operating_profit": -15,
-      "net_income": -18,
-      "op_margin": -26.785714285714285
-    },
-    {
-      "year": "2016",
-      "stac_yymm": "201612",
-      "revenue": 47,
-      "operating_profit": -16,
-      "net_income": -16,
-      "op_margin": -34.04255319148936
-    },
-    {
-      "year": "2015",
-      "stac_yymm": "201512",
-      "revenue": 41,
-      "operating_profit": -4,
-      "net_income": -3,
-      "op_margin": -9.75609756097561
-    },
-    {
-      "year": "2014",
-      "stac_yymm": "201412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 12.57,
     "eps": 151,
     "bps": 2766,
     "debt_ratio": 54.17
   },
+  "ticker": "238120",
   "warnings": [
     {
       "ticker": "238120",

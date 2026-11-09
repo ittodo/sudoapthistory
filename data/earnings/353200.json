@@ -1,5 +1,54 @@
 {
-  "ticker": "353200",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 10653,
+      "operating_profit": 491,
+      "net_income": 476,
+      "op_margin": 4.609030320097625
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 8921,
+      "operating_profit": 113,
+      "net_income": 238,
+      "op_margin": 1.2666741396704406
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 9097,
+      "operating_profit": 237,
+      "net_income": 254,
+      "op_margin": 2.605254479498736
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 13162,
+      "operating_profit": 2325,
+      "net_income": 1839,
+      "op_margin": 17.664488679531985
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 10009,
+      "operating_profit": 725,
+      "net_income": 630,
+      "op_margin": 7.243480867219502
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "대덕전자",
   "quarterly": [
     {
@@ -347,62 +396,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 10653,
-      "operating_profit": 491,
-      "net_income": 476,
-      "op_margin": 4.609030320097625
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 8921,
-      "operating_profit": 113,
-      "net_income": 238,
-      "op_margin": 1.2666741396704406
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 9097,
-      "operating_profit": 237,
-      "net_income": 254,
-      "op_margin": 2.605254479498736
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 13162,
-      "operating_profit": 2325,
-      "net_income": 1839,
-      "op_margin": 17.664488679531985
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 10009,
-      "operating_profit": 725,
-      "net_income": 630,
-      "op_margin": 7.243480867219502
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 16.64,
     "eps": 2003,
     "bps": 18963,
     "debt_ratio": 40.02
   },
+  "ticker": "353200",
   "warnings": [
     {
       "ticker": "353200",

@@ -1,5 +1,78 @@
 {
-  "ticker": "267250",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 712594,
+      "operating_profit": 60996,
+      "net_income": 36755,
+      "op_margin": 8.559712823852012
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 677656,
+      "operating_profit": 29832,
+      "net_income": 19302,
+      "op_margin": 4.4022335816402425
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 613313,
+      "operating_profit": 20316,
+      "net_income": 7858,
+      "op_margin": 3.3125011209610755
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 608497,
+      "operating_profit": 33870,
+      "net_income": 22350,
+      "op_margin": 5.566173703403632
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 283537,
+      "operating_profit": 10366,
+      "net_income": 1506,
+      "op_margin": 3.6559602450473836
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 189110,
+      "operating_profit": -5971,
+      "net_income": -7897,
+      "op_margin": -3.1574216064724236
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 266303,
+      "operating_profit": 6666,
+      "net_income": 1153,
+      "op_margin": 2.5031636894815303
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": 272566,
+      "operating_profit": 8614,
+      "net_income": 2840,
+      "op_margin": 3.1603354783795488
+    },
+    {
+      "year": "2017",
+      "stac_yymm": "201712",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "HD현대",
   "quarterly": [
     {
@@ -451,86 +524,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 712594,
-      "operating_profit": 60996,
-      "net_income": 36755,
-      "op_margin": 8.559712823852012
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 677656,
-      "operating_profit": 29832,
-      "net_income": 19302,
-      "op_margin": 4.4022335816402425
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 613313,
-      "operating_profit": 20316,
-      "net_income": 7858,
-      "op_margin": 3.3125011209610755
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 608497,
-      "operating_profit": 33870,
-      "net_income": 22350,
-      "op_margin": 5.566173703403632
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 283537,
-      "operating_profit": 10366,
-      "net_income": 1506,
-      "op_margin": 3.6559602450473836
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 189110,
-      "operating_profit": -5971,
-      "net_income": -7897,
-      "op_margin": -3.1574216064724236
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 266303,
-      "operating_profit": 6666,
-      "net_income": 1153,
-      "op_margin": 2.5031636894815303
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": 272566,
-      "operating_profit": 8614,
-      "net_income": 2840,
-      "op_margin": 3.1603354783795488
-    },
-    {
-      "year": "2017",
-      "stac_yymm": "201712",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 25.2,
     "eps": 26741,
     "bps": 173040,
     "debt_ratio": 160.15
   },
+  "ticker": "267250",
   "warnings": [
     {
       "ticker": "267250",

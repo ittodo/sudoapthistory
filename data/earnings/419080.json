@@ -1,5 +1,54 @@
 {
-  "ticker": "419080",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 54,
+      "operating_profit": -63,
+      "net_income": -72,
+      "op_margin": -116.66666666666667
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 63,
+      "operating_profit": -65,
+      "net_income": -35,
+      "op_margin": -103.17460317460319
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 121,
+      "operating_profit": -21,
+      "net_income": 3,
+      "op_margin": -17.355371900826448
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 217,
+      "operating_profit": 53,
+      "net_income": 41,
+      "op_margin": 24.42396313364055
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 101,
+      "operating_profit": 18,
+      "net_income": -299,
+      "op_margin": 17.82178217821782
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "엔젯",
   "quarterly": [
     {
@@ -197,62 +246,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 54,
-      "operating_profit": -63,
-      "net_income": -72,
-      "op_margin": -116.66666666666667
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 63,
-      "operating_profit": -65,
-      "net_income": -35,
-      "op_margin": -103.17460317460319
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 121,
-      "operating_profit": -21,
-      "net_income": 3,
-      "op_margin": -17.355371900826448
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 217,
-      "operating_profit": 53,
-      "net_income": 41,
-      "op_margin": 24.42396313364055
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 101,
-      "operating_profit": 18,
-      "net_income": -299,
-      "op_margin": 17.82178217821782
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -16.85,
     "eps": -217,
     "bps": 3438,
     "debt_ratio": 52.33
   },
+  "ticker": "419080",
   "warnings": [
     {
       "ticker": "419080",

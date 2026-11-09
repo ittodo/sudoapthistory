@@ -1,5 +1,70 @@
 {
-  "ticker": "328130",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 831,
+      "operating_profit": -831,
+      "net_income": -474,
+      "op_margin": -100
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 542,
+      "operating_profit": -679,
+      "net_income": -827,
+      "op_margin": -125.27675276752768
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 251,
+      "operating_profit": -422,
+      "net_income": -368,
+      "op_margin": -168.12749003984064
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 139,
+      "operating_profit": -507,
+      "net_income": -391,
+      "op_margin": -364.7482014388489
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 66,
+      "operating_profit": -457,
+      "net_income": -737,
+      "op_margin": -692.4242424242424
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 14,
+      "operating_profit": -210,
+      "net_income": -837,
+      "op_margin": -1500
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 2,
+      "operating_profit": -116,
+      "net_income": -470,
+      "op_margin": -5800
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "루닛",
   "quarterly": [
     {
@@ -351,78 +416,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 831,
-      "operating_profit": -831,
-      "net_income": -474,
-      "op_margin": -100
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 542,
-      "operating_profit": -679,
-      "net_income": -827,
-      "op_margin": -125.27675276752768
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 251,
-      "operating_profit": -422,
-      "net_income": -368,
-      "op_margin": -168.12749003984064
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 139,
-      "operating_profit": -507,
-      "net_income": -391,
-      "op_margin": -364.7482014388489
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 66,
-      "operating_profit": -457,
-      "net_income": -737,
-      "op_margin": -692.4242424242424
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 14,
-      "operating_profit": -210,
-      "net_income": -837,
-      "op_margin": -1500
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 2,
-      "operating_profit": -116,
-      "net_income": -470,
-      "op_margin": -5800
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -23.52,
     "eps": -623,
     "bps": 4454,
     "debt_ratio": 64.42
   },
+  "ticker": "328130",
   "warnings": [
     {
       "ticker": "328130",

@@ -1,5 +1,30 @@
 {
-  "ticker": "478340",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 43,
+      "operating_profit": -44,
+      "net_income": -107,
+      "op_margin": -102.32558139534885
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 16,
+      "operating_profit": -30,
+      "net_income": -139,
+      "op_margin": -187.5
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "나라스페이스테크놀로지",
   "quarterly": [
     {
@@ -43,36 +68,11 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 43,
-      "operating_profit": -44,
-      "net_income": -107,
-      "op_margin": -102.32558139534885
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 16,
-      "operating_profit": -30,
-      "net_income": -139,
-      "op_margin": -187.5
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": -1194,
     "bps": -4583
   },
+  "ticker": "478340",
   "warnings": [
     {
       "ticker": "478340",

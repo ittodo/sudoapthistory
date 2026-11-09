@@ -1,5 +1,46 @@
 {
-  "ticker": "450330",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 166,
+      "operating_profit": 9,
+      "net_income": 15,
+      "op_margin": 5.421686746987952
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 162,
+      "operating_profit": 12,
+      "net_income": 18,
+      "op_margin": 7.4074074074074066
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 160,
+      "operating_profit": 16,
+      "net_income": 18,
+      "op_margin": 10
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 149,
+      "operating_profit": 29,
+      "net_income": 26,
+      "op_margin": 19.463087248322147
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "하스",
   "quarterly": [
     {
@@ -225,54 +266,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 166,
-      "operating_profit": 9,
-      "net_income": 15,
-      "op_margin": 5.421686746987952
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 162,
-      "operating_profit": 12,
-      "net_income": 18,
-      "op_margin": 7.4074074074074066
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 160,
-      "operating_profit": 16,
-      "net_income": 18,
-      "op_margin": 10
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 149,
-      "operating_profit": 29,
-      "net_income": 26,
-      "op_margin": 19.463087248322147
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -0.36,
     "eps": -181,
     "bps": 5359,
     "debt_ratio": 21.37
   },
+  "ticker": "450330",
   "warnings": [
     {
       "ticker": "450330",

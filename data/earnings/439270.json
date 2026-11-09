@@ -1,5 +1,38 @@
 {
-  "ticker": "439270",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 1042,
+      "operating_profit": 251,
+      "net_income": 216,
+      "op_margin": 24.088291746641076
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 826,
+      "operating_profit": 15,
+      "net_income": -32,
+      "op_margin": 1.8159806295399514
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 805,
+      "operating_profit": 130,
+      "net_income": 71,
+      "op_margin": 16.149068322981368
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "크리에이츠",
   "quarterly": [
     {
@@ -85,45 +118,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 1042,
-      "operating_profit": 251,
-      "net_income": 216,
-      "op_margin": 24.088291746641076
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 826,
-      "operating_profit": 15,
-      "net_income": -32,
-      "op_margin": 1.8159806295399514
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 805,
-      "operating_profit": 130,
-      "net_income": 71,
-      "op_margin": 16.149068322981368
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": 498,
     "bps": 9966,
     "debt_ratio": 20.52
   },
+  "ticker": "439270",
   "warnings": [
     {
       "ticker": "439270",

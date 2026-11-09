@@ -1,5 +1,46 @@
 {
-  "ticker": "451760",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 869,
+      "operating_profit": -162,
+      "net_income": -103,
+      "op_margin": -18.642117376294593
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 690,
+      "operating_profit": -122,
+      "net_income": -191,
+      "op_margin": -17.681159420289855
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 158,
+      "operating_profit": -100,
+      "net_income": -649,
+      "op_margin": -63.29113924050633
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 128,
+      "operating_profit": -19,
+      "net_income": -207,
+      "op_margin": -14.84375
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "컨텍",
   "quarterly": [
     {
@@ -239,54 +280,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 869,
-      "operating_profit": -162,
-      "net_income": -103,
-      "op_margin": -18.642117376294593
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 690,
-      "operating_profit": -122,
-      "net_income": -191,
-      "op_margin": -17.681159420289855
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 158,
-      "operating_profit": -100,
-      "net_income": -649,
-      "op_margin": -63.29113924050633
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 128,
-      "operating_profit": -19,
-      "net_income": -207,
-      "op_margin": -14.84375
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 8.28,
     "eps": 417,
     "bps": 7090,
     "debt_ratio": 33.52
   },
+  "ticker": "451760",
   "warnings": [
     {
       "ticker": "451760",

@@ -1,5 +1,54 @@
 {
-  "ticker": "321370",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 190,
+      "operating_profit": -116,
+      "net_income": -152,
+      "op_margin": -61.05263157894737
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 156,
+      "operating_profit": -158,
+      "net_income": -178,
+      "op_margin": -101.28205128205127
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 85,
+      "operating_profit": -180,
+      "net_income": -183,
+      "op_margin": -211.76470588235296
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 56,
+      "operating_profit": -157,
+      "net_income": -127,
+      "op_margin": -280.35714285714283
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 46,
+      "operating_profit": -96,
+      "net_income": -152,
+      "op_margin": -208.69565217391303
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "센서뷰",
   "quarterly": [
     {
@@ -267,62 +316,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 190,
-      "operating_profit": -116,
-      "net_income": -152,
-      "op_margin": -61.05263157894737
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 156,
-      "operating_profit": -158,
-      "net_income": -178,
-      "op_margin": -101.28205128205127
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 85,
-      "operating_profit": -180,
-      "net_income": -183,
-      "op_margin": -211.76470588235296
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 56,
-      "operating_profit": -157,
-      "net_income": -127,
-      "op_margin": -280.35714285714283
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 46,
-      "operating_profit": -96,
-      "net_income": -152,
-      "op_margin": -208.69565217391303
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -110.03,
     "eps": -119,
     "bps": 223,
     "debt_ratio": 200.14
   },
+  "ticker": "321370",
   "warnings": [
     {
       "ticker": "321370",

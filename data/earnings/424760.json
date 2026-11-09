@@ -1,5 +1,54 @@
 {
-  "ticker": "424760",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 309,
+      "operating_profit": -20,
+      "net_income": -12,
+      "op_margin": -6.472491909385113
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 264,
+      "operating_profit": -4,
+      "net_income": -46,
+      "op_margin": -1.5151515151515151
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 272,
+      "operating_profit": 16,
+      "net_income": 2,
+      "op_margin": 5.88235294117647
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 252,
+      "operating_profit": 32,
+      "net_income": 32,
+      "op_margin": 12.698412698412698
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 196,
+      "operating_profit": 29,
+      "net_income": 23,
+      "op_margin": 14.795918367346939
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "벨로크",
   "quarterly": [
     {
@@ -141,62 +190,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 309,
-      "operating_profit": -20,
-      "net_income": -12,
-      "op_margin": -6.472491909385113
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 264,
-      "operating_profit": -4,
-      "net_income": -46,
-      "op_margin": -1.5151515151515151
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 272,
-      "operating_profit": 16,
-      "net_income": 2,
-      "op_margin": 5.88235294117647
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 252,
-      "operating_profit": 32,
-      "net_income": 32,
-      "op_margin": 12.698412698412698
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 196,
-      "operating_profit": 29,
-      "net_income": 23,
-      "op_margin": 14.795918367346939
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -4.75,
     "eps": -61,
     "bps": 1256,
     "debt_ratio": 58.26
   },
+  "ticker": "424760",
   "warnings": [
     {
       "ticker": "424760",

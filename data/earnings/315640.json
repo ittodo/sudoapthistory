@@ -1,5 +1,70 @@
 {
-  "ticker": "315640",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 108,
+      "operating_profit": -101,
+      "net_income": -91,
+      "op_margin": -93.51851851851852
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 19,
+      "operating_profit": -67,
+      "net_income": -67,
+      "op_margin": -352.6315789473684
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 32,
+      "operating_profit": -62,
+      "net_income": -53,
+      "op_margin": -193.75
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 9,
+      "operating_profit": -77,
+      "net_income": -89,
+      "op_margin": -855.5555555555555
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 10,
+      "operating_profit": -50,
+      "net_income": -136,
+      "op_margin": -500
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": 2,
+      "operating_profit": -42,
+      "net_income": -86,
+      "op_margin": -2100
+    },
+    {
+      "year": "2018",
+      "stac_yymm": "201812",
+      "revenue": 9,
+      "operating_profit": -15,
+      "net_income": -69,
+      "op_margin": -166.66666666666669
+    },
+    {
+      "year": "2017",
+      "stac_yymm": "201712",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "딥노이드",
   "quarterly": [
     {
@@ -113,78 +178,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 108,
-      "operating_profit": -101,
-      "net_income": -91,
-      "op_margin": -93.51851851851852
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 19,
-      "operating_profit": -67,
-      "net_income": -67,
-      "op_margin": -352.6315789473684
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 32,
-      "operating_profit": -62,
-      "net_income": -53,
-      "op_margin": -193.75
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 9,
-      "operating_profit": -77,
-      "net_income": -89,
-      "op_margin": -855.5555555555555
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 10,
-      "operating_profit": -50,
-      "net_income": -136,
-      "op_margin": -500
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": 2,
-      "operating_profit": -42,
-      "net_income": -86,
-      "op_margin": -2100
-    },
-    {
-      "year": "2018",
-      "stac_yymm": "201812",
-      "revenue": 9,
-      "operating_profit": -15,
-      "net_income": -69,
-      "op_margin": -166.66666666666669
-    },
-    {
-      "year": "2017",
-      "stac_yymm": "201712",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -39.28,
     "eps": -378,
     "bps": 792,
     "debt_ratio": 67.92
   },
+  "ticker": "315640",
   "warnings": [
     {
       "ticker": "315640",

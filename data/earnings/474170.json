@@ -1,5 +1,38 @@
 {
-  "ticker": "474170",
+  "annual": [
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 143,
+      "operating_profit": -12,
+      "net_income": -11,
+      "op_margin": -8.391608391608392
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 121,
+      "operating_profit": -30,
+      "net_income": -59,
+      "op_margin": -24.793388429752067
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 64,
+      "operating_profit": -24,
+      "net_income": -244,
+      "op_margin": -37.5
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "루미르",
   "quarterly": [
     {
@@ -57,46 +90,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 143,
-      "operating_profit": -12,
-      "net_income": -11,
-      "op_margin": -8.391608391608392
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 121,
-      "operating_profit": -30,
-      "net_income": -59,
-      "op_margin": -24.793388429752067
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 64,
-      "operating_profit": -24,
-      "net_income": -244,
-      "op_margin": -37.5
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -2.46,
     "eps": -75,
     "bps": 3440,
     "debt_ratio": 18.1
   },
+  "ticker": "474170",
   "warnings": [
     {
       "ticker": "474170",

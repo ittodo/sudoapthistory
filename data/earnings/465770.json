@@ -1,5 +1,30 @@
 {
-  "ticker": "465770",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 1914,
+      "operating_profit": -125,
+      "net_income": -377,
+      "op_margin": -6.530825496342738
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 705,
+      "operating_profit": 72,
+      "net_income": 256,
+      "op_margin": 10.212765957446807
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "STX그린로지스",
   "quarterly": [
     {
@@ -167,38 +192,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 1914,
-      "operating_profit": -125,
-      "net_income": -377,
-      "op_margin": -6.530825496342738
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 705,
-      "operating_profit": 72,
-      "net_income": 256,
-      "op_margin": 10.212765957446807
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -37.08,
     "eps": 1539,
     "bps": 5353,
     "debt_ratio": 156.84
   },
+  "ticker": "465770",
   "warnings": [
     {
       "ticker": "465770",

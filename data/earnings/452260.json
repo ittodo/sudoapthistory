@@ -1,5 +1,30 @@
 {
-  "ticker": "452260",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 5752,
+      "operating_profit": 94,
+      "net_income": 33,
+      "op_margin": 1.6342141863699582
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 5383,
+      "operating_profit": 34,
+      "net_income": -175,
+      "op_margin": 0.6316180568456251
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "한화갤러리아",
   "quarterly": [
     {
@@ -191,38 +216,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 5752,
-      "operating_profit": 94,
-      "net_income": 33,
-      "op_margin": 1.6342141863699582
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 5383,
-      "operating_profit": 34,
-      "net_income": -175,
-      "op_margin": 0.6316180568456251
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 3.2,
     "eps": 22,
     "bps": 4315,
     "debt_ratio": 140.48
   },
+  "ticker": "452260",
   "warnings": [
     {
       "ticker": "452260",

@@ -1,5 +1,62 @@
 {
-  "ticker": "373200",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 101,
+      "operating_profit": -52,
+      "net_income": -23,
+      "op_margin": -51.48514851485149
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 104,
+      "operating_profit": -39,
+      "net_income": -21,
+      "op_margin": -37.5
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 98,
+      "operating_profit": -37,
+      "net_income": -86,
+      "op_margin": -37.755102040816325
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 165,
+      "operating_profit": -1,
+      "net_income": -45,
+      "op_margin": -0.6060606060606061
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 141,
+      "operating_profit": 28,
+      "net_income": 23,
+      "op_margin": 19.858156028368796
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 101,
+      "operating_profit": 23,
+      "net_income": 17,
+      "op_margin": 22.772277227722775
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "엑스플러스",
   "quarterly": [
     {
@@ -337,70 +394,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 101,
-      "operating_profit": -52,
-      "net_income": -23,
-      "op_margin": -51.48514851485149
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 104,
-      "operating_profit": -39,
-      "net_income": -21,
-      "op_margin": -37.5
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 98,
-      "operating_profit": -37,
-      "net_income": -86,
-      "op_margin": -37.755102040816325
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 165,
-      "operating_profit": -1,
-      "net_income": -45,
-      "op_margin": -0.6060606060606061
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 141,
-      "operating_profit": 28,
-      "net_income": 23,
-      "op_margin": 19.858156028368796
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 101,
-      "operating_profit": 23,
-      "net_income": 17,
-      "op_margin": 22.772277227722775
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": -38.95,
     "eps": -309,
     "bps": 950,
     "debt_ratio": 167.87
   },
+  "ticker": "373200",
   "warnings": [
     {
       "ticker": "373200",

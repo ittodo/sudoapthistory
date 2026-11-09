@@ -1,5 +1,46 @@
 {
-  "ticker": "475230",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 595,
+      "operating_profit": 45,
+      "net_income": -5,
+      "op_margin": 7.563025210084033
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 528,
+      "operating_profit": 62,
+      "net_income": 20,
+      "op_margin": 11.742424242424242
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 515,
+      "operating_profit": 121,
+      "net_income": 15,
+      "op_margin": 23.495145631067963
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 180,
+      "operating_profit": 22,
+      "net_income": -156,
+      "op_margin": 12.222222222222221
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "엔알비",
   "quarterly": [
     {
@@ -183,54 +224,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 595,
-      "operating_profit": 45,
-      "net_income": -5,
-      "op_margin": 7.563025210084033
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 528,
-      "operating_profit": 62,
-      "net_income": 20,
-      "op_margin": 11.742424242424242
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 515,
-      "operating_profit": 121,
-      "net_income": 15,
-      "op_margin": 23.495145631067963
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 180,
-      "operating_profit": 22,
-      "net_income": -156,
-      "op_margin": 12.222222222222221
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 8.04,
     "eps": 255,
     "bps": 8868,
     "debt_ratio": 127.41
   },
+  "ticker": "475230",
   "warnings": [
     {
       "ticker": "475230",

@@ -1,6 +1,47 @@
 {
-  "ticker": "383220",
-  "name": "F&F",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 19340,
+      "operating_profit": 4686,
+      "net_income": 4007,
+      "op_margin": 24.22957600827301
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 18960,
+      "operating_profit": 4507,
+      "net_income": 3560,
+      "op_margin": 23.7710970464135
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 19785,
+      "operating_profit": 5518,
+      "net_income": 4250,
+      "op_margin": 27.889815516805662
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 18089,
+      "operating_profit": 5249,
+      "net_income": 4427,
+      "op_margin": 29.017635026811874
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
+  "name": "F\u0026F",
   "quarterly": [
     {
       "period": "2026Q2",
@@ -291,54 +332,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 19340,
-      "operating_profit": 4686,
-      "net_income": 4007,
-      "op_margin": 24.22957600827301
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 18960,
-      "operating_profit": 4507,
-      "net_income": 3560,
-      "op_margin": 23.7710970464135
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 19785,
-      "operating_profit": 5518,
-      "net_income": 4250,
-      "op_margin": 27.889815516805662
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 18089,
-      "operating_profit": 5249,
-      "net_income": 4427,
-      "op_margin": 29.017635026811874
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 28.34,
     "eps": 7063,
     "bps": 54907,
     "debt_ratio": 26.67
   },
+  "ticker": "383220",
   "warnings": [
     {
       "ticker": "383220",

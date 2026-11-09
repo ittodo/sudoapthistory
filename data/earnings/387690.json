@@ -1,5 +1,22 @@
 {
-  "ticker": "387690",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 146,
+      "operating_profit": 28,
+      "net_income": 51,
+      "op_margin": 19.17808219178082
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "레메디",
   "quarterly": [
     {
@@ -57,29 +74,12 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 146,
-      "operating_profit": 28,
-      "net_income": 51,
-      "op_margin": 19.17808219178082
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "eps": 731,
     "bps": 2462,
     "debt_ratio": 103.02
   },
+  "ticker": "387690",
   "warnings": [
     {
       "ticker": "387690",

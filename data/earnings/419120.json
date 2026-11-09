@@ -1,5 +1,62 @@
 {
-  "ticker": "419120",
+  "annual": [
+    {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 200,
+      "operating_profit": 45,
+      "net_income": 36,
+      "op_margin": 22.5
+    },
+    {
+      "year": "2024",
+      "stac_yymm": "202412",
+      "revenue": 157,
+      "operating_profit": 29,
+      "net_income": 50,
+      "op_margin": 18.471337579617835
+    },
+    {
+      "year": "2023",
+      "stac_yymm": "202312",
+      "revenue": 142,
+      "operating_profit": 28,
+      "net_income": 28,
+      "op_margin": 19.718309859154928
+    },
+    {
+      "year": "2022",
+      "stac_yymm": "202212",
+      "revenue": 184,
+      "operating_profit": 81,
+      "net_income": 94,
+      "op_margin": 44.02173913043478
+    },
+    {
+      "year": "2021",
+      "stac_yymm": "202112",
+      "revenue": 120,
+      "operating_profit": 48,
+      "net_income": 4,
+      "op_margin": 40
+    },
+    {
+      "year": "2020",
+      "stac_yymm": "202012",
+      "revenue": 103,
+      "operating_profit": 35,
+      "net_income": 19,
+      "op_margin": 33.980582524271846
+    },
+    {
+      "year": "2019",
+      "stac_yymm": "201912",
+      "revenue": null,
+      "operating_profit": null,
+      "net_income": null,
+      "op_margin": null
+    }
+  ],
   "name": "산돌",
   "quarterly": [
     {
@@ -309,70 +366,13 @@
       "qoq_op": null
     }
   ],
-  "annual": [
-    {
-      "year": "2025",
-      "stac_yymm": "202512",
-      "revenue": 200,
-      "operating_profit": 45,
-      "net_income": 36,
-      "op_margin": 22.5
-    },
-    {
-      "year": "2024",
-      "stac_yymm": "202412",
-      "revenue": 157,
-      "operating_profit": 29,
-      "net_income": 50,
-      "op_margin": 18.471337579617835
-    },
-    {
-      "year": "2023",
-      "stac_yymm": "202312",
-      "revenue": 142,
-      "operating_profit": 28,
-      "net_income": 28,
-      "op_margin": 19.718309859154928
-    },
-    {
-      "year": "2022",
-      "stac_yymm": "202212",
-      "revenue": 184,
-      "operating_profit": 81,
-      "net_income": 94,
-      "op_margin": 44.02173913043478
-    },
-    {
-      "year": "2021",
-      "stac_yymm": "202112",
-      "revenue": 120,
-      "operating_profit": 48,
-      "net_income": 4,
-      "op_margin": 40
-    },
-    {
-      "year": "2020",
-      "stac_yymm": "202012",
-      "revenue": 103,
-      "operating_profit": 35,
-      "net_income": 19,
-      "op_margin": 33.980582524271846
-    },
-    {
-      "year": "2019",
-      "stac_yymm": "201912",
-      "revenue": null,
-      "operating_profit": null,
-      "net_income": null,
-      "op_margin": null
-    }
-  ],
   "ratios": {
     "roe": 3.98,
     "eps": 95,
     "bps": 4014,
     "debt_ratio": 26.43
   },
+  "ticker": "419120",
   "warnings": [
     {
       "ticker": "419120",
