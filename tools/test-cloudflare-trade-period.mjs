@@ -77,6 +77,15 @@ test('partial collection is explicitly not a completed collection', () => {
   assert.match(notice, /확인 5개 · 미완료 2개/);
   assert.match(notice, /전체 수집 완료 상태가 아닙니다/);
   assert.equal(context.renderTradeCollectionNotice({ status: 'complete' }), '');
+  const empty = context.renderTradeCollectionNotice({ status: 'complete', validated_units: 79, unavailable_units: 0, no_data_units: 3, no_data_details: ['hs:8904:2026-09','hs:8905:2026-08','hs:8908:2026-09'] });
+  assert.match(empty, /거래자료 없음 3개/);
+  assert.match(empty, /HS 8904 · 2026-09/);
+  assert.match(empty, /거래액 0을 뜻하지 않습니다/);
+  assert.doesNotMatch(empty, /미완료/);
+  const group = context.tradeCoveragePresentation({ coverage_status: 'partial', expected_prefix_count: 8, available_prefix_count: 6, verified_prefix_count: 6, no_data_prefix_count: 2 });
+  assert.match(group.counts, /거래자료 없음 2개/);
+  assert.match(group.counts, /조회 완료 8\/8/);
+  assert.equal(group.comparisons, false);
 });
 
 test('actual HS row renderer suppresses partial/historical growth even if payload claims flags', () => {

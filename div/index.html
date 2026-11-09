@@ -796,6 +796,7 @@ function tradePeriodPresentation(root,summary){
 }
 function tradeCoveragePresentation(row){
   const expected=row.expected_prefix_count,available=row.available_prefix_count,verified=row.verified_prefix_count;
+  const noData=Number.isInteger(row.no_data_prefix_count)&&row.no_data_prefix_count>=0?row.no_data_prefix_count:0;
   const countsValid=Number.isInteger(expected)&&expected>0&&Number.isInteger(available)&&available>=0&&available<=expected&&Number.isInteger(verified)&&verified>=0&&verified<=available;
   const complete=row.coverage_status==='complete'&&countsValid&&verified===expected;
   const status=complete?'complete':row.coverage_status==='partial'?'partial':'historical';
@@ -803,15 +804,19 @@ function tradeCoveragePresentation(row){
     basis:row.basis_month_label||row.basis_date||'기준월 미확인',
     status,
     label:status==='complete'?'대상 품목 검증 완료':status==='partial'?'일부 검증 · 보유 자료 합계':'기존 보유 자료 · 이번 검증 미완료',
-    counts:countsValid?`이번 검증 ${verified}/${expected} · 보유 ${available}/${expected}`:'검증 범위 미확인',
+    counts:countsValid?`이번 검증 ${verified}/${expected} · 보유 ${available}/${expected}${noData?` · 조회 완료 ${verified+noData}/${expected} · 거래자료 없음 ${noData}개`:''}`:'검증 범위 미확인',
     comparisons:complete
   };
 }
 function renderTradeCollectionNotice(collection){
-  if(!collection||collection.status!=='partial')return'';
+  if(!collection)return'';
+  const noData=Number.isInteger(collection.no_data_units)&&collection.no_data_units>0?collection.no_data_units:0;
+  const details=Array.isArray(collection.no_data_details)?collection.no_data_details.filter(x=>/^hs:[0-9]+:\d{4}-\d{2}$/.test(x)).map(x=>x.replace(/^hs:/,'HS ').replace(':',' · ')):[];
+  const empty=noData?` 거래자료 없음 ${noData}개${details.length?` (${details.join(', ')})`:''}. 자료가 제공되지 않은 상태이며 거래액 0을 뜻하지 않습니다.`:'';
+  if(collection.status!=='partial')return empty?`<div class="trade-note" role="status">${esc(empty.trim())}</div>`:'';
   const checked=collection.validated_units,unavailable=collection.unavailable_units;
   const counts=Number.isInteger(checked)&&checked>=0&&Number.isInteger(unavailable)&&unavailable>=0?` 확인 ${checked}개 · 미완료 ${unavailable}개.`:'';
-  return`<div class="trade-note" role="status" style="padding:14px;margin-bottom:12px;border:1px solid var(--gold);border-radius:10px;">일부 자료 먼저 공개 중.${esc(counts)} 전체 수집 완료 상태가 아닙니다. 아래의 실제 집계 기간과 그룹별 검증 상태를 확인해 주세요.</div>`;
+  return`<div class="trade-note" role="status" style="padding:14px;margin-bottom:12px;border:1px solid var(--gold);border-radius:10px;">일부 자료 먼저 공개 중.${esc(counts)}${esc(empty)} 전체 수집 완료 상태가 아닙니다. 아래의 실제 집계 기간과 그룹별 검증 상태를 확인해 주세요.</div>`;
 }
 function tradeObj(...items){for(const item of items){if(item&&typeof item==='object'&&!Array.isArray(item))return item;}return{};}
 function tradeArr(...items){for(const item of items){if(Array.isArray(item))return item;}return[];}
