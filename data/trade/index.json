@@ -2893,6 +2893,7 @@
       "expected_prefix_count": 8,
       "available_prefix_count": 6,
       "verified_prefix_count": 6,
+      "no_data_prefix_count": 2,
       "coverage_status": "partial"
     },
     {
@@ -2939,9 +2940,16 @@
     "HS 그룹은 실제 보유 자료가 있는 월의 합계입니다. 미수집 품목을 0으로 채우지 않으며 부분 수집·과거 보유 자료는 전국 전체 집계가 아닙니다. 기타 잔차와 비교율은 표시하지 않습니다."
   ],
   "collection": {
-    "status": "partial",
+    "status": "complete",
+    "original_status": "partial",
     "cycle": "2026-11-02",
     "validated_units": 79,
-    "unavailable_units": 3
+    "unavailable_units": 0,
+    "no_data_units": 3,
+    "no_data_details": [
+      "hs:8904:2026-09",
+      "hs:8905:2026-08",
+      "hs:8908:2026-09"
+    ]
   }
 }
