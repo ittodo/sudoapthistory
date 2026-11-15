@@ -1,12 +1,13 @@
 # 문서 목록
 
 ## 먼저 읽을 기준
-운영은 [자동 배포](cloudflare-auto-deployment.md) → [배포 실행서](cloudflare-release-runbook.md) → [자료 소유권](site-layout.md) 순서로 읽습니다. 페이지의 탭·모드별 자료 역할과 읽기 범위는 [페이지 기능별 데이터 사용 계약](site-layout.md#페이지-기능별-데이터-사용-계약)이 기준입니다. 주택 공개 형식은 [생성 프로젝트의 저장 계약](../../15_26/docs/housing-packed-storage.md), 자료 생성·승인은 [부동산 릴리스](../../15_26/docs/site-release-workflow.md)가 기준입니다.
+배포 작업은 [공통 배포 기준](../../ops-dashboard/docs/deployment.md)에서 시작합니다. CI·캐시 계약은 [자동 배포](cloudflare-auto-deployment.md), 자료 역할은 [자료 소유권](site-layout.md)을 따릅니다. [배포 실행서](cloudflare-release-runbook.md)는 공통 기준으로 연결하는 안내입니다. 페이지의 탭·모드별 자료 역할과 읽기 범위는 [페이지 기능별 데이터 사용 계약](site-layout.md#페이지-기능별-데이터-사용-계약)이 기준입니다. 주택 공개 형식은 [생성 프로젝트의 저장 계약](../../15_26/docs/housing-packed-storage.md), 자료 생성·승인은 [부동산 릴리스](../../15_26/docs/site-release-workflow.md)가 기준입니다.
 
 현재 지침, 기능·구현 설명, 과거 기록을 구분합니다. 오래된 명령·수치는 현재 실행 지침을 덮어쓰지 않습니다. 사실 충돌이 있으면 코드·검증 기록과 대조하고, 정책·승인 변경은 문서 정리로 대신하지 않습니다. 지침은 앞, 구현과 실제 검증 기록은 뒤에 배치합니다.
 
 ## 운영·배포
 
+- [공통 배포 기준](../../ops-dashboard/docs/deployment.md)
 - [운영 자동 배포](cloudflare-auto-deployment.md)
 - [Cloudflare 운영 배포 실행서](cloudflare-release-runbook.md)
 - [자료 소유권과 페이지 기능별 데이터 사용 계약](site-layout.md)
@@ -57,4 +58,4 @@
 - [daily-trades.md 정리 전 기록](archive/daily-trades.md)
 - [desktop-rent.md 정리 전 기록](archive/desktop-rent.md)
 
-archive 문서는 실행 대상이 아닙니다. 당시 설명·실패·검증 근거를 보존하며 현재 자료나 공개 상태를 증명하지 않습니다. 삭제된 시험 산출물은 [파일 정리 기록](../../15_26/docs/file-cleanup.md)을 확인합니다. 원천 DB·백업·승인·비밀정보는 문서에 복사하지 않습니다.
+archive 문서는 실행 대상이 아닙니다. 당시 설명·실패·검증 근거를 보존하며 현재 자료나 공개 상태를 증명하지 않습니다. 삭제된 시험 산출물은 [파일 정리 기록](../../_ops/reports/project-file-cleanup-20261019/phase2/verification.json)을 확인합니다. 원천 DB·백업·승인·비밀정보는 문서에 복사하지 않습니다.

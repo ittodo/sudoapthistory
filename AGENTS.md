@@ -18,3 +18,5 @@ For salary calculator work, use `npm run verify:salary`. Its local-only output i
 Production releases use the existing main-push Cloudflare workflow. Commit and push
 reviewed calculator source files so nightly publishers are not deferred by leftover
 working changes. Preserve the shared Git publication lock and all release gates.
+
+Local calculator commands are for development. During release, do not repeat checks that CI runs for the same commit. Follow the [shared deployment guide](../ops-dashboard/docs/deployment.md).
