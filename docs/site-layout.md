@@ -101,10 +101,10 @@ manifest로 확인한다. 빌드 때 생성하는 캐시는 작업 폴더에 없
 | 10. 관심·보관함 | `/library/`의 관심 아파트/저장한 계산, 매매 기본 `/ranking/`의 하트 순위 | 관심 목록은 `/api/me/favorites`, 하트 API, 선택 entry와 `apartments/summary/<묶음>.bin`을 사용한다. Worker의 단지·면적 확인도 같은 요약 reader를 사용한다. 저장 계산은 개인 API의 입력·결과 스냅샷만 읽는다. 로그인하지 않은 보관함은 주택 자료를 읽지 않는다. |
 | 11. 공동주택 정보 | `/kapt-v2.html`의 지역·유형·검색·이전 `#k` 선택 | `housing-v3/transport.json`과 원본 SHA 이름의 gzip JSON BIN으로 공개 목록 전체를 읽는다. 해제 원문 해시를 검증한다. 생성용 `housing-v3/index.json`은 유지하며 transport가 404인 구 배포·로컬에서만 직접 읽는다. 통합 상세 식별자와 공개 목록·검토 승인·건축물 상태의 구분을 보존한다. [전송 계약](apartment-and-board.md#공동주택-정보의-전송-형식) |
 
-현재 경로의 근거는 [홈 자료 결합](../js/home-search-view.js), [공통 검색](apartment-search.md),
-[지도](map-explorer.md), [기간 거래](daily-trades.md), [계약 목록](../js/contracts.js),
+현재 경로의 근거는 [홈 자료 결합](../js/home-search-view.js), [공통 검색](apartment-and-board.md#공통-단지-자동완성과-검색-자료),
+[지도](map-explorer.md), [기간 거래](map-explorer.md#기간별-실거래와-지도-재생), [계약 목록](../js/contracts.js),
 [단지 상세](apartment-and-board.md), [임대 시장](rental-market.md),
-[가격대 통계](price-band-statistics.md), [보관함](member-library.md)에 있다.
+[가격대 통계](#가격대-세대수거래-회전율), [보관함](account-withdrawal-google-design.md#회원-보관함과-단지-이용-통계)에 있다.
 지도 UI와 복귀 동작의 세부 기준은 지도 문서에서 유지한다.
 
 ### 목표 읽기 계약과 최소 데이터
@@ -137,9 +137,9 @@ packed 형식도 전체 행을 객체로 펼치면 색인의 이점을 충분히
 |---|---|---|
 | 공통 분기 거래·연간 초기 상태 | `PGHOUSE1`, `PGSTBND1` 안의 `PGSTATE1`, 숫자 열 `PGCOL001` | 이미 실제 packed다. 우선 과제는 기존 위치표와 버퍼를 소비자가 재사용하는 것이다. 새 거래 원문 파일을 만들 이유가 아니다. |
 | 단지 DTO·관심 요약·임대 시장 요약 | gzip 안의 `PGRCD001`, `PGCOL001` 숫자 열·문자열 사전·레코드 색인 | JSON 문자열 본문을 저장하지 않는다. 단지 또는 월 키를 이진 탐색한 뒤 해당 레코드만 복원한다. 기존 공개 JSON/gzip JSON도 읽을 수 있다. |
-| 검색 목록·검색 최신 요약 | 각각 32개 고정 ID 해시 버킷의 gzip JSON `.bin`, `format: gzip-json-records-v1` | 전체 목록을 만드는 현행 경로에서는 generic BIN보다 작고 최초 전체 읽기도 빨랐다. 파싱한 객체를 캐시하고 ID 키로 접근한다. [검색 형식과 측정](apartment-search.md#전송-형식-선택-근거-2026-10-23)이 기준이다. |
+| 검색 목록·검색 최신 요약 | 각각 32개 고정 ID 해시 버킷의 gzip JSON `.bin`, `format: gzip-json-records-v1` | 전체 목록을 만드는 현행 경로에서는 generic BIN보다 작고 최초 전체 읽기도 빨랐다. 파싱한 객체를 캐시하고 ID 키로 접근한다. [검색 형식](apartment-and-board.md#공통-단지-자동완성과-검색-자료)이 기준이다. |
 | 공동주택 메타데이터 목록 | 원본 SHA 이름의 gzip JSON `.bin`, `format: gzip-json-v1` | 생성용 JSON을 보존하고 공개 전송만 압축한다. 전체 목록 파싱과 압축 바이트 캐시를 사용한다. [전송 계약](apartment-and-board.md#공동주택-정보의-전송-형식)이 기준이다. |
-| 지도 가격 캐시 | 기존 gzip JSON 분기 `.bin` | 실자료 표본의 BIN 크기·초기 조회가 불리해 기존 형식을 유지한다. 계산 결과와 분기 압축 결과를 재사용한다. [지역 가격](region-price-cache.md)이 기준이다. |
+| 지도 가격 캐시 | 기존 gzip JSON 분기 `.bin` | 실자료 표본의 BIN 크기·초기 조회가 불리해 기존 형식을 유지한다. 계산 결과와 분기 압축 결과를 재사용한다. [지역 가격](map-explorer.md#지역-과거-가격-캐시)이 기준이다. |
 | 지역 번호표·메타데이터 | 78개 지역별 JSON | 영구 번호와 Rust 이전 자료 판독 계약을 유지한다. 이 변경에서 형식을 바꾸지 않는다. |
 | 지도 목록·대규모 목록 색인 | JSON과 기존 `index.packed.bin` 읽기 경로가 공존 | 기존 packed 열을 재사용할 수 있는 소비자부터 검토한다. 홈의 최신 임대 요약 결합 등 추가 필드도 함께 보존해야 한다. |
 | 경계·필지 등 지리 자료 | 지역별 JSON | 지역 지연 읽기와 캐시부터 확인한다. 좌표 형식 전환은 후순위 후보이며 정밀도·도형 의미를 보존한다. |
@@ -194,7 +194,7 @@ Cache Storage 항목을 공유한다. 서로 다른 실행환경의 동시 최�
 - 검색 목록과 최신 요약은 각각 32개 고정 ID 해시 묶음의 gzip JSON을 사용한다.
   파일 이름에 내용 SHA-256을 넣는다. 새 단지가 추가돼도 다른 묶음의 경계가 이동하지 않는다.
   첫 전체 검색·필터는 전체 목록을 구성한다. 유지된 파싱 객체는 다시 파싱하지 않는다.
-  이후 방문은 같은 압축 파일 바이트를 재사용한다. 형식 선택 근거는 [검색 문서](apartment-search.md)를 따른다.
+  이후 방문은 같은 압축 파일 바이트를 재사용한다. 형식 선택 근거는 [검색 문서](apartment-and-board.md#공통-단지-자동완성과-검색-자료)를 따른다.
 - 지역 가격은 기존 gzip JSON 분기·시도·거래 유형 경계, 임대 시장은 BIN 연도 경계를 유지한다.
   계산 캐시와 포장 캐시의 지문을 나눈다. 코덱만 바뀌면 가격 계산을 재실행하지 않는다.
   최초 생성 코드 변경으로 생기는 1회 캐시 무효화와 이후 작은 변경을 구분한다.
@@ -230,3 +230,19 @@ The candidate list `{path, hash, bytes}` JSON SHA-256 was
 Baseline 11,887 files / 427,570,073 bytes became 3,012 files / 307,916,418 bytes
 before adding the validator, tests and documentation. Canonical earnings remained.
 No backups were created; the baseline commit retains all removed contents.
+
+## 반응형 경계와 상세 진입
+
+`css/responsive.css`는 1600px 데스크톱 컨테이너, 32px 거터, 1200px 데스크톱·768px 모바일 경계를 적용한다. 공통 셸은 기존 계산기·계정 노드를 재배치하되 ID와 이벤트 핸들러를 유지한다. 주택 메뉴는 두 옛 진입점을 노출하지 않으며 기존 URL은 계속 동작한다. 단지 상세는 `tab=rent`와 쿼리 `rentType`·`rentPeriod`·`rentArea`를 받는다. 묶은 면적은 `group:85`이고 표 면적은 정확 값을 유지한다. 임대 필터는 관심·댓글·계산기의 식별에 영향을 주지 않는다.
+
+아파트 전월세 상세는 지역·분기 공통 거래를 참조하며 아파트 원문 복제나 `data/apartment-rent` 재생성은 하지 않는다. 연립·오피스텔의 별도 계약 자료는 유지한다. 이름 추측으로 연결하지 않고 미수집·연결 미확정·빈 결과·다운로드 실패를 구분한다. 구현은 `js/housing-contract-detail.mjs`, `js/housing-contracts.mjs`, `tools/verify-housing-details.mjs`이고 생성은 [공식 부동산 릴리스](../../15_26/docs/site-release-workflow.md)가 하며 사이트 빌드는 현재 해시와 검사 증거를 확인한다([저장 계약](../../15_26/docs/housing-packed-storage.md)). 검증은 정확 면적·월 경계·번호 참조·조건 변경·오래된 응답을 포함하며 운영 브라우저 점검은 읽기 전용이다.
+
+## 가격대 세대수·거래 회전율
+
+`/stats/?tenure=sale`은 `data/index.json`, `data/price_bands.json`, `data/tax_revenue_actuals.json`을 읽는다. 생성기 `tools/build-price-bands.mjs`는 현재 리뷰 자료로 index를 보강한 뒤 통계를 만들고 가격대 집계를 비공개 SQLite 캐시의 `statistics/price-bands` scope에 저장한다. index·연도별 가격·거래량 파일과 계산 코드가 같으면 이전 결과를 그대로 출력하고 입력이 바뀌면 다시 계산한다. 전유부·HUB 원문 조회는 없다. DB 경로와 CI 보관은 [공통 캐시 기준](cloudflare-auto-deployment.md#앞으로-지킬-배포검증-규칙), 세대수의 원천과 중복 방지는 [현재 HUB 집계 기준](../../ops-dashboard/housing-review/docs/hub-source.md#공개-평형별-세대수)을 따른다.
+
+- 세대수는 각 index 행의 `u`이며 단지 전체 `tu`로 대체하지 않는다. `u`가 없거나 부분 집계인 `up` 행은 세대수 통계에서 제외하고, 가격이 있는 미확인 평형은 목록에 표시한다. 미확인 세대수는 ‘미확인’, 그에 의존하는 계산은 ‘산정 불가’이며 현재 범위의 확인·미확인 평형 수를 상단에 표시한다.
+- 현재 시가총액은 확인 세대수 × 최근 실거래 평균가 `lp`의 합이며 미확인 평형을 포함한 전체 시장 시가총액이 아니다. 연도별 추이는 확인된 세대수에 해당 연도 평균가를 적용하고 가격이 없는 해는 직전 관측 가격을 이월하며 최초 관측 전은 제외한다. 실제 주택 재고를 복원한 값이 아니다.
+- 회전율의 분자·분모는 같은 확인 평형 집합이다(연도 거래건수 / 같은 가격대 세대수). 원자료의 전체 거래건수를 따로 표시하며 진행 중 연도는 YTD로 연환산하지 않는다. 미확인 평형이 있는 범위에서는 공식 전체 세수를 부분 시가총액으로 나눈 비율을 표시하지 않는다.
+- 지역 선택은 통계와 목록에, 가격대·평형·단지 검색은 목록에만 적용한다.
+- 회귀검사는 `node --test tools/test-cloudflare-price-bands.mjs`(운영 CI의 `test-cloudflare-*.mjs`에 포함)다. `test-apartment-data.mjs`는 현재 HUB 원천 표식, 양의 정수 세대수, 부분 집계 제외, 확인·미확인 항목 수와, 단지 상세 DTO의 총세대수와 통계 index의 평형별 세대수를 각각 검사한다.

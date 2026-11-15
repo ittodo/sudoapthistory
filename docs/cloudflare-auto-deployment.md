@@ -21,7 +21,7 @@ manifest의 `format`은 `gzip-json-records-v1`이다. `.bin` 파일명에는 내
 고정 이름 BIN은 Cloudflare 기본 재검증을 유지한다. 자료 URL에 이미 SHA-256 `v`가
 있으면 `deployment-version.js`가 이를 배포 SHA로 덮지 않는다. 관련 없는 코드 배포로
 검증된 자료의 캐시 키를 바꾸지 않기 위한 규칙이다.
-[형식 선택과 최초 전체 읽기 측정](apartment-search.md#전송-형식-선택-근거-2026-10-23)은 검색 기준 문서에 둔다.
+[검색 전송 형식 선택](apartment-and-board.md#공통-단지-자동완성과-검색-자료)은 단지 기준 문서에 둔다.
 [Cloudflare 정적 자산 헤더 규칙](https://developers.cloudflare.com/workers/static-assets/headers/)을 따른다.
 파일 수 20,000개와 파일당 25MiB 검사는 그대로 적용한다.
 
@@ -51,7 +51,7 @@ Node 22는 SQLite 모듈을 불러올 때 실험 기능 경고를 출력한다. 
 
 manifest 해시 확인은 같은 호출에서 동일 경로를 한 번 읽고, 모든 참조의 예상 해시를 각각 대조한다. 호출 종료 전 파일 식별자·크기·수정/변경 시각과 상위 디렉터리 식별자를 다시 확인한다. 호출 간·실행 간 파일 검사 생략은 하지 않는다. 검사 코드 변경은 기존 의미 검사 증거를 무효화하므로 최초 정식 CI는 현재 코드로 다시 검증한다. 기존 producer 증명을 재서명하지 않는다.
 
-공식 부동산 생성의 비공개 공통 거래 번호 풀은 [record-pool-file-checks.md](record-pool-file-checks.md)의 현재 바이트 병렬 검사 경로를 사용한다. 공개 파일/CI 가격 모델·schema를 바꾸지 않으며, 검사 코드가 바뀐 최초 캐시 구축과 정상 재사용 시간을 구분한다. 구간PASS를 새 자료 공개 승인으로 해석하지 않는다.
+공식 부동산 생성의 비공개 공통 거래 번호 풀은 [번호 풀 파일 검사](../../15_26/docs/housing-packed-storage.md)의 현재 바이트 병렬 검사 경로를 사용한다. 공개 파일/CI 가격 모델·schema를 바꾸지 않으며, 검사 코드가 바뀐 최초 캐시 구축과 정상 재사용 시간을 구분한다. 구간PASS를 새 자료 공개 승인으로 해석하지 않는다.
 
 
 운영 빌드는 현재 파일 해시와 검사 코드 지문을 확인한 PASS 증거를 재사용한다. 변경·누락·손상은 재검사한다. 매매·전월세 공통 거래는 지역·월, 상세는 각각 지역·연도와 지역·월 단위로 검사한다. 운영 workflow는 push와 수동 실행 모두 `NODO_FULL_VERIFY=0`을 사용한다. 요일이나 주간 완료 기록으로 계산·검사 캐시를 무효화하지 않는다. 현재 입력·출력 해시와 변경 구간 검사, 일반 코드 테스트와 동일 SHA·Worker·공개 manifest·공개 바이트 검증은 유지한다. 단계별 실제 시간은 CI artifact의 `build-timings.json`을 확인한다. 공식 생성기가 검토 산출물에 기록한 비공개 `data/.housing-validation.json`도 재사용한다. 검사 코드와 현재 manifest·참조 파일·상세 조각의 모든 바이트 해시가 일치해야 한다. 기록이 없거나 유효하지 않으면 전체 의미 검사 또는 기존 PASS 캐시 검사를 수행한다. 이 기록은 공개 자산에 포함하지 않는다.
@@ -104,7 +104,7 @@ manifest 해시 확인은 같은 호출에서 동일 경로를 한 번 읽고, �
 
 ## 구현·검증 기록
 
-최초 자동 배포 연결의 시험 `34747744688`, 운영 `34747848391`, Health `34747944425` 성공은 [2026-09-13 전환 기록](cloudflare-production-cutover-2026-09-13.md)에 보존한다. 현재 구현의 생성·검증 재사용과 실제 CI/공개 시간은 [워크플로우 실측](../../15_26/docs/workflow-redesign.md)을 따른다. 과거 실행 번호를 새 배포의 성공 증거로 재사용하지 않는다.
+최초 자동 배포 연결의 시험·운영·Health 성공 기록은 Git 이력에서 확인한다. 현재 구현의 생성·검증 재사용과 실제 CI/공개 시간은 [워크플로우 실측](../../15_26/docs/workflow-redesign.md)을 따른다. 과거 실행 번호를 새 배포의 성공 증거로 재사용하지 않는다.
 
 ### 백업 재현 개선 중간 실측 (2026-10-02~03)
 
@@ -135,3 +135,35 @@ DB 백업 복사·복원을 제외한 전체 처리 기준은 1,650.956초, 최�
 이 실행은 앞선 실행에서 만든 계산 캐시를 사용했다. 최초 실행은 마지막 검색 코드 수정이 감지되어 포장 단계에서 중단됐다. 최종 실행의 파일 쓰기 95개와 재사용 18,169개를 깨끗한 기준 배포와의 변경량으로 해석하지 않는다. 운영 단지 JSON의 공식 BIN 교체와 원격 배포는 실행하지 않았다. 패키지의 Git SHA는 로컬 HEAD이며 미커밋 변경이 포함된 이 결과를 동일 SHA의 운영 증명으로 사용할 수 없다.
 
 공개 단지 통합 변경은 운영 CI에서 `test-apartment-groups.mjs`와 `test-group-sale-completion.mjs`를 실행한다. 대표 ID·구성원 필터·공유 거래의 정확 면적·중복·취소 상태와 가격 요약을 확인한다.
+
+## Worker와 API 계약
+
+`cloudflare/`의 Worker는 정적 자산을 먼저 처리하고 `/api/*`와 `/auth/*`만 Worker가 처리한다. SPA fallback은 없다. `www` 리디렉션은 Worker가 아닌 zone 설정이다. `wrangler.jsonc`의 최상위 설정은 시험(staging) D1을, `--env production`은 별도 운영 D1을 선택한다. D1 ID는 공개 식별자이며 비밀값이 아니다. 시험 환경은 시험 사용자와 함께 유지하며 초기화하지 않는다. 마이그레이션 `0001_initial.sql`은 새 빈 DB 전용이며 기존 DB에 다시 실행하지 않는다. 스키마 2가 코드 배포의 전제다. `0002_withdrawal_requests.sql`은 추가형이다.
+
+로컬 검증은 `npm ci --ignore-scripts`, `npm run typecheck`, `npm run test:api`다. 시험은 실제 Worker를 번들하고 Miniflare 임시 D1과 Google HTTP 모의를 사용한다. `.env`·운영 ID·실계정·원천 DB·외부 Google 요청이 필요 없다. `npm run build` 뒤 `node cloudflare/dev-preview.mjs`는 가짜 자료와 Google 외부 요청 차단 상태로 포트 8795에서 loopback 미리보기를 제공한다. 출력되는 가짜 세션은 로컬 UI 시험 전용이며 점검이 끝나면 종료한다.
+
+**인증 전환 경계.** 운영 기본은 `AUTH_ENABLED=false`, `MAINTENANCE=true`다. Google 자격 증명은 Worker secret으로만 설정하고 vars·Git·로그에 넣지 않는다. `AUTH_ENABLED=true`는 `MAINTENANCE=true`여도 새 회원을 만든다. 유지보수 모드는 프로필·댓글·태그·계정 쓰기를 막고 세션 읽기는 허용한다. 인증을 끄면 새 OAuth 교환만 막으며 기존 세션을 폐기하지 않는다. OAuth는 PKCE S256, HttpOnly 쿠키에 묶인 10분 일회성 state, nonce·issuer·audience·만료와 Google JWKS의 RSA 서명 검증을 쓴다. 첫 로그인은 임의 내부 UUID와 `user` 역할을 만든다. 이메일은 계정 병합 키가 아니다. 관리자 지정은 D1 콘솔에서 사용자 ID와 Google subject를 확인한 뒤 `node cloudflare/admin.mjs --env staging|production --user UUID --google-sub VERIFIED_SUB --confirm-grant-admin`으로만 한다. 두 식별자가 모두 일치해야 하며 첫 사용자 관리자 대체 경로와 공개 역할 지정 API는 없다. 탈퇴 재확인은 `/auth/google?reauth=1&withdrawal=1&returnTo=/account/`와 시작 영수증으로 현재 세션·같은 Google `sub`에 묶인다. 이는 선택한 계정의 확인이며 Google이 비밀번호를 다시 물었다는 약속이 아니다. 탈퇴·복구 정책과 API는 [회원 운영 문서](account-withdrawal-google-design.md)가 기준이다.
+
+**브라우저 계약.**
+
+- 모든 API 응답은 `Cache-Control: no-store`다. 오류는 `{error:{code,message}}`이며 SQL·자격 증명을 포함하지 않는다.
+- 변경 요청은 정확한 `Origin=SITE_ORIGIN`, 유효한 세션, `/api/session`의 `X-CSRF-Token`이 필요하다. JSON 본문은 `Content-Type: application/json`이며 16KiB 제한으로 읽는다. 소유권·관리자 역할은 서버가 세션에서 정한다.
+- `GET /api/session`은 `{session,profile,isAdmin,csrfToken}`을 반환한다. `GET/PATCH /api/profile`의 닉네임은 2~20자 한글·영문·숫자·`_`·`-`이며 대소문자 무시 고유다. `POST /api/logout`, `DELETE /api/account`는 탈퇴 확인 별칭이며 즉시 삭제가 아니다.
+- 댓글: `GET /api/comments?page_id&offset&limit`는 루트 댓글 수를 count로 반환하고 루트마다 미리보기를 최대 3개, 전체 응답 100행 이내로 포함한다. `GET /api/comments/:id/replies`는 최대 100개다. 작성은 16~100자 `Idempotency-Key`가 필수이며 같은 키에 다른 내용은 거부한다. 본문 1,000자, 답글은 한 단계다. `PUT /api/comments/:id/like`는 원하는 상태를 설정한다. 관리자가 숨긴 루트는 답글과 함께 접근할 수 없다. 삭제·탈퇴한 루트는 다른 활성 회원의 답글이 있으면 자리표시로 남는다.
+- 태그: `GET /api/stocks/:ticker/tags`, `POST`(2~30자 이름, 6자리 종목, 작성자 추천을 한 D1 batch로 처리), `PUT /api/tags/:id/vote`.
+- 관리자: `GET /api/admin/stats`, `GET /api/admin/comments`, `PUT /api/admin/comments/:id/moderation`. 삭제한 댓글은 복구할 수 없다.
+- `GET /api/health`는 `{status,gitSha,workerVersionId,schemaVersion:2,maintenance}`를 실제 테이블·열 확인 뒤 반환한다. 지원하지 않는 스키마는 503, 누락 테이블은 500이다. 원격 배포 검증은 `workerVersionId`가 비어 있지 않아야 한다.
+- 속도 제한은 원자적 고정 창이다. 인증된 쓰기 사용자당 분당 30회, 태그 제안 UTC 일 20회, OAuth 시작 IP 해시당 분당 20회다. 만료 세션·OAuth state·카운터는 매시간 테이블당 최대 1,000행씩 정리한다.
+- 탈퇴 기능에는 시험·운영별 64자리 hex `WITHDRAWAL_ENCRYPTION_KEY` secret과 `WITHDRAWAL_ENABLED=true`가 필요하다. 기능을 꺼도 만료 정리를 멈추거나 탈퇴 회원의 로그인을 허용하지 않는다.
+
+**롤백 경계.** 인증·공개 쓰기를 켠 뒤에는 새 D1 자료가 원본이다. 코드 롤백은 같은 D1 바인딩과 호환 스키마를 유지해야 하며 역마이그레이션이나 D1 자동 되감기는 없다. 호환성이 불확실하면 정적 자산을 유지한 채 유지보수 모드로 전환한다. 탈퇴 상태가 생긴 뒤에는 회원 상태를 무시하는 스키마 1 코드로 되돌리지 않는다. 탈퇴·정리 회원을 차단하는 버전만 호환된다.
+
+## 네이티브 투영 CI
+
+`tools/native-projection`의 `npm run test:daily`는 기존 Rust 일별·임대 구현을 빌드해 고정 기준 사례를 실행한 뒤 브라우저 모델·클라이언트 시험을 실행한다. Python을 호출하지 않는다. 시험된 도구는 Rust 1.92.0과 Node 22.18 이상이다. `npm run build:daily`는 stdin의 `daily-build` JSON 요청(`site`, `database`, 선택 `missing`·`cache_dir`)을 받으며 예약 운영 빌드는 운영용 Rust release 실행 파일과 공개 가드를 사용한다. 운영 DB·자격 증명·수집·공개는 이 시험이 쓰지 않으며 Rust 자식 프로세스의 PATH는 비어 있다.
+
+`vendor/`는 `15_26/rust/src`에서 생성한 소스 스냅샷이며 두 번째 구현이 아니다. `provenance.json`이 기준 커밋과 소스·내보낸 파일의 SHA-256을 기록한다. 6개 모듈은 바이트 단위로 복사하고 가드 모듈은 수집기 진입점 앞부분만 포함한다. 배포 CI는 이 고정 스냅샷만 시험하며 인접 운영 저장소를 읽지 않고 최신 소스와의 일치도 증명하지 않는다. 선택 검사 `NODO_NATIVE_SOURCE`는 기록된 해시와 정확히 일치해야 한다. 운영 변경이 이 고정 시험 패키지에 영향이 없으면 소스 동기화를 릴리스와 분리한다.
+
+기준 구현을 바꾼 뒤에는 `node tools/sync-native-projection.mjs <15_26/rust>`, `npm run test:daily`(Rust 빌드는 `--locked`)를 실행한다. 독립 CI 패키지는 고정 lockfile을 유지하며 내보내기는 각 registry 의존성이 운영 lockfile의 정확한 버전·체크섬 부분집합인지 확인한다. 소스 해시와 생성 diff를 검토한다. 운영 저장소의 `node tests/run_projection_native.mjs`는 내보낸 소스·운영 실행 파일이 기준 소스와 일치하는지도 확인하며 CI는 내보낸 파일 해시를 항상 확인한다. 소스 갱신이 기대 출력을 자동으로 바꾸지 않는다.
+
+`fixtures/`는 합성 SQL 입력, 원본 입력 바이트, 기대 데이터 해시와 manifest 필드를 보관하며 운영 DB 자료는 없다. 빈 월·잘못된 날짜·정확 면적·동률·취소·누락 거래·수치 극단·환산율·과거 정정·월 장부 개정을 포함한다. 시험기는 복호화한 모든 데이터 파일을 SHA-256으로 바이트 대조하고 비압축 자산·파일 집합·manifest·소스 체크섬·독립 계산 버전을 확인한다. 압축 바이트는 zlib·플랫폼에 따라 다를 수 있으나 복호화 바이트 기대는 완화하지 않는다. 따뜻한 재사용과 단계 간 재사용은 생성 바이트를 보존해야 하고 원천 DB는 변하지 않아야 한다. 손상 캐시·유지보수 게이트·잘못된 속성 형식·환산율·빌드 중 원천 변경은 실패하거나 복구해야 한다. 기대 출력은 동작 변경을 독립 검토한 뒤에만 재생성하며 실패하는 기대를 현재 Rust 출력으로 자동 교체하지 않는다.

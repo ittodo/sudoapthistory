@@ -295,3 +295,45 @@ npm run preview
 로컬 API 권한·공지·숨김·탈퇴 마스킹 테스트, 상세 집계·식별자 테스트, 기존 사이트 배포 검사, 자료 재생성 일치 검사, 생산자 배포 절차 테스트를 통과했다. 브라우저에서 390px 모바일, 밝은/어두운 테마, 상세·거래·의견, 검색 왕복, 게시판 작성·댓글·공지·수정을 확인했다.
 
 운영 D1 변경과 원격 배포는 로컬 검증과 구분한다. 이 문서는 원격 배포 완료 기록이 아니다.
+
+## 공통 단지 자동완성과 검색 자료
+
+**화면 동작.**
+
+- 후보는 `송파구 · 리센츠`처럼 시군구를 앞에 두고 둘째 줄에 동을 표시한다. 이름·시군구·동이 겹치면 주소를 추가한다. 지역·시군구 범위의 전체 단지에서 최대 10개를 추천한다.
+- 매매·전세·월세의 단지 검색, 지도, 실거래, 기간별 실거래, 통계, 비교와 기존 단지·계약 목록이 같은 모듈을 쓴다. 단지 입력창이 없는 화면에는 검색창을 만들지 않는다. 거래 기간·금액·면적 조건은 후보를 고른 뒤 기존 본문 조회에 적용하며 본문 정렬·자유 입력·평형 검색은 유지한다.
+- 단지를 고르면 `searchApt`에 공통 식별자를 저장하고 각 화면은 확인된 원천 식별자로 거래를 좁힌다. 비교 화면은 해당 단지 평형 목록으로 좁힌 뒤 기존 평형 선택을 잇는다. 새로고침·공유·뒤로 가기·거래 유형 전환에서 선택을 복원하고, 입력 수정·초기화는 선택을 해제하며 지역 범위를 벗어난 선택은 해제 안내를 표시한다. 조건에 맞는 거래가 없으면 “단지는 있으나 현재 조회 조건에 맞는 거래가 없습니다”를 표시한다.
+- 한글 조합 중에는 검색하지 않는다. 조합 완료·입력 후 150ms 지연, 이전 응답 무시, 방향키·Enter·Escape, 터치, combobox/listbox와 실시간 안내를 지원한다. 첫 후보는 Enter만으로 자동 선택하지 않는다. 자료를 불러오지 못해도 기존 본문 검색을 쓸 수 있고 자동완성 재시도를 제공한다.
+
+**검색 자료.** `tools/build-search-data.mjs`가 빌드·로컬 서버 시작 때 `data/index.json`(평형 행·원천 식별자), `data/apartments/index.json`(공개 식별자 연결·모호한 연결), 매매·전월세 manifest와 지역 번호표·metadata(regionalReader가 현재 공개 형식을 해석하며 과거 catalog.bin 고정 경로를 요구하지 않음), `data/map/index.json`(지도 ID·좌표), `data/housing-v3/index.json`(공개 단지 메타데이터)으로 목록을 만든다. 생성과 검색 Worker는 개별 거래를 읽지 않는다. 연결이 확인된 식별자로만 합치고 이름·좌표 유사도로 합치지 않는다. 연결 미확정 전월세 단지는 `rental:<원천 ID>`로 유지하고 등록된 이름 변형은 별칭에 보존한다. 검토한 공개 그룹은 기존 대표 ID로 검색하며 원래 단지명은 별칭이다. 홈의 평형별 표는 원천 행과 투자지표를 유지하고 통합 표는 그룹 이름과 중복 제거한 전체 세대수를 쓴다. 그룹 세대수가 미확인이면 원천 세대수를 더해 채우지 않는다. 홈 최신 요약의 `publicationGroup`이 이 표시 규칙을 구분한다.
+
+자동완성과 홈 최신 요약은 각각 32개 버킷이며 단지 ID의 SHA-256 첫 바이트를 32로 나눈 나머지가 번호다. 단지가 추가돼도 기존 ID의 버킷은 바뀌지 않는다.
+
+| 파일 | 역할 |
+| --- | --- |
+| `data/search/apartments.json` | 자동완성 manifest. `schema:1`, `format:gzip-json-records-v1`, 버전·버킷 경로·입력/출력 해시·해제 바이트 수 |
+| `data/search/catalog/<버킷>-<SHA-256>.bin` | 자동완성 단지 레코드 32개 |
+| `data/search/latest-index.json` | 홈 요약 manifest. 같은 형식과 기준일·검색/전월세 버전·해시 |
+| `data/search/latest/<버킷>-<SHA-256>.bin` | 단지 정보와 최신 전세·월세 가격 32개 |
+
+파일명은 압축 내용의 SHA-256을 포함한다. 확장자는 `.bin`이나 풀면 `{단지 ID: 레코드}` UTF-8 JSON이며 `PGRCD001` 단지 DTO와 다른 형식이다. `rawBytes[path]`는 해제 바이트 수이며 reader가 실제 크기와 대조한다. `inputs`는 원본 파일과 해시, `sources`는 생성 gzip 경로와 해시다. 포장 단계는 `inputs`를 실제 원본 자산 해시와 대조한다. `tools/packed-asset-cache.mjs`는 비공개 캐시에 버킷별 논리 내용·직렬화/압축 코드 지문·출력 해시를 저장하며 근거와 저장 바이트가 맞으면 포장을 생략한다. 한 단지가 바뀌면 그 버킷만 다시 포장한다. 목록 구성과 입력 확인 자체는 생략하지 않는다. 전송 형식은 gzip JSON으로 정했다. 같은 32개 버킷·같은 값에서 generic ValueNode BIN보다 작고 최초 전체 읽기가 빨랐으며, 현재 검색처럼 전체 객체를 만드는 소비 경로에서는 BIN의 선택 복원 이점이 없다. 이 결론을 공통 거래의 전용 BIN 스키마나 단지 상세의 선택 조회로 일반화하지 않는다.
+
+[es-hangul](https://github.com/toss/es-hangul) 2.4.0을 정확히 고정해 초성 추출·자모 분해에 쓰고 Worker 번들에 포함해 자체 제공한다. 순위는 `js/apartment-search-model.js`가 계산한다. 순서는 정확 일치, 앞부분, 부분, 초성·입력 중 자모, 가벼운 오타다. NFKC·대소문자·공백·괄호 차이는 정리하되 숫자와 괄호 안 단어는 남긴다. 여러 단어는 모두 이름·별칭 또는 지역·주소와 맞아야 하며 지역에는 오타를 허용하지 않는다. 이름 오타는 한글 3음절 이상, 자모 편집거리 비율 0.25 이하다. 명시한 단지·차수 번호가 다른 후보는 제외한다. 동순위는 거리·길이 차이·이름·주소·식별자로 안정 정렬하며 백분율 점수를 표시하지 않는다.
+
+문서당 Worker 하나가 첫 검색에서 `packedDataset.all()`로 32개 버킷을 읽어 색인을 만들고 같은 문서에서 재사용한다. `packedDataset`은 파싱한 버킷을 최대 4개·해제 바이트 합계 64MiB(검증한 `rawBytes` 기준)로 LRU 보관하고 호환 BIN 경로는 열린 버퍼와 색인만 보관한다. 공용 검증 파일 캐시는 압축 바이트를 최대 256개·64MiB까지 Cache Storage에 두며 이 한도는 JS 힙 상한이 아니다([공통 자료 계약](site-layout.md)). Worker는 `apartments` 배열 JSON과 `packed-records-v1` 버킷도 읽으며 현재 리뷰 후보 미리보기는 JSON 배열 경로를 유지한다.
+
+**홈 단지·평형 목록.** 매매·전세·월세는 기존 스크리너의 표·카드·검색·정렬·페이지·평형 통합을 쓴다. 원본 매매 행 번호와 계산 지표를 유지하고 승인된 공통 카탈로그로 전월세 전용 평형을 추가하며 이름·좌표로 연결하지 않는다. 거래가 없는 유형은 ‘거래 없음’으로 표시하고 정렬 마지막에 둔다. 전월세 전용이라는 이유로 임대 단지로 분류하지 않는다. `build-search-data.mjs`가 `build-home-search-data.mjs`를 호출해 최신 전월세 상태 스냅샷의 opening/updates를 접어 최신 유효 계약을 고른다. 단지·반올림 평형·유형별 최신 계약일, 동률이면 원천 거래 ID 순이며 환산율이 없으면 원금액만 표시한다. 브라우저는 처음 전체 필터 목록을 만들 때 32개 버킷을 모두 읽고 동일 입력 해시의 매매 인덱스도 검증한다. 동시 호출·탭 전환은 같은 Promise를 재사용하며 홈은 과거 월 파일이나 전체 계약 이력을 받지 않는다. 지역·동·단지·면적·세대수·준공연도는 공통이고 가격 범위·정렬은 유형별 URL/로컬 상태다. 지도에서 저장한 과거 날짜는 홈 조회에 쓰지 않으며 전월세에는 매매 투자지표 필터를 적용하지 않는다. 상세는 기존 패널을 열고 연결 미확정 ID는 공통 카탈로그의 정확한 원천 ID만 써서 전월세 이력을 조회하며 다른 단지로 대체하지 않는다.
+
+**현재 리뷰 후보 검색.** `tools/prepare-current-review-search.mjs`가 후보의 평형 행·상세 식별자·지도·단지 정보와 기존 공개 매매·전월세 번호표만 합쳐 후보 폴더 `data/search/apartments.json`에 단지 배열 JSON으로 저장한다(후보는 32개 gzip 버킷 포장으로 전환하지 않음). 거래 내역은 읽지 않으며 같은 공개 단지의 여러 원천·필지는 기존 식별자 연결을 유지한다. 현재 원천·지역 근거가 없는 보존 단지는 “지역 미확인”으로 남기고 지역을 추측하지 않는다. 후보는 `_ops` 아래 별도 폴더여야 하며 manifest의 `candidateOnly`는 `true`, 주택 메타데이터는 `candidateOnly:true`·`approvedOnly:false`여야 한다. 운영 검색 생성기는 후보를 받지 않는다.
+
+```text
+node tools/prepare-current-review-search.mjs D:/Work/sudoapthistory CANDIDATE_DIRECTORY
+node tools/prepare-current-review-timeline.mjs D:/Work/sudoapthistory CANDIDATE_DIRECTORY
+node tools/preview-current-review.mjs CANDIDATE_DIRECTORY
+```
+
+미리보기 `http://127.0.0.1:8794/map/`은 후보 파일을 우선하고 나머지 공유 거래 파일은 기존 소스에서 읽는다. HTML·JS·CSS는 현재 소스이며 GET·HEAD만 허용한다. 로그인 API와 운영 쓰기는 연결하지 않고 “현재 리뷰 데이터 미리보기 · 운영 미반영”을 표시하며 내부 evidence·manifest는 제공하지 않는다. 타임라인 후처리는 후보의 일별·전월세 manifest를 현재 지도 버전에 연결하고 검색 목록에 실제 제공하는 두 manifest 해시를 넣는다. 거래 파일·원천 revision·번호표·가격 통계는 바꾸지 않으며 기존 공개 단지 ID가 빠졌거나 지도 참조 외 변경이 있으면 중단한다. 이전 검색·지도 가격 캐시·외곽선은 후보 대신 제공하지 않으며 후보에 가격 캐시가 없으면 공유 거래로 조회한다. 합친 외곽선은 `data/map/boundaries/{g}.json`에 두고 상세 DTO의 `map.boundary`가 참조하며 검색 목록에는 도형을 복제하지 않는다. 후보 경계가 없거나 해시가 다르면 준비를 중단한다. 외곽선 생성·표시는 [지도 문서](map-explorer.md)를 따른다. 전용 검증은 `node --test tools/test-prepare-current-review-search.mjs tools/test-prepare-current-review-timeline.mjs tools/test-preview-current-review.mjs`다.
+
+정식 현재 리뷰 계약의 Node 지원은 구현했으나 운영 전환은 적용하지 않았다. 정식 자료는 주택·지도 메타데이터의 `contract`가 모두 `current-review-publication-v1`이고 `candidateOnly`가 모두 `false`이며 주택 `approvedOnly`가 `false`, 주택 `sourceVersion`과 지도 `publicationSourceVersion`이 같아야 한다(지도 `sourceVersion`은 최종 행정 구역 연결까지 반영한 별도 버전). 기존 공개 형식은 `approvedOnly:true`를 유지한다. 정식 상세 생성은 생산자가 준비한 version 2 DTO를 재사용하며 `--verify`일 때만 기존 상세 검증을 실행한다. 정식 검색은 후보와 같은 “지역 미확인” 처리를 쓰되 현재 원천이 없다고 명시된 거래 없는 보존 단지에만 허용하며 거래 원천의 지역 누락은 오류다. 생산자 검증의 `checks.currentReview`는 계약·원천 버전·주택/지도 파일 해시와 `individualApprovals: preserved_from_workbench`를 보존하고, 최종 `verify-housing-regions.mjs`가 실제 파일의 계약·버전 연결로 이를 구성한 뒤 완료 기록 작성 때 manifest 해시와 다시 대조한다. 일별·전월세·거래 상세·단지 DTO 검증은 그대로 필요하며 이전 `buildingAudit` 성공 결과를 대신 넣지 않는다. 후보 자료나 서로 다른 원천 버전은 완료 기록을 만들 수 없다. CLI는 일반 경로와 Windows 확장 경로(`\?\D:\…`)를 같은 파일 URL로 판정하며 import 때는 자동 실행하지 않는다. 관련 독립 검증은 `node --test tools/test-verify-housing-regions.mjs tools/test-housing-publication-contract.mjs tools/test-cloudflare-apartment-sale.mjs tools/test-validation-session.mjs`다.
+
+**검증과 예약 배포.** `npm run test:search`(정규화·순위·초성·혼합 자모·오타·지역 조합·번호·동명 단지·후보 제한, 실제 자료, 연결 분리, 평형 중복 제거, 조건 적용, 키보드, 한글 조합, 응답 순서 경합, URL 복원, 오류/재시도)와 `node --test tools/test-cloudflare-packed-assets.mjs tools/test-cloudflare-home-search.mjs`(내용 해시 버킷 재사용, 홈/자동완성 번들, 재시도, 버퍼 개수·용량 제한, 원본 행·식별자 보존)를 쓴다. 로컬 실행은 `npm ci` 후 `npm run preview`(`http://127.0.0.1:8793`)이며 검색 모델·원본 자료를 바꾸면 서버를 다시 시작한다. 운영·시험 배포 모두 `test:search`를 실행한다. 실제 카탈로그 검사는 고정된 단지 수를 전제하지 않고 해당 빌드의 매매·전월세 원천 전체가 들어 있는지 대조한다. 공개 gzip JSON 버킷·manifest·Worker는 `cloudflare/dist/public`에, 버킷 재사용 근거는 `cloudflare/dist`의 비공개 캐시에 둔다. 원본 자료나 Git 추적 파일을 생성 결과로 덮어쓰지 않으며 별도의 검색 자료 생성 예약은 필요 없다.
