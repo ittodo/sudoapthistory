@@ -9,7 +9,7 @@
 
 - [공통 배포 기준](../../ops-dashboard/docs/deployment.md)
 - [운영 자동 배포](cloudflare-auto-deployment.md): CI·캐시 계약, Worker·API 계약과 롤백 경계, 네이티브 투영 CI(`cloudflare/`·`tools/native-projection/`의 진입 안내가 가리키는 절)
-- [자료 소유권과 페이지 기능별 데이터 사용 계약](site-layout.md): 반응형 경계, 전월세 상세 진입, 가격대 세대수·거래 회전율 포함
+- [자료 소유권과 페이지 기능별 데이터 사용 계약](site-layout.md): 반응형 경계, 전월세 상세 진입, 가격대 세대수·거래 회전율, 화면별 로딩 기준치 포함
 
 ## 주택 화면·자료 읽기
 
