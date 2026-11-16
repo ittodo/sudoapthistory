@@ -28,22 +28,26 @@ export function verifyRegionalData(root,kind){
  }
  return {schema:2,files:Object.keys(m.sources).length,regions:reader.table.regions.size,version:m.version,immutableRegionalFiles:Object.keys(baseline.sources).length,legacyCompatibility:false};
 }
-// Reuse decoded validation only after independently rechecking every current file hash.
+// Reuse decoded validation only after checking every current file against its
+// manifest hash. Inside a verifyHousingRegions hash scope an unchanged file is
+// checked by realpath and full lstat signature instead of being hashed again.
 // Both views share quarter bytes, so validate them together in one bounded-cache pass.
 const verifiedPairs=new Map();
 function verifyPackedPair(root){
  const d=regionalReader(root,'daily'),r=regionalReader(root,'rental');if(d.manifest.schema!==3||r.manifest.schema!==3||JSON.stringify(d.manifest.regional.quarters)!==JSON.stringify(r.manifest.regional.quarters))throw Error('Shared quarter binding mismatch');
+ const key=hash(JSON.stringify([d.manifest,r.manifest])),previous=verifiedPairs.get(key);
  const checked=new Map();for(const reader of [d,r])for(const[p,h]of Object.entries(reader.manifest.sources)){if(checked.has(p)){if(checked.get(p)!==h)throw Error('Shared digest mismatch');}else{reader.physical(p,false);checked.set(p,h);}}
- const key=hash(JSON.stringify([d.manifest,r.manifest]));if(verifiedPairs.has(key))return verifiedPairs.get(key);
+ if(previous)return previous;
  const session=new ValidationSession(root,{roots:['tools/regional-data.mjs']});let months=0;
  for(const[code,entries]of Object.entries(d.manifest.regional.quarters))for(const month of Object.keys(entries).sort()){
   const dependencies={};if(d.manifest.regional.states?.[code]?.[month]===undefined||r.manifest.regional.states?.[code]?.[month]===undefined)throw Error('Missing state');for(const reader of [d,r]){
-   const entry=reader.table.regions.get(code).entry;
-   for(const p of [entry.identities,reader.manifest.regional.quarters[code][month],reader.manifest.regional.states?.[code]?.[month]].filter(Boolean)){
+   for(const p of [reader.manifest.regional.quarters[code][month],reader.manifest.regional.states?.[code]?.[month]].filter(Boolean)){
     for(const dep of p.endsWith('.parts.json')?partitionDependencies(p,reader.manifest.sources):[p])dependencies[dep]=reader.manifest.sources[dep];
    }
   }
-  session.check('region/'+code+'/'+month,dependencies,()=>{d.regionMonth(code,month);r.regionMonth(code,month);return {status:'PASS'};});months++;
+  // The identity file was hash-checked above; receipts survive appended numbers.
+  const region=d.table.regions.get(code);if(region.entry.identities!==r.table.regions.get(code).entry.identities)throw Error('Shared identity mismatch');
+  session.check('region/'+code+'/'+month,dependencies,()=>{d.regionMonth(code,month);r.regionMonth(code,month);return {status:'PASS'};},{identities:[{path:region.entry.identities,value:region.identity}]});months++;
  }session.flush();
  const result=Object.fromEntries([['daily',d],['rental',r]].map(([k,v])=>[k,{schema:3,regions:v.table.regions.size,files:Object.keys(v.manifest.sources).length,regionMonths:months,validation:session.stats,legacyCompatibility:false}]));verifiedPairs.clear();verifiedPairs.set(key,result);return result;
 }

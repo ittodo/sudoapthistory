@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,symlinkSync,renameSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,symlinkSync,renameSync,utimesSync} from 'node:fs';
 import {join,dirname,resolve,toNamespacedPath} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
@@ -146,4 +146,68 @@ test('validation output and ancestor directory links remain blocked',()=>fixture
  for(const variant of variants)for(const directory of [link,join(link,'nested/cache'),join(link,'cloudflare/dist/validation-cache-v1'),join(link,'_ops/validation-cache-v1')]){
   assert.throws(()=>new ValidationSession(variant(root),{directory:variant(directory),engine:'link-check'}),/Validation cache symlink|Private cache database link/);
  }
+}));
+
+test('identity tables reuse receipts only while the recorded prefix is unchanged',()=>fixture(root=>{
+ let calls=0;const verify=()=>{calls++;return {status:'PASS',rows:1};},path='data/daily/regions/11110/identities.json';
+ const base={complexes:['A','B'],areas:[[0,'59'],[1,'84']]},append=v=>({complexes:[...v.complexes,'C'],areas:[...v.areas,[2,'59']]});
+ const session=()=>new ValidationSession(root,{engine:'a'});
+ const run=(scope,value,{inputs={q:'one'},full=false}={})=>{const s=new ValidationSession(root,{engine:'a',full});s.check(scope,inputs,verify,{identities:[{path,value}]});s.flush();return s;};
+ const cases={changed:{complexes:['A','X'],areas:base.areas},reordered:{complexes:base.complexes,areas:[base.areas[1],base.areas[0]]},inserted:{complexes:['A','Z','B'],areas:base.areas},shrunk:{complexes:['A'],areas:[[0,'59']]}};
+ for(const [scope,value]of Object.entries(cases)){
+  run(scope,base);const before=calls;
+  let s=run(scope,append(base));assert.equal(calls,before,'pure append reuses '+scope);assert.deepEqual(s.stats,{checked:0,reused:1});
+  s=run(scope,value);assert.equal(calls,before+1,scope+' requires a normal check');assert.equal(s.misses.identity,1);
+  const record=JSON.parse(readCache(s.file)).records[scope].identities[0];assert.deepEqual([record.path,record.nc,record.na],[path,value.complexes.length,value.areas.length]);
+ }
+ // Changed quarter bytes still miss even when the identity table only grew.
+ run('quarter',base);let s=run('quarter',append(base),{inputs:{q:'two'}});assert.equal(s.stats.checked,1);assert.equal(s.misses.inputs,1);
+ s=run('quarter',append(base),{inputs:{q:'two'},full:true});assert.equal(s.misses.full,1);
+ // A rewritten prefix hash with a valid receipt digest is not trusted.
+ run('corrupt',base);const stored=JSON.parse(readCache(session().file));stored.records.corrupt.identities[0].prefixHash='0'.repeat(64);stored.digest=hash(JSON.stringify(stored.records));writeCache(session().file,JSON.stringify(stored));
+ s=run('corrupt',append(base));assert.equal(s.stats.checked,1);assert.equal(s.misses.identity,1);
+ // Receipts recorded with an identity condition are not reused without one, and vice versa.
+ run('mode',base);s=session();s.check('mode',{q:'one'},verify);assert.equal(s.stats.checked,1);assert.equal(s.misses.inputs,1);
+ s=session();s.check('plain',{q:'one'},verify);s.flush();s=session();s.check('plain',{q:'one'},verify,{identities:[{path,value:base}]});assert.equal(s.misses.inputs,1);
+ assert.throws(()=>session().check('both',{[path]:'hash'},verify,{identities:[{path,value:base}]}),/must not also be a receipt input/);
+ assert.throws(()=>session().check('bad',{},verify,{identities:[{path,value:{complexes:[]}}]}),/Invalid identity condition/);
+ assert.throws(()=>session().check('dup',{},verify,{identities:[{path,value:base},{path,value:base}]}),/Duplicate identity/);
+}));
+
+test('schema 1 receipts are not reused',()=>fixture(root=>{
+ const s=new ValidationSession(root,{engine:'a'});s.check('scope',{},()=>({status:'PASS'}));s.flush();
+ const stored=JSON.parse(readCache(s.file));stored.schema=1;writeCache(s.file,JSON.stringify(stored));
+ const next=new ValidationSession(root,{engine:'a'});assert.equal(next.cacheStatus,'invalid');next.check('scope',{},()=>({status:'PASS'}));assert.equal(next.stats.checked,1);
+}));
+
+import {beginHashScope,endHashScope,hashFile,readHashed,hashScopeStats,hashScopeOpen} from './file-hash-memo.mjs';
+test('hash memo reuses a digest only inside one scope and only for an unchanged file signature',()=>fixture(root=>{
+ const file=join(root,'a.bin'),other=join(root,'b.bin');writeFileSync(file,'one');writeFileSync(other,'two');
+ const old=new Date('2020-01-01T00:00:00Z'),age=p=>utimesSync(p,old,old);
+ assert.equal(hashScopeOpen(),false);assert.throws(()=>endHashScope(),/not open/);
+ beginHashScope();try{
+  // A just-written file has racy timestamps and is never memoized.
+  assert.equal(hashFile(file).racy,true);hashFile(file);assert.deepEqual([hashScopeStats.misses,hashScopeStats.hits,hashScopeStats.racy],[2,0,2]);
+  age(file);assert.equal(hashFile(file).digest,hash('one'));assert.equal(hashFile(file).digest,hash('one'));assert.deepEqual([hashScopeStats.misses,hashScopeStats.hits],[3,1]);
+  const read=readHashed(file);assert.equal(read.bytes.toString(),'one');assert.equal(hashScopeStats.misses,3);
+  // Same size, new bytes: the write sets a new mtime, so the old digest is never returned.
+  writeFileSync(file,'six');assert.equal(hashFile(file).digest,hash('six'));assert.equal(hashScopeStats.misses,4);
+  assert.throws(()=>hashFile(other,{onRead:p=>writeFileSync(p,'changed while hashing')}),/changed during hashing/);
+  assert.throws(()=>hashFile(root),/not a regular file/);
+ }finally{endHashScope();}
+ assert.equal(hashScopeOpen(),false);const misses=hashScopeStats.misses;hashFile(file);hashFile(file);assert.equal(hashScopeStats.misses,misses+2,'no memo outside a scope');
+}));
+
+test('manifest checks inside a hash scope still detect changed and mutated sources',()=>fixture(root=>{
+ mkdirSync(join(root,'data'));writeFileSync(join(root,'data/shared.bin'),'original');
+ for(const name of ['one','two'])writeFileSync(join(root,`data/${name}.json`),JSON.stringify({sources:{'data/shared.bin':hash('original')}}));
+ const old=new Date('2020-01-01T00:00:00Z');for(const name of ['shared.bin','one.json','two.json'])utimesSync(join(root,'data',name),old,old);
+ beginHashScope();try{
+  manifestDependencies(root,['data/one.json','data/two.json']);const hits=hashScopeStats.hits;
+  manifestDependencies(root,['data/one.json']);assert.ok(hashScopeStats.hits>hits,'second call uses the memo');
+  writeFileSync(join(root,'data/shared.bin'),'damaged!');assert.throws(()=>manifestDependencies(root,['data/one.json']),/source mismatch/);
+  writeFileSync(join(root,'data/shared.bin'),'original');
+  const stats=new Proxy({},{set(target,key,value){target[key]=value;if(key==='reads'&&value===3)writeFileSync(join(root,'data/shared.bin'),'changed!');return true;}});
+  assert.throws(()=>manifestDependencies(root,['data/one.json','data/two.json'],{stats}),/changed during validation/);
+ }finally{endHashScope();}
 }));

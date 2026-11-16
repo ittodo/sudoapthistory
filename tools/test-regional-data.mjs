@@ -23,3 +23,19 @@ test('quarter bases select only their month and reject missing or crossed quarte
 test('display ties follow numeric local slots without renumbering the authority',()=>{
  const values=structuredClone(payloads);values.a.complexes=Array.from({length:12},(_,i)=>'A'+i);values.m.complexes=values.a.complexes.map(id=>({id,n:'same',r:1}));values.n.complexes[0].n='same';const table=R.tables(descriptor,values,'daily'),physical=JSON.stringify(table.regions.get('11110').identity);assert.deepEqual(R.orderedComplexes(table).map(c=>c.key),[...Array.from({length:12},(_,i)=>'11110:'+i),'41110:0']);assert.equal(JSON.stringify(table.regions.get('11110').identity),physical);
 });
+
+// Validation receipts allow appended identity numbers (validation-session.mjs).
+// This holds only while decoding uses identity entries as lookups by number.
+import * as codec from '../js/generated/housing-columns.mjs';
+import {packQuarter,decodeQuarter,encodeQuarter} from '../js/housing-quarter.mjs';
+import {validateRows} from '../js/housing-validation.mjs';
+import {areaBits} from '../js/housing-partition.mjs';
+test('packed quarter decoding and row checks depend only on the identity prefix they reference',()=>{
+ const identity={complexes:['A'],areas:[[0,'59.1']]},grown={complexes:['A','B'],areas:[[0,'59.1'],[1,'84.1'],[0,'84.2']]},changed={complexes:['A'],areas:[[0,'59.2']]};
+ const sale=['11110:0',20260901,60000,null,0,null,null,null,null,1,'ab'.repeat(10),null],rental=['11110:0','59.1',20260902,100,2,0,3,0,null,null,null,null,null,101,0,null,null,'02'.repeat(10)];
+ const bytes=encodeQuarter(packQuarter('11110','2026-Q3',{'2026-09':{daily:{rows:[sale],updates:[]},rental:{rows:[rental],updates:[]}}},identity,codec)),scope={lawd:'11110',quarter:'2026-Q3'};
+ const decode=value=>{const month=decodeQuarter(bytes,value,codec,scope).month('2026-09');for(const kind of ['daily','rental'])validateRows({...month[kind],opening:[]},'11110',kind,value);return JSON.stringify(month,(_,v)=>typeof v==='bigint'?String(v):v);};
+ assert.equal(decode(grown),decode(identity));assert.equal(areaBits(sale,'daily',grown),areaBits(sale,'daily',identity));
+ // A changed referenced entry changes the decoded facts, so it must miss the receipt.
+ assert.notEqual(decode(changed),decode(identity));
+});

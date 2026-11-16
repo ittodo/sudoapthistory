@@ -1,12 +1,24 @@
-import {readFileSync,lstatSync} from 'node:fs';
+import {lstatSync} from 'node:fs';
 import {join} from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import * as codec from '../js/generated/housing-columns.mjs';
+import {hashFile,readHashed} from './file-hash-memo.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
+function archiveTarget(root,p){let target=root;for(const part of p.split('/')){if(!part||part==='..'||part==='.'||/[\\:]/.test(part))throw Error('Unsafe archive path');target=join(target,part);if(lstatSync(target).isSymbolicLink())throw Error('Linked contract archive');}return target;}
+function checkedArchiveFile(archive,p,value){if(value.size>20*1024*1024||value.digest!==archive.sources[p])throw Error('Contract archive digest/size mismatch');return value;}
+// Receipt inputs for a successful archive check: the complete archive descriptor
+// (sources, rows, regions and coverage refs) and the current hash of every source.
+// Each source is checked against its descriptor hash here, on every call.
+export function contractArchiveInputs(root,archive){
+ if(archive?.schema!==1||!archive.sources||typeof archive.sources!=='object')throw Error('Invalid contract archive version');
+ const inputs={archive:hash(JSON.stringify(archive))};
+ for(const p of Object.keys(archive.sources)){if(p==='archive')throw Error('Unsafe archive path');inputs[p]=checkedArchiveFile(archive,p,hashFile(archiveTarget(root,p))).digest;}
+ return inputs;
+}
 export function verifyContractArchive(root,archive){
  if(!archive)return null;if(archive.schema!==1)throw Error('Invalid contract archive version');let rows=0;const expected=new Set();
- const read=p=>{let target=root;for(const part of p.split('/')){if(!part||part==='..'||part==='.'||/[\\:]/.test(part))throw Error('Unsafe archive path');target=join(target,part);if(lstatSync(target).isSymbolicLink())throw Error('Linked contract archive');}const bytes=readFileSync(target);if(bytes.length>20*1024*1024||hash(bytes)!==archive.sources[p])throw Error('Contract archive digest/size mismatch');expected.add(p);return gunzipSync(bytes);};
+ const read=p=>{const value=checkedArchiveFile(archive,p,readHashed(archiveTarget(root,p)));expected.add(p);return gunzipSync(value.bytes);};
  for(const[code,path]of Object.entries(archive.regions)){if(!/^\d{5}$/.test(code)||path!==`data/contracts/apartment-rent/${code}/archive-details.bin`)throw Error('Invalid contract archive scope');rows+=codec.openColumns(codec.schemas.ContractDetail,read(path)).rowCount;}
  const coverage=archive.coverageRef;if(coverage?.path!=='data/contracts/apartment-rent/coverage.bin'||coverage.sha256!==archive.sources[coverage.path])throw Error('Invalid archive coverage');JSON.parse(read(coverage.path));
  for(const [service,ref]of Object.entries(archive.coverageServices??{})){if(service!=='rowhouse-rent'||ref.path!=='data/contracts/'+service+'/coverage.bin'||ref.sha256!==archive.sources[ref.path])throw Error('Invalid typed archive coverage');JSON.parse(read(ref.path));}

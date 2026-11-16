@@ -89,3 +89,10 @@ test('pool output and ancestor directory links remain blocked',()=>fixture(async
   await assert.rejects(rebuildRecordPoolsFast('unused',directory,{readers}),/(?:Pool directory|Private cache database) link/);
  }
 }));
+
+test('final input pass asks readers for a signature-only recheck after output bytes are hashed',()=>fixture(async({output,readers,run})=>{
+ run();const requests=[];for(const reader of Object.values(readers))reader.recheck=options=>requests.push(options);
+ await rebuildRecordPoolsFast('unused',output,{readers});assert.deepEqual(requests,[{content:false},{content:false}]);
+ for(const reader of Object.values(readers))reader.recheck=()=>{throw Error('Regional source changed during build: x');};
+ await assert.rejects(rebuildRecordPoolsFast('unused',output,{readers}),/changed during build/);
+}));

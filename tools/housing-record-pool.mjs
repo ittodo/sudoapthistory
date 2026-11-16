@@ -15,7 +15,7 @@ function safeDirectory(path){for(let p=resolve(path);;){if(existsSync(p)&&lstatS
 export function rebuildRecordPools(site,output,{codes=null,full=process.env.NODO_FULL_VERIFY==='1',readers=null,outputChecks=null,onProgress=null}={}){
  const started=performance.now(),d=readers?.daily??regionalReader(site,'daily'),r=readers?.rental??regionalReader(site,'rental');
  if(d.manifest.schema!==3||r.manifest.schema!==3)throw Error('Packed source required');
- const engine=hash(['./housing-record-pool.mjs','./regional-reader.mjs','./housing-regional-reader.mjs','../js/regional-data.js','../js/housing-validation.mjs','../js/housing-quarter.mjs','../js/housing-facts.mjs','../js/housing-state-timeline.mjs','../js/housing-partition.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
+ const engine=hash(['./housing-record-pool.mjs','./regional-reader.mjs','./file-hash-memo.mjs','./housing-regional-reader.mjs','../js/regional-data.js','../js/housing-validation.mjs','../js/housing-quarter.mjs','../js/housing-facts.mjs','../js/housing-state-timeline.mjs','../js/housing-partition.mjs','../js/generated/housing-columns.mjs'].map(p=>hash(readFileSync(new URL(p,import.meta.url)))).join('|'));
  safeDirectory(output);const all={},metrics=[];
  for(const code of codes??[...d.table.regions.keys()].sort()){
   if(!/^\d{5}$/.test(code)||!d.table.regions.has(code)||!r.table.regions.has(code))throw Error('Unknown pool region');
@@ -86,7 +86,9 @@ export async function rebuildRecordPoolsFast(site,output,options={}){
  }});checkpoint('build');
  const current=poolRows(output,codes),changed=current.filter(([code,name,digest])=>!outputChecks.valid(code,name,digest)),final=await verifyPoolFiles(output,changed);
  if(current.some(([code,name,digest])=>!outputChecks.valid(code,name,digest)&&!final.valid(code,name,digest)))throw Error('Pool output changed during build');
- for(const reader of Object.values(readers))reader.recheck?.();checkpoint('finalBytes');
+ // Output bytes changed in this run were hashed above. Inputs were hashed when read;
+ // this final pass compares their strengthened file signatures only.
+ for(const reader of Object.values(readers))reader.recheck?.({content:false});checkpoint('finalBytes');
  result.timings=timings;result.parallelOutputChecks={files:rows.length,finalFiles:changed.length,reusedFinalChecks:current.length-changed.length,threads:outputChecks.threads};result.seconds=(performance.now()-begin)/1000;return result;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){const[site,output]=process.argv.slice(2);if(!site||!output)throw Error('SITE OUTPUT required');console.log(JSON.stringify(await rebuildRecordPoolsFast(site,output)));}
