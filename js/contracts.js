@@ -9,7 +9,17 @@
   let manifest, data = [], entity = params.get('entity') || '', page = 0, generation = 0, loaded = new Set(), requestedMonths = [];
   const cache = new Map();
   // One pending download per bundle file, shared by its months and kept for later views.
-  const bundles = new Map();
+  // At most 12 bundles stay in memory; the least recently used one leaves first.
+  const bundles = new Map(), BUNDLE_LIMIT = 12;
+  let manifestRefreshed = false;
+  function bundle(name) {
+    let pending = bundles.get(name);
+    if (pending) { bundles.delete(name); bundles.set(name, pending); return pending; }
+    pending = read(name).catch(error => { if (bundles.get(name) === pending) bundles.delete(name); throw error; });
+    bundles.set(name, pending);
+    while (bundles.size > BUNDLE_LIMIT) bundles.delete(bundles.keys().next().value);
+    return pending;
+  }
   let apartmentLookup = {},aptSearch,sharedContracts;
   const stateFields=['property','category','district','period','search','area'];
   window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('nodo:contracts',JSON.stringify({values:Object.fromEntries(stateFields.map(id=>[id,$(id).value])),entity,page}));}catch{}});
@@ -92,14 +102,14 @@
     const failures=[];
     // Four simultaneous shard downloads, bounded independently of history length.
     const queue=[...parts];
-    const collected=[];
+    const collected=[];let stale=false;
     await Promise.all(Array.from({length:4},async()=>{
       while(queue.length&&token===generation){const p=queue.shift();try{
         // Officetel months name their regional bundle. Months of one bundle share one download.
         if(typeof p.bundle==='string'){
-          if(!bundles.has(p.bundle))bundles.set(p.bundle,read(p.bundle).catch(error=>{bundles.delete(p.bundle);throw error;}));
-          const rows=(await bundles.get(p.bundle)).months?.[p.month];
-          if(!Array.isArray(rows)||rows.length!==p.count)throw new Error('Contract bundle mismatch');
+          const rows=(await bundle(p.bundle)).months?.[p.month];
+          // A bundle newer or older than the index: drop it and read the index again once.
+          if(!Array.isArray(rows)||rows.length!==p.count){bundles.delete(p.bundle);stale=true;throw new Error('Contract bundle mismatch');}
           collected.push([p,rows]);continue;
         }
         // path:null without a bundle marks a collected month with zero rows.
@@ -109,6 +119,7 @@
       }catch{failures.push(p.month);}}
     }));
     if(token!==generation)return;
+    if(stale&&!manifestRefreshed){manifestRefreshed=true;try{manifest=await read('index.json');}catch{}if(token===generation)return load();return;}
     for(const [p,rows] of collected){data.push(...rows);loaded.add(p.month);}
     // Expose missing recent months as missing, never as zero transactions.
     for(const m of requestedMonths)if(!loaded.has(m)) failures.push(m);

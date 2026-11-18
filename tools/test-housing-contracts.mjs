@@ -36,13 +36,13 @@ import{createContractReader}from'../js/housing-contracts.mjs';
 test('browser contract reader restores typed references and rejects service path substitution',async()=>{const id='trh_00000000000000000000000000000001',rawRow={...raw,aptSeq:'',entityId:id,property:'rowhouse'},table={complexes:{'11110:0':{id}}},v=packContractDetails([rawRow],[f],table,codec),prefix='data/contracts/rowhouse-rent/11110/',p={service:'rowhouse-rent',lawd:'11110',month:'202609',path:'rowhouse-rent/11110/202609.bin',format:'regional-reference',count:1,regionCodes:['11110'],details:prefix+'202609-details.bin',unmatched:null,display:prefix+'display.json'},values=new Map([[p.details,v.details],[p.display,{dictionary:Object.values(v.display),refs:Object.fromEntries(Object.keys(v.display).map((k,i)=>[k,i]))}]]),r=createContractReader({schema:2,sources:{},rentalVersion:'v'}, {...table,version:'v',regionMonth:async()=>({rows:[f]})},async p=>values.get(p));const result=await r.read(p);const {recordIdentity,recordOccurrence,...rest}=result.rows[0];assert.deepEqual(rest,rawRow);await assert.rejects(r.read({...p,path:'other',details:p.details.replace('rowhouse-rent','apartment-rent')}),/path mismatch/);});
 import vm from'node:vm';import{readFileSync}from'node:fs';
 // Run the real contract page script against a minimal DOM. A path:null month must render as a loaded zero month.
-async function renderContracts(manifest,files,source=readFileSync(new URL('../js/contracts.js',import.meta.url),'utf8')){
+async function renderContracts(manifest,files,source=readFileSync(new URL('../js/contracts.js',import.meta.url),'utf8'),override=null){
  const elements=new Map(),fetched=[],node=()=>({value:'',textContent:'',children:[],options:[],disabled:false,selectedIndex:0,append(...c){this.children.push(...c);},replaceChildren(...c){this.children=c;this.options=c;},add(o){this.options.push(o);if(this.value==='')this.value=o.value;}});
  const $=id=>{if(!elements.has(id))elements.set(id,node());return elements.get(id);};$('period').value='recent';
  const text=e=>e.textContent+e.children.map(text).join('|');
  const context={URLSearchParams,window:{addEventListener(){}},document:{getElementById:$,createElement:node},location:{search:'?property=officetel&category=all-rent&lawd=11110'},sessionStorage:{getItem(){return null;},setItem(){}},performance:{getEntriesByType:()=>[]},Option:function(text,value){return{text,value};},
   NodoApartmentSearch:{bind:()=>({checkScope(){},reportCount(){},restore:async()=>{},clear(){}})},
-  fetch:async url=>{fetched.push(url);if(url==='/data/contracts/index.json')return{ok:true,json:async()=>structuredClone(manifest)};const name=url.slice('/data/contracts/'.length);return files.has(name)?{ok:true,json:async()=>JSON.parse(files.get(name))}:{ok:false};}};
+  fetch:async url=>{fetched.push(url);const replaced=override?.(url);if(replaced)return{ok:true,json:async()=>replaced};if(url==='/data/contracts/index.json')return{ok:true,json:async()=>structuredClone(manifest)};const name=url.slice('/data/contracts/'.length);return files.has(name)?{ok:true,json:async()=>JSON.parse(files.get(name))}:{ok:false};}};
  vm.runInNewContext(source,context);
  const settle=async()=>{for(let i=0;i<50;i++)await new Promise(r=>setImmediate(r));},view=()=>Object.fromEntries(['status','selection','rows','trend','page'].map(id=>[id,text($(id))]));
  await settle();
@@ -59,48 +59,66 @@ test('contract page renders a path:null month exactly like an empty month file w
  assert.equal(withFile.fetched.some(u=>u.includes(m1)),true);assert.equal(withNull.fetched.some(u=>u.includes(m1)),false);
 });
 import{officetelState,officetelPartition,writeOfficetelBundles}from'./build-housing-details.mjs';import{execFileSync}from'node:child_process';
-// Build stage 1 (bundles + month files) and stage 2 (bundles only) from month files with the real
-// generator helpers. Stage 3 is the next stage 2 run that retains from stage 2 bundles.
-function officetelStages(root,months,rowsFor,queryStartMonth){
+// Run the real generator helpers over consecutive nights. Each night has its own months and rows,
+// so the stage 1 -> stage 2 transition sees added, changed, 0->n and new months.
+function officetelNights(root,queryStartMonth,nights){
  const hash=b=>createHash('sha256').update(b).digest('hex'),write=(dir,p,b)=>{mkdirSync(dirname(join(dir,p)),{recursive:true});writeFileSync(join(dir,p),b);return hash(b);};
- const part=m=>({service:'officetel-rent',lawd:'11110',month:m,count:rowsFor(m).length,checkedAt:'2026-11-17T00:00:00Z',path:`officetel-rent/11110/${m}.json`});
- const monthFile=m=>Buffer.from(JSON.stringify({rows:rowsFor(m)})),current=months.filter(m=>m>=queryStartMonth);
- const stage0={schema:2,queryStartMonth,districts:{'11110':['서울','종로구']},sources:{},partitions:months.map(part)};
- const files0=new Map(months.map(m=>[part(m).path,monthFile(m).toString()]));
- for(const m of months)stage0.sources['data/contracts/'+part(m).path]=write(join(root,'stage0'),'data/contracts/'+part(m).path,monthFile(m));write(join(root,'stage0'),'data/contracts/index.json',JSON.stringify(stage0));
- const build=(prior,out,monthFiles)=>{
-  const state=officetelState({monthFiles}),retired={},emitted=new Map(),manifest={schema:2,queryStartMonth,districts:stage0.districts,sources:{},partitions:[]},emit=(p,b)=>{emitted.set(p,b);manifest.sources[p]=hash(b);};
-  for(const m of current)manifest.partitions.push(officetelPartition(part(m),monthFile(m),state,manifest.sources,retired));
-  // Current month files come from the generated source; a stage 2 run retires them.
-  if(monthFiles)for(const m of current)emitted.set('data/contracts/'+part(m).path,monthFile(m));
-  const retained=retainUnconvertedContracts(prior,manifest,emit,retired,state);writeOfficetelBundles(manifest,state,emit);
-  for(const[p,b]of emitted)write(out,p,b);write(out,'data/contracts/index.json',JSON.stringify(manifest));
-  return {manifest,files:new Map([...emitted].map(([p,b])=>[p.slice('data/contracts/'.length),b.toString()])),retired,state,retained};
- };
- const stage1=build(join(root,'stage0'),join(root,'stage1'),true),stage2=build(join(root,'stage1'),join(root,'stage2'),false),stage3=build(join(root,'stage2'),join(root,'stage3'),false);
- return {stage0:{manifest:stage0,files:files0},stage1,stage2,stage3};
+ const part=(m,rows)=>({service:'officetel-rent',lawd:'11110',month:m,count:rows.length,checkedAt:'2026-11-17T00:00:00Z',path:`officetel-rent/11110/${m}.json`});
+ // The exporter writes floats such as 24.0; bundles must keep that text exactly.
+ const monthFile=rows=>Buffer.from('{"rows":['+rows.map(r=>JSON.stringify(r).replace(/"area":(\d+)([,}])/,'"area":$1.0$2')).join(',')+']}');
+ const plain=(night)=>{const manifest={schema:2,queryStartMonth,districts:{'11110':['서울','종로구']},sources:{},partitions:[]},files=new Map();for(const m of night.months){const rows=night.rowsFor(m),p=part(m,rows);manifest.partitions.push(p);files.set(p.path,monthFile(rows).toString());}return {manifest,files};};
+ const first=plain(nights[0]),out=[{...first,night:nights[0]}];let previous=join(root,'night0');
+ for(const[p,b]of first.files)first.manifest.sources['data/contracts/'+p]=write(previous,'data/contracts/'+p,b);write(previous,'data/contracts/index.json',JSON.stringify(first.manifest));
+ nights.slice(1).forEach((night,i)=>{
+  const dir=join(root,'night'+(i+1)),state=officetelState({monthFiles:night.monthFiles}),retired={},emitted=new Map(),manifest={schema:2,queryStartMonth,districts:first.manifest.districts,sources:{},partitions:[]},emit=(p,b)=>{emitted.set(p,b);manifest.sources[p]=hash(b);};
+  const current=night.months.filter(m=>m>=queryStartMonth);
+  for(const m of current){const b=monthFile(night.rowsFor(m));manifest.partitions.push(officetelPartition(part(m,night.rowsFor(m)),b,state,manifest.sources,retired));if(night.monthFiles)emitted.set('data/contracts/'+part(m,[]).path,b);}
+  const retained=retainUnconvertedContracts(previous,manifest,emit,retired,state);writeOfficetelBundles(manifest,state,emit);
+  for(const[p,b]of emitted)write(dir,p,b);write(dir,'data/contracts/index.json',JSON.stringify(manifest));
+  out.push({manifest,files:new Map([...emitted].map(([p,b])=>[p.slice('data/contracts/'.length),b.toString()])),retired,state,retained,night,previous});previous=dir;
+ });
+ return {out,plain,monthFile};
 }
-test('officetel bundles render identically to month files in both stages and are fetched once per page',async()=>{
+test('officetel bundles follow changing months through stage 1, the stage 2 transition and later nights',async()=>{
  const root=mkdtempSync(join(tmpdir(),'housing-retention-'));try{
-  const now=new Date(),ym=i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;},months=Array.from({length:14},(_,i)=>ym(13-i));
-  const rowsFor=m=>Array.from({length:Number(m.slice(4))%3},(_,i)=>({date:`${m.slice(0,4)}-${m.slice(4)}-0${i+1}`,area:24.5+i,category:i%2?'monthly':'jeonse',kind:'rent',deposit:100+i,monthlyRent:i?50:0,entityId:'off-'+i,name:'오피스텔'+i,dong:'동',jibun:'1',property:'officetel'}));
-  const st=officetelStages(root,months,rowsFor,ym(11)),monthPath=m=>`data/contracts/officetel-rent/11110/${m}.json`;
-  assert.deepEqual(Object.keys(st.stage1.retired),[]);assert.ok(st.stage1.manifest.partitions.every(p=>p.path&&p.bundle));
-  assert.deepEqual(Object.keys(st.stage2.retired).sort(),months.filter(m=>m>=ym(11)).map(monthPath).sort());
-  assert.deepEqual(Object.keys(st.stage2.state.bundled).sort(),months.map(monthPath).sort());
-  assert.deepEqual(Object.keys(st.stage2.retained.superseded).sort(),months.filter(m=>m>=ym(11)).map(monthPath).sort());
-  assert.ok(st.stage2.manifest.partitions.every(p=>p.path===null&&p.bundle));assert.equal([...st.stage2.files.keys()].some(p=>/\/\d{6}\.json$/.test(p)),false);
-  assert.deepEqual(st.stage3.manifest,st.stage2.manifest,'stage 2 retains itself from its own bundles');assert.deepEqual([...st.stage3.files],[...st.stage2.files]);
-  const years=[...new Set(months.filter(m=>m<ym(11)).map(m=>m.slice(0,4)))],views={};
-  for(const[name,{manifest,files}]of Object.entries(st)){const page=await renderContracts(manifest,files);views[name]={recent:page.view,fetched:[...page.fetched],years:[]};for(const y of years)views[name].years.push(await page.period(y));views[name].all=page.fetched;}
-  for(const name of ['stage1','stage2','stage3']){assert.deepEqual(views[name].recent,views.stage0.recent,name);assert.deepEqual(views[name].years,views.stage0.years,name);}
-  assert.match(views.stage0.recent.status,/12개월 자료/);assert.equal(views.stage0.fetched.filter(u=>/\/\d{6}\.json$/.test(u)).length,12);
-  for(const name of ['stage1','stage2']){
-   assert.deepEqual(views[name].fetched.filter(u=>u.startsWith('/data/contracts/')&&u!=='/data/contracts/index.json'),['/data/contracts/officetel-rent/11110/recent.json'],name);
-   const bundles=views[name].all.filter(u=>/\/(recent|\d{4})\.json$/.test(u));assert.equal(new Set(bundles).size,bundles.length,name+' fetches each bundle once');
+  const now=new Date(),ym=i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;},start=ym(11);
+  const row=(m,i,extra={})=>({area:24+i,category:i%2?'monthly':'jeonse',date:`${m.slice(0,4)}-${m.slice(4)}-0${i+1}`,deposit:100+i,dong:'동',entityId:'off-'+i,jibun:'1',kind:'rent',monthlyRent:i?50:0,name:'오피스텔'+i,property:'officetel',...extra});
+  const base=m=>Array.from({length:Number(m.slice(4))%3},(_,i)=>row(m,i));
+  const older=Array.from({length:13},(_,i)=>ym(13-i)),all=[...older,ym(0)];
+  // Night 1 adds a row to ym(1); night 2 (stage 2 transition) changes a row in ym(2), fills an empty
+  // month 0->n and adds the new month ym(0); night 3 adds another row while month files are gone.
+  const emptyMonth=older.find(m=>m>=start&&!base(m).length);
+  const v1=m=>m===ym(1)?[...base(m),row(m,4)]:base(m);
+  const v2=m=>m===ym(2)?base(m).map((r,i)=>i?r:{...r,deposit:999}):m===emptyMonth?[row(m,5)]:m===ym(0)?[row(m,0)]:v1(m);
+  const v3=m=>m===ym(0)?[row(m,0),row(m,1)]:v2(m);
+  const {out,plain}=officetelNights(root,start,[{months:older,rowsFor:base},{months:older,rowsFor:v1,monthFiles:true},{months:all,rowsFor:v2,monthFiles:false},{months:all,rowsFor:v3,monthFiles:false}]);
+  const[,s1,s2,s3]=out,monthPath=m=>`data/contracts/officetel-rent/11110/${m}.json`,committed=older.map(monthPath).sort();
+  assert.ok(s1.manifest.partitions.every(p=>p.path&&p.bundle));assert.deepEqual(Object.keys(s1.retired),[]);
+  assert.ok(s2.manifest.partitions.every(p=>p.path===null&&p.bundle));assert.equal([...s2.files.keys()].some(p=>/\/\d{6}\.json$/.test(p)),false);
+  // Every committed month file is retired once: current ones superseded by the regenerated month, expired ones bundled as they were.
+  assert.deepEqual(Object.keys(s2.state.bundled).filter(p=>committed.includes(p)).sort(),committed);assert.deepEqual(Object.keys(s2.retained.superseded).sort(),older.filter(m=>m>=start).map(monthPath).sort());
+  // bundledContracts names the exact month bytes each bundle month reproduces.
+  const bundleText=name=>s2.files.get(name),{officetelBundleMonths:split}=await import('./build-housing-details.mjs');
+  for(const m of all){const months=split(Buffer.from(bundleText(m<start?`officetel-rent/11110/${m.slice(0,4)}.json`:'officetel-rent/11110/recent.json'))),bytes=Buffer.from('{"rows":'+months.get(m)+'}');assert.equal(createHash('sha256').update(bytes).digest('hex'),s2.state.bundled[monthPath(m)],m);assert.match(months.get(m),m===ym(0)?/"area":24\.0/:/^\[/);}
+  for(const[i,s]of[[1,s1],[2,s2],[3,s3]]){
+   const expected=plain(s.night),page=await renderContracts(s.manifest,s.files),baseline=await renderContracts(expected.manifest,expected.files);
+   assert.deepEqual(page.view,baseline.view,'night '+i);assert.notDeepEqual(page.view,(await renderContracts(plain(out[i-1].night).manifest,plain(out[i-1].night).files)).view,'night '+i+' changed data');
+   const years=[...new Set(older.filter(m=>m<start).map(m=>m.slice(0,4)))];for(const y of years)assert.deepEqual(await page.period(y),await baseline.period(y),'night '+i+' year '+y);
+   const bundles=page.fetched.filter(u=>/\/(recent|\d{4})\.json$/.test(u));assert.equal(new Set(bundles).size,bundles.length,'night '+i+' fetches each bundle once');
   }
+  assert.deepEqual((await renderContracts(s1.manifest,s1.files)).fetched.filter(u=>u.startsWith('/data/contracts/')&&u!=='/data/contracts/index.json'),['/data/contracts/officetel-rent/11110/recent.json']);
   // The page script before bundles reads the stage 1 month files and renders the same data.
   const oldScript=execFileSync('git',['show','fca6591a7:js/contracts.js'],{cwd:new URL('..',import.meta.url)}).toString();
-  assert.deepEqual((await renderContracts(st.stage1.manifest,st.stage1.files,oldScript)).view,views.stage0.recent);
+  assert.deepEqual((await renderContracts(s1.manifest,s1.files,oldScript)).view,(await renderContracts(plain(s1.night).manifest,plain(s1.night).files)).view);
+  // A bundle whose month count disagrees with the index is dropped, the index is read again and the page recovers.
+  const stale=structuredClone(s3.manifest),target=stale.partitions.find(p=>p.month===ym(0));target.count=1;let reads=0;
+  const recovered=await renderContracts(stale,s3.files,undefined,url=>url==='/data/contracts/index.json'&&reads++?structuredClone(s3.manifest):null);
+  assert.deepEqual(recovered.view,(await renderContracts(s3.manifest,s3.files)).view);
  }finally{const target=realpathSync(root),parent=realpathSync(tmpdir());if(!target.startsWith(parent+sep)||!target.slice(parent.length+1).startsWith('housing-retention-'))throw Error('Unsafe test cleanup');rmSync(target,{recursive:true,force:true});}
+});
+test('officetel bundle months split back to their exact month texts',async()=>{
+ const{officetelBundleMonths:split}=await import('./build-housing-details.mjs');
+ const months=split(Buffer.from('{"schema":1,"months":{"202606":[{"a":"]}\\"[","b":38.0}],"202607":[]}}'));
+ assert.deepEqual([...months],[['202606','[{"a":"]}\\"[","b":38.0}]'],['202607','[]']]);
+ for(const bad of ['{"schema":1,"months":{"20260":[]}}','{"schema":1,"months":{"202606":[}}','{"schema":2,"months":{}}','{"schema":1,"months":{"202606":[]} }'])assert.throws(()=>split(Buffer.from(bad)),/framing|JSON/);
 });

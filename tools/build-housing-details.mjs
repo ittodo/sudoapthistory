@@ -15,42 +15,66 @@ const officetelScope=p=>[p.service,p.lawd,p.month].join('|');
 export const partitionOrder=p=>p.path??`${p.service}/${p.lawd}/${p.month}.json`;
 export function officetelRows(p,rows){
  if(!Array.isArray(rows)||rows.length!==p.count||rows.some(r=>typeof r?.date!=='string'||r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Officetel contract month mismatch');
- // Bundles are re-serialized by JavaScript. Refuse integers that a Number cannot hold exactly.
- for(const row of rows)for(const value of Object.values(row))if(typeof value==='number'&&Number.isInteger(value)&&!Number.isSafeInteger(value))throw Error('Unsafe officetel contract integer');
  return rows;
 }
+// A bundle keeps each month's row array text exactly as its month file holds it. The release
+// check rebuilds the month file bytes ({"rows":<text>}) from the bundle and compares hashes.
+const MONTH_PREFIX='{"rows":',BUNDLE_PREFIX='{"schema":1,"months":{';
+export function officetelMonthText(p,b){
+ const text=b.toString('utf8');if(!text.startsWith(MONTH_PREFIX+'[')||!text.endsWith(']}'))throw Error('Officetel contract month framing');
+ const rows=text.slice(MONTH_PREFIX.length,-1);officetelRows(p,JSON.parse(rows));return rows;
+}
+// Split a bundle written by writeOfficetelBundles into its exact month array texts.
+export function officetelBundleMonths(b){
+ const text=b.toString('utf8'),months=new Map(),bad=()=>Error('Officetel bundle framing');
+ if(!text.startsWith(BUNDLE_PREFIX)||!text.endsWith('}}'))throw bad();
+ let i=BUNDLE_PREFIX.length;
+ while(i<text.length-2){
+  if(months.size){if(text[i]!==',')throw bad();i++;}
+  const key=text.slice(i,i+9);if(!/^"\d{6}":$/.test(key)||text[i+9]!=='[')throw bad();i+=9;
+  let j=i,depth=0,quoted=false;
+  for(;j<text.length;j++){const c=text[j];if(quoted){if(c==='\\')j++;else if(c==='"')quoted=false;}else if(c==='"')quoted=true;else if(c==='['||c==='{')depth++;else if(c===']'||c==='}'){depth--;if(!depth){j++;break;}}}
+  if(depth)throw bad();months.set(key.slice(1,7),text.slice(i,j));i=j;
+ }
+ if(i!==text.length-2)throw bad();
+ const parsed=JSON.parse(text);if(parsed.schema!==1||Object.keys(parsed.months).length!==months.size)throw bad();
+ for(const[month,rows]of months)if(JSON.stringify(JSON.parse(rows))!==JSON.stringify(parsed.months[month]))throw bad();
+ return months;
+}
 export function officetelState({monthFiles=OFFICETEL_MONTH_FILES}={}){return {monthFiles,rows:new Map(),bundled:{}};}
-// A current-window month read from the generated source.
+// A current-window month read from the generated source. In stage 2 the generated month file is
+// retired and bundledContracts records the hash of the exact bytes that the bundle month reproduces.
 export function officetelPartition(p,b,state,sources,retired){
- const path='data/contracts/'+p.path;state.rows.set(officetelScope(p),officetelRows(p,JSON.parse(b).rows));
+ const path='data/contracts/'+p.path;state.rows.set(officetelScope(p),officetelMonthText(p,b));
  if(state.monthFiles){sources[path]=hash(b);return {...p};}
  retired[path]=hash(b);state.bundled[path]=hash(b);return {...p,path:null};
 }
 export function writeOfficetelBundles(manifest,state,emit){
  const start=manifest.queryStartMonth,groups=new Map();
  for(const p of manifest.partitions){
-  if(!officetelServices.includes(p.service))continue;const rows=state.rows.get(officetelScope(p));if(!rows)throw Error('Officetel contract rows missing');
+  if(!officetelServices.includes(p.service))continue;const rows=state.rows.get(officetelScope(p));if(typeof rows!=='string')throw Error('Officetel contract rows missing');
   const name=`${p.service}/${p.lawd}/${typeof start==='string'&&p.month<start?p.month.slice(0,4):'recent'}.json`;p.bundle=name;
-  if(!groups.has(name))groups.set(name,{});groups.get(name)[p.month]=rows;
+  if(!groups.has(name))groups.set(name,new Map());groups.get(name).set(p.month,rows);
  }
- for(const[name,months]of[...groups].sort(([a],[b])=>a.localeCompare(b,'en')))emit('data/contracts/'+name,Buffer.from(JSON.stringify({schema:1,months:Object.fromEntries(Object.entries(months).sort(([a],[b])=>a.localeCompare(b,'en')))})));
+ for(const[name,months]of[...groups].sort(([a],[b])=>a.localeCompare(b,'en')))emit('data/contracts/'+name,Buffer.from(BUNDLE_PREFIX+[...months].sort(([a],[b])=>a.localeCompare(b,'en')).map(([month,rows])=>`"${month}":${rows}`).join(',')+'}}'));
  return groups.size;
 }
 export function retainUnconvertedContracts(previous,manifest,emit,converted={},officetel=null){
  const inputs=new Map(),read=p=>{const b=readFileSync(join(previous,p));inputs.set(p,hash(b));return b;},prior=JSON.parse(read('data/contracts/index.json'));if(![1,2].includes(prior.schema))throw Error('Unsupported previous contract manifest');
  const scope=p=>[p.service,p.lawd,p.month].join('|'),present=new Map(),superseded={},supersededPartitions={};for(const p of manifest.partitions){if(present.has(scope(p)))throw Error('Duplicate generated contract scope');present.set(scope(p),p);}let files=0,bytes=0;
- const priorBundles=new Map(),priorBundle=name=>{if(!priorBundles.has(name)){const path='data/contracts/'+name,b=read(path);if(prior.schema!==2||prior.sources[path]!==hash(b))throw Error('Retained officetel bundle evidence mismatch');priorBundles.set(name,JSON.parse(b));}return priorBundles.get(name);};
+ const priorBundles=new Map(),priorBundle=name=>{if(!priorBundles.has(name)){const path='data/contracts/'+name,b=read(path);if(prior.schema!==2||prior.sources[path]!==hash(b))throw Error('Retained officetel bundle evidence mismatch');priorBundles.set(name,officetelBundleMonths(b));}return priorBundles.get(name);};
  for(const prior_ of prior.partitions){if(prior_.service==='apartment-rent'||prior_.format==='regional-reference')continue;const{bundle,...p}=prior_;const replacement=present.get(scope(p));if(replacement?.path===p.path)continue;
   if(officetel&&officetelServices.includes(p.service)&&p.path===null){
    if(replacement)continue;
    if(typeof bundle!=='string'||bundle!==`${p.service}/${p.lawd}/${bundle.split('/')[2]}`||!/^(recent|\d{4})\.json$/.test(bundle.split('/')[2]||'')||!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month))throw Error('Unsafe retained officetel partition');
-   officetel.rows.set(scope(p),officetelRows(p,priorBundle(bundle).months?.[p.month]));manifest.partitions.push(p);present.set(scope(p),p);continue;
+   const rows=priorBundle(bundle).get(p.month);if(typeof rows!=='string')throw Error('Retained officetel bundle month missing');officetelRows(p,JSON.parse(rows));
+   officetel.rows.set(scope(p),rows);manifest.partitions.push(p);present.set(scope(p),p);continue;
   }
   if(!['rowhouse-rent','officetel-sale','officetel-rent'].includes(p.service)||!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month)||p.path!==`${p.service}/${p.lawd}/${p.month}.json`)throw Error('Unsafe retained contract partition');
   const path='data/contracts/'+p.path,b=read(path),value=JSON.parse(b);if((prior.schema===2&&prior.sources[path]!==hash(b))||value.rows.length!==p.count||value.rows.some(r=>r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Retained contract evidence mismatch');
   if(officetel&&officetelServices.includes(p.service)){
-   if(replacement){if(replacement.path!==null||replacement.count!==p.count||converted[path]!==hash(b))throw Error('Officetel supersession lacks exact source evidence');superseded[path]=hash(b);supersededPartitions[path]=replacement;continue;}
-   officetel.rows.set(scope(p),officetelRows(p,value.rows));
+   if(replacement){if(replacement.path!==null||typeof converted[path]!=='string'||typeof officetel.bundled[path]!=='string')throw Error('Officetel supersession lacks current source evidence');superseded[path]=hash(b);supersededPartitions[path]=replacement;continue;}
+   officetel.rows.set(scope(p),officetelMonthText(p,b));
    if(!officetel.monthFiles){const kept={...p,path:null};manifest.partitions.push(kept);present.set(scope(p),kept);officetel.bundled[path]=hash(b);continue;}
   }
   if(replacement){if(p.service!=='rowhouse-rent'||replacement.format!=='regional-reference'||replacement.path!==p.path.replace('.json','.bin')||replacement.count!==p.count||converted[path]!==hash(b))throw Error('Contract supersession lacks exact converted source evidence');superseded[path]=hash(b);supersededPartitions[path]=replacement;continue;}
