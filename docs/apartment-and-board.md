@@ -62,7 +62,11 @@
   유형을 아파트로 바꾸지 않는다.
 - 월별 계약 목록은 `apartment-rent`와 `rowhouse-rent`를 각각의 경로와 캐시 키로
   구분한다. 공통 거래에 연결된 행은 참조 BIN과 표시 사전으로 복원한다. 그 밖의
-  계약은 unmatched BIN에 원문 필드를 보존한다. 오피스텔 계약은 기존 JSON을 유지한다.
+  계약은 unmatched BIN에 원문 필드를 보존한다. 오피스텔 계약은 지역별 묶음 JSON으로 읽는다. 계약 index의 각 월 항목은
+  `bundle`(`<service>/<lawd>/recent.json` 또는 `<service>/<lawd>/<연도>.json`)을 가진다. 화면은 묶음을
+  한 번 받아 월별 행(`months[YYYYMM]`)을 쓴다. 묶음은 최근 사용한 12개까지 메모리에 둔다. 건수가 index와
+  다르면 그 묶음을 버리고 index를 한 번 다시 읽어 재시도하며, 그래도 다르면 그 월을 실패로 표시한다.
+  월 JSON은 구 화면 호환을 위해 승인된 폐기 전까지 함께 공개한다([저장 계약](../../15_26/docs/housing-packed-storage.md#오피스텔-계약-묶음)).
 - 수집 범위는 `contractArchive.sourceServices`로 실제 임대 서비스를 찾는다.
   아파트는 `coverageRef`, 연립·다세대는 `coverageServices['rowhouse-rent']`를 읽는다.
   여러 서비스가 연결된 단지는 필요한 서비스 모두 수집된 달만 완료로 표시한다.
