@@ -58,7 +58,7 @@ test('contract page renders a path:null month exactly like an empty month file w
  assert.deepEqual(withNull.view,withFile.view);assert.match(withFile.view.status,/3개월 자료/);
  assert.equal(withFile.fetched.some(u=>u.includes(m1)),true);assert.equal(withNull.fetched.some(u=>u.includes(m1)),false);
 });
-import{officetelState,officetelPartition,writeOfficetelBundles}from'./build-housing-details.mjs';import{execFileSync}from'node:child_process';
+import{officetelState,officetelPartition,writeOfficetelBundles}from'./build-housing-details.mjs';
 // Run the real generator helpers over consecutive nights. Each night has its own months and rows,
 // so the stage 1 -> stage 2 transition sees added, changed, 0->n and new months.
 function officetelNights(root,queryStartMonth,nights){
@@ -108,7 +108,7 @@ test('officetel bundles follow changing months through stage 1, the stage 2 tran
   }
   assert.deepEqual((await renderContracts(s1.manifest,s1.files)).fetched.filter(u=>u.startsWith('/data/contracts/')&&u!=='/data/contracts/index.json'),['/data/contracts/officetel-rent/11110/recent.json']);
   // The page script before bundles reads the stage 1 month files and renders the same data.
-  const oldScript=execFileSync('git',['show','fca6591a7:js/contracts.js'],{cwd:new URL('..',import.meta.url)}).toString();
+  const oldScript=readFileSync(new URL('./fixtures/contracts-before-bundles.js',import.meta.url),'utf8');
   assert.deepEqual((await renderContracts(s1.manifest,s1.files,oldScript)).view,(await renderContracts(plain(s1.night).manifest,plain(s1.night).files)).view);
   // A bundle whose month count disagrees with the index is dropped, the index is read again and the page recovers.
   const stale=structuredClone(s3.manifest),target=stale.partitions.find(p=>p.month===ym(0));target.count=1;let reads=0;
