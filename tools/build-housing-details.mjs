@@ -4,16 +4,59 @@ import{detailMemo,detailEngine,detailDependencies,detailIdentity}from'./housing-
 import{readFileSync,writeFileSync,mkdirSync,realpathSync,lstatSync}from'node:fs';import{resolve,join,dirname,sep}from'node:path';import{gzipSync,gunzipSync}from'node:zlib';import{createHash}from'node:crypto';import{pathToFileURL}from'node:url';import assert from'node:assert/strict';
 import{regionalReader}from'./regional-reader.mjs';import{packContractDetails,restoreDetails,contractDisplay}from'../js/housing-contract-detail.mjs';import*as codec from'../js/generated/housing-columns.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex'),canonical=r=>JSON.stringify(Object.fromEntries(Object.keys(r).sort().map(k=>[k,r[k]])));
-export function retainUnconvertedContracts(previous,manifest,emit,converted={}){
+// Officetel contract months are also published as one bundle per service and region:
+// <service>/<lawd>/recent.json holds the current query window, <service>/<lawd>/<YYYY>.json
+// holds retained months before queryStartMonth. Each index partition names its bundle.
+// Stage 1 keeps the month files for old clients. Stage 2 sets this to false: the month
+// files are retired and their partitions keep path:null with the bundle.
+export const OFFICETEL_MONTH_FILES=true;
+export const officetelServices=['officetel-sale','officetel-rent'];
+const officetelScope=p=>[p.service,p.lawd,p.month].join('|');
+export const partitionOrder=p=>p.path??`${p.service}/${p.lawd}/${p.month}.json`;
+export function officetelRows(p,rows){
+ if(!Array.isArray(rows)||rows.length!==p.count||rows.some(r=>typeof r?.date!=='string'||r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Officetel contract month mismatch');
+ // Bundles are re-serialized by JavaScript. Refuse integers that a Number cannot hold exactly.
+ for(const row of rows)for(const value of Object.values(row))if(typeof value==='number'&&Number.isInteger(value)&&!Number.isSafeInteger(value))throw Error('Unsafe officetel contract integer');
+ return rows;
+}
+export function officetelState({monthFiles=OFFICETEL_MONTH_FILES}={}){return {monthFiles,rows:new Map(),bundled:{}};}
+// A current-window month read from the generated source.
+export function officetelPartition(p,b,state,sources,retired){
+ const path='data/contracts/'+p.path;state.rows.set(officetelScope(p),officetelRows(p,JSON.parse(b).rows));
+ if(state.monthFiles){sources[path]=hash(b);return {...p};}
+ retired[path]=hash(b);state.bundled[path]=hash(b);return {...p,path:null};
+}
+export function writeOfficetelBundles(manifest,state,emit){
+ const start=manifest.queryStartMonth,groups=new Map();
+ for(const p of manifest.partitions){
+  if(!officetelServices.includes(p.service))continue;const rows=state.rows.get(officetelScope(p));if(!rows)throw Error('Officetel contract rows missing');
+  const name=`${p.service}/${p.lawd}/${typeof start==='string'&&p.month<start?p.month.slice(0,4):'recent'}.json`;p.bundle=name;
+  if(!groups.has(name))groups.set(name,{});groups.get(name)[p.month]=rows;
+ }
+ for(const[name,months]of[...groups].sort(([a],[b])=>a.localeCompare(b,'en')))emit('data/contracts/'+name,Buffer.from(JSON.stringify({schema:1,months:Object.fromEntries(Object.entries(months).sort(([a],[b])=>a.localeCompare(b,'en')))})));
+ return groups.size;
+}
+export function retainUnconvertedContracts(previous,manifest,emit,converted={},officetel=null){
  const inputs=new Map(),read=p=>{const b=readFileSync(join(previous,p));inputs.set(p,hash(b));return b;},prior=JSON.parse(read('data/contracts/index.json'));if(![1,2].includes(prior.schema))throw Error('Unsupported previous contract manifest');
  const scope=p=>[p.service,p.lawd,p.month].join('|'),present=new Map(),superseded={},supersededPartitions={};for(const p of manifest.partitions){if(present.has(scope(p)))throw Error('Duplicate generated contract scope');present.set(scope(p),p);}let files=0,bytes=0;
- for(const p of prior.partitions){if(p.service==='apartment-rent'||p.format==='regional-reference')continue;const replacement=present.get(scope(p));if(replacement?.path===p.path)continue;
+ const priorBundles=new Map(),priorBundle=name=>{if(!priorBundles.has(name)){const path='data/contracts/'+name,b=read(path);if(prior.schema!==2||prior.sources[path]!==hash(b))throw Error('Retained officetel bundle evidence mismatch');priorBundles.set(name,JSON.parse(b));}return priorBundles.get(name);};
+ for(const prior_ of prior.partitions){if(prior_.service==='apartment-rent'||prior_.format==='regional-reference')continue;const{bundle,...p}=prior_;const replacement=present.get(scope(p));if(replacement?.path===p.path)continue;
+  if(officetel&&officetelServices.includes(p.service)&&p.path===null){
+   if(replacement)continue;
+   if(typeof bundle!=='string'||bundle!==`${p.service}/${p.lawd}/${bundle.split('/')[2]}`||!/^(recent|\d{4})\.json$/.test(bundle.split('/')[2]||'')||!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month))throw Error('Unsafe retained officetel partition');
+   officetel.rows.set(scope(p),officetelRows(p,priorBundle(bundle).months?.[p.month]));manifest.partitions.push(p);present.set(scope(p),p);continue;
+  }
   if(!['rowhouse-rent','officetel-sale','officetel-rent'].includes(p.service)||!/^\d{5}$/.test(p.lawd)||!/^\d{6}$/.test(p.month)||p.path!==`${p.service}/${p.lawd}/${p.month}.json`)throw Error('Unsafe retained contract partition');
   const path='data/contracts/'+p.path,b=read(path),value=JSON.parse(b);if((prior.schema===2&&prior.sources[path]!==hash(b))||value.rows.length!==p.count||value.rows.some(r=>r.date.replaceAll('-','').slice(0,6)!==p.month))throw Error('Retained contract evidence mismatch');
+  if(officetel&&officetelServices.includes(p.service)){
+   if(replacement){if(replacement.path!==null||replacement.count!==p.count||converted[path]!==hash(b))throw Error('Officetel supersession lacks exact source evidence');superseded[path]=hash(b);supersededPartitions[path]=replacement;continue;}
+   officetel.rows.set(scope(p),officetelRows(p,value.rows));
+   if(!officetel.monthFiles){const kept={...p,path:null};manifest.partitions.push(kept);present.set(scope(p),kept);officetel.bundled[path]=hash(b);continue;}
+  }
   if(replacement){if(p.service!=='rowhouse-rent'||replacement.format!=='regional-reference'||replacement.path!==p.path.replace('.json','.bin')||replacement.count!==p.count||converted[path]!==hash(b))throw Error('Contract supersession lacks exact converted source evidence');superseded[path]=hash(b);supersededPartitions[path]=replacement;continue;}
   emit(path,b);manifest.partitions.push(p);manifest.sources[path]=hash(b);present.set(scope(p),p);files++;bytes+=b.length;
  }
- manifest.partitions.sort((a,b)=>a.path.localeCompare(b.path,'en'));
+ manifest.partitions.sort((a,b)=>partitionOrder(a).localeCompare(partitionOrder(b),'en'));
  return {files,bytes,superseded,supersededPartitions,inputs:Object.fromEntries(inputs),verify(){for(const[p,h]of inputs)if(hash(readFileSync(join(previous,p)))!==h)throw Error('Previous contract input changed');}};
 }
 // A query window is not a retention policy. Keep only expired published scopes;
@@ -67,7 +110,7 @@ export function retainHistoricalContracts(previous,manifest,rental,displays,emit
   matched+=codec.openColumns(codec.schemas.ContractDetail,details).rowCount;
   unmatched+=codec.openColumns(codec.schemas.ContractUnmatched,extra).rowCount;
  }
- manifest.partitions.sort((a,b)=>a.path.localeCompare(b.path,'en'));
+ manifest.partitions.sort((a,b)=>partitionOrder(a).localeCompare(partitionOrder(b),'en'));
  return {partitions:expired.length,files,bytes,matched,unmatched,inputs:Object.fromEntries(inputs),verify(){
   for(const[path,digest]of inputs)if(hash(read(path))!==digest)throw Error('Previous historical contract input changed');
   reader?.recheck();
@@ -77,9 +120,9 @@ export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,g
  source=realpathSync(source);packed=realpathSync(packed);if(source===packed)throw Error('Isolated output required');const rental=regionalReader(packed,'rental',{verifyOnce:true});if(rental.manifest.schema!==3)throw Error('Packed facts required');
  const input=new Map(),read=p=>{const b=readFileSync(join(source,p));input.set(p,hash(b));return JSON.parse(b);},old=read('data/contracts/index.json');if(old.schema!==1)throw Error('Raw generated contract manifest required');
  const displays=new Map(),engine=detailEngine('build-housing-details.mjs'),reuse={months:0,builtMonths:0},inputReuse={partitions:0,parsed:0};
- const manifest={...old,schema:2,rentalVersion:rental.manifest.version,sources:{},partitions:[]},retired={},metrics={matched:0,unmatched:0,oldBytes:0,newBytes:0};
+ const manifest={...old,schema:2,rentalVersion:rental.manifest.version,sources:{},partitions:[]},retired={},officetel=officetelState(),metrics={matched:0,unmatched:0,oldBytes:0,newBytes:0};
  function emit(p,b){const file=join(packed,p);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,b);manifest.sources[p]=hash(b);metrics.newBytes+=b.length;}
- for(const privatePartition of old.partitions){const {sourceHash,...p}=privatePartition;const path='data/contracts/'+p.path;if(!['apartment-rent','rowhouse-rent'].includes(p.service)){const b=readFileSync(join(source,path));input.set(path,hash(b));manifest.sources[path]=hash(b);manifest.partitions.push(p);continue;}
+ for(const privatePartition of old.partitions){const {sourceHash,...p}=privatePartition;const path='data/contracts/'+p.path;if(!['apartment-rent','rowhouse-rent'].includes(p.service)){const b=readFileSync(join(source,path));input.set(path,hash(b));if(officetelServices.includes(p.service)){manifest.partitions.push(officetelPartition(p,b,officetel,manifest.sources,retired));continue;}manifest.sources[path]=hash(b);manifest.partitions.push(p);continue;}
   if(!/^(apartment-rent|rowhouse-rent)\/\d{5}\/\d{6}\.json$/.test(p.path))throw Error('Unsafe source partition');const batchScope='rental/'+p.service+'/'+p.lawd+'/'+p.month,oldScope=generationSession?.peek(batchScope),month=p.month.slice(0,4)+'-'+p.month.slice(4);
   if(oldScope&&typeof sourceHash==='string'){
    const entities=oldScope.result.entities,regionCodes=[...new Set(entities.map(id=>rental.table.source.get(id)?.split(':')[0]).filter(Boolean))].sort(),dependencies=Object.assign({},...regionCodes.map(code=>detailDependencies(rental,code,[month]))),mapping=entities.map(id=>[id,rental.table.source.get(id)||null]);
@@ -109,12 +152,13 @@ export function buildHousingDetails(source,packed,previous=null,{cacheDir=null,g
  }
  const historical=previous?retainHistoricalContracts(previous,manifest,rental,displays,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;}):null;
  for(const[path,values]of displays){const dictionary=[],refs={},lookup=new Map();for(const[id,meta]of Object.entries(values).sort(([a],[b])=>a.localeCompare(b))){const key=canonical(meta);let n=lookup.get(key);if(n===undefined){n=dictionary.length;dictionary.push(meta);lookup.set(key,n);}refs[id]=n;}emit(path,Buffer.from(JSON.stringify({dictionary,refs})));}
- const retained=previous?retainUnconvertedContracts(realpathSync(previous),manifest,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;},retired):null;
+ const retained=previous?retainUnconvertedContracts(realpathSync(previous),manifest,(p,b)=>{emit(p,b);metrics.newBytes-=b.length;},retired,officetel):null;
+ const officetelBundles=writeOfficetelBundles(manifest,officetel,emit);
  emit('data/contracts/index.json',Buffer.from(JSON.stringify(manifest)));
  const rent=read('data/apartment-rent/index.json');for(const[path,digest]of Object.entries(rent.shards)){const b=readFileSync(join(source,path));if(hash(b)!==digest)throw Error('Rent shard changed');retired[path]=digest;metrics.oldBytes+=b.length;input.set(path,digest);}
  const next={schema:2,unit:rent.unit,total:rent.total,linked:rent.linked,records:Object.fromEntries(Object.entries(rent.records).map(([id,{shard,...r}])=>[id,r])),coverage:rent.coverage,sharedManifest:'data/rental/index.json',rentalVersion:rental.manifest.version,contractsHash:hash(readFileSync(join(packed,'data/contracts/index.json'))),catalogHash:hash(readFileSync(join(packed,'data/apartments/index.json')))};
  emit('data/apartment-rent/index.json',Buffer.from(JSON.stringify(next)));
  for(const[p,h]of input)if(hash(readFileSync(join(source,p)))!==h)throw Error('Contract input changed');
- retained?.verify();historical?.verify();rental.recheck();const report={reuse,inputReuse,retainedHistorical:historical?{partitions:historical.partitions,files:historical.files,bytes:historical.bytes,matched:historical.matched,unmatched:historical.unmatched,inputs:historical.inputs}:null,retainedUnconverted:retained?{files:retained.files,bytes:retained.bytes,inputs:retained.inputs}:null,superseded:retained?.superseded??{},supersededPartitions:retained?.supersededPartitions??{},status:'PASS',metrics,retired,inputs:Object.fromEntries(input)};writeFileSync(join(packed,'housing-details-report.json'),JSON.stringify(report,null,2));return report;
+ retained?.verify();historical?.verify();rental.recheck();const report={reuse,inputReuse,retainedHistorical:historical?{partitions:historical.partitions,files:historical.files,bytes:historical.bytes,matched:historical.matched,unmatched:historical.unmatched,inputs:historical.inputs}:null,retainedUnconverted:retained?{files:retained.files,bytes:retained.bytes,inputs:retained.inputs}:null,superseded:retained?.superseded??{},supersededPartitions:retained?.supersededPartitions??{},officetelBundles,bundledContracts:officetel.bundled,status:'PASS',metrics,retired,inputs:Object.fromEntries(input)};writeFileSync(join(packed,'housing-details-report.json'),JSON.stringify(report,null,2));return report;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)console.log(JSON.stringify(buildHousingDetails(...process.argv.slice(2)).metrics));

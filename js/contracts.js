@@ -8,6 +8,8 @@
   const params = new URLSearchParams(location.search);
   let manifest, data = [], entity = params.get('entity') || '', page = 0, generation = 0, loaded = new Set(), requestedMonths = [];
   const cache = new Map();
+  // One pending download per bundle file, shared by its months and kept for later views.
+  const bundles = new Map();
   let apartmentLookup = {},aptSearch,sharedContracts;
   const stateFields=['property','category','district','period','search','area'];
   window.addEventListener('pagehide',()=>{try{sessionStorage.setItem('nodo:contracts',JSON.stringify({values:Object.fromEntries(stateFields.map(id=>[id,$(id).value])),entity,page}));}catch{}});
@@ -93,7 +95,14 @@
     const collected=[];
     await Promise.all(Array.from({length:4},async()=>{
       while(queue.length&&token===generation){const p=queue.shift();try{
-        // path:null marks a collected month with zero rows. It has no file to request.
+        // Officetel months name their regional bundle. Months of one bundle share one download.
+        if(typeof p.bundle==='string'){
+          if(!bundles.has(p.bundle))bundles.set(p.bundle,read(p.bundle).catch(error=>{bundles.delete(p.bundle);throw error;}));
+          const rows=(await bundles.get(p.bundle)).months?.[p.month];
+          if(!Array.isArray(rows)||rows.length!==p.count)throw new Error('Contract bundle mismatch');
+          collected.push([p,rows]);continue;
+        }
+        // path:null without a bundle marks a collected month with zero rows.
         if(p.path===null){collected.push([p,[]]);continue;}
         if(!cache.has(p.path))cache.set(p.path,await read(p.path));
         collected.push([p,cache.get(p.path).rows]);
