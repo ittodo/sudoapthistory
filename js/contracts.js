@@ -9,13 +9,14 @@
   let manifest, data = [], entity = params.get('entity') || '', page = 0, generation = 0, loaded = new Set(), requestedMonths = [];
   const cache = new Map();
   // One pending download per bundle file, shared by its months and kept for later views.
-  // At most 12 bundles stay in memory; the least recently used one leaves first.
+  // At most 12 bundles stay in memory; the least recently used one leaves first. A failed or
+  // stale bundle stays until its load finishes, so the other months never download it again.
   const bundles = new Map(), BUNDLE_LIMIT = 12;
   let manifestRefreshed = false;
   function bundle(name) {
     let pending = bundles.get(name);
     if (pending) { bundles.delete(name); bundles.set(name, pending); return pending; }
-    pending = read(name).catch(error => { if (bundles.get(name) === pending) bundles.delete(name); throw error; });
+    pending = read(name);
     bundles.set(name, pending);
     while (bundles.size > BUNDLE_LIMIT) bundles.delete(bundles.keys().next().value);
     return pending;
@@ -102,14 +103,15 @@
     const failures=[];
     // Four simultaneous shard downloads, bounded independently of history length.
     const queue=[...parts];
-    const collected=[];let stale=false;
+    const collected=[],dropped=new Set();let stale=false;
     await Promise.all(Array.from({length:4},async()=>{
       while(queue.length&&token===generation){const p=queue.shift();try{
         // Officetel months name their regional bundle. Months of one bundle share one download.
         if(typeof p.bundle==='string'){
-          const rows=(await bundle(p.bundle)).months?.[p.month];
-          // A bundle newer or older than the index: drop it and read the index again once.
-          if(!Array.isArray(rows)||rows.length!==p.count){bundles.delete(p.bundle);stale=true;throw new Error('Contract bundle mismatch');}
+          let value;try{value=await bundle(p.bundle);}catch(error){dropped.add(p.bundle);throw error;}
+          const rows=value.months?.[p.month];
+          // A bundle newer or older than the index: drop it after this load and read the index again once.
+          if(!Array.isArray(rows)||rows.length!==p.count){dropped.add(p.bundle);stale=true;throw new Error('Contract bundle mismatch');}
           collected.push([p,rows]);continue;
         }
         // path:null without a bundle marks a collected month with zero rows.
@@ -118,6 +120,7 @@
         collected.push([p,cache.get(p.path).rows]);
       }catch{failures.push(p.month);}}
     }));
+    for(const name of dropped)bundles.delete(name);
     if(token!==generation)return;
     if(stale&&!manifestRefreshed){manifestRefreshed=true;try{manifest=await read('index.json');}catch{}if(token===generation)return load();return;}
     for(const [p,rows] of collected){data.push(...rows);loaded.add(p.month);}

@@ -120,5 +120,20 @@ test('officetel bundle months split back to their exact month texts',async()=>{
  const{officetelBundleMonths:split}=await import('./build-housing-details.mjs');
  const months=split(Buffer.from('{"schema":1,"months":{"202606":[{"a":"]}\\"[","b":38.0}],"202607":[]}}'));
  assert.deepEqual([...months],[['202606','[{"a":"]}\\"[","b":38.0}]'],['202607','[]']]);
- for(const bad of ['{"schema":1,"months":{"20260":[]}}','{"schema":1,"months":{"202606":[}}','{"schema":2,"months":{}}','{"schema":1,"months":{"202606":[]} }'])assert.throws(()=>split(Buffer.from(bad)),/framing|JSON/);
+ for(const bad of ['{"schema":1,"months":{"20260":[]}}','{"schema":1,"months":{"202606":[}}','{"schema":2,"months":{}}','{"schema":1,"months":{"202606":[]} }','{"schema":1,"months":{"202606":[],"202606":[]}}'])assert.throws(()=>split(Buffer.from(bad)),/framing|JSON/);
+});
+test('a stale or missing officetel bundle is downloaded once per load, not once per month',async()=>{
+ const now=new Date(),ym=i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;},months=Array.from({length:12},(_,i)=>ym(i));
+ const row=m=>({date:`${m.slice(0,4)}-${m.slice(4)}-05`,area:24.5,category:'jeonse',kind:'rent',deposit:1,entityId:'o',name:'n',dong:'d',jibun:'1',property:'officetel'});
+ const name='officetel-rent/11110/recent.json',files=new Map([[name,JSON.stringify({schema:1,months:Object.fromEntries(months.map(m=>[m,[row(m),row(m)]]))})]]);
+ const index=count=>({schema:2,districts:{'11110':['서울','종로구']},partitions:months.map(m=>({service:'officetel-rent',lawd:'11110',month:m,count,checkedAt:'2026-11-17',path:null,bundle:name}))});
+ const downloads=page=>page.fetched.filter(u=>u==='/data/contracts/'+name).length;
+ // Every month disagrees with the index: one download, one index refresh, one more download.
+ let reads=0;const refreshed=await renderContracts(index(1),files,undefined,url=>url==='/data/contracts/index.json'&&reads++?index(2):null);
+ assert.equal(downloads(refreshed),2);assert.match(refreshed.view.status,/^12개월 자료/);
+ const stale=await renderContracts(index(1),files);assert.equal(downloads(stale),2);assert.match(stale.view.status,/^0개월 자료/);
+ assert.equal(stale.fetched.filter(u=>u==='/data/contracts/index.json').length,2);
+ const missing=await renderContracts(index(2),new Map());assert.equal(downloads(missing),1);assert.match(missing.view.status,/^0개월 자료/);
+ // The failed bundle is not kept: the next load of the page downloads it again.
+ assert.equal(downloads({fetched:(await missing.period('recent'),missing.fetched)}),2);
 });

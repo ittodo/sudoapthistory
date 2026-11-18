@@ -34,7 +34,7 @@ export function officetelBundleMonths(b){
   const key=text.slice(i,i+9);if(!/^"\d{6}":$/.test(key)||text[i+9]!=='[')throw bad();i+=9;
   let j=i,depth=0,quoted=false;
   for(;j<text.length;j++){const c=text[j];if(quoted){if(c==='\\')j++;else if(c==='"')quoted=false;}else if(c==='"')quoted=true;else if(c==='['||c==='{')depth++;else if(c===']'||c==='}'){depth--;if(!depth){j++;break;}}}
-  if(depth)throw bad();months.set(key.slice(1,7),text.slice(i,j));i=j;
+  if(depth||months.has(key.slice(1,7)))throw bad();months.set(key.slice(1,7),text.slice(i,j));i=j;
  }
  if(i!==text.length-2)throw bad();
  const parsed=JSON.parse(text);if(parsed.schema!==1||Object.keys(parsed.months).length!==months.size)throw bad();
