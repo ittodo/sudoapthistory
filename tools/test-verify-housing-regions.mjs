@@ -51,7 +51,8 @@ function writeFixture(root,{legacy=false,alterMap=null,alterHousing=null,identit
  const shards={};for(let i=0;i<256;i++)for(const prefix of ['', 'summary/']){const path=`data/apartments/${prefix}${i.toString(16).padStart(2,'0')}.json`;shards[path]=put(path,i===0?{one:{id:'one',review:{approved:false},areas:[{area:59,rows:[{i:7,commentId:'apt_7'}]}]}}:{});}
  const catalogHash=put('data/apartments/index.json',{version:2,count:1,sources:metadataSources,shards,lookup:{A:['one','00'],one:['one','00']},legacy:{7:['one',59]},ambiguous:[]});
  // An empty regional-reference partition still restores against identity 11110.
- const partitions=contracts?[{format:'regional-reference',service:'apartment-rent',lawd:'11110',month:'202609',details:null,unmatched:null,display:null,regionCodes:['11110'],count:0}]:[];
+ // A zero-row officetel month is an index entry without a file.
+ const partitions=contracts?[{format:'regional-reference',service:'apartment-rent',lawd:'11110',month:'202609',details:null,unmatched:null,display:null,regionCodes:['11110'],count:0},{service:'officetel-rent',lawd:'11110',month:'202609',path:null,count:0,checkedAt:'now'}]:[];
  const contractsHash=put('data/contracts/index.json',{schema:2,rentalVersion:'rental-version',sources:{},partitions});
  let contractArchive;if(contracts){const detail='data/contracts/apartment-rent/11110/archive-details.bin',coverage='data/contracts/apartment-rent/coverage.bin',sources={[detail]:put(detail,gzipSync(codec.encodeColumns(codec.schemas.ContractDetail,[]))),[coverage]:put(coverage,gzipSync(Buffer.from('{}')))};contractArchive={schema:1,regions:{11110:detail},coverageRef:{path:coverage,sha256:sources[coverage]},rows:0,sources,...(typeof contracts==='object'?contracts:{})};}
  put('data/apartment-rent/index.json',{schema:2,rentalVersion:'rental-version',contractsHash,catalogHash,sources:{},...(contractArchive?{contractArchive}:{})});

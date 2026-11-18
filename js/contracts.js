@@ -93,6 +93,8 @@
     const collected=[];
     await Promise.all(Array.from({length:4},async()=>{
       while(queue.length&&token===generation){const p=queue.shift();try{
+        // path:null marks a collected month with zero rows. It has no file to request.
+        if(p.path===null){collected.push([p,[]]);continue;}
         if(!cache.has(p.path))cache.set(p.path,await read(p.path));
         collected.push([p,cache.get(p.path).rows]);
       }catch{failures.push(p.month);}}

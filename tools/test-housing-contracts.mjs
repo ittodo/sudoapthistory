@@ -34,3 +34,26 @@ test('selected rowhouse contracts preserve real UUID and type without creating a
 
 import{createContractReader}from'../js/housing-contracts.mjs';
 test('browser contract reader restores typed references and rejects service path substitution',async()=>{const id='trh_00000000000000000000000000000001',rawRow={...raw,aptSeq:'',entityId:id,property:'rowhouse'},table={complexes:{'11110:0':{id}}},v=packContractDetails([rawRow],[f],table,codec),prefix='data/contracts/rowhouse-rent/11110/',p={service:'rowhouse-rent',lawd:'11110',month:'202609',path:'rowhouse-rent/11110/202609.bin',format:'regional-reference',count:1,regionCodes:['11110'],details:prefix+'202609-details.bin',unmatched:null,display:prefix+'display.json'},values=new Map([[p.details,v.details],[p.display,{dictionary:Object.values(v.display),refs:Object.fromEntries(Object.keys(v.display).map((k,i)=>[k,i]))}]]),r=createContractReader({schema:2,sources:{},rentalVersion:'v'}, {...table,version:'v',regionMonth:async()=>({rows:[f]})},async p=>values.get(p));const result=await r.read(p);const {recordIdentity,recordOccurrence,...rest}=result.rows[0];assert.deepEqual(rest,rawRow);await assert.rejects(r.read({...p,path:'other',details:p.details.replace('rowhouse-rent','apartment-rent')}),/path mismatch/);});
+import vm from'node:vm';import{readFileSync}from'node:fs';
+// Run the real contract page script against a minimal DOM. A path:null month must render as a loaded zero month.
+async function renderContracts(manifest,files){
+ const elements=new Map(),fetched=[],node=()=>({value:'',textContent:'',children:[],options:[],disabled:false,selectedIndex:0,append(...c){this.children.push(...c);},replaceChildren(...c){this.children=c;this.options=c;},add(o){this.options.push(o);if(this.value==='')this.value=o.value;}});
+ const $=id=>{if(!elements.has(id))elements.set(id,node());return elements.get(id);};$('period').value='recent';
+ const text=e=>e.textContent+e.children.map(text).join('|');
+ const context={URLSearchParams,window:{addEventListener(){}},document:{getElementById:$,createElement:node},location:{search:'?property=officetel&category=all-rent&lawd=11110'},sessionStorage:{getItem(){return null;},setItem(){}},performance:{getEntriesByType:()=>[]},Option:function(text,value){return{text,value};},
+  NodoApartmentSearch:{bind:()=>({checkScope(){},reportCount(){},restore:async()=>{},clear(){}})},
+  fetch:async url=>{fetched.push(url);if(url==='/data/contracts/index.json')return{ok:true,json:async()=>structuredClone(manifest)};const name=url.slice('/data/contracts/'.length);return files.has(name)?{ok:true,json:async()=>JSON.parse(files.get(name))}:{ok:false};}};
+ vm.runInNewContext(readFileSync(new URL('../js/contracts.js',import.meta.url),'utf8'),context);
+ for(let i=0;i<50;i++)await new Promise(r=>setImmediate(r));
+ return {fetched,view:Object.fromEntries(['status','selection','rows','trend','page'].map(id=>[id,text($(id))]))};
+}
+test('contract page renders a path:null month exactly like an empty month file without requesting it',async()=>{
+ const now=new Date(),ym=i=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1);return`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;},[m0,m1,m2]=[ym(0),ym(1),ym(2)];
+ const row=(month,deposit)=>({date:`${month.slice(0,4)}-${month.slice(4)}-05`,area:24.5,category:'jeonse',kind:'rent',deposit,entityId:'off-1',name:'오피스텔',dong:'동',jibun:'1',property:'officetel'});
+ const part=(month,count)=>({service:'officetel-rent',lawd:'11110',month,count,checkedAt:'2026-11-17T00:00:00Z',path:`officetel-rent/11110/${month}.json`});
+ const files=new Map([[`officetel-rent/11110/${m0}.json`,JSON.stringify({rows:[row(m0,100)]})],[`officetel-rent/11110/${m1}.json`,'{"rows":[]}'],[`officetel-rent/11110/${m2}.json`,JSON.stringify({rows:[row(m2,90),row(m2,80)]})]]);
+ const base={schema:2,districts:{'11110':['서울','종로구']},partitions:[part(m0,1),part(m1,0),part(m2,2)]};
+ const withFile=await renderContracts(base,files),withNull=await renderContracts({...base,partitions:[part(m0,1),{...part(m1,0),path:null},part(m2,2)]},new Map([...files].filter(([p])=>!p.includes(m1))));
+ assert.deepEqual(withNull.view,withFile.view);assert.match(withFile.view.status,/3개월 자료/);
+ assert.equal(withFile.fetched.some(u=>u.includes(m1)),true);assert.equal(withNull.fetched.some(u=>u.includes(m1)),false);
+});
