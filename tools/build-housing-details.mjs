@@ -7,9 +7,9 @@ const hash=b=>createHash('sha256').update(b).digest('hex'),canonical=r=>JSON.str
 // Officetel contract months are also published as one bundle per service and region:
 // <service>/<lawd>/recent.json holds the current query window, <service>/<lawd>/<YYYY>.json
 // holds retained months before queryStartMonth. Each index partition names its bundle.
-// Stage 1 keeps the month files for old clients. Stage 2 sets this to false: the month
-// files are retired and their partitions keep path:null with the bundle.
-export const OFFICETEL_MONTH_FILES=true;
+// Stage 1 kept the month files for old clients. Stage 2 (current): the month files are
+// retired and their partitions keep path:null with the bundle.
+export const OFFICETEL_MONTH_FILES=false;
 export const officetelServices=['officetel-sale','officetel-rent'];
 const officetelScope=p=>[p.service,p.lawd,p.month].join('|');
 export const partitionOrder=p=>p.path??`${p.service}/${p.lawd}/${p.month}.json`;
