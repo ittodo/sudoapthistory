@@ -1,6 +1,14 @@
 {
   "annual": [
     {
+      "year": "2025",
+      "stac_yymm": "202512",
+      "revenue": 434.79893003,
+      "operating_profit": 12.98999718,
+      "net_income": 18.79198151,
+      "op_margin": 2.9875872001579498
+    },
+    {
       "year": "2024",
       "stac_yymm": "202412",
       "revenue": 434,
@@ -172,18 +180,32 @@
   "name": "뉴보텍",
   "quarterly": [
     {
+      "period": "2026Q3",
+      "stac_yymm": "202609",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 3,
+      "revenue": 74.64822787,
+      "operating_profit": -2.08715514,
+      "net_income": -1.1480621,
+      "op_margin": -2.7959875265020138,
+      "yoy_revenue": null,
+      "yoy_op": null,
+      "qoq_revenue": null,
+      "qoq_op": null
+    },
+    {
       "period": "2025Q3",
       "stac_yymm": "202509",
       "fiscal_year_end": "202512",
       "fiscal_quarter": 3,
-      "revenue": 77,
-      "operating_profit": -6,
-      "net_income": -3,
-      "op_margin": -7.792207792207792,
-      "yoy_revenue": -1.282051282051282,
-      "yoy_op": -150,
-      "qoq_revenue": -19.791666666666664,
-      "qoq_op": -400
+      "revenue": 76.95881971,
+      "operating_profit": -6.15337953,
+      "net_income": -2.9566333,
+      "op_margin": -7.9956781473357665,
+      "yoy_revenue": -1.3348465256410253,
+      "yoy_op": -151.27816274999998,
+      "qoq_revenue": -19.834562802083333,
+      "qoq_op": -407.6689764999999
     },
     {
       "period": "2025Q2",
@@ -593,10 +615,12 @@
     }
   ],
   "ratios": {
-    "roe": -2.72,
-    "eps": 13,
-    "bps": 1573,
-    "debt_ratio": 153.27
+    "per": 8.888059701492537,
+    "roe": 8.586745259480907,
+    "eps": 134,
+    "debt_ratio": 143.82785511750333,
+    "op_margin": 2.9875872001579498,
+    "net_margin": 4.321993503687648
   },
   "ticker": "060260",
   "warnings": [

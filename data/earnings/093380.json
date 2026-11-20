@@ -1,6 +1,14 @@
 {
   "annual": [
     {
+      "year": "2026.08",
+      "stac_yymm": "202608",
+      "revenue": 881.78266738,
+      "operating_profit": 32.29566876,
+      "net_income": 48.3931282,
+      "op_margin": 3.6625429320309304
+    },
+    {
       "year": "2025.08",
       "stac_yymm": "202508",
       "revenue": 903,
@@ -180,18 +188,32 @@
   "name": "풍강",
   "quarterly": [
     {
+      "period": "2026.08 (FY2026 Q4)",
+      "stac_yymm": "202608",
+      "fiscal_year_end": "202608",
+      "fiscal_quarter": 4,
+      "revenue": 220.6657543,
+      "operating_profit": -4.11243629,
+      "net_income": -6.78676739,
+      "op_margin": -1.8636495286935422,
+      "yoy_revenue": -1.4885025446428557,
+      "yoy_op": -202.81090724999999,
+      "qoq_revenue": -3.8659120541091543,
+      "qoq_op": -126.78287381967202
+    },
+    {
       "period": "2026.05 (FY2026 Q3)",
       "stac_yymm": "202605",
       "fiscal_year_end": "202608",
       "fiscal_quarter": 3,
-      "revenue": 229,
-      "operating_profit": 15,
-      "net_income": 21,
-      "op_margin": 6.550218340611353,
-      "yoy_revenue": -2.553191489361702,
-      "yoy_op": 66.66666666666666,
-      "qoq_revenue": 3.153153153153153,
-      "qoq_op": -16.666666666666664
+      "revenue": 229.53955149,
+      "operating_profit": 15.35472376,
+      "net_income": 20.92512991,
+      "op_margin": 6.689358613941936,
+      "yoy_revenue": -2.3235951106382946,
+      "yoy_op": 70.60804177777779,
+      "qoq_revenue": 3.3961943648648685,
+      "qoq_op": -14.695979111111107
     },
     {
       "period": "2026.02 (FY2026 Q2)",
@@ -629,10 +651,12 @@
     }
   ],
   "ratios": {
-    "roe": 7.37,
-    "eps": 559,
-    "bps": 7957,
-    "debt_ratio": 30.01
+    "per": 6.062992125984252,
+    "roe": 6.711158730101766,
+    "eps": 508,
+    "debt_ratio": 27.076092468353146,
+    "op_margin": 3.6625429320309304,
+    "net_margin": 5.488101545904533
   },
   "ticker": "093380",
   "warnings": [
