@@ -60,6 +60,20 @@
   "name": "HEM파마",
   "quarterly": [
     {
+      "period": "2026Q3",
+      "stac_yymm": "202609",
+      "fiscal_year_end": "202612",
+      "fiscal_quarter": 3,
+      "revenue": 109.09370205,
+      "operating_profit": -10.51935545,
+      "net_income": 38.02071459,
+      "op_margin": -9.642495627454968,
+      "yoy_revenue": 276.18517948275866,
+      "yoy_op": 69.9446987142857,
+      "qoq_revenue": 137.1602218478261,
+      "qoq_op": 63.72636051724139
+    },
+    {
       "period": "2026Q2",
       "stac_yymm": "202606",
       "fiscal_year_end": "202612",
@@ -353,10 +367,15 @@
     }
   ],
   "ratios": {
-    "roe": -115.05,
-    "eps": -370,
-    "bps": 2010,
-    "debt_ratio": 250.12
+    "period": "2026Q3",
+    "basis": "ytd",
+    "roe": -45.056434772941714,
+    "eps": 167,
+    "bps": 5754.356270721071,
+    "bps_shares_as_of": "2026-09-30",
+    "debt_ratio": 174.47564834664448,
+    "op_margin": -37.96859779874139,
+    "net_margin": 5.699605208323559
   },
   "ticker": "376270",
   "warnings": [
