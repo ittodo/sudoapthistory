@@ -1205,8 +1205,8 @@ function renderEarnings(d){
       {l:'PER',v:r.per!=null?r.per.toFixed(1)+'배':'-'},
       {l:'PBR',v:r.pbr!=null?r.pbr.toFixed(2)+'배':'-'},
       {l:'ROE',v:r.roe!=null?r.roe.toFixed(1)+'%':'-'},
-      {l:'EPS',v:r.eps!=null?r.eps.toLocaleString()+'원':'-'},
-      {l:'BPS',v:r.bps!=null?r.bps.toLocaleString()+'원':'-'},
+      {l:'EPS',v:r.eps!=null?Math.round(r.eps).toLocaleString()+'원':'-'},
+      {l:'BPS',v:r.bps!=null?Math.round(r.bps).toLocaleString()+'원':'-'},
       {l:'부채비율',v:r.debt_ratio!=null?r.debt_ratio.toFixed(1)+'%':'-'},
       {l:'영업이익률',v:r.op_margin!=null?r.op_margin.toFixed(1)+'%':'-'},
       {l:'순이익률',v:r.net_margin!=null?r.net_margin.toFixed(1)+'%':'-'},
@@ -1214,7 +1214,11 @@ function renderEarnings(d){
     html+='<div class="detail-section"><h3>주요 비율</h3>';
     html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">';
     for(const item of items)html+=`<div class="ratio-card"><div class="rl">${item.l}</div><div class="rv">${item.v}</div></div>`;
-    html+='</div></div>';
+    html+='</div>';
+    // 기준 기간이 있는 DART 카드만 기준을 표시한다.
+    const m=/^(\d{4})(?:Q([1-4])|FY)$/.exec(r.period||'');
+    if(m)html+=`<div style="font-size:11px;color:var(--muted);margin-top:6px;">기준: ${m[2]?`${m[1]}년 ${m[2]}분기`:`${m[1]} 사업연도`} · EPS ${r.basis==='ytd'?'누적':'연간'} · ROE 최근 12개월</div>`;
+    html+='</div>';
   }
 
   // 분기 차트

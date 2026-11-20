@@ -138,7 +138,8 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   <div class="section-title">실적</div>
   <div id="earningsWarnings"></div>
   <!-- 투자 지표 카드 -->
-  <div id="earningsRatios" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
+  <div id="earningsRatios" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;"></div>
+  <p id="earningsRatiosBasis" style="font-size:11px;color:var(--muted);margin:0 0 14px;"></p>
   <!-- 분기별 실적 -->
   <div style="margin-bottom:14px;">
     <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">분기별 실적</div>
@@ -521,6 +522,17 @@ function earningsWarningHtml(warnings){
   }).join('');
 }
 
+// 비율 카드의 기준 기간 설명. 기준 기간이 없는 기존 카드는 빈 문자열이다.
+function ratiosBasisText(r) {
+  const m = /^(\d{4})(?:Q([1-4])|FY)$/.exec((r && r.period) || '');
+  if (!m) return '';
+  const label = m[2] ? `${m[1]}년 ${m[2]}분기` : `${m[1]} 사업연도`;
+  const eps = r.basis === 'ytd' ? '누적' : '연간';
+  let text = `기준: ${label} · EPS ${eps} · ROE 최근 12개월`;
+  if (r.bps_shares_as_of) text += ` · BPS 주식수 ${r.bps_shares_as_of}`;
+  return text;
+}
+
 function renderEarnings(data) {
   document.getElementById('sectionEarnings').style.display = 'block';
   document.getElementById('earningsWarnings').innerHTML = earningsWarningHtml(data.warnings);
@@ -548,8 +560,8 @@ function renderEarnings(data) {
   const r = data.ratios || {};
   const cards = [
     { label: 'ROE', value: r.roe != null ? fmtPct(r.roe) : '—' },
-    { label: 'EPS', value: r.eps != null ? r.eps.toLocaleString() + '원' : '—' },
-    { label: 'BPS', value: r.bps != null ? r.bps.toLocaleString() + '원' : '—' },
+    { label: 'EPS', value: r.eps != null ? Math.round(r.eps).toLocaleString() + '원' : '—' },
+    { label: 'BPS', value: r.bps != null ? Math.round(r.bps).toLocaleString() + '원' : '—' },
     { label: '부채비율', value: r.debt_ratio != null ? fmtPct(r.debt_ratio) : '—' },
   ];
   document.getElementById('earningsRatios').innerHTML = cards.map(c =>
@@ -558,6 +570,7 @@ function renderEarnings(data) {
       <div style="font-size:14px;font-weight:700;">${c.value}</div>
     </div>`
   ).join('');
+  document.getElementById('earningsRatiosBasis').textContent = ratiosBasisText(r);
 
   // 분기별 실적 (최근 8분기)
   const quarterly = (data.quarterly || []).slice(0, 8);
