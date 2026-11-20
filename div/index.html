@@ -1161,10 +1161,14 @@ async function loadEarnings(ticker){
 }
 
 function fmtBiz(v){
+  // 억원 단위 값을 반올림한 정수로 "N조 M억" 형식으로 표시한다.
   if(v==null||v==='')return'-';
-  const abs=Math.abs(v),sign=v<0?'-':'';
-  if(abs>=1e4)return sign+(abs/1e4).toLocaleString('ko-KR',{maximumFractionDigits:2})+'조';
-  return sign+abs.toLocaleString('ko-KR',{maximumFractionDigits:2})+'억';
+  const n=Math.round(Number(v));
+  if(!Number.isFinite(n))return'-';
+  const sign=n<0?'-':'',abs=Math.abs(n),jo=Math.floor(abs/1e4),eok=abs%1e4;
+  if(jo&&eok)return sign+jo.toLocaleString('ko-KR')+'조 '+eok.toLocaleString('ko-KR')+'억';
+  if(jo)return sign+jo.toLocaleString('ko-KR')+'조';
+  return sign+eok.toLocaleString('ko-KR')+'억';
 }
 
 function fmtRate(v){

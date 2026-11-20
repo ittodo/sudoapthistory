@@ -141,7 +141,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   <div id="earningsRatios" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
   <!-- 분기별 실적 -->
   <div style="margin-bottom:14px;">
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">분기별 실적 (억원)</div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">분기별 실적</div>
     <p style="font-size:11px;color:var(--muted);">FY는 결산 종료연도입니다. 비12월 결산은 실제 종료월과 회계분기를 함께 표시합니다.</p>
     <div style="overflow-x:auto;">
       <table id="earningsQTable">
@@ -161,7 +161,7 @@ a{color:var(--accent);text-decoration:none;}a:hover{text-decoration:underline;}
   </div>
   <!-- 연간 실적 -->
   <div>
-    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">연간 실적 (억원)</div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px;">연간 실적</div>
     <div style="overflow-x:auto;">
       <table id="earningsATable">
         <thead>
@@ -525,7 +525,17 @@ function renderEarnings(data) {
   document.getElementById('sectionEarnings').style.display = 'block';
   document.getElementById('earningsWarnings').innerHTML = earningsWarningHtml(data.warnings);
 
-  const fmtAmt = v => v == null ? '—' : Number(v).toLocaleString('ko-KR', {maximumFractionDigits: 2});
+  // 억원 단위 값을 반올림한 정수로 "N조 M억" 형식으로 표시한다.
+  const fmtAmt = v => {
+    if (v == null || v === '') return '—';
+    const n = Math.round(Number(v));
+    if (!Number.isFinite(n)) return '—';
+    const sign = n < 0 ? '-' : '';
+    const abs = Math.abs(n), jo = Math.floor(abs / 10000), eok = abs % 10000;
+    if (jo && eok) return `${sign}${jo.toLocaleString('ko-KR')}조 ${eok.toLocaleString('ko-KR')}억`;
+    if (jo) return `${sign}${jo.toLocaleString('ko-KR')}조`;
+    return `${sign}${eok.toLocaleString('ko-KR')}억`;
+  };
   const fmtPct = v => v == null ? '—' : `${Number(v).toFixed(1)}%`;
   const fmtYoY = v => {
     if (v == null) return '—';
