@@ -1,4 +1,10 @@
-# Local calculator work
+# 노도스트림 공개 사이트 작업 지침
+
+공통 정책은 [전역 AGENTS.md](C:/Users/sksk1/.codex/AGENTS.md), 주제별 기준 문서는 [문서 목록](docs/README.md)을 따른다.
+배포와 공개 확인은 [공통 배포 기준](../ops-dashboard/docs/deployment.md)과 [자동 배포](docs/cloudflare-auto-deployment.md)를 따른다.
+에이전트 운영과 모델 매핑은 [서브에이전트 운영](../ops-dashboard/docs/agent-orchestration.md)과 `~/.claude/CLAUDE.md`를 따른다.
+
+## Local calculator work
 
 For changes limited to the holding-tax calculator, use `npm run verify:holding-tax`.
 Do not run `npm run build` merely to verify calculator HTML/CSS/JavaScript changes:
